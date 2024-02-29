@@ -36,12 +36,12 @@ for datasource in sys.argv[1:]:
         # plt.savefig('figures_png/start.png')
         plt.colorbar(im)
 
-        TIME_INDEX = 0
-        X_INDEX = 2
-        Y_INDEX = 1
+        TIME_INDEX = 2
+        X_INDEX = 1
+        Y_INDEX = 0 # why not 0/1?
 
         particles_at_t = particles[:, TIME_INDEX] == timestep
-        plt.scatter(particles[particles_at_t, X_INDEX]/pixel_size, particles[particles_at_t, Y_INDEX]/pixel_size, s=100*radius[particles_at_t]**2*pixel_size**2,
+        plt.scatter(particles[particles_at_t, X_INDEX]/pixel_size, particles[particles_at_t, Y_INDEX]/pixel_size, s=50*radius[particles_at_t]**2*pixel_size**2,
                     facecolors='none', edgecolors='red', alpha=0.5, linewidth=0.5)
         
         plt.savefig(f'particle_detection/figures_png/particles_{datasource}.png', dpi=300)

@@ -15,6 +15,9 @@ for file in sys.argv[1:]:
     time_step         = data['time_step']
     particle_diameter = data['particle_diameter']
 
+    # if file == 'eleanorlong':
+    #     pixel_size = 0.17 # so the boxes are the same size as aliceXXX
+
     t0 = time.time()
 
     # box_sizes = (0.5, 1, 2, 4, 8, 16)

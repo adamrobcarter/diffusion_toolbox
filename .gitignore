@@ -2,7 +2,9 @@
 raw_data/*
 box_counting/data/*
 preprocessing/data/*
+preprocessing/figures_png/*
 visualisation/figures_png/*
+visualisation/theta_int.npz
 particle_detection/data/*
 particle_detection/figures_png/*
 intensity_counting/data/*

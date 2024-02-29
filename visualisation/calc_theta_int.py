@@ -27,7 +27,7 @@ def calc(kLvalues):
 # to check out a bit more values here...
 
 kL_over2values = np.logspace(-2.5, 5, 500)
-np.savez('box_counting/theta_int.npz', theta_int=calc(kL_over2values), kL_over2=kL_over2values, num_integration_points=num_integration_points)
+np.savez('visualisation/theta_int.npz', theta_int=calc(kL_over2values), kL_over2=kL_over2values, num_integration_points=num_integration_points)
 
 # kLvalues = np.logspace(-6, 4, 3000)
 # np.savez('data/theta_int_big.npz', theta_int=calc(kLvalues), kL=kLvalues, num_integration_points=num_integration_points)
