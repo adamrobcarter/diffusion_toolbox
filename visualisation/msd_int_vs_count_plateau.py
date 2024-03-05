@@ -33,12 +33,7 @@ def S(k, phi, sigma):
 D0_from_fits     = [{}, {}]
 D0_unc_from_fits = [{}, {}]
 
-boxes_to_use = list(range(0, 8))
-
-collapse_x = True
-collapse_y = True
-# collapse_x = False
-# collapse_y = False
+boxes_to_use = list(range(0, 8-2))
 
 for file in sys.argv[1:]:
     fig, ax = plt.subplots(1, 1, figsize=(6, 4.5))
@@ -58,49 +53,52 @@ for file in sys.argv[1:]:
     t = np.arange(0, N2_mean.shape[1] * time_step, time_step)
 
     t_theory = np.logspace(np.log10(t[1] / 5), np.log10(t.max()))
+    # print(t_theory,np.log10(t[1] / 10), np.log10(t.max()))
 
     for box_size_index in boxes_to_use:
+    # for L in [2**e for e in range(-2, 7)]:
         L = box_sizes[box_size_index]
 
         delta_N_sq = N2_mean[box_size_index, :]
-    
-        if collapse_y:
-            collapser = N_mean[box_size_index]
-            # collapser = N_var[box_size_index]
-            delta_N_sq             /= collapser
-            N_var [box_size_index] /= collapser
-            N_mean[box_size_index] /= collapser
-            
-        t = np.arange(0, N2_mean.shape[1] * time_step, time_step)
-
-        if collapse_x:
-            t /= L**2
+        # t = np.arange(0, len(delta_N_sq))[1:]/2
+        # delta_N_sq = delta_N_sq # [1:] is because the point at t=0 msd=0 plots weirdly
+        
 
         f = lambda tau: np.sqrt(tau / np.pi) * ( np.exp(-1/tau) - 1) + scipy.special.erf(np.sqrt(1/tau)) # countoscope eq. 2
         
+
         L_2 = L
+        
+        # N2_func = lambda t, D0: 8/np.sqrt(np.pi) * N_mean[box_size_index] * np.sqrt(D0 * t / L**2) # countoscope eq. 3
         N2_func_full = lambda t, D0: 2 * N_mean[box_size_index] * (1 - f(4*D0*t/L**2) * f(4*D0*t/L_2**2)) # countoscope eq. 2, countoscope overleaf doc
+
 
         LOWTIME_FIT_END = 20
 
         fit_func = N2_func_full
-        popt, pcov = scipy.optimize.curve_fit(fit_func, t[0:LOWTIME_FIT_END], delta_N_sq[0:LOWTIME_FIT_END])
+        popt, pcov = scipy.optimize.curve_fit(fit_func, t[0:LOWTIME_FIT_END], N2_mean[box_size_index, 0:LOWTIME_FIT_END])
         D0 = popt[0]
-        r2 = common.r_squared(delta_N_sq[0:LOWTIME_FIT_END], fit_func(t[0:LOWTIME_FIT_END], D0))
+        r2 = common.r_squared(N2_mean[box_size_index, 0:LOWTIME_FIT_END], fit_func(t[0:LOWTIME_FIT_END], D0))
 
         #, r^2={r2:.2f}
         D_str = f'D={D0:.3f}±{np.sqrt(pcov[0][0]):.3f}'
 
-        exp_plot = ax.plot(t[1:], delta_N_sq[1:], label=rf'part $L={L}\mathrm{{\mu m}}, {D_str}$', linestyle='none', marker='_', markersize=3)
+        # exp_plot = ax.plot(t[1:], delta_N_sq[1:], label=rf'particles $L={L}\mathrm{{\mu m}}, {D_str}$', linestyle='none', marker='_', markersize=3)
         # ax.plot(t_theory, N2_func_full(t_theory, D0), color='black', zorder=5, linestyle='dotted', linewidth=1, label='sFDT (no inter.)' if box_size_index==0 else None)
 
-        # ax.hlines(2*N_mean[box_size_index], t.min(), t.max(), color='black', linestyle='dashed', linewidth=1, label=r'$2 \langle N \rangle$' if box_size_index==0 else None)
-        ax.hlines(2*N_var [box_size_index], t.min(), t.max(), color='black',                     linewidth=1, label=r'$2 Var(N)$' if box_size_index==0 else None)
+        # ax.hlines(2*N_mean[box_size_index], t.min(), t.max(), color='black', linewidth=1, label=r'$2 \langle N \rangle$' if box_size_index==0 else None)
+        # ax.hlines(2*N_var [box_size_index], t.min(), t.max(), color='black', linewidth=1, label=r'$2 Var(N)$' if box_size_index==0 else None)
         # ax.hlines(2*N_var [box_size_index], t.min(), t.max(), linestyles='dashed', color='grey', linewidth=1, label=r'$\mathrm{Var}(N)$' if box_size_index==0 else None)
 
         # N2_theory_interactions = 2 * N_mean[box_size_index] * sDFT_interactions.sDFT_interactions(L, t_theory, phi, D0, sigma)# * 10
         # ax.plot(t_theory, N2_theory_interactions, color='black', linewidth=1, label='sFDT (w/ inter.)' if box_size_index==0 else None)
 
+        plateau = np.median(delta_N_sq[-200:-100])
+        ax.scatter([N_var[box_size_index]], [plateau], color='tab:blue')
+
+
+    collapse_x = False
+    collapse_y = False
 
     data = common.load(f'intensity_counting/data/counted_{file}.npz')
     box_sizes               = data['box_sizes']
@@ -112,87 +110,120 @@ for file in sys.argv[1:]:
 
     obs_plateaus = np.full((len(box_sizes)), np.nan)
 
-    if file == 'sim_downsampled':
-        # line up the colours
-        ax.scatter([], [])
-        ax.scatter([], [])
+    
 
-    for box_size_index in range(len(box_sizes)):
+    for box_size_index in range(len(box_sizes)-2):
         intensity_diff = counted_intensity_diffs[box_size_index, :-201] # must be odd?
         t = np.arange(0, len(intensity_diff) * time_step, time_step)
         assert intensity_diff.shape == t.shape, f'{intensity_diff.shape} != {t.shape}'
+
+        # intensity_diff = intensity_diff / avg_intensities[i]
+        # t = t / box_sizes[i]**2
+
+        # removed = intensity_diff < 1e-11
+        # t = t[~removed]
+        # intensity_diff = intensity_diff[~removed]
+
+        # intensity_diff = intensity_diff / avg_intensities[box_size_index]
+        # t = t / box_sizes[box_size_index]**2
 
         L = box_sizes[box_size_index]
         # if L > 32:
         #     continue
 
+
         if collapse_y:
-            collapser = avg_intensities[box_size_index]
-            collapser = variances[box_size_index]
-            intensity_diff                  /= collapser
-            variances      [box_size_index] /= collapser
-            avg_intensities[box_size_index] /= collapser
+            intensity_diff                  /= avg_intensities[box_size_index]
+            avg_intensities[box_size_index] /= avg_intensities[box_size_index]
         if collapse_x:
             t /= L**2
-            pass
 
         D0 = None
         
-        label = f'int $L={L:.1f}\mathrm{{\mu m}}$'
-        # label += f'$= {L/pixel_size:.0f}\mathrm{{px}}$'
+        label = f'intensity $L={L:.1f}\mathrm{{\mu m}}$'
+        label += f'$= {box_sizes[box_size_index]/pixel_size:.0f}\mathrm{{px}}$'
 
-        obs_plateaus[box_size_index] = np.median(intensity_diff[-100:-1])
+        
+        obs_plateaus[box_size_index] = np.median(intensity_diff[-150:-50])
+        # nmsd_ax.hlines(obs_plateaus[box_size_index], t.max()/20, t.max(), linewidth=5, color='black', label='obs plateau' if box_size_index==0 else None)
             
         # intensity_factor = np.median(avg_intensities[box_size_index]/np.median(intensity_diff[-100:-1]))
         if file == 'pierre_sim':
             intensity_factor = 16.17**2
         else:
             intensity_factor = 10573**2
-        
+        # nmsd_ax.hlines(2 * avg_intensities[box_size_index] / intensity_factor, t.max()/20, t.max(), linestyle='dashed', color='grey', label=r'$2\langle I \rangle / I_f$' if box_size_index==0 else None)
+            
 
         if file == 'sim' or file == 'sim_downsampled':
             print(f'sim avg/plateau (L={L:.1f}) {avg_intensities[box_size_index]/np.median(intensity_diff[-100:-1]):.0f}')
+
+            
             print('intensity factor', intensity_factor)
+
+            # avg_intensities[box_size_index] /= intensity_factor
+
             label += f' ({intensity_factor:.0f})'
+
+            # nmsd_ax.hlines(avg_intensities[box_size_index]/intensity_factor, t.max()/20, t.max(), linestyle=':', color='grey', label='avg_int/int_factor' if box_size_index==0 else None)
+            
+
+            sigma = 0.6
 
         fit_end = 5
         fit_func_2 = lambda t, D, e : 8 / np.sqrt(np.pi) * avg_intensities[box_size_index]/intensity_factor * np.sqrt(D / L**2) * t**e
         popt, pcov = scipy.optimize.curve_fit(fit_func_2, t[1:fit_end], intensity_diff[1:fit_end])
-        ax.plot(t[1:fit_end], fit_func_2(t[1:fit_end], *popt), linestyle=':', color='gray')
+        # nmsd_ax.plot(t[1:fit_end], fit_func_2(t[1:fit_end], *popt), linestyle=':', color='gray')
         label += rf' $D={popt[0]:.3f}, t^{{{popt[1]:.2f}}}$'
 
 
-        ax.scatter(t[1:], intensity_diff[1:]/intensity_factor, label=label, s=10, marker='|')
+        # ax.scatter(t[1:], intensity_diff[1:]/intensity_factor, label=label, s=10, marker='|')
 
 
-        # predicted_plateaus = 2 * avg_intensities / intensity_factor # one for rescaled axis
-        # predicted_plateaus /=  intensity_factor # one cause that's what we expect
-        # # predicted_plateaus /= 1.5
-
-    predicted_plateaus = 2 * avg_intensities / np.sqrt(intensity_factor)
-    print(predicted_plateaus)
-    # if collapse_y:
-    #     predicted_plateaus /= avg_intensities[box_size_index]
-    ax.hlines(predicted_plateaus, t.max()/20, t.max(), linestyle='dashed', color='grey', label=r'$2\langle I \rangle / I_f{}^2$')
 
 
-    ax.hlines(2*variances/intensity_factor, t.max()/20, t.max(), linestyle='dotted', color='grey', label=r'$2Var(I) / I_f$')
+        predicted_plateaus = 2 * avg_intensities / intensity_factor # one for rescaled axis
+        predicted_plateaus /=  intensity_factor # one cause that's what we expect
+        # predicted_plateaus /= 1.5
+        
+        # if collapse_y:
+        #     predicted_plateaus /= avg_intensities[box_size_index]
+        # ax.hlines(predicted_plateaus, t.max()/20, t.max(), linestyle='dashed', color='grey', label=r'$2\langle I \rangle / I_f{}^2$' if box_size_index==0 else None)
+
+
+        # ax.hlines(variances[box_size_index]**(2/3)/intensity_factor**2, t.max()/20, t.max(), linestyle='dotted', color='grey', label=r'$Var(I) / I_f$' if box_size_index==0 else None)
 
 
         # ax.hlines(variances[box_size_index]/intensity_factor**2, t.max()/20, t.max(), linestyle='dotted', color='grey', label=r'$Var(I) / I_f$' if box_size_index==0 else None)
 
 
-    # print('calced', intensity_factors.find(file))
 
-    ax.legend(loc='lower right', fontsize=5)
+        # plateau = np.median(intensity_diff[-150:-50]) / intensity_factor
+        # ax.scatter([variances[box_size_index]/intensity_factor**2], [plateau], color='tab:orange')
+
+    # print('calced', intensity_factors.find(file))
+    # plateau = np.median(intensity_diff[-150:-50]) / intensity_factor
+    ax.scatter(variances/intensity_factor, obs_plateaus/intensity_factor, color='tab:orange')
+
+    var_th = np.logspace(-3, 4)
+    print(variances, obs_plateaus)
+
+    # import scipy.optimize
+    # func = lambda x, a, b, c: a*x**2 + b*x + c
+    # func = lambda x, a, b, c: b * np.log(x) + c
+    # popt, pcov = scipy.optimize.curve_fit(func, variances[:-2]/intensity_factor**2, obs_plateaus[:-2]/intensity_factor)
+    # ax.plot(var_th, func(var_th, *popt))
+        
+    var_th = np.logspace(-3.3, 0)
+    ax.plot(var_th, 2*var_th)
+
+    ax.legend(loc='lower left', fontsize=5)
     # ax.legend(fontsize=5)
     ax.semilogy()
     ax.semilogx()
-    xlabel = '$t/L^2$' if collapse_x else '$t$'
-    ax.set_xlabel(xlabel)
-    ylabel = r'$\Delta N^2(t) / \rangle N \langle$' if collapse_y else '$\Delta N^2(t)$'
-    ax.set_ylabel(ylabel)
+    ax.set_xlabel('Var(N)')
+    ax.set_ylabel('plateau')
     ax.set_title(f'{file} detection & counting vs intensity counting')
 
     fig.tight_layout()
-    fig.savefig(f'visualisation/figures_png/msd_int_vs_count_{file}.png', dpi=300)
+    fig.savefig(f'visualisation/figures_png/msd_int_vs_count_plateau_{file}.png', dpi=300)

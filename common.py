@@ -3,6 +3,8 @@ import tifffile
 import numpy as np
 import datetime
 import scipy.fft
+import tqdm
+import matplotlib.animation
 
 def get_directory_files(directory, extension):
     filenames = []
@@ -87,3 +89,18 @@ def r_squared(y_data, y_pred):
     residual_sum = np.sum((y_data - y_pred       )**2)
     total_sum    = np.sum((y_data - y_data.mean())**2)
     return 1 - (residual_sum / total_sum)
+
+def save_gif(func, frames, fig, file, fps=1, dpi=300):
+    progress = tqdm.tqdm(total=len(frames))
+
+    def frame(timestep):
+        func(timestep)
+        progress.update()
+
+    ani = matplotlib.animation.FuncAnimation(fig, frame, frames=frames, interval=500, repeat=False)
+    ani.save(file, dpi=dpi, writer=matplotlib.animation.PillowWriter(fps=fps))
+    progress.close()
+
+def famous_f(tau):
+    return np.sqrt(tau / np.pi) * ( np.exp(-1/tau) - 1) + scipy.special.erf(np.sqrt(1/tau)) # countoscope eq. 2
+        
