@@ -1,7 +1,7 @@
 import numpy as np
-import scipy.stats
 import tqdm
 import numba
+import common
 
 def go(stack, pixel_size):
     return correlate_two_frames(stack[0, :, :], stack[0, :, :], pixel_size)
@@ -46,35 +46,13 @@ def outer_inner(frame1, frame2, num_x_pixels, num_y_pixels, num_bins, x_index_1)
     for y_index_1 in numba.prange(0, num_y_pixels):
     # for y_index_1 in numba.prange(0, 100):
         corrs, rs = inner(num_x_pixels, num_y_pixels, frame1, frame2, x_index_1, y_index_1)
-        all_corr_binned += numba_binned_statistic(rs.flatten(), corrs.flatten(), num_bins)
+        binned, bins, _ += common.numba_binned_statistic(rs.flatten(), corrs.flatten(), num_bins)
+        all_corr_binned += binned
         # break
 
     # corr_binned, r_binned, _ = scipy.stats.binned_statistic(rs.flatten(), corrs.flatten(), 'mean', bins=num_bins)
     
     return all_corr_binned
-
-@numba.njit
-def numba_binned_statistic(x, y, num_bins):
-    # print(x.min(), x.max())
-    bin_edges = np.linspace(0, 100, num_bins+1) # +1 because you need eg. 3 points to define 2 bins
-    bin_sums   = np.zeros((num_bins))
-    bin_counts = np.zeros((num_bins))
-
-    for value_i in range(x.shape[0]):
-        for bin_i in range(num_bins):
-            # print(x[value_i], '>', bin_edges[bin_i], x[value_i] > bin_edges[bin_i])
-            if x[value_i] < bin_edges[bin_i+1]:
-                # print('y[value_i]', y[value_i])
-                bin_sums  [bin_i] += y[value_i]
-                bin_counts[bin_i] += 1
-                # print(x[value_i], bin_i)
-                # break
-
-    # print('suns', bin_sums)
-    # print('counts', bin_counts)
-    # print()
-
-    return bin_sums / bin_counts
 
 @numba.njit
 def inner(num_x_pixels, num_y_pixels, frame1, frame2, x_index_1, y_index_1):

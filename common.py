@@ -5,6 +5,7 @@ import datetime
 import scipy.fft
 import tqdm
 import matplotlib.animation
+import numba
 
 def get_directory_files(directory, extension):
     filenames = []
@@ -104,3 +105,25 @@ def save_gif(func, frames, fig, file, fps=1, dpi=300):
 def famous_f(tau):
     return np.sqrt(tau / np.pi) * ( np.exp(-1/tau) - 1) + scipy.special.erf(np.sqrt(1/tau)) # countoscope eq. 2
         
+@numba.njit
+def numba_binned_statistic(x, y, num_bins):
+    # print(x.min(), x.max())
+    bin_edges = np.linspace(0, 100, num_bins+1) # +1 because you need eg. 3 points to define 2 bins
+    bin_sums   = np.zeros((num_bins))
+    bin_counts = np.zeros((num_bins))
+
+    for value_i in range(x.shape[0]):
+        for bin_i in range(num_bins):
+            # print(x[value_i], '>', bin_edges[bin_i], x[value_i] > bin_edges[bin_i])
+            if x[value_i] < bin_edges[bin_i+1]:
+                # print('y[value_i]', y[value_i])
+                bin_sums  [bin_i] += y[value_i]
+                bin_counts[bin_i] += 1
+                # print(x[value_i], bin_i)
+                # break
+
+    # print('suns', bin_sums)
+    # print('counts', bin_counts)
+    # print()
+
+    return bin_sums / bin_counts, bin_edges, None

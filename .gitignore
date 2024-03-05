@@ -8,3 +8,5 @@ visualisation/theta_int.npz
 particle_detection/data/*
 particle_detection/figures_png/*
 intensity_counting/data/*
+scattering_functions/data/*
+scattering_functions/figures_png/*
