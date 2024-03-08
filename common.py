@@ -92,7 +92,7 @@ def r_squared(y_data, y_pred):
     return 1 - (residual_sum / total_sum)
 
 def save_gif(func, frames, fig, file, fps=1, dpi=300):
-    progress = tqdm.tqdm(total=len(frames))
+    progress = tqdm.tqdm(total=len(frames)+1) # unsure why +1 but it seems to be needed
 
     def frame(timestep):
         func(timestep)
@@ -104,11 +104,35 @@ def save_gif(func, frames, fig, file, fps=1, dpi=300):
 
 def famous_f(tau):
     return np.sqrt(tau / np.pi) * ( np.exp(-1/tau) - 1) + scipy.special.erf(np.sqrt(1/tau)) # countoscope eq. 2
-        
+
+def structure_factor_2d_hard_spheres(k, phi, sigma):
+    # sigma is disk diameter
+    rho = 4 * phi / (np.pi * sigma**2)
+
+    phi = np.pi/4 * rho * sigma**2
+    J0 = lambda x: scipy.special.jv(0, x)
+    J1 = lambda x: scipy.special.jv(1, x)
+
+    prefactor = np.pi / ( 6 * ( 1 - phi)**3 * k**2 )
+    line1 = -5/4 * (1 - phi)**2 * k**2 * sigma**2 * J0(k * sigma / 2)**2
+    line23 = 4 * ( (phi - 20) * phi + 7) + 5/4 * (1 - phi)**2 * k**2 * sigma**2
+    line23factor = J1(k * sigma / 2)**2
+    line4 = 2 * (phi - 13) * (1 - phi) * k * sigma * J1(k * sigma / 2) * J0(k * sigma / 2)
+    c = prefactor * (line1 + line23*line23factor + line4)
+    # ^^^ Thorneywork et al 2018
+    
+    S = 1 / (1 - rho * c) # Hansen & McDonald (3.6.10)
+
+    return S
+
+
 @numba.njit
-def numba_binned_statistic(x, y, num_bins):
+def numba_binned_statistic(x, y, bins):
     # print(x.min(), x.max())
-    bin_edges = np.linspace(0, 100, num_bins+1) # +1 because you need eg. 3 points to define 2 bins
+    # bin_edges = np.linspace(0, 100, bins+1) # +1 because you need eg. 3 points to define 2 bins
+    # this will have broken if u used to supply num_bins
+    bin_edges = bins
+    num_bins = len(bins)-1
     bin_sums   = np.zeros((num_bins))
     bin_counts = np.zeros((num_bins))
 
@@ -127,3 +151,30 @@ def numba_binned_statistic(x, y, num_bins):
     # print()
 
     return bin_sums / bin_counts, bin_edges, None
+
+@numba.njit
+def numba_sum_3d_axis01(array):
+    # numba compatible version of array.sum(axis=(0, 1))
+    sums = np.zeros((array.shape[2]))
+    for i in range(array.shape[0]):
+        sums[i] = array[:, :, i].sum()
+    return sums
+
+@numba.njit
+def numba_nanmean_2d_axis0(array):
+    nanmeans = np.zeros(array.shape[1])
+    for i in range(array.shape[1]):
+        nanmeans[i] = np.nanmean(array[:, i])
+    return nanmeans
+
+@numba.njit
+def numba_nanstd_2d_axis0(array):
+    nanstds = np.zeros(array.shape[1])
+    for i in range(array.shape[1]):
+        nanstds[i] = np.nanstd(array[:, i])
+    return nanstds
+
+@numba.njit
+def numba_p_assert(condition, message):
+    if not condition:
+        print('Assertion failed: ', message)

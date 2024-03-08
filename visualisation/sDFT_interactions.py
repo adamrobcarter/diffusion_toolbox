@@ -7,57 +7,22 @@ import common
 
 num_integration_points = 2000
 
-def J0(x):
-    # assert x.check(units.dimensionless)
-    # x = x.magnitude
-    return scipy.special.jv(0, x)
-
-def J1(x):
-    # assert x.check(units.dimensionless)
-    # x = x.magnitude
-    return scipy.special.jv(1, x)
-
 def trapezoid(x, y):
     return scipy.integrate.trapezoid(x, y)
-
-def c(k, sigma, phi):
-    # sigma is disk diameter
-    # rho = 4 * phi / (np.pi * sigma**2)
-
-    # phi = np.pi/4 * rho * sigma**2
-    # J0 = lambda x: scipy.special.jv(0, x)
-    # J1 = lambda x: scipy.special.jv(1, x)
-
-    ksigma = k * sigma
-
-    prefactor = np.pi / ( 6 * ( 1 - phi)**3 * k**2 )
-    line1 = -5/4 * (1 - phi)**2 * ksigma**2 * J0(ksigma / 2)**2
-    line23 = 4 * ( (phi - 20) * phi + 7) + 5/4 * (1 - phi)**2 * ksigma**2
-    line23factor = J1(ksigma / 2)**2
-    line4 = 2 * (phi - 13) * (1 - phi) * ksigma * J1(ksigma / 2) * J0(ksigma / 2)
-    c = prefactor * (line1 + line23*line23factor + line4)
-
-    return c
 
 data_theta = common.load('visualisation/theta_int.npz')
 kL_over2_values = data_theta['kL_over2']
 thetaInt  = data_theta['theta_int']
 
-# sweep through L values
 def sDFT_interactions(L, t, phi, D0, sigma):
     # returns <N^2(t)> / <N>
-
-    # assert L.check(units.micrometer)
-    # assert t.check(units.second)
-    # assert D0.check(units.micrometer**2 / units.second)
-    # assert sigma.check(units.micrometer)
 
     Ntplot = np.zeros_like(t)
 
     k_values = kL_over2_values / L * 2
     
-    rho = 4/np.pi * phi / sigma**2
-    S = 1 / (1 - rho * c(k_values, sigma, phi)) # Hansen & McDonald (3.6.10)
+    S = common.structure_factor_2d_hard_spheres(k_values, phi, sigma)
+
     # S = np.ones_like(k_values)
     # f_v = 4 / (k_values**4 * L**2) * thetaInt
     f_v = L**2 * thetaInt

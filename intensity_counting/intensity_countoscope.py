@@ -45,20 +45,19 @@ def go(intensities, box_sizes_um, sep_sizes_um, pixel_size):
     window_height = intensities.shape[2]
 
     # box sizes and sep come in micrometers, but we need them in pixels
-    box_sizes = np.array([int(box_size_um / pixel_size) for box_size_um in box_sizes_um])
-    sep_sizes = np.array([int(sep_size_um / pixel_size) for sep_size_um in sep_sizes_um])
+    box_sizes = np.array([int(round(box_size_um / pixel_size)) for box_size_um in box_sizes_um])
+    sep_sizes = np.array([int(round(sep_size_um / pixel_size)) for sep_size_um in sep_sizes_um])
+    # need the round() there or sometimes going back and forth between um and pixel results in a different value
 
     assert np.all((box_sizes < window_width) & (box_sizes < window_height)), 'Box sizes must be smaller than window size'
 
     print('box sizes px', box_sizes, sep_sizes)
 
-    time_origins = list(range(0, 200, 5))
-
-    msd_means, avgs, variances, all_counts = inner_loop(intensities, num_timesteps, box_sizes, sep_sizes, window_width, window_height, time_origins)
+    msd_means, avgs, variances, all_counts = inner_loop(intensities, num_timesteps, box_sizes, sep_sizes, window_width, window_height)
 
     return box_sizes * pixel_size, msd_means, avgs, variances, all_counts
 
-def inner_loop(intensities, num_timesteps, box_sizes, sep_sizes, window_width, window_height, time_origins):
+def inner_loop(intensities, num_timesteps, box_sizes, sep_sizes, window_width, window_height):
     msd_length = num_timesteps - 0#np.max(time_origins)
     msd_means = np.full((len(box_sizes), msd_length), np.nan)
     # msd_stds  = np.zeros((len(box_sizes), num_timesteps))
@@ -70,18 +69,18 @@ def inner_loop(intensities, num_timesteps, box_sizes, sep_sizes, window_width, w
     for box_size_index in tqdm.trange(len(box_sizes)):
         box_size = box_sizes[box_size_index]
         sep      = sep_sizes[box_size_index]
-        msds, avg, variance, counts = msds_for_box_size(intensities, box_size, sep, window_width, window_height, time_origins, msd_length)
+        msds, avg, variance, counts = msds_for_box_size(intensities, box_size, sep, window_width, window_height, msd_length)
         msd_means[box_size_index, :] = msds.mean(axis=0)
         # msd_stds [box_size_index, :] = msd_std
         avgs     [box_size_index]    = avg
         variances[box_size_index]    = variance
-        print(avg, )
+        print('avg', avg)
         all_counts.append(counts)
     
     return msd_means, avgs, variances, all_counts
 
 @numba.njit(fastmath=True, parallel=True)
-def msds_for_box_size(intensities, box_size, sep, window_width, window_height, time_origins, msd_length):
+def msds_for_box_size(intensities, box_size, sep, window_width, window_height, msd_length):
     # count the intensities for one box size
 
     num_timesteps = intensities.shape[0]
@@ -89,9 +88,14 @@ def msds_for_box_size(intensities, box_size, sep, window_width, window_height, t
     num_boxes_x = int(np.floor(window_width  / (box_size + sep)))
     num_boxes_y = int(np.floor(window_height / (box_size + sep)))
     counts = np.full((num_timesteps, num_boxes_x * num_boxes_y), np.nan)
+    print('L =', box_size, 'sep =', sep, ':', num_boxes_x, '*', num_boxes_y)
     
     box_xs = np.arange(0, num_boxes_x) * (box_size + sep) #+ sep/2
     box_ys = np.arange(0, num_boxes_y) * (box_size + sep) #+ sep/2
+
+    if sep < 0 and box_size % np.abs(sep) == 0:
+        print('Negative overlap is an exact divisor of box size. This will lead to correlated boxes.')
+        
 
     for timestep in numba.prange(num_timesteps):
         for box_x_index in range(num_boxes_x):
@@ -109,25 +113,3 @@ def msds_for_box_size(intensities, box_size, sep, window_width, window_height, t
     msds = msd_matrix(counts_t)
     # msd_avgs = np.mean(msds, axis=0)
     return msds, avg, variance, counts[:, 0:100:10]
-
-    # compute msd for different time origins
-    msds_allboxes = np.full((msd_length, len(time_origins)), np.nan)
-
-    for time_origin_index in numba.prange(len(time_origins)):
-        time_origin = time_origins[time_origin_index]
-        msds = (counts[time_origin:time_origin+msd_length, :] - counts[time_origin, :])**2
-
-        # average over boxes
-        # below is numba-compatible version of `np.mean(msds, axis=0)`
-        msd_means = np.full((msd_length), np.nan)
-        for timestep in range(msd_length):
-            msd_means[timestep] = msds[timestep, :].mean()
-
-        msds_allboxes[:, time_origin_index] = msd_means
-
-    # average over time origins
-    msds_allboxes_alltimes = np.full((msd_length), np.nan)
-    for timestep in numba.prange(msd_length):
-        msds_allboxes_alltimes[timestep] = msds_allboxes[timestep, :].mean()
-
-    return msds_allboxes_alltimes, avg

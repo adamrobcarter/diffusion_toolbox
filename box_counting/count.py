@@ -47,10 +47,10 @@ for file in sys.argv[1:]:
              N_stats=N_stats, box_sizes=box_sizes, sep_sizes=sep_sizes,
              time_step=time_step, pack_frac=pack_frac, particle_diameter=particle_diameter,
              particle_diameter_calced=particle_diameter_calced)
-    np.savez(f'box_counting/data/all_counts_{file}.npz', counts=counts,
-             N_stats=N_stats, box_sizes=box_sizes, sep_sizes=sep_sizes,
-             time_step=time_step, pack_frac=pack_frac, particle_diameter=particle_diameter,
-             particle_diameter_calced=particle_diameter_calced)
+    # np.savez(f'box_counting/data/all_counts_{file}.npz', counts=counts,
+    #          N_stats=N_stats, box_sizes=box_sizes, sep_sizes=sep_sizes,
+    #          time_step=time_step, pack_frac=pack_frac, particle_diameter=particle_diameter,
+    #          particle_diameter_calced=particle_diameter_calced)
     
 t1 = time.time()
 print(f'done in {t1-t0:.0f}s')

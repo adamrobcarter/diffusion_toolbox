@@ -6,7 +6,7 @@ import scipy.integrate
 import visualisation.sDFT_interactions as sDFT_interactions
 import sys
 
-# integrate = lambda *args, **kwargs: scipy.integrate.quad(*args, **kwargs)[0]
+print('only use me for low densities!')
 
 for file in sys.argv[1:]:
 
@@ -25,6 +25,7 @@ for file in sys.argv[1:]:
     N_stats      = data['N_stats']
     phi          = data['pack_frac']
     sigma        = data['particle_diameter']
+    sigma_calced = data['particle_diameter_calced']
 
     box_sizes = N_stats[:, 0]
     N_mean    = N_stats[:, 1]
@@ -42,11 +43,11 @@ for file in sys.argv[1:]:
 
     t_theory = np.logspace(np.log10(t_all[1] / 2), np.log10(t_all.max()))
 
-    D0 = { # countoscope paper, table 1
-        'alice0.02': 0.0416,
-        'alice0.34': 0.0310,
-        'alice0.66': 0.0175
-    }[file]
+    # D0 = { # countoscope paper, table 1
+    #     0.02: 0.0416,
+    #     0.34: 0.0310,
+    #     0.66: 0.0175
+    # }[phi]
 
     for box_size_index, L in enumerate(box_sizes):
     # for L in [2**e for e in range(-2, 7)]:
@@ -70,7 +71,9 @@ for file in sys.argv[1:]:
         L_2 = L
         
         # N2_func = lambda t, D0: 8/np.sqrt(np.pi) * N_mean[box_size_index] * np.sqrt(D0 * t / L**2) # countoscope eq. 3
-        # N2_func_full = lambda t, D0: 2 * N_mean[box_size_index] * (1 - common.famous_f(4*D0*t/L**2) * common.famous_f(4*D0*t/L_2**2)) # countoscope eq. 2, countoscope overleaf doc
+        N2_func_full = lambda t, D0: 2 * N_mean[box_size_index] * (1 - common.famous_f(4*D0*t/L**2) * common.famous_f(4*D0*t/L_2**2)) # countoscope eq. 2, countoscope overleaf doc
+
+        D_from_nmsd = 
 
         # fit_func = N2_func_full
         # popt, pcov = scipy.optimize.curve_fit(fit_func, t[0:LOWTIME_FIT_END], N2_mean[box_size_index, 0:LOWTIME_FIT_END])
@@ -83,8 +86,8 @@ for file in sys.argv[1:]:
 
         # ax.plot(t_theory, N2_func_full(t_theory, D0), color='black', zorder=5, linestyle='dotted', linewidth=1, label='sFDT (no inter.)' if box_size_index==0 else None)
 
-        # ax.hlines(2*N_mean[box_size_index], t.min(), t.max(), color='grey', linewidth=1, label=r'$2 \langle N \rangle$' if box_size_index==0 else None)
-        # ax.hlines(2*N_var [box_size_index], t.min(), t.max(), linestyles='dashed', color='grey', linewidth=1, label=r'$\mathrm{Var}(N)$' if box_size_index==0 else None)
+        ax.hlines(2*N_mean[box_size_index], t.min(), t.max(), color='grey', linewidth=1, label=r'$2 \langle N \rangle$' if box_size_index==0 else None)
+        ax.hlines(2*N_var [box_size_index], t.min(), t.max(), linestyles='dashed', color='grey', linewidth=1, label=r'$\mathrm{Var}(N)$' if box_size_index==0 else None)
 
         # linear fit to start
         # fit_end = 6
@@ -102,20 +105,20 @@ for file in sys.argv[1:]:
         # ax.hlines(p2, t.min(), t.max(), linestyles='dashed', color=exp_plot[0].get_color(), linewidth=1)
 
         # computed theory interactions
-        N2_theory_interactions = 2 * N_mean[box_size_index] * sDFT_interactions.sDFT_interactions(L, t_theory, phi, D0, sigma)# * 10
-        ax.plot(t_theory, N2_theory_interactions, color='black', linewidth=1, label='sFDT (w/ inter.)' if box_size_index==0 else None)
+        # N2_theory_interactions = 2 * N_mean[box_size_index] * sDFT_interactions.sDFT_interactions(L, t_theory, phi, D0, sigma)# * 10
+        # ax.plot(t_theory, N2_theory_interactions, color='black', linewidth=1, label='sFDT (w/ inter.)' if box_size_index==0 else None)
 
         # fit to whole thing
-        # N2_theory = lambda t, D, N: 2 * N * (1 - common.famous_f(4*D*t/L**2)**2) # countoscope eq. 2
-        # fitting_points = np.unique(np.round(10**np.linspace(0, np.log10(t.max()))).astype('int'))
-        # popt, pcov = scipy.optimize.curve_fit(N2_theory, t[fitting_points], delta_N_sq[fitting_points])
-        # ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1, label='sDFT (no inter.)' if box_size_index==0 else None)
-        # label += fr', $D_\mathrm{{fit}}={popt[0]:.3f}$'
+        N2_theory = lambda t, D, N: 2 * N * (1 - common.famous_f(4*D*t/L**2)**2) # countoscope eq. 2
+        fitting_points = np.unique(np.round(10**np.linspace(0, np.log10(t.max()))).astype('int'))
+        popt, pcov = scipy.optimize.curve_fit(N2_theory, t[fitting_points], delta_N_sq[fitting_points])
+        ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='grey', linewidth=1)
+        label += fr', $D_\mathrm{{fit}}={popt[0]:.3f}$'
         # ±{np.sqrt(pcov[0][0]):.3f}$'
         
         exp_plot = ax.plot(t[1:], delta_N_sq[1:], label=label, linestyle='none', marker='o', zorder=-1)
 
-    ax.legend(fontsize=7, loc='lower right')
+    ax.legend(fontsize=8, loc='lower right')
     ax.semilogy()
     ax.semilogx()
     ax.set_xlabel('$t$')
@@ -123,8 +126,7 @@ for file in sys.argv[1:]:
     title = f'{file}, $\phi_\mathrm{{calc}}={phi:.3f}$'
     if not np.isnan(sigma):
         title += f', $\sigma={sigma:.3f}\mathrm{{\mu m}}$'
-    if sigma_calced := data.get('particle_diameter_calced'):
-        title += f', $\sigma_\mathrm{{calc}}={sigma_calced:.3f}\mathrm{{\mu m}}$'
+    title += f', $\sigma_\mathrm{{calc}}={sigma_calced:.3f}\mathrm{{\mu m}}$'
     ax.set_title(title)
 
     # N_stats = np.fromfile('../calc/Count_Data_Cpp/Exp_test_N_stats.txt', sep=' ')

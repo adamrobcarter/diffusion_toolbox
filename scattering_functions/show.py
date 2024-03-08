@@ -123,7 +123,7 @@ for file in sys.argv[1:]:
         
         D      = -1/(k**2 * t ) * np.log(FoF0)
         # Ds     = -1/(k**2 * t2) * np.log(Fs)
-        D_unc  =  1/(k**2 * t ) / FoF0 * FoF0_unc
+        D_unc  =  1/(k**2 * t ) / np.sqrt(FoF0**2) * FoF0_unc
         # Ds_unc =  1/(k**2 * t2) / Fs   * Fs_unc
         
         D_ax.scatter(t [~F_bad  ], D [~F_bad  ], label='D from F/F0', color='tab:blue'    , s=6)
@@ -131,10 +131,10 @@ for file in sys.argv[1:]:
         D_ax.scatter(t [ F_bad  ], D [ F_bad  ],                      color='lightskyblue', s=6)
         # D_ax.scatter(t2[ F_s_bad], Ds[ F_s_bad],                      color='bisque'      , s=6)
         # D_ax.errorbar(t2, Ds, yerr=Ds_unc, color='tab:orange', fmt='', alpha=0.3, linestyle='none')
-        # D_ax.errorbar(t , D , yerr=D_unc , color='tab:blue'  , fmt='', alpha=0.2, linestyle='none')
+        D_ax.errorbar(t , D , yerr=D_unc , color='tab:blue'  , fmt='', alpha=0.2, linestyle='none')
         
         D_ax.semilogx()
-        D_ax.set_ylim(0, 0.05)
+        D_ax.set_ylim(np.nanmin(D), np.nanmax(D))
         
         # D_long  = {0.34: 0.023, 0.66: 0.006}
         # D_short = {0.34: 0.033, 0.66: 0.018}

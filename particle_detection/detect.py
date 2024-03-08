@@ -28,7 +28,11 @@ for datasource in sys.argv[1:]:
         min_sigma = 3
         max_sigma = 5
         threshold = 3
-    elif datasource == 'eleanor':
+    elif datasource == 'eleanor0.34':
+        min_sigma = 2
+        max_sigma = 8
+        threshold = 25
+    elif datasource == 'eleanor0.01':
         min_sigma = 2
         max_sigma = 8
         threshold = 25

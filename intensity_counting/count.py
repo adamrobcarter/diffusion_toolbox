@@ -8,7 +8,6 @@ files = ['sim', 'sim_downsampled', 'alice_0.02', 'alice_0.34', 'alice_0.66']
 files = ['eleanor', 'sim', 'alice_0.02']
 
 for file in sys.argv[1:]:
-
     data = common.load(f'preprocessing/data/stack_{file}.npz')
     stack             = data['stack']
     pixel_size        = data['pixel_size']
@@ -22,13 +21,18 @@ for file in sys.argv[1:]:
 
     # box_sizes = (0.5, 1, 2, 4, 8, 16)
     box_sizes_px = (1, 2, 3, 4, 6, 8, 10, 16, 20, 26, 32, 64, 128)
-    box_sizes_px = ( 1,  2,  4,  8, 16, 32, 64, 128)
-    sep_sizes_px = (60, 50, 40, 30, 20, 20, 20,  20)
+    box_sizes_px = ( 1,  2,  4,  8, 16, 32,  64, 128)
+    sep_sizes_px = (60, 50, 40, 30, 20, 20, -20, -50)
+    # box_sizes_px = ( 1,  2,  3,  4,  6,  8, 11, 16, 22, 32, 44,  64,  84, 128)
+    # sep_sizes_px = (60, 50, 50, 40, 40, 30, 30, 20, 20, 20, 14, -20, -30, -50)
+    # box_sizes_px = np.unique(np.round(np.logspace(0, np.log10(128)), 50).astype('int'))
+    # sep_sizes_px = np.full_like(box_sizes_px, 30)
+
     box_sizes = box_sizes_px * pixel_size
     sep_sizes = sep_sizes_px * pixel_size
 
-    stack = stack - stack.min(axis=0)
-    # stack = stack - stack.mean(axis=0)
+    # stack = stack - stack.min(axis=0)
+    stack = stack - stack.mean(axis=0)
 
     box_sizes, counted_intensity_diffs, avg_intensities, variances, all_counts = intensity_countoscope.go(stack, box_sizes, sep_sizes, pixel_size)
 

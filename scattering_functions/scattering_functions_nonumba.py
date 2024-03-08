@@ -81,10 +81,14 @@ def intermediate_scattering(log, F_type, crop, num_k_bins, num_iters, d_frames, 
 
 def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, num_iters, d_frames, particles_at_frame, num_frames, min_K, max_K, width, height):
     d_frame = int(d_frames[dframe_i])
-    offset = (num_frames - d_frame - 1) // num_iters
-    assert(num_iters * offset + d_frame < num_frames)
+    # offset = (num_frames - d_frame - 1) // num_iters
+    # assert(num_iters * offset + d_frame < num_frames)
 
-    F = np.full((num_iters, num_k_bins), np.nan)
+    frames_to_use = list(range(0, num_frames-d_frame, 20))
+    num_used_frames = len(frames_to_use)
+    # print(f'at d_frame={d_frame} using {num_used_frames} frames')
+
+    F = np.full((num_used_frames, num_k_bins), np.nan)
     k = np.full((num_k_bins+1,),           np.nan) # +1 b/c we get the left and right of the final bin
                     
     if F_type == 'F_s':
@@ -92,8 +96,8 @@ def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, 
     else:
         func = intermediate_scattering_internal
 
-    for iter_i in range(num_iters):
-        frame = iter_i * offset
+    for frame_index in range(num_used_frames):
+        frame = frames_to_use[frame_index]
 
         particles_t0, particles_t1 = preprocess_scattering(particles_at_frame[frame], particles_at_frame[frame+d_frame], crop=crop)
         width  = width  * crop
@@ -105,8 +109,8 @@ def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, 
         
         k_, F_ = postprocess_scattering(k_unbinned, F_unbinned, k_bins)
         
-        F[iter_i, :] = F_
-        if iter_i == 0:
+        F[frame_index, :] = F_
+        if frame_index == 0:
             k = k_
         else:
             assert np.array_equal(k, k_)
@@ -118,7 +122,7 @@ def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, 
                 #print(f'min_K={min_K:.3f}, k bin size={k_[1]-k_[0]:.3f}, num bins={num_k_bins}')
 
     # need nanmean because binned_statistic will return nan if the bin is empty
-    return np.mean(F, axis=0), np.std(F, axis=0), k
+    return np.mean(F, axis=0), np.std(F, axis=0)/np.sqrt(num_used_frames), k
 
 def preprocess_scattering(particles_t0, particles_t1, crop):
     # first remove any nan particles (particles that exist at t0 but not t1)
@@ -187,7 +191,8 @@ def get_k_and_bins_for_intermediate_scattering(min_K, max_K, num_k_bins, log_cal
 def intermediate_scattering_internal(particles_t0, particles_t1, k_x, k_y):
     # Thorneywork et al 2018 eq (27))
 
-    num_particles = particles_t0.shape[0]
+    num_particles_0 = particles_t0.shape[0]
+    num_particles_1 = particles_t1.shape[0]
     #print(f"kept {num_particles} of {num_particles_before}")
     
     particle_t0_x = particles_t0[:, 0]
@@ -224,6 +229,7 @@ def intermediate_scattering_internal(particles_t0, particles_t1, k_x, k_y):
     del sin_term1, sin_term2
     del k_dot_r_mu, k_dot_r_nu
     
+    num_particles = (num_particles_0 + num_particles_1) / 2
     contrib = 1/num_particles * ( cos_accum + sin_accum )
     k = np.sqrt(k_x**2 + k_y**2)
     # del cos_accum, sin_accum # probably unneeded

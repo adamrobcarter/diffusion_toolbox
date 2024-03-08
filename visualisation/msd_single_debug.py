@@ -40,7 +40,7 @@ for file in sys.argv[1:]:
     # N2_mean  = N2_mean[:, ::reduce]
     # N2_std   = N2_std [:, ::reduce]
 
-    t_theory = np.logspace(np.log10(t_all[1] / 2), np.log10(t_all.max()))
+    t_theory = np.logspace(np.log10(t_all[1] / 200), np.log10(t_all.max()))
 
     D0 = { # countoscope paper, table 1
         'alice0.02': 0.0416,

@@ -1,5 +1,5 @@
 import numpy as np
-import scattering_functions.scattering_functions as scattering_functions
+import scattering_functions.scattering_functions_nonumba as scattering_functions
 import common
 import time
 import sys
@@ -10,7 +10,7 @@ log = True
 # num_k_bins = int(max_K / min_K)
 # num_k_bins = 100
 num_k_bins = 100
-num_iters = 100 # was 10
+num_iters = 24 # was 10
 d_frames = np.concatenate([np.arange(0, 9.1), np.logspace(1, np.log10(1500), 50)]).round()
 #                                       9.1 so that 9 gets included                round as we need integer frames
 

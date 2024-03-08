@@ -18,11 +18,17 @@ boxes_to_use = list(range(0, 8))
 
 collapse_x = True
 collapse_y = True
-collapse_x = False
-collapse_y = False
+# collapse_x = False
+# collapse_y = False
 
 for file in sys.argv[1:]:
+
+
+    Ls = []
+    ts = []
+
     fig, ax = plt.subplots(1, 1, figsize=(6, 4.5))
+    fig_fit, ax_fit = plt.subplots(1, 1, figsize=(6, 4.5))
 
     data = common.load(f'intensity_counting/data/counted_{file}.npz')
     box_sizes               = data['box_sizes']
@@ -31,7 +37,6 @@ for file in sys.argv[1:]:
     pixel_size              = data['pixel_size']
     time_step               = data['time_step']
     variances               = data['variances']
-    particle_diameter       = data['particle_diameter']
 
     obs_plateaus = np.full((len(box_sizes)), np.nan)
 
@@ -40,27 +45,20 @@ for file in sys.argv[1:]:
         ax.scatter([], [])
         ax.scatter([], [])
 
-    for box_size_index in range(len(box_sizes)):
+    for box_size_index in range(len(box_sizes)-1):
         intensity_diff = counted_intensity_diffs[box_size_index, :-201] # must be odd?
         t = np.arange(0, len(intensity_diff) * time_step, time_step)
         assert intensity_diff.shape == t.shape, f'{intensity_diff.shape} != {t.shape}'
 
         L = box_sizes[box_size_index]
 
-        if collapse_y:
-            collapser = avg_intensities[box_size_index]
-            collapser = variances[box_size_index]
-            intensity_diff                  /= collapser
-            variances      [box_size_index] /= collapser
-            avg_intensities[box_size_index] /= collapser
-        if collapse_x:
+        collapser = avg_intensities[box_size_index]
+        collapser = variances[box_size_index]
+        intensity_diff                  /= collapser
+        variances      [box_size_index] /= collapser
+        avg_intensities[box_size_index] /= collapser
+        
             # t /= L**2
-            # t /= L**2 + 0.160 * L + 0.215
-            # xlabel = '$t/(L^2 + 0.160 * L + 0.215)$'
-            t /= L**2
-            xlabel = '$t/L$'
-        else:
-            xlabel = '$t$'
 
         D0 = None
         
@@ -81,11 +79,11 @@ for file in sys.argv[1:]:
             print('intensity factor', intensity_factor)
             label += f' ({intensity_factor:.0f})'
 
-        fit_end = 5
-        fit_func_2 = lambda t, D, e : 8 / np.sqrt(np.pi) * avg_intensities[box_size_index]/intensity_factor * np.sqrt(D / L**2) * t**e
-        popt, pcov = scipy.optimize.curve_fit(fit_func_2, t[1:fit_end], intensity_diff[1:fit_end]/intensity_factor)
+        # fit_end = 5
+        # fit_func_2 = lambda t, D, e : 8 / np.sqrt(np.pi) * avg_intensities[box_size_index]/intensity_factor * np.sqrt(D / L**2) * t**e
+        # popt, pcov = scipy.optimize.curve_fit(fit_func_2, t[1:fit_end], intensity_diff[1:fit_end]/intensity_factor)
         # ax.plot(t[1:fit_end], fit_func_2(t[1:fit_end], *popt), linestyle=':', color='gray')
-        label += rf' $D={popt[0]:.3f}, t^{{{popt[1]:.2f}}}$'
+        # label += rf' $D={popt[0]:.3f}, t^{{{popt[1]:.2f}}}$'
 
         # fit to whole thing
         t_theory = np.logspace(np.log10(t[1] / 2), np.log10(t.max()))
@@ -95,20 +93,29 @@ for file in sys.argv[1:]:
 
         fitting_points = np.unique(np.round(10**np.linspace(0, np.log10(t.shape[0]-1))).astype('int'))
         popt, pcov = scipy.optimize.curve_fit(N2_theory, t[fitting_points], intensity_diff[fitting_points]/intensity_factor)
-        if not collapse_x and not collapse_y:
-            ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1)
+        ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1)
         label += fr', $D_\mathrm{{fit}}={popt[0]:.3f}$'
 
+        # find x rescale
+        # find point where theory = 4e-3
+        index = np.argmax(N2_theory(t_theory, *popt) > 4e-3)
+        t_point = t_theory[index]
+        # print(f'L={L:.1f}, t={t_point:.3f}, t/L^2={t_point/L**2:.3f}')
+        print(L, t_point)
+        Ls.append(L)
+        ts.append(t_point)
 
-        ax.scatter(t[1:], intensity_diff[1:]/intensity_factor, label=label, s=30, marker='.', edgecolors='none')
+
+        scat = ax.scatter(t[1:], intensity_diff[1:]/intensity_factor, label=label, s=3)
+        c = scat.get_facecolors()[0].tolist()
+        ax.vlines(t_point, 1e-3, 1e-2, color=c)
 
 
+    predicted_plateaus = 2 * avg_intensities / np.sqrt(intensity_factor)
     # if collapse_y:
     #     predicted_plateaus /= avg_intensities[box_size_index]
-
-    if not collapse_y:
-        # ax.hlines(2*avg_intensities/np.sqrt(intensity_factor), t.max()/20, t.max(), linestyle='dashed', linewidth=1, color='black', label=r'$2\langle I \rangle / I_f{}^2$')
-        ax.hlines(2*variances/intensity_factor,                t.max()/20, t.max(), linestyle='dotted', linewidth=1, color='black', label=r'$2Var(I) / I_f$')
+    # ax.hlines(predicted_plateaus,           t.max()/20, t.max(), linestyle='dashed', linewidth=1, color='black', label=r'$2\langle I \rangle / I_f{}^2$')
+    # ax.hlines(2*variances/intensity_factor, t.max()/20, t.max(), linestyle='dotted', linewidth=1, color='black', label=r'$2Var(I) / I_f$')
 
 
         # ax.hlines(variances[box_size_index]/intensity_factor**2, t.max()/20, t.max(), linestyle='dotted', color='grey', label=r'$Var(I) / I_f$' if box_size_index==0 else None)
@@ -118,10 +125,31 @@ for file in sys.argv[1:]:
     # ax.legend(fontsize=5)
     ax.semilogy()
     ax.semilogx()
+    xlabel = '$t/L^2$' if collapse_x else '$t$'
     ax.set_xlabel(xlabel)
     ylabel = r'$\Delta I^2(t) / \rangle I \langle I_f{}^2$' if collapse_y else '$\Delta I^2(t) / I_f{}^2$'
     ax.set_ylabel(ylabel)
-    ax.set_title(fr'{file} intensity counting, $\sigma={particle_diameter}\mathrm{{\mu m}}$')
+    ax.set_title(f'{file} intensity counting')
 
     fig.tight_layout()
-    fig.savefig(f'visualisation/figures_png/msd_int_{file}.png', dpi=600)
+    fig.savefig(f'visualisation/figures_png/msd_int_customrescale_{file}.png', dpi=300)
+
+
+    ax_fit.scatter(Ls, ts)
+    # ax_fit.loglog()
+
+    func = lambda L, a, b, c : a*L**2 + b*L + c
+    popt, pcov = scipy.optimize.curve_fit(func, Ls, ts)
+    L_th = np.logspace(-1, 1)
+    ax_fit.plot(L_th, func(L_th, *popt))
+    print(popt)
+    print(popt / popt[0])
+
+    func = lambda L, a, b : a**L + b
+    popt, pcov = scipy.optimize.curve_fit(func, Ls, ts)
+    L_th = np.logspace(-1, 1)
+    ax_fit.plot(L_th, func(L_th, *popt))
+    print(popt)
+
+    ax_fit.loglog()
+    fig_fit.savefig(f'visualisation/figures_png/fig_fit_{file}.png')

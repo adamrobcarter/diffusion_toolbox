@@ -107,6 +107,16 @@ def intermediate_scattering(log, F_type, crop, num_k_bins, num_iters, d_frames, 
 
     min_K = 2*np.pi/( min(width, height) * crop )
 
+    # first find the particles at each timestep, otherwise we're transferring
+    # the whole of data to each process
+    particles_at_frame = []
+    for frame in range(num_frames):
+        # select only particles at the relevent time step
+        particles = data[data[:, 2]==frame, :]
+        # select only x and y columns
+        particles = particles[:, 0:2]
+        particles_at_frame.append(particles)
+
     parallel = False
     if parallel:
         pass
@@ -129,8 +139,14 @@ def intermediate_scattering(log, F_type, crop, num_k_bins, num_iters, d_frames, 
     else:
         for dframe_i in tqdm.trange(len(d_frames)):
             F_, F_unc_, k_ = intermediate_scattering_for_dframe(dframe_i, log=log, F_type=F_type, crop=crop,
-                                num_k_bins=num_k_bins, num_iters=num_iters, d_frames=d_frames, data=data,
+                                num_k_bins=num_k_bins, num_iters=num_iters, d_frames=d_frames, particles_at_frame=particles_at_frame,
                                 num_frames=num_frames, min_K=min_K, max_K=max_K, width=width, height=height)
+            
+            nan_fraction = np.isnan(F_).sum() / F_.size
+            assert nan_fraction < 0.5, f'F nan fraction was {nan_fraction*100:.0f}%'
+            
+            nan_fraction = np.isnan(k_).sum() / k_.size
+            assert nan_fraction < 0.5, f'k nan fraction was {nan_fraction*100:.0f}%'
             
             Fs   [dframe_i, :] = F_
             F_unc[dframe_i, :] = F_unc_
@@ -138,6 +154,9 @@ def intermediate_scattering(log, F_type, crop, num_k_bins, num_iters, d_frames, 
 
     nan_fraction = np.isnan(Fs).sum() / Fs.size
     assert nan_fraction < 0.5, f'F nan fraction was {nan_fraction*100:.0f}%'
+
+    nan_fraction = np.isnan(ks).sum() / ks.size
+    assert nan_fraction < 0.5, f'k nan fraction was {nan_fraction*100:.0f}%'
 
     # now remove irrelevent data
     # min_useful_K = 2*np.pi/min(width, height)
@@ -161,13 +180,18 @@ def intermediate_scattering(log, F_type, crop, num_k_bins, num_iters, d_frames, 
     return Fs,F_unc,ks
 
 @numba.njit(parallel=True)
-def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, num_iters, d_frames, data, num_frames, min_K, max_K, width, height):
+# @numba.njit()
+def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, num_iters, d_frames, particles_at_frame, num_frames, min_K, max_K, width, height):
     d_frame = int(d_frames[dframe_i])
     # offset = (num_frames - d_frame - 1) // num_iters
     # assert(num_iters * offset + d_frame < num_frames)
 
-    F = np.full((num_frames, num_k_bins), np.nan)
-    k = np.full((num_k_bins+1,),           np.nan) # +1 b/c we get the left and right of the final bin
+    frames_to_use = list(range(0, num_frames-d_frame, 10))
+    num_used_frames = len(frames_to_use)
+    print('num used frames', num_used_frames)
+
+    F = np.full((num_used_frames, num_k_bins),    np.nan)
+    k = np.full((num_used_frames, num_k_bins+1,), np.nan) # +1 b/c we get the left and right of the final bin
                     
     if F_type == 'F_s':
         # func = self_intermediate_scattering_internal
@@ -176,18 +200,14 @@ def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, 
         # func = intermediate_scattering_internal
         pass
 
-    for frame in numba.prange(num_frames):
+    for frame_index in numba.prange(num_used_frames):
+    # for frame in range(num_frames):
+        frame = frames_to_use[frame_index]
 
         # particles_t0 = data[:, frame, :]
         # particles_t1 = data[:, frame + d_frame, :]
-
-        # select only particles at the relevent time step
-        particles_t0 = data[data[:, 2]==frame, :]
-        particles_t1 = data[data[:, 2]==frame+d_frame, :]
-        # select only x and y columns
-        particles_t0 = particles_t0[:, 0:2]
-        particles_t1 = particles_t1[:, 0:2]
-        assert particles_t0.shape[1] == 2
+        particles_t0 = particles_at_frame[frame]
+        particles_t1 = particles_at_frame[frame + d_frame]
         
         particles_t0, particles_t1 = preprocess_scattering(particles_t0, particles_t1, crop=crop)
         width  = width  * crop
@@ -199,11 +219,12 @@ def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, 
         
         k_, F_ = postprocess_scattering(k_unbinned, F_unbinned, k_bins)
         
-        F[frame, :] = F_
-        if frame == 0:
-            k = k_
-        else:
-            assert np.array_equal(k, k_)
+        F[frame_index, :] = F_
+        k[frame_index, :] = k_
+
+    # check all returned ks are the same
+    # for frame in range(1, num_used_frames):
+    #     assert k[frame, :] == k[0, :]
 
     assert np.isnan(F).sum() < F.size
 
@@ -212,7 +233,8 @@ def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, 
                 #print(f'min_K={min_K:.3f}, k bin size={k_[1]-k_[0]:.3f}, num bins={num_k_bins}')
 
     # need nanmean because binned_statistic will return nan if the bin is empty
-    return np.nanmean(F, axis=0), np.nanstd(F, axis=0), k
+    # return np.nanmean(F, axis=0), np.nanstd(F, axis=0), k
+    return common.numba_nanmean_2d_axis0(F), common.numba_nanstd_2d_axis0(F), k[0, :]
 
 @numba.njit
 def preprocess_scattering(particles_t0, particles_t1, crop):
@@ -242,23 +264,14 @@ def preprocess_scattering(particles_t0, particles_t1, crop):
 
 @numba.njit
 def postprocess_scattering(k, F, k_bins):
-    assert np.isnan(F).sum() == 0, f'S was {np.isnan(F).sum()/F.size*100:.0f}% NaN'
-
-    # print()
-    # print('k_bins  ', k_bins[:5])
+    common.numba_p_assert(np.isnan(F).sum() == 0, 'F was '+str(int(np.isnan(F).sum()/F.size*100))+'% NaN')
 
     # F_binned, k_binned, _ = scipy.stats.binned_statistic(k.flatten(), F.flatten(), 'mean', bins=k_bins)
-    F_binned, k_binned, _ = common.numba_binned_statistic(k.flatten(), F.flatten(), 'mean', bins=k_bins)
+    F_binned, k_binned, _ = common.numba_binned_statistic(k.flatten(), F.flatten(), bins=k_bins)
     # binned statistic returns NaN if the bin is empty
     
-    assert np.isnan(F_binned).sum() < F_binned.size
-
-    # print('k_binned', k_binned[:5])
-
-    # best to return the middle of the bin not one side
-    # k_binned = (k_binned[1:] + k_binned[:-1])/2
-
-    # print('middled ', k_binned[:5])
+    common.numba_p_assert(np.isnan(F_binned).sum() < F_binned.size, 'F_binned was all nan '+str(np.isnan(F_binned).sum()) + ' ' + str(F_binned.size))
+    common.numba_p_assert(np.isnan(k_binned).sum() < k_binned.size, 'k_binned was all nan')
 
     return k_binned, F_binned
 
@@ -270,22 +283,23 @@ def get_k_and_bins_for_intermediate_scattering(min_K, max_K, num_k_bins, log_cal
         # k_x_neg = -np.logspace(np.log10(min_K), np.log10(max_K), num_k_bins, dtype='float64')
         k_x_pos =  np.logspace(np.log10(min_K), np.log10(max_K), num_k_bins)
         k_x_neg = -np.logspace(np.log10(min_K), np.log10(max_K), num_k_bins)
-        k_x = np.concatenate((k_x_neg, (0,), k_x_pos))
+        k_x = np.concatenate((k_x_neg, np.array([0]), k_x_pos))
         # k_y = np.logspace(np.log10(min_K), np.log10(max_K), num_k_bins, dtype='float64')
         k_y = np.logspace(np.log10(min_K), np.log10(max_K), num_k_bins)
-        bin_edges = np.concatenate(((0,), k_x_pos))
+        bin_edges = np.concatenate((np.array([0]), k_x_pos))
         # here we invent a bin 0 < k < min_K. Anything in here should be thrown away later
     else:
         # have checked this starting from min_K not -max_K and it does indeed seem to make no difference
-        k_x = np.arange(-max_K, max_K, min_K, dtype='float64')
-        k_y = np.arange( 0,     max_K, min_K, dtype='float64')
+        # k_x = np.arange(-max_K, max_K, min_K, dtype='float64')
+        # k_y = np.arange( 0,     max_K, min_K, dtype='float64')
+        k_x = np.arange(-max_K, max_K, min_K)
+        k_y = np.arange( 0,     max_K, min_K)
+        bin_edges = np.linspace(0, max_K, num_k_bins+1)
 
-    bins = bin_edges if log_bins else num_k_bins
+    common.numba_p_assert(np.isnan(k_x).sum() == 0, 'k_x had nan elements')
+    common.numba_p_assert(np.isnan(k_y).sum() == 0, 'k_y had nan elements')
 
-    assert np.isnan(k_x).sum() == 0
-    assert np.isnan(k_y).sum() == 0
-
-    return k_x, k_y, bins
+    return k_x, k_y, bin_edges
 
 @numba.njit
 def intermediate_scattering_internal(particles_t0, particles_t1, k_x, k_y):
@@ -294,8 +308,8 @@ def intermediate_scattering_internal(particles_t0, particles_t1, k_x, k_y):
 
     num_particles_0 = particles_t0.shape[0]
     num_particles_1 = particles_t1.shape[0]
-    assert num_particles_0 > 0
-    assert num_particles_1 > 0
+    common.numba_p_assert(num_particles_0 > 0, 'no particles were found in 0')
+    common.numba_p_assert(num_particles_1 > 0, 'no particles were found in 1')
     
     particle_t0_x = particles_t0[:, 0]
     particle_t0_y = particles_t0[:, 1]
@@ -315,21 +329,25 @@ def intermediate_scattering_internal(particles_t0, particles_t1, k_x, k_y):
     # TODO: do we not need to consider negative n?!!
     # actually I think not because we already consider u -> v and v -> u
 
-    k_dot_r_mu = np.multiply(k_x, x_mu, dtype='float64') + np.multiply(k_y, y_mu, dtype='float64')
-    k_dot_r_nu = np.multiply(k_x, x_nu, dtype='float64') + np.multiply(k_y, y_nu, dtype='float64')
-    # k_dot_r_mu = k_x * x_mu + k_y * y_mu
-    # k_dot_r_nu = k_x * x_nu + k_y * y_nu
+    # k_dot_r_mu = np.multiply(k_x, x_mu, dtype='float64') + np.multiply(k_y, y_mu, dtype='float64')
+    # k_dot_r_nu = np.multiply(k_x, x_nu, dtype='float64') + np.multiply(k_y, y_nu, dtype='float64')
+    k_dot_r_mu = k_x * x_mu + k_y * y_mu
+    k_dot_r_nu = k_x * x_nu + k_y * y_nu
 
-    cos_term1 = np.cos(k_dot_r_mu).sum(axis=(0, 1))
-    cos_term2 = np.cos(k_dot_r_nu).sum(axis=(0, 1))
+    # cos_term1 = np.cos(k_dot_r_mu).sum(axis=(0, 1))
+    # cos_term2 = np.cos(k_dot_r_nu).sum(axis=(0, 1))
+    cos_term1 = common.numba_sum_3d_axis01(np.cos(k_dot_r_mu))
+    cos_term2 = common.numba_sum_3d_axis01(np.cos(k_dot_r_nu))
     cos_accum = cos_term1 * cos_term2
-    del cos_term1, cos_term2
+    # del cos_term1, cos_term2
     
-    sin_term1 = np.sin(k_dot_r_mu).sum(axis=(0, 1))
-    sin_term2 = np.sin(k_dot_r_nu).sum(axis=(0, 1))
+    # sin_term1 = np.sin(k_dot_r_mu).sum(axis=(0, 1))
+    # sin_term2 = np.sin(k_dot_r_nu).sum(axis=(0, 1))
+    sin_term1 = common.numba_sum_3d_axis01(np.sin(k_dot_r_mu))
+    sin_term2 = common.numba_sum_3d_axis01(np.sin(k_dot_r_nu))
     sin_accum = sin_term1 * sin_term2
-    del sin_term1, sin_term2
-    del k_dot_r_mu, k_dot_r_nu
+    # del sin_term1, sin_term2
+    # del k_dot_r_mu, k_dot_r_nu
     
     num_particles = (num_particles_0 + num_particles_1) / 2
     contrib = 1/num_particles * ( cos_accum + sin_accum )
@@ -343,12 +361,6 @@ def self_intermediate_scattering_internal(particles_t0, particles_t1, k_x, k_y):
 
     num_particles = particles_t0.shape[0]
     #print(f"kept {num_particles} of {num_particles_before}")
-    
-    # min_K = min_K.to(1/units.micrometer).magnitude
-    # max_K = max_K.to(1/units.micrometer).magnitude
-
-    # particles_t0 = particles_t0.to(units.micrometer).magnitude
-    # particles_t1 = particles_t1.to(units.micrometer).magnitude
     
     particle_t0_x = particles_t0[:, 0]
     particle_t0_y = particles_t0[:, 1]
