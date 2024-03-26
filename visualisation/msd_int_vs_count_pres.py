@@ -33,7 +33,7 @@ def S(k, phi, sigma):
 D0_from_fits     = [{}, {}]
 D0_unc_from_fits = [{}, {}]
 
-boxes_to_use = list(range(0, 8))
+boxes_to_use = list(range(0, 8, 2))
 
 collapse_x = True
 collapse_y = True
@@ -95,7 +95,9 @@ for file in sys.argv[1:]:
         print(t[1:])
 
         # exp_plot = ax.plot(t[1:], delta_N_sq[1:], label=rf'part $L={L}\mathrm{{\mu m}}, {D_str}$', linestyle='none', markersize=6, color='tab:blue')
-        exp_plot = ax.plot(t[1:], delta_N_sq[1:], label=rf'part $L={L}\mathrm{{\mu m}}, {D_str}$', color='tab:blue', marker='o', linestyle='none', markersize=3)
+        label = rf'part $L={L}\mathrm{{\mu m}}, {D_str}$'
+        label = 'countoscope' if box_size_index == 0 else None
+        exp_plot = ax.plot(t[1:], delta_N_sq[1:], label=label, color='tab:blue', marker='o', linestyle='none', markersize=3)
         # ax.plot(t_theory, N2_func_full(t_theory, D0), color='black', zorder=5, linestyle='dotted', linewidth=1, label='sFDT (no inter.)' if box_size_index==0 else None)
 
         # ax.hlines(2*N_mean[box_size_index], t.min(), t.max(), color='black', linestyle='dashed', linewidth=1, label=r'$2 \langle N \rangle$' if box_size_index==0 else None)
@@ -121,7 +123,7 @@ for file in sys.argv[1:]:
         ax.scatter([], [])
         ax.scatter([], [])
 
-    for box_size_index in range(len(box_sizes)):
+    for box_size_index in range(0, len(box_sizes), 2):
         intensity_diff = counted_intensity_diffs[box_size_index, :-201] # must be odd?
         t = np.arange(0, len(intensity_diff) * time_step, time_step)
         assert intensity_diff.shape == t.shape, f'{intensity_diff.shape} != {t.shape}'
@@ -162,10 +164,10 @@ for file in sys.argv[1:]:
         fit_end = 5
         fit_func_2 = lambda t, D, e : 8 / np.sqrt(np.pi) * avg_intensities[box_size_index]/intensity_factor * np.sqrt(D / L**2) * t**e
         popt, pcov = scipy.optimize.curve_fit(fit_func_2, t[1:fit_end], intensity_diff[1:fit_end])
-        ax.plot(t[1:fit_end], fit_func_2(t[1:fit_end], *popt), linestyle=':', color='gray')
-        label += rf' $D={popt[0]:.3f}, t^{{{popt[1]:.2f}}}$'
+        # ax.plot(t[1:fit_end], fit_func_2(t[1:fit_end], *popt), linestyle=':', color='gray')
+        # label += rf' $D={popt[0]:.3f}, t^{{{popt[1]:.2f}}}$'
 
-
+        label='intensity countoscope' if box_size_index == 0 else None
         ax.scatter(t[1:], intensity_diff[1:]/intensity_factor, label=label, s=10, color='tab:orange')
 
 
@@ -177,10 +179,10 @@ for file in sys.argv[1:]:
     print(predicted_plateaus)
     # if collapse_y:
     #     predicted_plateaus /= avg_intensities[box_size_index]
-    ax.hlines(predicted_plateaus, t.max()/20, t.max(), linestyle='dashed', color='grey', label=r'$2\langle I \rangle / I_f{}^2$')
+    # ax.hlines(predicted_plateaus, t.max()/20, t.max(), linestyle='dashed', color='grey', label=r'$2\langle I \rangle / I_f{}^2$')
 
 
-    ax.hlines(2*variances/intensity_factor, t.max()/20, t.max(), linestyle='dotted', color='grey', label=r'$2Var(I) / I_f$')
+    # ax.hlines(2*variances/intensity_factor, t.max()/20, t.max(), linestyle='dotted', color='grey', label=r'$2Var(I) / I_f$')
 
 
         # ax.hlines(variances[box_size_index]/intensity_factor**2, t.max()/20, t.max(), linestyle='dotted', color='grey', label=r'$Var(I) / I_f$' if box_size_index==0 else None)
@@ -188,7 +190,7 @@ for file in sys.argv[1:]:
 
     # print('calced', intensity_factors.find(file))
 
-    ax.legend(loc='lower right', fontsize=5)
+    ax.legend(loc='lower right', fontsize=8)
     # ax.legend(fontsize=5)
     ax.semilogy()
     ax.semilogx()
@@ -196,7 +198,14 @@ for file in sys.argv[1:]:
     ax.set_xlabel(xlabel)
     ylabel = r'$\Delta N^2(t) / \rangle N \langle$' if collapse_y else '$\Delta N^2(t)$'
     ax.set_ylabel(ylabel)
-    ax.set_title(f'{file} detection & counting vs intensity counting')
+    sigma = data['particle_diameter']
+    ax.set_title(f'{file} countoscope vs intensity countoscope, $\sigma={sigma}\mathrm{{\mu m}}$')
+
+
+    ax.text(0.4, 3e-4, '$L=0.1\mathrm{\mu m}$')
+    ax.text(0.4, 1.2e-2, '$L=0.4\mathrm{\mu m}$')
+    ax.text(0.4, 9e-2, '$L=1.6\mathrm{\mu m}$')
+    ax.text(0.4, 6e-1, '$L=6.4\mathrm{\mu m}$')
 
     fig.tight_layout()
     fig.savefig(f'visualisation/figures_png/msd_int_vs_count_{file}.png', dpi=300)

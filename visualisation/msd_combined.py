@@ -3,7 +3,7 @@ import numpy as np
 import scipy.optimize
 import common
 import scipy.integrate
-import visualisation.sDFT_interactions as sDFT_interactions
+import sDFT_interactions
 import sys
 
 # integrate = lambda *args, **kwargs: scipy.integrate.quad(*args, **kwargs)[0]
@@ -32,15 +32,24 @@ fig, ax = plt.subplots(1, 1, figsize=(6, 4.5))
 
 titles = []
 
+colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+color_index = 0
+if sys.argv[1] == 'alice0.02_overlapped3' and sys.argv[2] == 'alice0.02_overlapped':
+    color_index += 1
+if sys.argv[1] == 'alice0.02_overlapped3' and sys.argv[2] == 'alice0.02_overlapped_neg':
+    color_index += 1
+
 for file in sys.argv[1:]:
-    ax.set_prop_cycle(None) # reset colour cycle
+    # ax.set_prop_cycle(None) # reset colour cycle
+    color = colors[color_index]
+    color_index += 1
 
     D0_from_fits     = [{}, {}]
     D0_unc_from_fits = [{}, {}]
 
     LOWTIME_FIT_END = 20
 
-    boxes_to_use = list(range(0, 8))
+    boxes_to_use = list(range(0, 4)) # FIXME
     # boxes_to_use.reverse()
 
     # rescaled_fig, rescaled_axs = plt.subplots(2, 1, figsize=(5, 8), squeeze=False)
@@ -52,14 +61,17 @@ for file in sys.argv[1:]:
     N_stats = data['N_stats']
     phi     = data['pack_frac']
     sigma   = data['particle_diameter']
+    time_step    = data['time_step']
 
     box_sizes = N_stats[:, 0]
+    sep_sizes = data['sep_sizes']
     N_mean    = N_stats[:, 1]
     N_var     = N_stats[:, 2]
+    num_boxes_used = N_stats[:, 5]
 
     num_timesteps = N2_mean.shape[1]
     num_boxes     = N2_mean.shape[0]
-    t = np.arange(0, num_timesteps)/2
+    t = np.arange(0, num_timesteps) * time_step
 
     reduce = 1
     t        = t      [::reduce]
@@ -109,7 +121,6 @@ for file in sys.argv[1:]:
         r2 = common.r_squared(N2_mean[box_size_index, 0:LOWTIME_FIT_END], fit_func(t[0:LOWTIME_FIT_END], D0))
 
         #, r^2={r2:.2f}
-        D_str = f'D={D0:.3f}'
         # D_str += f'±{np.sqrt(pcov[0][0]):.3f}'
 
         # ax.plot(t_theory, N2_func_full(t_theory, D0), color='black', zorder=5, linestyle='dotted', linewidth=1, label='sFDT (no inter.)' if box_size_index==0 else None)
@@ -125,21 +136,31 @@ for file in sys.argv[1:]:
         # p1, p2 = plateaus.calc_plateaus_for_L(sigma, phi, L)
         # ax.hlines(p1, t.min(), t.max(), linestyles='dashed', color=exp_plot[0].get_color(), linewidth=1, label='plateaus')
         # ax.hlines(p2, t.min(), t.max(), linestyles='dashed', color=exp_plot[0].get_color(), linewidth=1)
-
-        N2_theory_interactions = 2 * N_mean[box_size_index] * sDFT_interactions.sDFT_interactions(L, t_theory, phi, D0, sigma)# * 10
-        ax.plot(t_theory, N2_theory_interactions, color='black', linestyle='dotted', linewidth=1, zorder=3, label='sFDT (w/ inter.)' if box_size_index==0 else None)
-
-        ax.plot(t[1:], delta_N_sq[1:], label=rf'$L={L}\mathrm{{\mu m}}, {D_str}$', linestyle='none', marker='o', markersize=3)
         
-    titles.append(f'{file} $\phi_\mathrm{{calc}}={phi:.3f}$')
+        D0 = 0.0416
+
+        # N2_theory_interactions = 2 * N_var[box_size_index] * sDFT_interactions.sDFT_interactions(L, t_theory, phi, D0, sigma)# * 10
+        # ax.plot(t_theory, N2_theory_interactions, color='black', linestyle='dotted', linewidth=1, zorder=3, label='sFDT (w/ inter.)' if box_size_index==0 else None)
+
+        label = rf'$L = {L}\mathrm{{\mu m}}$'
+        # label += f', D={D0:.3f}'
+        label += f', $sep = {sep_sizes[box_size_index]:.1f}\mathrm{{\mu m}}$'
+        label += f', $n = {num_boxes_used[box_size_index]:.0f}$'
+
+        ax.plot(t[1:], delta_N_sq[1:], label=label, color=color, linestyle='none', marker='.', markersize=3, markeredgecolor='none')
+        
+    titles.append(f'{file}, $\phi_\mathrm{{calc}}={phi:.3f}$, $\sigma={sigma}$')
 
     # ax.legend(loc='lower right', fontsize=8)
-ax.legend(fontsize=7)
+legend = ax.legend(fontsize=6)
+for handle in legend.legend_handles:
+    handle.set_markersize(6.0)
 ax.semilogy()
 ax.semilogx()
 ax.set_xlabel('$t$')
 ax.set_ylabel('$\Delta N^2(t)$')
 ax.set_title(', '.join(titles))
+ax.set_title(titles[0])
 
 
 fig.tight_layout()

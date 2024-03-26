@@ -68,6 +68,7 @@ for driftremoved_index, driftremoved in enumerate(driftremoved_options):
         N2_mean = data['N2_mean']
         N2_std  = data['N2_std']
         N_stats = data['N_stats']
+        time_step = data['time_step']
 
         box_sizes = N_stats[:, 0]
         N_mean    = N_stats[:, 1]
@@ -75,7 +76,7 @@ for driftremoved_index, driftremoved in enumerate(driftremoved_options):
 
         num_timesteps = N2_mean.shape[1]
         num_boxes     = N2_mean.shape[0]
-        t = np.arange(0, num_timesteps)/2
+        t = np.arange(0, num_timesteps) * time_step
 
         reduce = 1
         t        = t      [::reduce]

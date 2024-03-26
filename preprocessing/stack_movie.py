@@ -12,8 +12,12 @@ for file in sys.argv[1:]:
     print(stack.shape[1], 'x', stack.shape[2], 'px')
 
     print(stack.shape, stack.mean(axis=0).shape)
-    stack = stack - stack.mean(axis=0)
+    stack = stack - stack.mean(axis=0) # remove space background
+    print(stack.mean(axis=(1, 2)).std())
+    # stack = stack - stack.mean(axis=(1, 2))[:, np.newaxis, np.newaxis] # remove total intensity fluctuations in time
         
+    print(stack.mean(axis=(1, 2)).std())
+
     fig, ax = plt.subplots(1, 1)
 
     frames = range(0, min(stack.shape[0], 100), 1)
@@ -22,7 +26,9 @@ for file in sys.argv[1:]:
         ax.clear()
         # plt.imshow(stack[timestep, :, :])
         # plt.imshow(stack[timestep, :, :])
-        ax.imshow(stack[timestep, :, :])
+        im = ax.imshow(stack[timestep, :, :], vmin=stack.min()/5, vmax=stack.max()/5)
+        if timestep == 0:
+            fig.colorbar(im)
         # plt.imshow(stack.min(axis=0))
         
         # print(stack[:, :, timestep].mean())

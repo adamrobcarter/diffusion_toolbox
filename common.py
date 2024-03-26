@@ -1,4 +1,4 @@
-import os
+import os, sys
 import tifffile
 import numpy as np
 import datetime
@@ -6,6 +6,9 @@ import scipy.fft
 import tqdm
 import matplotlib.animation
 import numba
+import scipy.stats
+import warnings, time
+from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 
 def get_directory_files(directory, extension):
     filenames = []
@@ -91,6 +94,33 @@ def r_squared(y_data, y_pred):
     total_sum    = np.sum((y_data - y_data.mean())**2)
     return 1 - (residual_sum / total_sum)
 
+def save_fig(fig, path, dpi, only_plot=False):
+    command = '.'.join(sys.argv[0].split('/')[4:]).split('.py')[0] + ' ' + ' '.join(sys.argv[1:])
+    time_str = time.strftime('%X %x')
+    label = f'{time_str} {command}'
+
+    if not only_plot:
+        fig.tight_layout()
+        fig.text(0.005, 0.008, label, fontsize=7)
+
+    args = {}
+    if only_plot:
+        for ax in fig.axes:
+            ax.set_axis_off() # hide axes, ticks, etc
+        args['bbox_inches'] = 'tight'
+        args['pad_inches'] = 0
+
+    print(f'saving {path}, {len(fig.axes)} axes')
+    fig.savefig(path, dpi=dpi, **args)
+
+def add_scale_bar(ax, pixel_size, color='black'):
+    scale_bar_length = 10
+    asb = AnchoredSizeBar(ax.transData, scale_bar_length/pixel_size,
+                          rf"${scale_bar_length}\mathrm{{\mu m}}$",
+                          loc='lower left', pad=0.1, borderpad=0.5, sep=5,
+                          frameon=False, color=color)
+    ax.add_artist(asb)
+
 def save_gif(func, frames, fig, file, fps=1, dpi=300):
     progress = tqdm.tqdm(total=len(frames)+1) # unsure why +1 but it seems to be needed
 
@@ -101,6 +131,12 @@ def save_gif(func, frames, fig, file, fps=1, dpi=300):
     ani = matplotlib.animation.FuncAnimation(fig, frame, frames=frames, interval=500, repeat=False)
     ani.save(file, dpi=dpi, writer=matplotlib.animation.PillowWriter(fps=fps))
     progress.close()
+
+    
+def N2_nointer(t, D0, N_mean, Lx, Ly=None):
+    if Ly == None:
+        Ly = Lx
+    return 2 * N_mean * (1 - famous_f(4*D0*t/Lx**2) * famous_f(4*D0*t/Ly**2)) # countoscope eq. 2, countoscope overleaf doc
 
 def famous_f(tau):
     return np.sqrt(tau / np.pi) * ( np.exp(-1/tau) - 1) + scipy.special.erf(np.sqrt(1/tau)) # countoscope eq. 2
@@ -178,3 +214,116 @@ def numba_nanstd_2d_axis0(array):
 def numba_p_assert(condition, message):
     if not condition:
         print('Assertion failed: ', message)
+
+def exponential_integers(min, max):
+    return np.unique(np.round(10**np.linspace(np.log10(min), np.log10(max))).astype('int'))
+
+def add_drift(particles, drift_x, drift_y):
+    # drift should be per frame, particles should be rows of x,y,t
+
+    width_before  = particles[:, 0].max()
+    height_before = particles[:, 1].max()
+    max_t = particles[:, 2].max()
+    # print('drift over full time as fraction of window:', drift_x*max_t/width_before, drift_y*max_t/height_before)
+    assert drift_x * max_t < width_before,  'drift over full time is greater than window width'
+    assert drift_y * max_t < height_before, 'drift over full time is greater than window height'
+
+    particles_drifted = particles.copy()
+    for i in range(particles_drifted.shape[0]):
+        t = particles_drifted[i, 2]
+        particles_drifted[i, 0] += t * drift_x
+        particles_drifted[i, 1] += t * drift_y
+
+    # now the problem is the viewing window has shifted, at late times there will be
+    # no particles in the bottom left (for +ve drift) of the image
+    # so we gotta do a crop
+    max_t = particles[:, 2].max()
+    crop_x_low = max(0, drift_x * max_t)
+    crop_y_low = max(0, drift_y * max_t)
+    crop_x_high = min(width_before  + drift_x * max_t, width_before)
+    crop_y_high = min(height_before + drift_x * max_t, height_before)
+
+    removed_rows = (
+          (particles_drifted[:, 0] < crop_x_low)
+        | (particles_drifted[:, 1] < crop_y_low)
+        | (particles_drifted[:, 0] > crop_x_high)
+        | (particles_drifted[:, 1] > crop_y_high)
+    )
+    assert removed_rows.sum() < removed_rows.size
+
+    particles_drifted = particles_drifted[~removed_rows, :]
+    
+    # now we've got a square box but without it's bottom left corner at (0, 0)
+    particles_drifted[:, 0] -= particles_drifted[:, 0].min()
+    particles_drifted[:, 1] -= particles_drifted[:, 1].min()
+
+    print(f'cropped {1-particles_drifted[:, 0].max()/width_before}, {1-particles_drifted[:, 1].max()/height_before}')
+
+    # after doing this cropping, we may have totally removed some particles
+    # so we need to resample the particle numbers so they're continuous again
+    # but only if we were provided with particle IDs
+    if particles.shape[1] == 4:
+        particle_ids = np.unique(particles_drifted[:, 3])
+        id_map = {}
+        for i in range(len(particle_ids)):
+            new_id = i
+            old_id = particle_ids[i]
+            id_map[old_id] = new_id
+        for i in range(particles_drifted.shape[0]):
+            particles_drifted[i, 3] = id_map[particles_drifted[i, 3]]
+
+    return particles_drifted
+
+def find_drift(particles):
+    # tactic:
+    # for each particle, do a linear fit to where it exists
+    # then weight the fits by length
+    num_particles = int(particles[:, 3].max())
+    assert particles[:, 3].min() == 0, 'particles should be zero-based'
+
+    drift_xs = []
+    drift_ys = []
+    fit_lens = []
+
+    skip = 1
+    if num_particles > 1000:
+        skip = 5
+    if num_particles > 5000:
+        skip = 25
+    used_particles = list(range(0, num_particles, skip))
+
+    for particle in tqdm.tqdm(used_particles):
+        indexes = particles[:, 3] == particle
+        x = particles[indexes, 0]
+        y = particles[indexes, 1]
+        t = particles[indexes, 2]
+        
+        res_x = scipy.stats.linregress(t, x)
+        res_y = scipy.stats.linregress(t, y)
+
+        if np.isnan(res_x.slope) or np.isnan(res_y.slope):
+            warnings.warn('skipping a particle because linregress gave nan. not sure why this is happening')
+            continue
+
+        drift_xs.append(res_x.slope)
+        drift_ys.append(res_y.slope)
+        fit_lens.append(indexes.sum())
+
+    drift_x = np.average(drift_xs, weights=fit_lens)
+    drift_y = np.average(drift_ys, weights=fit_lens)
+    assert not np.isnan(drift_x)
+    assert not np.isnan(drift_y)
+
+    return drift_x, drift_y
+
+def remove_drift(particles):
+    print('starting drift removal')
+    drift_x, drift_y = find_drift(particles)
+    print('drift', (drift_x, drift_y))
+
+    particles_driftremoved = add_drift(particles, -drift_x, -drift_y)
+
+    residual_drift = find_drift(particles_driftremoved)
+    print('residual drift', residual_drift)
+
+    return particles_driftremoved

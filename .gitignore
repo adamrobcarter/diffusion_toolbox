@@ -1,6 +1,8 @@
 *.pyc
 raw_data/*
 box_counting/data/*
+box_counting/figures_png/*
+box_counting/figures_eps/*
 preprocessing/data/*
 preprocessing/figures_png/*
 visualisation/figures_png/*
@@ -10,3 +12,4 @@ particle_detection/figures_png/*
 intensity_counting/data/*
 scattering_functions/data/*
 scattering_functions/figures_png/*
+scattering_functions/msd_0.66_obs.npz

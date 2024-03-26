@@ -3,7 +3,7 @@ import numpy as np
 import scipy.optimize
 import common
 import scipy.integrate
-import visualisation.sDFT_interactions as sDFT_interactions
+import sDFT_interactions as sDFT_interactions
 import sys
 
 # integrate = lambda *args, **kwargs: scipy.integrate.quad(*args, **kwargs)[0]
@@ -25,6 +25,7 @@ for file in sys.argv[1:]:
     N_stats      = data['N_stats']
     phi          = data['pack_frac']
     sigma        = data['particle_diameter']
+    time_step    = data['time_step']
 
     box_sizes = N_stats[:, 0]
     N_mean    = N_stats[:, 1]
@@ -32,7 +33,7 @@ for file in sys.argv[1:]:
 
     num_timesteps = N2_mean.shape[1]
     num_boxes     = N2_mean.shape[0]
-    t_all = np.arange(0, num_timesteps)/2
+    t_all = np.arange(0, num_timesteps) * time_step
 
     # reduce = 1
     # t        = t      [::reduce]
@@ -53,7 +54,7 @@ for file in sys.argv[1:]:
         L = box_sizes[box_size_index]
 
         delta_N_sq = N2_mean[box_size_index, :]
-        t = t_all[:] # copy
+        t = np.copy(t_all)
 
         anomalous = delta_N_sq < 1e-14
         anomalous[0] = False # don't want to remove point t=0 as it could legit be zero

@@ -12,34 +12,36 @@ for datasource in sys.argv[1:]:
     time_step         = data['time_step']
     num_timesteps = stack.shape[0]
 
-    frame_average = stack.mean(axis=0)
-    stack = stack - frame_average[np.newaxis, :, :] # could subtract the pixel min not avg (or median)
+    print('dtype before', stack.dtype)
+
+    stack = stack - stack.mean(axis=0)
+    stack = np.interp(stack, (stack.min(), stack.max()), (0, 1)) # convert to 0->1 range
 
     overlap = 0.5
     if datasource == 'pierre_simdownsampled':
         min_sigma = 0.5
         max_sigma = 2
-        threshold = 0.1
+        threshold = 0.1 / 256 # guess
     if datasource == 'pierre_sim':
         min_sigma = 2
         max_sigma = 8
-        threshold = 0.1
+        threshold = 0.1 / 256 # guess
     elif datasource == 'pierre_exp': 
         min_sigma = 3
         max_sigma = 5
-        threshold = 3
+        threshold = 3 / 256
     elif datasource == 'eleanor0.34':
         min_sigma = 2
         max_sigma = 8
-        threshold = 25
+        threshold = 25 / 256
     elif datasource == 'eleanor0.01':
         min_sigma = 2
         max_sigma = 8
-        threshold = 25
+        threshold = 25 / 256
     elif datasource.startswith('marine'):
         min_sigma = 1
         max_sigma = 4
-        threshold = 1500
+        threshold = 0.03
         overlap = 0.5
 
     t0 = time.time()
@@ -61,6 +63,8 @@ for datasource in sys.argv[1:]:
     # rearrange from t, x, y to x, y, t
     particles = particles[:, [1, 2, 0]]
 
+    assert particles.shape[0] > 0, 'no particles were found'
+
     print(detector_output.properties.keys())
     # print(detector_output.properties['radius'].shape)
     # print(detector_output.properties['radius'].mean(), detector_output.properties['radius'].std(), detector_output.properties['radius'].max())
@@ -75,10 +79,10 @@ for datasource in sys.argv[1:]:
         # there is a line in the DoGDetector source about this sqrt 2
     print(f'calced diameter {particle_diameter_calced:.3f}um')
 
-    # print(f'found {(particles.shape[0]/num_timesteps):0f} particles per frame')
-    # density = particles.shape[0]/num_timesteps / (stack.shape[0]*stack.shape[1]*pixel_size**2)
-    # pack_frac = np.pi/4 * density * particle_diameter**2
-    # print(f'so packing fraction phi = {pack_frac:.3f}')
+    print(f'found {(particles.shape[0]/num_timesteps):0f} particles per frame')
+    density = particles.shape[0]/num_timesteps / (stack.shape[0]*stack.shape[1]*pixel_size**2)
+    pack_frac = np.pi/4 * density * particle_diameter**2
+    print(f'so packing fraction phi = {pack_frac:.3f}')
 
     np.savez(f'particle_detection/data/particles_{datasource}.npz',
             #  particle_picklepath=picklepath,

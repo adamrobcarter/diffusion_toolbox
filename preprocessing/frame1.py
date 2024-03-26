@@ -21,7 +21,9 @@ for file in sys.argv[1:]:
         # excess = stack - stack.min(axis=0)
         # print(stack[:, :, timestep].mean())
 
-        plt.savefig(f'preprocessing/figures_png/frame1_{file}.png', dpi=600)
+        common.add_scale_bar(plt.gca(), data['pixel_size'], color='white')
+
+        common.save_fig(plt.gcf(), f'preprocessing/figures_png/frame1_{file}.png', dpi=600, only_plot=True)
         break
 
         plt.pause(0.00001)

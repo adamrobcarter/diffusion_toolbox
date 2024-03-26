@@ -13,14 +13,16 @@ for file in sys.argv[1:]:
     F_unc_all = d['F_unc']
     k_all     = d["k"]
 
-    # d2 = common.load(f"F_s_{phi}_obs_loglog.npz")
-    # t2         = d2["t"]
-    # Fs_all     = d2["F"]
-    # Fs_unc_all = d2['F_unc']
-    # k2_all     = d2["k"]
+    d2 = common.load(f"scattering_functions/data/F_s_{file}.npz")
+    t2         = d2["t"]
+    Fs_all     = d2["F"]
+    Fs_unc_all = d2['F_unc']
+    k2_all     = d2["k"]
 
-    # assert np.array_equal(k_all.magnitude, k2_all.magnitude)
-    # assert np.array_equal(t.magnitude, t2.magnitude)
+    assert np.array_equal(k_all, k2_all)
+    print(t)
+    print(t2)
+    assert np.array_equal(t, t2)
 
     F0_all     = F_all    [0, :]
     F0_unc_all = F_unc_all[0, :]
@@ -28,11 +30,19 @@ for file in sys.argv[1:]:
     FoS_unc_squared = (F_unc_all / F0_all)**2 + (F_all * F0_unc_all / F0_all**2)**2
     FoS_unc_all = np.sqrt(FoS_unc_squared)
 
+    
+    Fs_skold_all = F_all / F0_all
+    k_skold_all = k_all / np.sqrt(F0_all)
+
     num_ks = k_all.shape[1]
 
     target_ks = (0.1, 0.14, 0.5, 1.3, 2, 4, 8)
+    # target_ks = (0.5, 1.3, 2, 4, 8)
+    target_ks = (1.3, 6)
 
-    fig, (top_axes, lin_axes, D_axes) = plt.subplots(3, len(target_ks), figsize=(len(target_ks)*3, 9))
+    # fig, (top_axes, lin_axes, D_axes) = plt.subplots(3, len(target_ks), figsize=(len(target_ks)*3, 9))
+
+    fig, (lin_axes, D_axes) = plt.subplots(2, len(target_ks), figsize=(len(target_ks)*3, 6))
 
     # top_axes[0].plot(k_all[0, :], F0_all, color='black')
     # top_axes[0].semilogx()
@@ -43,14 +53,17 @@ for file in sys.argv[1:]:
         target_k = target_ks[graph_i]
 
         k_index = np.argmax(k_all[0, :] > target_k)
+        k_index_skold = np.argmax(k_skold_all[0, :] > target_k)
 
-        k       = k_all      [0, k_index]
+        k        = k_all      [0, k_index]
         FoF0     = FoS_all    [:, k_index]
         FoF0_unc = FoS_unc_all[:, k_index]
 
-        # Fs      = Fs_all     [:, k_index]
-        # Fs_unc  = Fs_unc_all [:, k_index]
+        Fs      = Fs_all     [:, k_index]
+        Fs_unc  = Fs_unc_all [:, k_index]
 
+        # k_skold  = k_skold_all [0, k_index_skold]
+        Fs_skold = Fs_skold_all[:, k_index_skold]
         
         # top_axes[0].vlines(k, np.nanmin(F0_all), np.nanmax(F0_all), color='grey')
 
@@ -68,9 +81,9 @@ for file in sys.argv[1:]:
         # S_s[S_s < 0.02] = np.nan
 
         ax = lin_axes[graph_i]
-        ax2 = top_axes[graph_i]
+        # ax2 = top_axes[graph_i]
 
-        label = fr"$k={k:.2f} \; (\approx{2*np.pi/k:.1f}$)"
+        label = fr"$k={k:.2f}\mathrm{{\mu m}}$ ($L\approx{2*np.pi/k:.1f}\mathrm{{\mu m}}$)"
 
         if np.isnan(FoF0).sum() == FoF0.size:
             print(f'all nan at k={k:.1f}')
@@ -99,22 +112,28 @@ for file in sys.argv[1:]:
 
         # ax.scatter(t_Fs, F_s_this, label='F_s', color='tab:orange')
         # ax.scatter(t_F , F_this  , label='F/S', color='tab:blue'  )
-        # ax.errorbar(t2, Fs  , yerr=Fs_unc,   color='tab:orange', linestyle='', alpha=0.3)
+        ax.errorbar(t2, Fs  , yerr=Fs_unc,   color='tab:orange', linestyle='', alpha=0.3)
         print(t.shape, FoF0.shape)
         ax .errorbar(t , FoF0, yerr=FoF0_unc, color='tab:blue'  , linestyle='', alpha=0.2)
-        ax2.errorbar(t , FoF0, yerr=FoF0_unc, color='tab:blue'  , linestyle='', alpha=0.2)
-        F_bad   = (2*FoF0_unc)   > FoF0
+        # ax2.errorbar(t , FoF0, yerr=FoF0_unc, color='tab:blue'  , linestyle='', alpha=0.2)
+        # F_bad   = (3*FoF0_unc)   > FoF0
         # print('a', F_bad.shape)
-        F_bad   = FoF0_unc   > FoF0
         # print('b', F_bad.shape)
-        # F_s_bad = Fs_unc > Fs
+        
+        F_bad   = FoF0_unc*4 > FoF0
+        F_s_bad = Fs_unc * 4 > Fs
+        F_bad = FoF0 < 2e-2
+        F_s_bad = Fs < 1.7e-2
 
-        # ax.scatter(t2[~F_s_bad], Fs  [~F_s_bad], label='F_s', color='tab:orange'  , s=6)
+        ax.scatter(t2[~F_s_bad], Fs  [~F_s_bad], label='F_s', color='tab:orange'  , s=6)
         ax .scatter(t [~F_bad  ], FoF0[~F_bad  ], label='F/F0', color='tab:blue'    , s=6)
-        ax2.scatter(t [~F_bad  ], FoF0[~F_bad  ], label='F/F0', color='tab:blue'    , s=6)
-        # ax.scatter(t2[F_s_bad ], Fs  [F_s_bad ],              color='bisque'      , s=6)
+        # ax2.scatter(t [~F_bad  ], FoF0[~F_bad  ], label='F/F0', color='tab:blue'    , s=6)
+        ax.scatter(t2[F_s_bad ], Fs  [F_s_bad ],              color='bisque'      , s=6)
         ax .scatter(t [F_bad   ], FoF0[F_bad   ],              color='lightskyblue', s=6)
-        ax2.scatter(t [F_bad   ], FoF0[F_bad   ],              color='lightskyblue', s=6)
+        # ax2.scatter(t [F_bad   ], FoF0[F_bad   ],              color='lightskyblue', s=6)
+
+        
+        # ax.scatter(t[:], Fs_skold[:], label=f'Fs Sköld $k={k_skold_all[0, k_index_skold]:.2f}$',            color='tab:green'      , s=6)
 
         # ax.set_ylim(5e-4, 3)
         # ax.set_ylim(1e-4, 1e1)
@@ -123,30 +142,41 @@ for file in sys.argv[1:]:
 
         ax.legend()
         ax.semilogx()
-        ax2.semilogx()
+        # ax2.semilogx()
         ax.semilogy()
 
         ax .set_title(label)
-        ax2.set_title(label)
-        ax2.set_ylim(-0.03, 0.03)
+        # ax2.set_title(label)
+        # ax2.set_ylim(-0.03, 0.03)
 
         
         D_ax = D_axes[graph_i]
         
         D      = -1/(k**2 * t ) * np.log(FoF0)
-        # Ds     = -1/(k**2 * t2) * np.log(Fs)
-        D_unc  =  1/(k**2 * t ) / np.sqrt(FoF0**2) * FoF0_unc
-        # Ds_unc =  1/(k**2 * t2) / Fs   * Fs_unc
+        Ds     = -1/(k**2 * t2) * np.log(Fs)
+        D_unc  =  1/(k**2 * t ) / np.sqrt(FoF0**2) * FoF0_unc # the sqrt(**2) is needed to prevent negative errors
+        Ds_unc =  1/(k**2 * t2) / np.sqrt(Fs  **2)   * Fs_unc # but remember when you do the errors properly it will be there
+
+        D2     = -1/k**2 * np.gradient(np.log(FoF0), t)
+        D2_unc =  1/k**2 * np.gradient(1/FoF0, t) * FoF0_unc
         
         D_ax.scatter(t [~F_bad  ], D [~F_bad  ], label='D from F/F0', color='tab:blue'    , s=6)
-        # D_ax.scatter(t2[~F_s_bad], Ds[~F_s_bad], label='D from F_s' , color='tab:orange'  , s=6)
+        D_ax.scatter(t2[~F_s_bad], Ds[~F_s_bad], label='D from F_s' , color='tab:orange'  , s=6)
+        # D_ax.scatter(t [~F_bad  ], D2[~F_bad  ], label='D2' , color='tab:green'  , s=6)
         D_ax.scatter(t [ F_bad  ], D [ F_bad  ],                      color='lightskyblue', s=6)
-        # D_ax.scatter(t2[ F_s_bad], Ds[ F_s_bad],                      color='bisque'      , s=6)
-        # D_ax.errorbar(t2, Ds, yerr=Ds_unc, color='tab:orange', fmt='', alpha=0.3, linestyle='none')
+        D_ax.scatter(t2[ F_s_bad], Ds[ F_s_bad],                      color='bisque'      , s=6)
+        D_ax.errorbar(t2, Ds, yerr=Ds_unc, color='tab:orange', fmt='', alpha=0.3, linestyle='none')
         D_ax.errorbar(t , D , yerr=D_unc , color='tab:blue'  , fmt='', alpha=0.2, linestyle='none')
         
         D_ax.semilogx()
-        D_ax.set_ylim(np.nanmin(D), np.nanmax(D))
+        # D_ax.set_ylim(np.nanmin(D), np.nanmax(D))
+        if file == 'alice0.02':
+            D_ax.set_ylim(0, 0.0416*1.6)
+        # if file == 'alice0.34':
+        #     D_ax.set_ylim(0, 0.031*2)
+        if file == 'alice0.66':
+            D_ax.set_ylim(0, 0.0175*1.6)
+            pass
         
         # D_long  = {0.34: 0.023, 0.66: 0.006}
         # D_short = {0.34: 0.033, 0.66: 0.018}

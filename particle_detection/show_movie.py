@@ -7,8 +7,11 @@ import tqdm
 import particle_detection.show
 
 for file in sys.argv[1:]:
+    datasource2 = file
+    if file.endswith('_trackpy'):
+        datasource2 = file.split('_trackpy')[0]
     
-    data = common.load(f'preprocessing/data/stack_{file}.npz')
+    data = common.load(f'preprocessing/data/stack_{datasource2}.npz')
     stack             = data['stack']
     pixel_size        = data['pixel_size']
     particle_diameter = data['particle_diameter']
@@ -16,21 +19,28 @@ for file in sys.argv[1:]:
 
     print(stack.shape[1], 'x', stack.shape[2], 'px')
 
+    stack = stack - stack.mean(axis=0)
+    stack = np.interp(stack, (stack.min(), stack.max()), (0, 1)) # convert to 0->1 range
+
+
     data = common.load(f'particle_detection/data/particles_{file}.npz')
     particles = data['particles']
     radius = data['radius']
     print(particles.shape)
+    
+    print(f'found {(particles.shape[0]/particles[:, 2].max()):0f} particles per frame')
+    print(particles[:, 2].min(), particles[:, 2].max())
 
     fig, ax = plt.subplots(1, 1)
 
-    end_frame = min(stack.shape[0], 100)
+    end_frame = min(stack.shape[0], 50)
     frames = range(0, end_frame, 1)
     # progress = tqdm.tqdm(total=len(frames))
 
     def show(timestep):
         ax.clear()
 
-        particle_detection.show.show_frame(fig, ax, stack, pixel_size, particles, radius, timestep)
+        particle_detection.show.show_frame(fig, ax, stack, pixel_size, particles, radius, timestep, file)
         ax.set_title(f'{file} t={timestep:03d}')
 
         # progress.update()
