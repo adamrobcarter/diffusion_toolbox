@@ -15,7 +15,13 @@ for file in sys.argv[1:]:
         plt.clf()
         # plt.imshow(stack[timestep, :, :])
         # plt.imshow(stack[timestep, :, :])
-        plt.imshow(stack[timestep, :, :]-stack.min(axis=0))
+
+        
+        # stack = stack - stack.mean(axis=0) # remove space background
+        stack = stack.mean(axis=0) # remove space background
+
+        # plt.imshow(stack[timestep, :, :])
+        plt.imshow(stack[:, :])
         # plt.imshow(stack.min(axis=0))
         
         # excess = stack - stack.min(axis=0)

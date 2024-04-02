@@ -3,6 +3,7 @@ import scattering_functions.scattering_functions as scattering_functions
 import common
 import time
 import sys
+"""
 
 log = True
 
@@ -70,3 +71,4 @@ for file in sys.argv[1:]:
             particle_diameter=particle_diameter, drift_removed=drift_removed)
 
     print()
+"""

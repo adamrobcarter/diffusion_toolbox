@@ -4,6 +4,7 @@ import time
 import sys
 import common
 
+# please use calc_and_save from count.py
 def calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, output_file_name, drift):
     t0 = time.time()
 
@@ -36,7 +37,7 @@ def calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, output_file_name, d
     # bigger sep at low box sizes to reduce the number of boxes, as we already have loads of stats for small boxes
     # sep[0] = -60
 
-    N2_mean, N2_std, N_stats, counts = countoscope.calculate_nmsd(data=particles,
+    N2_mean, N2_std, N_stats = countoscope.calculate_nmsd(data=particles,
                                                                  window_size_x=window_size_x, window_size_y=window_size_y,
                                                                  box_sizes_x=box_sizes_x, box_sizes_y=box_sizes_y,
                                                                  sep_sizes=sep_sizes,)
@@ -64,39 +65,47 @@ if __name__ == '__main__':
         # ^^ there's no reason for the boxes to be integer pixel multiples, but it helps comparisons with the intensity method
         sep_sizes = np.array([8.0, 7.6, 6.8, 5.2, 2, 2, 2])
 
-        box_sizes_x = box_sizes
-        box_sizes_y = box_sizes
-        filename = f'box_counting/data/counted_{file}_rects_nodrift.npz'
-        calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, filename, False)
+        # box_sizes_x = box_sizes
+        # box_sizes_y = box_sizes
+        # filename = f'box_counting/data/counted_{file}_rects_nodrift.npz'
+        # calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, filename, False)
 
-        filename = f'box_counting/data/counted_{file}_rects_eq.npz'
-        calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, filename, True)
+        # filename = f'box_counting/data/counted_{file}_rects_eq.npz'
+        # calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, filename, True)
 
-        box_sizes_x = box_sizes
-        box_sizes_y = 130
-        filename = f'box_counting/data/counted_{file}_rects_tall.npz'
-        calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, filename, True)
+        # box_sizes_x = box_sizes
+        # box_sizes_y = 130
+        # filename = f'box_counting/data/counted_{file}_rects_tall.npz'
+        # calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, filename, True)
 
-        box_sizes_x = 130
-        box_sizes_y = box_sizes
-        filename = f'box_counting/data/counted_{file}_rects_wide.npz'
-        calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, filename, True)
+        # box_sizes_x = 130
+        # box_sizes_y = box_sizes
+        # filename = f'box_counting/data/counted_{file}_rects_wide.npz'
+        # calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, filename, True)
 
-        filename = f'box_counting/data/counted_{file}_rects_wide_nodrift.npz'
-        calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, filename, False)
+        # filename = f'box_counting/data/counted_{file}_rects_wide_nodrift.npz'
+        # calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, filename, False)
 
         box_sizes_x = np.array([1.6, 3.2, 6.4, 12.8, 25.6, 51.2, 102.4])
         box_sizes_y = box_sizes_x / 8
-        filename = f'box_counting/data/counted_{file}_rects_wide_aspect.npz'
+        filename = f'box_counting/data/counted_{file}_rects_aspect_wide.npz'
         calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, filename, False)
 
-        filename = f'box_counting/data/counted_{file}_rects_wide_aspect_drift.npz'
+        filename = f'box_counting/data/counted_{file}_rects_aspect_wide_drift.npz'
         calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, filename, True)
 
         box_sizes_y = np.array([1.6, 3.2, 6.4, 12.8, 25.6, 51.2, 102.4])
         box_sizes_x = box_sizes_y / 8
-        filename = f'box_counting/data/counted_{file}_rects_tall_aspect.npz'
+        filename = f'box_counting/data/counted_{file}_rects_aspect_tall.npz'
         calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, filename, False)
 
-        filename = f'box_counting/data/counted_{file}_rects_tall_aspect_drift.npz'
+        filename = f'box_counting/data/counted_{file}_rects_aspect_tall_drift.npz'
+        calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, filename, True)
+
+        box_sizes_y = np.array([1.6, 3.2, 6.4, 12.8, 25.6, 51.2, 102.4])
+        box_sizes_x = box_sizes_y
+        filename = f'box_counting/data/counted_{file}_rects_aspect_square.npz'
+        calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, filename, False)
+
+        filename = f'box_counting/data/counted_{file}_rects_aspect_square_drift.npz'
         calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, filename, True)

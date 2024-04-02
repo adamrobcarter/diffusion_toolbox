@@ -13,3 +13,5 @@ intensity_counting/data/*
 scattering_functions/data/*
 scattering_functions/figures_png/*
 scattering_functions/msd_0.66_obs.npz
+DDM/data/*
+DDM/figures_png/*

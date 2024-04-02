@@ -6,12 +6,12 @@ import matplotlib.animation
 import tqdm
 import particle_detection.show
 
-for file in sys.argv[1:]:
-    datasource2 = file
-    if file.endswith('_trackpy'):
-        datasource2 = file.split('_trackpy')[0]
+for file in common.files_from_argv('preprocessing/data', 'stack_'):
+    # datasource2 = file
+    # if file.endswith('_trackpy'):
+    #     datasource2 = file.split('_trackpy')[0]
     
-    data = common.load(f'preprocessing/data/stack_{datasource2}.npz')
+    data = common.load(f'preprocessing/data/stack_{file}.npz')
     stack             = data['stack']
     pixel_size        = data['pixel_size']
     particle_diameter = data['particle_diameter']
@@ -22,6 +22,7 @@ for file in sys.argv[1:]:
     stack = stack - stack.mean(axis=0)
     stack = np.interp(stack, (stack.min(), stack.max()), (0, 1)) # convert to 0->1 range
 
+    print('stack min max', stack.min(), stack.max())
 
     data = common.load(f'particle_detection/data/particles_{file}.npz')
     particles = data['particles']

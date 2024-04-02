@@ -18,7 +18,7 @@ F_types = ['F']
 
 drift_removed = False
 
-for file in sys.argv[1:]:
+for file in common.files_from_argv('particle_detection/data', 'particles_'):
     # crop = 0.5 if F_type == 'F' else 1.0
     # crop = 0.5 # to force the same
     crop = 1.0
@@ -39,6 +39,14 @@ for file in sys.argv[1:]:
     if drift_removed:
         particles = common.remove_drift(particles)
 
+    # starts = {}
+    # for row_index in range(len(particles)):
+    #     if particles[row_index, 3] not in starts:
+    #         starts[particles[row_index, 3]] = particles[row_index, [0, 1]]
+    # for row_index in range(len(particles)):
+    #     if particles[row_index, 3] % 2 == 0:
+    #         particles[row_index, [0, 1]] = starts[particles[row_index, 3]]
+
     # if drift_removed:
     #     data = remove_drift(data)
 
@@ -48,10 +56,18 @@ for file in sys.argv[1:]:
     # height = data['height']
     # num_frames = particles.shape[1]
 
-    particles = common.add_drift(particles, 0.05, 0.05)
+    if False:
+        print('adding drift')
+        particles = common.add_drift(particles, 0.05, 0.05)
 
     width  = particles[:, 0].max() - particles[:, 0].min() # what are these for?
     height = particles[:, 1].max() - particles[:, 1].min()
+
+    if file.startswith('marine'):
+        num_used_frames = int(particles[:, 2].max() - particles[:, 2].min())
+        # num_used_frames = 100
+    else:
+        num_used_frames = 50
 
     for F_type in F_types:
 
@@ -74,14 +90,15 @@ for file in sys.argv[1:]:
         # hence this slightly weird thing. Could the whole thing just be a logspace?
         #d_frames = [0]
 
-        Fs, F_unc, ks = scattering_functions.intermediate_scattering(log, F_type, crop, num_k_bins, num_iters, d_frames, particles, max_K, width=width, height=height)
+        Fs, F_unc, ks = scattering_functions.intermediate_scattering(log, F_type, crop, num_k_bins, num_used_frames, d_frames, 
+                                                                     particles, max_K, width=width, height=height)
 
         # suffix = '_loglog' if log else ''
 
         t1 = time.time()
             
         np.savez(f"scattering_functions/data/{F_type}_{file}", F=Fs, F_unc=F_unc, k=ks, t=d_frames*time_step, crop=crop,
-                num_k_bins=num_k_bins, num_iters=num_iters, computation_time=t1-t0, log=log,
+                num_k_bins=num_k_bins, num_used_frames=num_used_frames, computation_time=t1-t0, log=log,
                 particle_diameter=particle_diameter, drift_removed=drift_removed)
 
         print()

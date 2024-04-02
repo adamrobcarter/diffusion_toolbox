@@ -1,7 +1,7 @@
 import os, sys
 import tifffile
 import numpy as np
-import datetime
+import datetime, math
 import scipy.fft
 import tqdm
 import matplotlib.animation
@@ -10,14 +10,15 @@ import scipy.stats
 import warnings, time
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 
-def get_directory_files(directory, extension):
+def get_directory_files(directory, extension, file_starts_with=''):
     filenames = []
     all_filenames = os.listdir(directory)
     all_filenames.sort()
     for filename in all_filenames:
-        if filename.endswith(extension):
+        if filename.endswith(extension) and filename.startswith(file_starts_with):
             filenames.append(f'{directory}/{filename}')
-    print(f'found {len(filenames)} .{extension}s in {directory}')
+    endstring = f' starting with {file_starts_with}' if file_starts_with else ''
+    print(f'found {len(filenames)} .{extension}s {endstring}in {directory}')
     return filenames
 
 def load_tif(filename):
@@ -88,15 +89,30 @@ def fourier(t, x):
 
     return f, X#f[:N//2], X[:N//2]
 
+def fourier_2D(x, spacing, axes):
+    N_x = x.shape[1]
+    N_y = x.shape[2]
+    X = scipy.fft.fftn(x, axes=axes, workers=16)
+    f_x = scipy.fft.fftfreq(N_x, spacing)
+    f_y = scipy.fft.fftfreq(N_y, spacing)
+    f_xx, f_yy = np.meshgrid(f_y, f_x) # idk why these need to be the wrong way round
+    # f_xx, f_yy = np.meshgrid(f_x, f_y)
+    # S = scipy.fft.fftshift(S)
+    # k = scipy.fft.fftshift(k)
+    # return k[N//2:], S[N//2:]
+    X = np.abs(X)
+
+    return f_xx, f_yy, X#f[:N//2], X[:N//2]
+
 def r_squared(y_data, y_pred):
     # from https://stackoverflow.com/a/37899817/1103752
     residual_sum = np.sum((y_data - y_pred       )**2)
     total_sum    = np.sum((y_data - y_data.mean())**2)
     return 1 - (residual_sum / total_sum)
 
-def save_fig(fig, path, dpi, only_plot=False):
+def save_fig(fig, path, dpi=100, only_plot=False):
     command = '.'.join(sys.argv[0].split('/')[4:]).split('.py')[0] + ' ' + ' '.join(sys.argv[1:])
-    time_str = time.strftime('%X %x')
+    time_str = time.strftime('%x %X')
     label = f'{time_str} {command}'
 
     if not only_plot:
@@ -110,6 +126,7 @@ def save_fig(fig, path, dpi, only_plot=False):
         args['bbox_inches'] = 'tight'
         args['pad_inches'] = 0
 
+    # path = path.replace('*', '')
     print(f'saving {path}, {len(fig.axes)} axes')
     fig.savefig(path, dpi=dpi, **args)
 
@@ -133,12 +150,38 @@ def save_gif(func, frames, fig, file, fps=1, dpi=300):
     progress.close()
 
     
-def N2_nointer(t, D0, N_mean, Lx, Ly=None):
+def N2_nointer_2D(t, D0, N_mean, Lx, Ly=None):
     if Ly == None:
         Ly = Lx
     return 2 * N_mean * (1 - famous_f(4*D0*t/Lx**2) * famous_f(4*D0*t/Ly**2)) # countoscope eq. 2, countoscope overleaf doc
 
+def N2_nointer_2D_drift(t, D0, N0, L, drift_x):
+    # assert len(drift) == 2
+    
+    # Grace's presentation slide 7
+    # we compute this in a slightly different way to in the presentation
+    # as the denominator of tau_0 is zero when drift is zero, so we get tau_0 = np.inf
+    # then when this goes on the denominator again, numpy does 1/inf which gives nan
+
+    tau = 4 * D0 * t / L**2
+    tau_n_denom = lambda n : (drift_x*t/L + n)**2
+    F_of_tau_n = lambda n : famous_f(tau / tau_n_denom(n)) * np.sqrt(tau_n_denom(n) / tau)
+    F_of_tau   = famous_f(tau) / np.sqrt(tau)
+
+    N2  = 2 * N0 * (1 - tau*F_of_tau * (0.5 * (F_of_tau_n(1) + F_of_tau_n(-1)) - F_of_tau_n(0)))
+
+    return N2
+
+def N2_nointer_3D(t, D0, N_mean, Lx, Ly, Lz):
+    return 2 * N_mean * (1 - famous_f(4*D0*t/Lx**2) * famous_f(4*D0*t/Ly**2) * famous_f(4*D0*t/Lz**2))
+
 def famous_f(tau):
+    print(tau)
+    if np.all(np.isinf(tau)):
+        return np.zeros_like(tau)
+    elif np.any(np.isinf(tau)):
+        raise Exception("I can't yet handle a mix of nan and non-nan")
+    
     return np.sqrt(tau / np.pi) * ( np.exp(-1/tau) - 1) + scipy.special.erf(np.sqrt(1/tau)) # countoscope eq. 2
 
 def structure_factor_2d_hard_spheres(k, phi, sigma):
@@ -160,6 +203,44 @@ def structure_factor_2d_hard_spheres(k, phi, sigma):
     S = 1 / (1 - rho * c) # Hansen & McDonald (3.6.10)
 
     return S
+
+def N1N2_nointer(t, D0, N0, L, drift):
+     # Grace's presentation slide 10
+    print(drift)
+    assert len(L) == 2
+    assert len(drift) == 2
+
+    tau_i = lambda i : 4 * D0 * t / L[i-1]**2 # (i-1) so i in {1, 2}
+    tau = lambda j, n, i : tau_i(i) / (drift[j-1]*t/L[i-1] + n)**2
+    F = lambda t : famous_f(t) / np.sqrt(t) if not np.all(np.isinf(t)) else np.zeros_like(t)
+
+    N1N2  = N0 * np.sqrt(tau_i(1)*tau_i(2))
+    # print(N1N2)
+    N1N2 *= F(tau(1,1,1)) - F(tau(1,2,1)) - 0.5*(F(tau(1,2,1)) - F(tau(1,-2,1)))
+    # print(F(tau(1,-2,1)))
+    # print(N1N2)
+    N1N2 *= 0.5*(F(tau(2,1,2)) + F(tau(2,-1,2))) - F(tau(2,0,2))
+    print(tau(2,0,2), F(tau(2,0,2)))
+    # print(N1N2)
+
+    print()
+    return N1N2
+
+def N1N2_square(t, D0, N0, L, drift):
+    # Grace's presentation slide 7
+    # we compute this in a slightly different way to in the presentation
+    # as the denominator of tau_0 is zero when drift is zero, so we get tau_0 = np.inf
+    # then when this goes on the denominator again, numpy does 1/inf which gives nan
+
+    tau = 4 * D0 * t / L**2
+    tau_n_denom = lambda n : (drift*t/L + n)**2
+    F_of_tau_n = lambda n : famous_f(tau / tau_n_denom(n)) * np.sqrt(tau_n_denom(n) / tau)
+    F_of_tau   = famous_f(tau) / np.sqrt(tau)
+    
+    N1N2  = N0 * tau * F_of_tau
+    N1N2 *= F_of_tau_n(1) - F_of_tau_n(-1) - 0.5*(F_of_tau_n(2) - F_of_tau_n(-2))
+
+    return N1N2
 
 
 @numba.njit
@@ -216,6 +297,7 @@ def numba_p_assert(condition, message):
         print('Assertion failed: ', message)
 
 def exponential_integers(min, max):
+    assert min < max
     return np.unique(np.round(10**np.linspace(np.log10(min), np.log10(max))).astype('int'))
 
 def add_drift(particles, drift_x, drift_y):
@@ -327,3 +409,29 @@ def remove_drift(particles):
     print('residual drift', residual_drift)
 
     return particles_driftremoved
+
+import fnmatch
+
+def files_from_argv(location, prefix):
+    files = sys.argv[1:]
+    
+    if len(files) == 1 and files[0].endswith('*'):
+        target = prefix + files[0]
+        
+        files = []
+        all_filenames = os.listdir(location)
+        all_filenames.sort()
+
+        filenames = fnmatch.filter(all_filenames, target)
+        
+        for filename in filenames:
+            filename_wo_ext = '.'.join(filename.split('.')[:-1])
+            filename_wo_stem = filename_wo_ext.split(prefix)[1]
+            files.append(filename_wo_stem)
+
+    assert len(files), 'no files found'
+    return files
+
+def format_val_and_unc(val, unc, sigfigs):
+    digits_after_decimal = -math.floor(math.log10(abs(val))) + sigfigs-1
+    return f'{val:.{digits_after_decimal}f} \pm {unc:.{digits_after_decimal}f}'

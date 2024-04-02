@@ -75,7 +75,7 @@ for file_i, file in enumerate(sys.argv[1:]):
         
         # computed theory interactions
         t_theory = np.logspace(np.log10(t_all[1] / 2), np.log10(t_all.max()))
-        N2_theory = common.N2_nointer(t_theory, D0, N_var[box_size_index], Lx, Ly)
+        N2_theory = common.N2_nointer_2D(t_theory, D0, N_var[box_size_index], Lx, Ly)
         
         if collapse_y:
             delta_N_sq /= N_var[box_size_index]

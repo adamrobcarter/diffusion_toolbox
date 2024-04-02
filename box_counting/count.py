@@ -4,26 +4,26 @@ import time
 import sys
 import common
 
-def calc_and_save(box_sizes_px, sep_sizes_px, file, output_file_name):
+def calc_and_save(box_sizes_px, sep_sizes_px, data, output_file_name, extra_to_save={}):
     t0 = time.time()
 
     a = 1.395 #radius of particles
 
-    data = common.load(f'particle_detection/data/particles_{file}.npz')
-    particles                  = data['particles']
-    time_step                  = data['time_step']
-    pixel_size                 = data['pixel_size']
-    num_timesteps              = data['num_timesteps']
-    particle_diameter          = data['particle_diameter']
-    # particle_diameter_calced   = data['particle_diameter_calced']
-    particle_diameter_calced   = data.get('particle_diameter_calced')
+    # data = common.load(f'particle_detection/data/particles_{file}.npz')
+    particles                = data['particles']
+    time_step                = data['time_step']
+    pixel_size               = data['pixel_size']
+    num_timesteps            = data['num_timesteps']
+    particle_diameter        = data['particle_diameter']
+    particle_diameter_calced = data.get('particle_diameter_calced')
+    depth_of_field           = data.get('depth_of_field')
     # particles[:, [2]] += 1 # make t 1-based
     Nframes = None
     window_size_x = None
     window_size_y = None
 
-    if file == 'eleanorlong':
-        pixel_size = 0.17 # so the boxes are the same size as aliceXXX
+    # if file == 'eleanorlong':
+    #     pixel_size = 0.17 # so the boxes are the same size as aliceXXX
     
     box_sizes = box_sizes_px * pixel_size 
     # ^^ there's no reason for the boxes to be integer pixel multiples, but it helps comparisons with the intensity method
@@ -47,14 +47,15 @@ def calc_and_save(box_sizes_px, sep_sizes_px, file, output_file_name):
     np.savez(output_file_name, N2_mean=N2_mean, N2_std=N2_std,
              N_stats=N_stats, box_sizes=box_sizes, sep_sizes=sep_sizes,
              time_step=time_step, pack_frac=pack_frac, particle_diameter=particle_diameter,
-             particle_diameter_calced=particle_diameter_calced, computation_time=time.time()-t0)
+             particle_diameter_calced=particle_diameter_calced, computation_time=time.time()-t0,
+             depth_of_field=depth_of_field, **extra_to_save)
     # np.savez(f'box_counting/data/all_counts_{file}.npz', counts=counts,
     #          N_stats=N_stats, box_sizes=box_sizes, sep_sizes=sep_sizes,
     #          time_step=time_step, pack_frac=pack_frac, particle_diameter=particle_diameter,
     #          particle_diameter_calced=particle_diameter_calced)
 
 if __name__ == '__main__':
-    for file in sys.argv[1:]:
+    for file in common.files_from_argv('particle_detection/data', 'particles_'):
         # box_sizes_px = np.array([ 1,  2,  4,  8, 16, 32, 64, 128])
         # # ^^ there's no reason for the boxes to be integer pixel multiples, but it helps comparisons with the intensity method
         # sep_sizes_px = np.array([50, 50, 50, 50, 50, 50, 50,  50])
@@ -64,7 +65,13 @@ if __name__ == '__main__':
         # sep_sizes_px = np.array([20, 20, 20, 20, 20])
         box_sizes_px = np.array([1,  2,  4,  8,  16,  32,  64])
         sep_sizes_px = np.array([20, 20, 20, 20, 10, -10, -20])
-        calc_and_save(box_sizes_px, sep_sizes_px, file, filename)
+
+        if file.startswith('marine'):
+            box_sizes_px = box_sizes_px[1:]
+            sep_sizes_px = sep_sizes_px[1:]
+
+        data = common.load(f'particle_detection/data/particles_{file}.npz')
+        calc_and_save(box_sizes_px, sep_sizes_px, data, filename)
 
         # box_sizes_px = np.array([16, 32, 64, 128])
         # # sep_sizes_px = np.array([ 0,  0,  0,  0])

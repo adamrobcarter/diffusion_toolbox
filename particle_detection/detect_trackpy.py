@@ -3,13 +3,15 @@ import numpy as np
 import time
 import sys
 import trackpy
+import matplotlib.pyplot as plt
 
-for datasource in sys.argv[1:]:
+for datasource in common.files_from_argv('preprocessing/data/', 'stack_'):
     data = common.load(f'preprocessing/data/stack_{datasource}.npz')
     stack             = data['stack']
     pixel_size        = data['pixel_size']
     particle_diameter = data['particle_diameter']
     time_step         = data['time_step']
+    depth_of_field    = data.get('depth_of_field')
     num_timesteps = stack.shape[0]
 
     stack = stack - stack.mean(axis=0)
@@ -44,7 +46,9 @@ for datasource in sys.argv[1:]:
         # threshold = 25
 
     elif datasource.startswith('marine'):
-        pass
+        # for marine10 at least
+        diameter = 5
+        minmass = 0.2
         # min_sigma = 1
         # max_sigma = 4
         # threshold = 1500
@@ -90,6 +94,10 @@ for datasource in sys.argv[1:]:
     radius = features[['size']].to_numpy()[:, 0] # we use radius not diameter(size) for backward compatibility
     print('radius shape', radius.shape)
 
+    plt.hist(features[['mass']].to_numpy(), bins=20)
+    plt.semilogy()
+    plt.savefig('hist.png')
+
     particle_diameter_calced = 2 * radius.mean() * pixel_size
         # there is a line in the DoGDetector source about this sqrt 2
     print(f'calced diameter {particle_diameter_calced:.3f}um')
@@ -102,10 +110,10 @@ for datasource in sys.argv[1:]:
     print('it', particles[:, 2].min(), particles[:, 2].max())
 
     # np.savez(f'particle_detection/data/particles_{datasource}_trackpy.npz',
-    np.savez(f'particle_detection/data/particles_{datasource}_trackpy.npz',
+    np.savez(f'particle_detection/data/particles_{datasource}.npz',
             #  particle_picklepath=picklepath,
             particles=particles, radius=radius, time_step=time_step,
             threshold=threshold, maxsize=maxsize, minmass=minmass, diameter=diameter, separation=separation,
-            computation_time=time.time()-t0,
+            computation_time=time.time()-t0, depth_of_field=depth_of_field,
             pixel_size=pixel_size, num_timesteps=num_timesteps, particle_diameter=particle_diameter,
             particle_diameter_calced=particle_diameter_calced, method='trackpy')

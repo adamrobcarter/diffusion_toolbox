@@ -11,7 +11,7 @@ collapse_y = True
 collapse_x = False
 collapse_y = False
 
-for file in sys.argv[1:]:
+for file in common.files_from_argv('box_counting/data/', 'counted_'):
 
     D0_from_fits     = [{}, {}]
     D0_unc_from_fits = [{}, {}]
@@ -75,7 +75,8 @@ for file in sys.argv[1:]:
         
         # computed theory interactions
         t_theory = np.logspace(np.log10(t_all[1] / 2), np.log10(t_all.max()))
-        N2_theory = common.N2_nointer(t_theory, D0, N_var[box_size_index], Lx, Ly)
+        N2_theory = common.N2_nointer_2D(t_theory, D0, N_var[box_size_index], Lx, Ly)
+        N2_theory2 = common.N2_nointer_2D_drift(t_theory, D0, N_var[box_size_index], Lx, added_drift_x)
         
         if collapse_y:
             delta_N_sq /= N_var[box_size_index]
@@ -138,7 +139,8 @@ for file in sys.argv[1:]:
         # ±{np.sqrt(pcov[0][0]):.3f}$'
         
         exp_plot = ax.plot(t[1:], delta_N_sq[1:], label=label, linestyle='none', marker='o', zorder=-1, markersize=5)
-        ax.plot(t_theory, N2_theory, color='black', linewidth=1, label='sFDT (no inter.)' if box_size_index==0 else None)
+        ax.plot(t_theory, N2_theory, color='grey', linewidth=1, label='sFDT w/o drift' if box_size_index==0 else None)
+        ax.plot(t_theory, N2_theory2, color='black', linewidth=1, label='sFDT w/ drift' if box_size_index==0 else None)
 
     ax.legend(fontsize=7, loc='upper left')
     ax.semilogy()
@@ -200,4 +202,4 @@ for file in sys.argv[1:]:
     # ax.set_title(f'rescaled, $\phi={phi}$, {mode} {driftremoved}')
 
     fig.tight_layout()
-    fig.savefig(f'box_counting/figures_png/msd_{file}.png', dpi=300)
+    common.save_fig(fig, f'box_counting/figures_png/msd_{file}.png', dpi=300)

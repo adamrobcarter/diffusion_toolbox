@@ -8,11 +8,11 @@ import warnings
 def show_frame(fig, ax, stack, pixel_size, particles, radius, timestep, file):
 
     # crop = 0.18
-    crop = 1.0
-    particles_inside = ( particles[:, 0] < crop*stack.shape[1]*pixel_size ) & ( particles[:, 1] < crop*stack.shape[2]*pixel_size )
-    particles = particles[particles_inside, :]
-    radius    = radius   [particles_inside]
-    stack = stack[:, :int(stack.shape[1]*crop), :int(stack.shape[2]*crop)]
+    # crop = 1.0
+    # particles_inside = ( particles[:, 0] < crop*stack.shape[1]*pixel_size ) & ( particles[:, 1] < crop*stack.shape[2]*pixel_size )
+    # particles = particles[particles_inside, :]
+    # radius    = radius   [particles_inside]
+    # stack = stack[:, :int(stack.shape[1]*crop), :int(stack.shape[2]*crop)]
 
     # im = ax.imshow(stack[timestep, :, :], vmin=0, vmax=stack.max()/100)#, cmap=matplotlib.cm.coolwarm)#, vmin=-2, vmax=2)
     # there was a minus sign below for nice presentation
