@@ -42,24 +42,29 @@ def show_frame(fig, ax, stack, pixel_size, particles, radius, timestep, file):
     # assert particles_at_t.sum() > 0
     # plt.scatter(particles[particles_at_t, X_INDEX]/pixel_size, particles[particles_at_t, Y_INDEX]/pixel_size, s=50*radius[particles_at_t]**2*pixel_size**2,
     #             facecolors='none', edgecolors='red', alpha=0.5, linewidth=0.8)
-    
+
     x = particles[particles_at_t, X_INDEX]/pixel_size
     y = particles[particles_at_t, Y_INDEX]/pixel_size
-    r = radius[particles_at_t] * np.sqrt(2)
+    r = radius[particles_at_t] * np.sqrt(2) # TODO: should this be /pixel_size?
+    if particles.shape[1] == 4:
+        id = particles[particles_at_t, 3]
+
+    def color(i):
+        if particles.shape[1] == 4:
+            return matplotlib.cm.tab20(int(id[i]%20))
+        else:
+            return 'red'
+        
+    alpha = 0.7
 
     outline = True
     if outline:
-        # print(r[0])
-        # print(r[0, 0])
-        # # print(r[0, 4])
-        # print(r[4, 0])
-        # print(r[4, 0]*1.5)
-        circles = [plt.Circle((x[i],y[i]), radius=r[i]*2) for i in range(particles_at_t.sum())]
+        circles = [plt.Circle((x[i], y[i]), edgecolor=color(i), facecolor='none', radius=r[i]*2, linewidth=0.5, alpha=alpha) for i in range(particles_at_t.sum())]
         # c = matplotlib.collections.PatchCollection(circles, facecolor='red', alpha=0.5)
-        c = matplotlib.collections.PatchCollection(circles, edgecolor='red', facecolor='none', linewidth=0.5, alpha=0.5)
+        c = matplotlib.collections.PatchCollection(circles, match_original=True)
     else:
-        circles = [plt.Circle((x[i],y[i]), radius=r[i]) for i in range(particles_at_t.sum())]
-        c = matplotlib.collections.PatchCollection(circles, facecolor='red', alpha=0.5)
+        circles = [plt.Circle((x[i], y[i]), facecolor=color(i), radius=r[i], alpha=alpha) for i in range(particles_at_t.sum())]
+        c = matplotlib.collections.PatchCollection(circles, match_original=True)
 
     ax.add_collection(c)
 

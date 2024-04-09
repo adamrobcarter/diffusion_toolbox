@@ -6,48 +6,46 @@ import matplotlib.animation
 import tqdm
 import particle_detection.show
 
-for file in common.files_from_argv('preprocessing/data', 'stack_'):
-    # datasource2 = file
-    # if file.endswith('_trackpy'):
-    #     datasource2 = file.split('_trackpy')[0]
+
+def go(filename, stack_file, particles_file, output_file):
+    # this is also used by particle_linking.show_movie
     
-    data = common.load(f'preprocessing/data/stack_{file}.npz')
+    data = common.load(stack_file)
     stack             = data['stack']
     pixel_size        = data['pixel_size']
-    particle_diameter = data['particle_diameter']
-    num_timesteps = stack.shape[0]
+    # particle_diameter = data['particle_diameter']
+    # num_timesteps = stack.shape[0]
 
-    print(stack.shape[1], 'x', stack.shape[2], 'px')
+    # print(stack.shape[1], 'x', stack.shape[2], 'px')
 
     stack = stack - stack.mean(axis=0)
     stack = np.interp(stack, (stack.min(), stack.max()), (0, 1)) # convert to 0->1 range
 
-    print('stack min max', stack.min(), stack.max())
+    # print('stack min max', stack.min(), stack.max())
 
-    data = common.load(f'particle_detection/data/particles_{file}.npz')
+    data = common.load(particles_file)
     particles = data['particles']
-    radius = data['radius']
-    print(particles.shape)
+    radius    = data['radius']
     
     print(f'found {(particles.shape[0]/particles[:, 2].max()):0f} particles per frame')
-    print(particles[:, 2].min(), particles[:, 2].max())
+    # print(particles[:, 2].min(), particles[:, 2].max())
 
     fig, ax = plt.subplots(1, 1)
 
     end_frame = min(stack.shape[0], 50)
     frames = range(0, end_frame, 1)
-    # progress = tqdm.tqdm(total=len(frames))
 
     def show(timestep):
         ax.clear()
 
-        particle_detection.show.show_frame(fig, ax, stack, pixel_size, particles, radius, timestep, file)
-        ax.set_title(f'{file} t={timestep:03d}')
+        particle_detection.show.show_frame(fig, ax, stack, pixel_size, particles, radius, timestep, filename)
+        ax.set_title(f'{filename} t={timestep:03d}')
 
-        # progress.update()
+    common.save_gif(show, frames, fig, output_file, fps=2)
 
-    # ani = matplotlib.animation.FuncAnimation(fig, show, frames=frames, interval=500, repeat=False)
-    # ani.save(f"particle_detection/figures_png/movie_{file}.gif", dpi=300,
-    #         writer=matplotlib.animation.PillowWriter(fps=2))
-    # progress.close()
-    common.save_gif(show, frames, fig, f"particle_detection/figures_png/movie_{file}.gif", fps=2)
+if __name__ == '__main__':
+    for file in common.files_from_argv('preprocessing/data', 'stack_'):
+        go(file,
+           stack_file=f'preprocessing/data/stack_{file}.npz',
+           particles_file=f'particle_detection/data/particles_{file}.npz',
+           output_file=f"particle_detection/figures_png/movie_{file}.gif")

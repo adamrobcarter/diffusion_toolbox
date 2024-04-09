@@ -15,3 +15,7 @@ for phi in [0.02, 0.34, 0.66]:
     np.savez(f'particle_detection/data/particles_alice{phi}.npz', particles=data,
              time_step=0.5, particle_diameter=2.8, pixel_size=PIXEL,
              num_timesteps=num_timesteps)
+
+    np.savez(f'particle_linking/data/trajs_alice{phi}.npz', particles=data,
+             time_step=0.5, particle_diameter=2.8, pixel_size=PIXEL,
+             num_timesteps=num_timesteps)

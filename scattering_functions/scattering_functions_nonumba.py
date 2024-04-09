@@ -6,7 +6,7 @@ import common
 import tqdm
 import warnings
 
-def intermediate_scattering(log, F_type, crop, num_k_bins, num_used_frames, d_frames, particles, max_K, width, height):
+def intermediate_scattering(log, F_type, crop, num_k_bins, use_every_nth_frame, d_frames, particles, max_K, width, height):
     assert not np.isnan(max_K)
 
     # data is x,y,t
@@ -23,7 +23,7 @@ def intermediate_scattering(log, F_type, crop, num_k_bins, num_used_frames, d_fr
     # the whole of data to each process
     
     num_timesteps = int(particles[:, 2].max()) + 1
-    num_timesteps = int(particles[:, 2].max() - particles[:, 2].min())
+    # num_timesteps = int(particles[:, 2].max())
     
     if F_type == 'F_s':
         # for Fself, we need the IDs, so we provide a list where the nth element is the nth particle
@@ -40,6 +40,7 @@ def intermediate_scattering(log, F_type, crop, num_k_bins, num_used_frames, d_fr
             t = int(particles[i, 2])
             id = int(particles[i, 3])
             # particles_at_frame[t][id, :] = particles[i, [0, 1]]
+            particles_at_frame[t]
             particles_at_frame[t][id, :] = particles[i, :]
 
         for t in range(num_timesteps):
@@ -55,18 +56,18 @@ def intermediate_scattering(log, F_type, crop, num_k_bins, num_used_frames, d_fr
             particles_at_t = particles_at_t[:, 0:2]
             particles_at_frame.append(particles_at_t)
 
-    if num_used_frames < num_timesteps:
-        warnings.warn(f'Using {num_used_frames/num_timesteps:.2f} of frames. Eventually you may want to use every frame')
+    if use_every_nth_frame > 1:
+        warnings.warn(f'Using every {use_every_nth_frame}th frame as a time origin. Eventually you may want to use every frame')
 
     parallel = True
     if parallel:
-        cores = 16
+        cores = 32
         if cores > 16:
             warnings.warn(f'using {cores} cores')
         with multiprocessing.Pool(cores) as pool:
 
             internal_bound = functools.partial(intermediate_scattering_for_dframe, log=log, F_type=F_type, crop=crop,
-                                num_k_bins=num_k_bins, num_used_frames=num_used_frames, d_frames=d_frames, particles_at_frame=particles_at_frame,
+                                num_k_bins=num_k_bins, use_every_nth_frame=use_every_nth_frame, d_frames=d_frames, particles_at_frame=particles_at_frame,
                                 num_frames=num_timesteps, min_K=min_K, max_K=max_K, width=width, height=height)
 
             computation = pool.imap(internal_bound, range(len(d_frames)), chunksize=1)
@@ -82,7 +83,7 @@ def intermediate_scattering(log, F_type, crop, num_k_bins, num_used_frames, d_fr
         print('note: u are not paralllel')
         for dframe_i in tqdm.trange(len(d_frames)):
             F_, F_unc_, k_ = intermediate_scattering_for_dframe(dframe_i, log=log, F_type=F_type, crop=crop,
-                                num_k_bins=num_k_bins, num_used_frames=num_used_frames, d_frames=d_frames, particles_at_frame=particles_at_frame,
+                                num_k_bins=num_k_bins, use_every_nth_frame=use_every_nth_frame, d_frames=d_frames, particles_at_frame=particles_at_frame,
                                 num_frames=num_timesteps, min_K=min_K, max_K=max_K, width=width, height=height)
             
             Fs   [dframe_i, :] = F_
@@ -108,7 +109,7 @@ def intermediate_scattering(log, F_type, crop, num_k_bins, num_used_frames, d_fr
 
     return Fs,F_unc,ks
 
-def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, num_used_frames, d_frames, particles_at_frame, num_frames, min_K, max_K, width, height):
+def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, use_every_nth_frame, d_frames, particles_at_frame, num_frames, min_K, max_K, width, height):
     d_frame = int(d_frames[dframe_i])
     # offset = (num_frames - d_frame - 1) // num_iters
     # assert(num_iters * offset + d_frame < num_frames)
@@ -119,16 +120,11 @@ def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, 
 
     assert num_frames > d_frame, f'd_frame={d_frame}, num_frames={num_frames}'
 
-    frames_to_use = list(np.round(np.linspace(0, num_frames-d_frame-1, num_used_frames)))
-    # frames_to_use = list(range(0, 20*44, 44))
+    frames_to_use = range(0, num_frames-d_frame-1, use_every_nth_frame)
 
-    if len(frames_to_use) < 10:
-        frames_to_use = list(range(0, num_frames-d_frame, 5))
-    # print(frames_to_use)
     assert max(frames_to_use) + d_frame < num_frames
     
     num_used_frames = len(frames_to_use)
-    assert num_used_frames > 0
     # print(f'at d_frame={d_frame} using {num_used_frames} frames')
 
     F = np.full((num_used_frames, num_k_bins), np.nan)
@@ -248,6 +244,55 @@ def get_k_and_bins_for_intermediate_scattering(min_K, max_K, num_k_bins, log_cal
 
 def intermediate_scattering_internal(particles_t0, particles_t1, k_x, k_y):
     # Thorneywork et al 2018 eq (27))
+    
+    particle_t0_x = particles_t0[:, 0]
+    particle_t0_y = particles_t0[:, 1]
+    particle_t1_x = particles_t1[:, 0]
+    particle_t1_y = particles_t1[:, 1]
+
+    # dimensions are
+    # mu x nu x kx x ky
+    x_mu = particle_t0_x[:, np.newaxis, np.newaxis, np.newaxis]
+    y_mu = particle_t0_y[:, np.newaxis, np.newaxis, np.newaxis]
+    x_nu = particle_t1_x[np.newaxis, :, np.newaxis, np.newaxis]
+    y_nu = particle_t1_y[np.newaxis, :, np.newaxis, np.newaxis]
+
+    k_x = k_x[np.newaxis, np.newaxis, :, np.newaxis]
+    k_y = k_y[np.newaxis, np.newaxis, np.newaxis, :]
+    
+    # TODO: do we not need to consider negative n?!!
+    # actually I think not because we already consider u -> v and v -> u
+
+    k_dot_r_mu = np.multiply(k_x, x_mu, dtype='float64') + np.multiply(k_y, y_mu, dtype='float64')
+    k_dot_r_nu = np.multiply(k_x, x_nu, dtype='float64') + np.multiply(k_y, y_nu, dtype='float64')
+    # print(k_x.mean(), k_y.mean(), x_mu.mean(), x_nu.mean(), y_mu.mean(), y_nu.mean(), k_dot_r_mu.mean(), k_dot_r_nu.mean())
+    # k_dot_r_mu = k_x * x_mu + k_y * y_mu
+    # k_dot_r_nu = k_x * x_nu + k_y * y_nu
+
+    # print(np.cos(k_dot_r_mu).sum(axis=(0, 1)).shape, np.cos(k_dot_r_mu).sum(axis=(0)).shape)
+    cos_term1 = np.cos(k_dot_r_mu).sum(axis=0) # sum over mu
+    cos_term2 = np.cos(k_dot_r_nu).sum(axis=1) # sum over nu
+    cos_accum = cos_term1 * cos_term2
+    del cos_term1, cos_term2
+    
+    sin_term1 = np.sin(k_dot_r_mu).sum(axis=0)
+    sin_term2 = np.sin(k_dot_r_nu).sum(axis=1)
+    sin_accum = sin_term1 * sin_term2
+    del sin_term1, sin_term2
+    del k_dot_r_mu, k_dot_r_nu
+    
+    num_particles = (particles_t0.shape[0] + particles_t1.shape[0]) / 2
+    if num_particles == 0:
+        warnings.warn('found no particles in either timestep')
+        contrib = np.zeros_like(cos_accum)
+    else:
+        contrib = 1/num_particles * ( cos_accum + sin_accum )
+    k = np.sqrt(k_x**2 + k_y**2)
+    # del cos_accum, sin_accum # probably unneeded
+
+    return k, contrib
+
+def distinct_intermediate_scattering_internal(particles_t0, particles_t1, k_x, k_y):
     
     particle_t0_x = particles_t0[:, 0]
     particle_t0_y = particles_t0[:, 1]

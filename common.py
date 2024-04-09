@@ -100,7 +100,7 @@ def fourier_2D(x, spacing, axes):
     # S = scipy.fft.fftshift(S)
     # k = scipy.fft.fftshift(k)
     # return k[N//2:], S[N//2:]
-    X = np.abs(X)
+    # X = np.abs(X)
 
     return f_xx, f_yy, X#f[:N//2], X[:N//2]
 
@@ -110,7 +110,7 @@ def r_squared(y_data, y_pred):
     total_sum    = np.sum((y_data - y_data.mean())**2)
     return 1 - (residual_sum / total_sum)
 
-def save_fig(fig, path, dpi=100, only_plot=False):
+def add_watermark(fig, only_plot):
     command = '.'.join(sys.argv[0].split('/')[4:]).split('.py')[0] + ' ' + ' '.join(sys.argv[1:])
     time_str = time.strftime('%x %X')
     label = f'{time_str} {command}'
@@ -118,6 +118,11 @@ def save_fig(fig, path, dpi=100, only_plot=False):
     if not only_plot:
         fig.tight_layout()
         fig.text(0.005, 0.008, label, fontsize=7)
+
+def save_fig(fig, path, dpi=100, only_plot=False):
+    # only_plot gets rid of the axes labels and border leaving you with just the chart area (for pictures)
+
+    add_watermark(fig, only_plot)
 
     args = {}
     if only_plot:
@@ -144,6 +149,8 @@ def save_gif(func, frames, fig, file, fps=1, dpi=300):
     def frame(timestep):
         func(timestep)
         progress.update()
+
+    add_watermark(fig, False)
 
     ani = matplotlib.animation.FuncAnimation(fig, frame, frames=frames, interval=500, repeat=False)
     ani.save(file, dpi=dpi, writer=matplotlib.animation.PillowWriter(fps=fps))
@@ -432,6 +439,10 @@ def files_from_argv(location, prefix):
     assert len(files), 'no files found'
     return files
 
-def format_val_and_unc(val, unc, sigfigs):
+def format_val_and_unc(val, unc, sigfigs=2):
     digits_after_decimal = -math.floor(math.log10(abs(val))) + sigfigs-1
+    # print(f'.{digits_after_decimal}f digi')
+    if digits_after_decimal < 0:
+        digits_after_decimal = 0
+    # assert digits_after_decimal
     return f'{val:.{digits_after_decimal}f} \pm {unc:.{digits_after_decimal}f}'

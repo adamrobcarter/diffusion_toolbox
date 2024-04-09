@@ -9,6 +9,7 @@ subplot_i = 0
 for file in common.files_from_argv('scattering_functions/data', 'F_'):
     d = common.load(f"scattering_functions/data/F_{file}.npz")
     t         = d["t"]
+    print('t', t[1]-t[0])
     F_all     = d["F"]
     F_unc_all = d['F_unc']
     k_all     = d["k"]
@@ -126,7 +127,9 @@ for file in common.files_from_argv('scattering_functions/data', 'F_'):
             popt, pcov = scipy.optimize.curve_fit(func, t_good[fitting_points], F_good[fitting_points], maxfev=10000)
             t_theory = np.logspace(np.log10(t[1]), np.log10(t[-1]))
             D_fit = popt[0]
-            fit_label = f'$\exp( k^2 (t+{popt[1]:.2f}) {D_fit:.2f} )$'
+            D_unc = np.sqrt(pcov)[0][0]
+            # fit_label = f'$\exp( k^2 (t+{popt[1]:.2f}) {D_fit:.2f} )$'
+            fit_label = f'fit $D={common.format_val_and_unc(D_fit, D_unc)}$, $t_0={popt[1]:.2f}$'
             ax.plot(t_theory, func(t_theory, *popt), color='black', label=fit_label, zorder=-1)
         
             D_ax.hlines(D_fit, t[1], t[-1], color='black', linewidth=1)
@@ -158,6 +161,10 @@ for file in common.files_from_argv('scattering_functions/data', 'F_'):
             D_ax.set_ylim(0, 0.0175*2)
         if file == 'pierre_sim':
             D_ax.set_ylim(0, 3)
+        if file == 'eleanor0.01':
+            D_ax.set_ylim(0, 0.08)
+        if file == 'eleanor0.34':
+            D_ax.set_ylim(0, 0.08)
         
         # D_long  = {0.34: 0.023, 0.66: 0.006}
         # D_short = {0.34: 0.033, 0.66: 0.018}

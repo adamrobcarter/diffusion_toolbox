@@ -9,9 +9,7 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
     F_D_sq    = data['F_D_sq']
     t         = data['t']
 
-    target_ks = list(np.logspace(np.log10(0.05), np.log10(7), 9))
-    # target_ks = list(np.logspace(np.log10(0.4), np.log10(7), 7))
-    # target_ks = (0.28, 0.38, 0.5, 1.3, 2, 4, 8)
+    target_ks = list(np.logspace(np.log10(0.7), np.log10(7), 5))
     # target_ks = (0.1, 0.14, 0.5, 1.3, 2, 4, 8)
     real_ks = []
 
@@ -27,32 +25,35 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
 
         ax = axs[graph_i+1]
 
-        ax.scatter(t[1:], F_D_sq[1:, k_index], s=10)
-
-
         func = lambda t, A, B, tau : A * (1 - np.exp(-t/tau)) + B
         rescale = F_D_sq[1:, k_index].max()
-        F_D_sq_rescaled = F_D_sq[:, k_index] / rescale
-        if np.isnan(F_D_sq_rescaled[1:]).sum()/F_D_sq_rescaled[1:].size == 1.0:
+        # scipy doesn't really like fitting when one of the params is ~1e11 and one ~1e-1, so we rescale to sensible magnitudes for the fit
+        F_D_norm = F_D_sq[:, k_index] / rescale
+        if np.isnan(F_D_norm[1:]).sum()/F_D_norm[1:].size == 1.0:
             continue
-
-        weights = np.ones_like(F_D_sq_rescaled[1:])
-        weights[0] = 1/8
-        weights[1] = 1/4
-        weights[2] = 1/2
-        # popt, pcov = scipy.optimize.curve_fit(func, t[1:], F_D_norm[1:], p0=(F_D_norm.max(), F_D_norm.min(), 0.1), maxfev=10000)
-        popt, pcov = scipy.optimize.curve_fit(func, t[1:], F_D_sq_rescaled[1:], sigma=weights, p0=(F_D_sq_rescaled.max(), F_D_sq_rescaled.min(), 0.1), maxfev=10000)
+        popt, pcov = scipy.optimize.curve_fit(func, t[1:], F_D_norm[1:], p0=(F_D_norm.max(), F_D_norm.min(), 0.1), maxfev=10000)
+        A = popt[0] * rescale
+        B = popt[1] * rescale
         t_theory = np.logspace(np.log10(t[1]), np.log10(t[-1]))
         D_POPT_INDEX = 2
         D = 1 / (popt[D_POPT_INDEX] * k[k_index]**2)
         D_unc = 1 / (k[k_index]**2 * popt[D_POPT_INDEX]**2) * np.sqrt(pcov)[D_POPT_INDEX][D_POPT_INDEX]
         # print(D, D_unc)
+
+        F_D_sq_norm = (F_D_sq - B ) / A
+        # # print('F', F_D_sq_norm[1, k_index], F_D_sq[1, k_index])
+        # F_k_0 = 
+        # f_k_t = 1 - F_D_sq_norm / (2 * F_k_0)
+        
+        
+        ax.scatter(t[1:], F_D_sq_norm[1:, k_index], s=10)
+
         label = f'fit $D={common.format_val_and_unc(D, D_unc)}$\n$A=${popt[0]*rescale:.2g}\n$B=${popt[1]*rescale:.2g}'
-        ax.plot(t_theory, func(t_theory, *popt)*rescale, color='black', label=label, zorder=-1)
-        # ax.plot(t_theory, func(t_theory, popt[0], popt[1], 1/(0.03*k[k_index]**2))*rescale, color='grey', label=label, zorder=-1)
+        ax.plot(t_theory, np.exp(-D*k[k_index]**2*t_theory), color='black', label=label, zorder=-1)
 
         ax.semilogx()
-        # ax.semilogy()
+        ax.semilogy()
+        ax.set_ylim(1e-3, 1.1)
         ax.set_title(fr'$k={k[k_index]:.2f}$ ($\approx{2*np.pi/k[k_index]:.2f}\mathrm{{\mu m}}$)')
         ax.legend(fontsize=8)
 
@@ -65,20 +66,19 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
         D_ax.semilogx()
         D_ax.hlines(D, t[1], t[-1], color='black', zorder=-1)
 
+        print(np.nanmax(D_of_t))
         D_max = max(D_max, np.nanmax(D_of_t[np.isfinite(D_of_t)]))
 
     for graph_i in range(len(target_ks)):
         D_ax = D_axs[graph_i+1]
-        D_ax.set_ylim(0, D_max*1.1)
-        # D_ax.set_ylim(0, D_max/5)
+        D_ax.set_ylim(0, D_max)
+    
 
-    k_th = np.logspace(np.log10(0.05), np.log10(10), 100)
-    axs[0].plot(k_th, common.structure_factor_2d_hard_spheres(k_th, 0.34, 2.82))
+    k_th = np.logspace(np.log10(0.7), np.log10(5), 100)
+    axs[0].plot(k_th, common.structure_factor_2d_hard_spheres(k, 0.34, 2.82))
     axs[0].semilogx()
     axs[0].vlines(real_ks, 0, 1.5, color='black')
 
-    sigma = data['particle_diameter']
-    pixel = data['pixel_size']
-    fig.suptitle(f'{file}, $\sigma={sigma}$, pixel$={pixel}$')
+    fig.suptitle(file)
     
-    common.save_fig(fig, f'DDM/figures_png/ddm_{file}.png')
+    common.save_fig(fig, f'DDM/figures_png/ddm_{file}_F.png')

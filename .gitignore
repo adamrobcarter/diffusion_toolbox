@@ -15,3 +15,5 @@ scattering_functions/figures_png/*
 scattering_functions/msd_0.66_obs.npz
 DDM/data/*
 DDM/figures_png/*
+particle_linking/data/*
+particle_linking/figures_png/*

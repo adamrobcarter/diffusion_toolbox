@@ -40,7 +40,7 @@ for datasource in common.files_from_argv('preprocessing/data/', 'stack_'):
         # would threshold be good here, as it's meant to be for when the bkg is noisy?
     elif datasource == 'eleanor0.34' or datasource == 'eleanor0.01':
         diameter = 7
-        minmass = 2
+        minmass = 1
         # min_sigma = 2
         # max_sigma = 8
         # threshold = 25
@@ -94,9 +94,9 @@ for datasource in common.files_from_argv('preprocessing/data/', 'stack_'):
     radius = features[['size']].to_numpy()[:, 0] # we use radius not diameter(size) for backward compatibility
     print('radius shape', radius.shape)
 
-    plt.hist(features[['mass']].to_numpy(), bins=20)
-    plt.semilogy()
-    plt.savefig('hist.png')
+    # plt.hist(features[['mass']].to_numpy(), bins=20)
+    # plt.semilogy()
+    # plt.savefig('hist.png')
 
     particle_diameter_calced = 2 * radius.mean() * pixel_size
         # there is a line in the DoGDetector source about this sqrt 2
@@ -117,3 +117,6 @@ for datasource in common.files_from_argv('preprocessing/data/', 'stack_'):
             computation_time=time.time()-t0, depth_of_field=depth_of_field,
             pixel_size=pixel_size, num_timesteps=num_timesteps, particle_diameter=particle_diameter,
             particle_diameter_calced=particle_diameter_calced, method='trackpy')
+    
+    # we also save the whole dataframe so we can use it for linking if we want
+    features.to_pickle(f'particle_detection/data/particlesdf_{datasource}.pickle')

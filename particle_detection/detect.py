@@ -3,7 +3,7 @@ import numpy as np
 import stracking.detectors
 import time
 import sys
-
+"""
 for datasource in sys.argv[1:]:
     data = common.load(f'preprocessing/data/stack_{datasource}.npz')
     stack             = data['stack']
@@ -90,3 +90,4 @@ for datasource in sys.argv[1:]:
             min_sigma=min_sigma, max_sigma=max_sigma, threshold=threshold, computation_time=time.time()-t0,
             pixel_size=pixel_size, num_timesteps=num_timesteps, particle_diameter=particle_diameter,
             particle_diameter_calced=particle_diameter_calced)
+            """
