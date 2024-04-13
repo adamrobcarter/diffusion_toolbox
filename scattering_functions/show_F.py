@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import scipy.optimize
 import warnings
 
+"""
+
 subplot_i = 0
 
 for file in common.files_from_argv('scattering_functions/data', 'F_'):

@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import common
 import sys
+import matplotlib.cm
 
 for file in sys.argv[1:]:
     data = common.load(f'preprocessing/data/stack_{file}.npz')
@@ -11,25 +12,22 @@ for file in sys.argv[1:]:
 
     print(stack.shape[1], 'x', stack.shape[2], 'px')
 
-    for timestep in range(0, stack.shape[0], 4):
-        plt.clf()
-        # plt.imshow(stack[timestep, :, :])
-        # plt.imshow(stack[timestep, :, :])
 
         
-        # stack = stack - stack.mean(axis=0) # remove space background
-        stack = stack.mean(axis=0) # remove space background
+    # stack = stack - stack.mean(axis=0) # remove space background
+    # stack = stack.mean(axis=0)
+    plt.figure(figsize=(3, 3))
 
-        # plt.imshow(stack[timestep, :, :])
-        plt.imshow(stack[:, :])
-        # plt.imshow(stack.min(axis=0))
-        
-        # excess = stack - stack.min(axis=0)
-        # print(stack[:, :, timestep].mean())
+    plt.imshow(stack[0, :, :], cmap=matplotlib.cm.Greys)
+    # plt.imshow(stack.min(axis=0))
+    
+    # excess = stack - stack.min(axis=0)
+    # print(stack[:, :, timestep].mean())
 
-        common.add_scale_bar(plt.gca(), data['pixel_size'], color='white')
+    plt.ylim(000, 600)
+    plt.xlim(000, 600)
 
-        common.save_fig(plt.gcf(), f'preprocessing/figures_png/frame1_{file}.png', dpi=600, only_plot=True)
-        break
+    common.add_scale_bar(plt.gca(), data['pixel_size'], color='white')
 
-        plt.pause(0.00001)
+    common.save_fig(plt.gcf(), f'preprocessing/figures_png/frame1_{file}.png', dpi=600, only_plot=True)
+    common.save_fig(plt.gcf(), f'/home/acarter/presentations/intcha24/figures/frame1_{file}.png', dpi=600, only_plot=True)

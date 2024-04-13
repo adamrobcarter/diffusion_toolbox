@@ -9,7 +9,7 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
     F_D_sq    = data['F_D_sq']
     t         = data['t']
 
-    target_ks = list(np.logspace(np.log10(0.05), np.log10(7), 9))
+    target_ks = list(np.logspace(np.log10(0.25), np.log10(7), 8))
     # target_ks = list(np.logspace(np.log10(0.4), np.log10(7), 7))
     # target_ks = (0.28, 0.38, 0.5, 1.3, 2, 4, 8)
     # target_ks = (0.1, 0.14, 0.5, 1.3, 2, 4, 8)
@@ -18,6 +18,10 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
     fig, (axs, D_axs) = plt.subplots(2, len(target_ks)+1, figsize=(len(target_ks)*3.5, 6))
 
     D_max = 0
+
+    Ds_for_saving = []
+    D_uncs_for_saving = []
+    ks_for_saving = []
 
     for graph_i in range(len(target_ks)):
         target_k = target_ks[graph_i]
@@ -51,6 +55,10 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
         ax.plot(t_theory, func(t_theory, *popt)*rescale, color='black', label=label, zorder=-1)
         # ax.plot(t_theory, func(t_theory, popt[0], popt[1], 1/(0.03*k[k_index]**2))*rescale, color='grey', label=label, zorder=-1)
 
+        Ds_for_saving.append(D)
+        D_uncs_for_saving.append(D_unc)
+        ks_for_saving.append(k[k_index])
+
         ax.semilogx()
         # ax.semilogy()
         ax.set_title(fr'$k={k[k_index]:.2f}$ ($\approx{2*np.pi/k[k_index]:.2f}\mathrm{{\mu m}}$)')
@@ -82,3 +90,5 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
     fig.suptitle(f'{file}, $\sigma={sigma}$, pixel$={pixel}$')
     
     common.save_fig(fig, f'DDM/figures_png/ddm_{file}.png')
+    np.savez(f'visualisation/data/Ds_from_DDM_{file}',
+             Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, ks=ks_for_saving)

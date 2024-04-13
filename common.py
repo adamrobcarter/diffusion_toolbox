@@ -119,10 +119,13 @@ def add_watermark(fig, only_plot):
         fig.tight_layout()
         fig.text(0.005, 0.008, label, fontsize=7)
 
-def save_fig(fig, path, dpi=100, only_plot=False):
+def save_fig(fig, path, dpi=100, only_plot=False, hide_metadata=False):
     # only_plot gets rid of the axes labels and border leaving you with just the chart area (for pictures)
 
-    add_watermark(fig, only_plot)
+    fig.tight_layout()
+
+    if not hide_metadata:
+        add_watermark(fig, only_plot)
 
     args = {}
     if only_plot:
@@ -136,7 +139,13 @@ def save_fig(fig, path, dpi=100, only_plot=False):
     fig.savefig(path, dpi=dpi, **args)
 
 def add_scale_bar(ax, pixel_size, color='black'):
-    scale_bar_length = 10
+    image_width = ax.get_ylim()[1] - ax.get_ylim()[0]
+    target_scale_bar_length = image_width / 10
+    possible_scale_bar_lengths = (1, 2, 5, 10, 20, 50)
+
+    takeClosest = lambda num,collection:min(collection,key=lambda x:abs(x-num))
+    scale_bar_length = takeClosest(target_scale_bar_length, possible_scale_bar_lengths)
+
     asb = AnchoredSizeBar(ax.transData, scale_bar_length/pixel_size,
                           rf"${scale_bar_length}\mathrm{{\mu m}}$",
                           loc='lower left', pad=0.1, borderpad=0.5, sep=5,
@@ -183,7 +192,7 @@ def N2_nointer_3D(t, D0, N_mean, Lx, Ly, Lz):
     return 2 * N_mean * (1 - famous_f(4*D0*t/Lx**2) * famous_f(4*D0*t/Ly**2) * famous_f(4*D0*t/Lz**2))
 
 def famous_f(tau):
-    print(tau)
+    # print(tau)
     if np.all(np.isinf(tau)):
         return np.zeros_like(tau)
     elif np.any(np.isinf(tau)):

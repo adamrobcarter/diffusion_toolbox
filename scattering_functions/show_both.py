@@ -3,10 +3,20 @@ import common
 import matplotlib.pyplot as plt
 import sys
 import warnings
+import scipy.optimize
 
 subplot_i = 0
 
 for file in sys.argv[1:]:
+
+    f_Ds_for_saving = []
+    f_D_uncs_for_saving = []
+    ks_for_saving = []
+    
+    Fs_Ds_for_saving = []
+    Fs_D_uncs_for_saving = []
+    ks_for_saving = []
+
     d = common.load(f"scattering_functions/data/F_{file}.npz")
     t         = d["t"]
     F_all     = d["F"]
@@ -28,8 +38,6 @@ for file in sys.argv[1:]:
     k2_all     = d2["k"]
 
     assert np.array_equal(k_all, k2_all)
-    print(t)
-    print(t2)
     assert np.array_equal(t, t2)
     
     Fs_skold_all = F_all / F0_all
@@ -57,9 +65,9 @@ for file in sys.argv[1:]:
         k_index_skold = np.argmax(k_skold_all[0, :] > target_k)
 
         k        = k_all      [0, k_index]
-        FoF0     = FoS_all    [:, k_index]
-        FoF0_unc = FoS_unc_all[:, k_index]
-        FoF0_unc = FoS_unc_all[:, k_index]
+        f     = FoS_all    [:, k_index]
+        f_unc = FoS_unc_all[:, k_index]
+        f_unc = FoS_unc_all[:, k_index]
         F_D      = F_D_all    [:, k_index]
 
         Fs      = Fs_all     [:, k_index]
@@ -88,7 +96,7 @@ for file in sys.argv[1:]:
 
         label = fr"$k={k:.2f}\mathrm{{\mu m}}$ ($L\approx{2*np.pi/k:.1f}\mathrm{{\mu m}}$)"
 
-        if np.isnan(FoF0).sum() == FoF0.size:
+        if np.isnan(f).sum() == f.size:
             print(f'all nan at k={k:.1f}')
             continue
 
@@ -115,36 +123,71 @@ for file in sys.argv[1:]:
 
         # ax.scatter(t_Fs, F_s_this, label='F_s', color='tab:orange')
         # ax.scatter(t_F , F_this  , label='F/S', color='tab:blue'  )
-        ax.errorbar(t2, Fs  , yerr=Fs_unc,   color='tab:orange', linestyle='', alpha=0.3)
-        print(t.shape, FoF0.shape)
-        ax .errorbar(t , FoF0, yerr=FoF0_unc, color='tab:blue'  , linestyle='', alpha=0.2)
+        ax.errorbar(t2, Fs, yerr=Fs_unc, color='tab:orange', linestyle='', alpha=0.3)
+        ax.errorbar(t,  f,  yerr=f_unc,  color='tab:blue'  , linestyle='', alpha=0.2)
         # ax2.errorbar(t , FoF0, yerr=FoF0_unc, color='tab:blue'  , linestyle='', alpha=0.2)
         # F_bad   = (3*FoF0_unc)   > FoF0
         # print('a', F_bad.shape)
         # print('b', F_bad.shape)
         
-        F_bad   = FoF0_unc*4 > FoF0
+        f_bad   = f_unc*4 > f
         F_s_bad = Fs_unc * 4 > Fs
-        F_bad = FoF0 < 2e-2
+        f_bad = f < 2e-2
         F_s_bad = Fs < 1.7e-2
+        f_bad[0] = True
+        F_s_bad[0] = True
 
         ax.scatter(t2[~F_s_bad], Fs  [~F_s_bad], label='F_s', color='tab:orange'  , s=6)
-        ax.scatter(t [~F_bad  ], FoF0[~F_bad  ], label='F/F0', color='tab:blue'    , s=6)
+        ax.scatter(t [~f_bad  ], f[~f_bad  ], label='F/F0', color='tab:blue'    , s=6)
         # ax2.scatter(t [~F_bad  ], FoF0[~F_bad  ], label='F/F0', color='tab:blue'    , s=6)
         ax.scatter(t2[F_s_bad ], Fs  [F_s_bad ],              color='bisque'      , s=6)
-        ax.scatter(t [F_bad   ], FoF0[F_bad   ],              color='lightskyblue', s=6)
+        ax.scatter(t [f_bad   ], f[f_bad   ],              color='lightskyblue', s=6)
         # ax2.scatter(t [F_bad   ], FoF0[F_bad   ],              color='lightskyblue', s=6)
         # ax.scatter(t[F_s_bad ], Fs  [F_s_bad ],              color='bisque'      , s=6)
-        ax.scatter(t [~F_bad], 1-F_D[~F_bad],           color='tab:green',   s=6)
-        ax.scatter(t [ F_bad], 1-F_D[ F_bad],           color='tab:green',   s=6)
+        ax.scatter(t [~f_bad], 1-F_D[~f_bad],           color='tab:green',   s=6)
+        ax.scatter(t [ f_bad], 1-F_D[ f_bad],           color='tab:green',   s=6)
         
         
         # ax.scatter(t[:], Fs_skold[:], label=f'Fs Sköld $k={k_skold_all[0, k_index_skold]:.2f}$',            color='tab:green'      , s=6)
 
         # ax.set_ylim(5e-4, 3)
-        # ax.set_ylim(1e-4, 1e1)
-        offscreen = FoF0 <= 0
+        ax.set_ylim(max(Fs[~F_s_bad].max(), f[~f_bad].max())*1.1)
+        ax.set_ylim(min(Fs[~F_s_bad].min(), f[~f_bad].min())/1.1)
+        offscreen = f <= 0
         print(f'offscreen: {offscreen.sum()/offscreen.size}')
+
+
+
+
+        # fits
+        print(f_unc [~f_bad].mean(), f_unc[0])
+        print(Fs_unc [~F_s_bad].mean(), Fs_unc[0])
+        func = lambda t, D : np.exp(-t * k**2 * D)
+        f_popt,  f_pcov  = scipy.optimize.curve_fit(func, t [~f_bad],   f [~f_bad],   sigma=f_unc [~f_bad],   absolute_sigma=True)
+        Fs_popt, Fs_pcov = scipy.optimize.curve_fit(func, t2[~F_s_bad], Fs[~F_s_bad], sigma=Fs_unc[~F_s_bad], absolute_sigma=True)
+        t_th = np.logspace(np.log10(t[1]), np.log10(t[-1]))
+        ax.plot(t_th, func(t_th, *f_popt),  color='tab:blue', linestyle='dotted')
+        ax.plot(t_th, func(t_th, *Fs_popt), color='tab:orange',   linestyle='dotted')
+
+        if np.isinf(np.sqrt(f_pcov)[0][0]):
+            print(f'skipping {k:.2f}um, f_unc inf')
+        else:
+            print('f: D=', common.format_val_and_unc(f_popt[0], np.sqrt(f_pcov)[0][0]))
+            f_Ds_for_saving.append(f_popt[0])
+            f_D_uncs_for_saving.append(np.sqrt(f_pcov)[0][0])
+        
+        if np.isinf(np.sqrt(Fs_pcov)[0][0]):
+            print(f'skipping {k:.2f}um, Fs_unc inf')
+        else:
+            print('Fs: D=', common.format_val_and_unc(Fs_popt[0], np.sqrt(Fs_pcov)[0][0]))
+            Fs_Ds_for_saving.append(Fs_popt[0])
+            Fs_D_uncs_for_saving.append(np.sqrt(Fs_pcov)[0][0])
+
+        if not (np.isinf(np.sqrt(f_pcov)[0][0]) or np.isinf(np.sqrt(Fs_pcov)[0][0])):
+            ks_for_saving.append(k)
+
+
+
 
         ax.legend()
         ax.semilogx()
@@ -158,22 +201,27 @@ for file in sys.argv[1:]:
         
         D_ax = D_axes[graph_i]
         
-        D      = -1/(k**2 * t ) * np.log(FoF0)
+        D      = -1/(k**2 * t ) * np.log(f)
         Ds     = -1/(k**2 * t2) * np.log(Fs)
-        D_unc  =  1/(k**2 * t ) / np.sqrt(FoF0**2) * FoF0_unc # the sqrt(**2) is needed to prevent negative errors
+        D_unc  =  1/(k**2 * t ) / np.sqrt(f**2) * f_unc # the sqrt(**2) is needed to prevent negative errors
         Ds_unc =  1/(k**2 * t2) / np.sqrt(Fs  **2)   * Fs_unc # but remember when you do the errors properly it will be there
 
-        D2     = -1/k**2 * np.gradient(np.log(FoF0), t)
-        D2_unc =  1/k**2 * np.gradient(1/FoF0, t) * FoF0_unc
+        D2     = -1/k**2 * np.gradient(np.log(f), t)
+        D2_unc =  1/k**2 * np.gradient(1/f, t) * f_unc
         
-        D_ax.scatter(t [~F_bad  ], D [~F_bad  ], label='D from F/F0', color='tab:blue'    , s=6)
+        D_ax.scatter(t [~f_bad  ], D [~f_bad  ], label='D from F/F0', color='tab:blue'    , s=6)
         D_ax.scatter(t2[~F_s_bad], Ds[~F_s_bad], label='D from F_s' , color='tab:orange'  , s=6)
         # D_ax.scatter(t [~F_bad  ], D2[~F_bad  ], label='D2' , color='tab:green'  , s=6)
-        D_ax.scatter(t [ F_bad  ], D [ F_bad  ],                      color='lightskyblue', s=6)
+        D_ax.scatter(t [ f_bad  ], D [ f_bad  ],                      color='lightskyblue', s=6)
         D_ax.scatter(t2[ F_s_bad], Ds[ F_s_bad],                      color='bisque'      , s=6)
         D_ax.errorbar(t2, Ds, yerr=Ds_unc, color='tab:orange', fmt='', alpha=0.3, linestyle='none')
         D_ax.errorbar(t , D , yerr=D_unc , color='tab:blue'  , fmt='', alpha=0.2, linestyle='none')
         
+        D_ax.hlines(f_popt[0],  t.min(), t.max(), color='tab:blue', linestyle='dotted')
+        D_ax.hlines(Fs_popt[0], t.min(), t.max(), color='tab:orange', linestyle='dotted')
+
+
+
         D_ax.semilogx()
         # D_ax.set_ylim(np.nanmin(D), np.nanmax(D))
         if file == 'alice0.02':
@@ -183,10 +231,9 @@ for file in sys.argv[1:]:
         if file == 'alice0.66':
             D_ax.set_ylim(0, 0.0175*1.6)
             pass
-        if file == 'eleanor0.01':
+        if file == 'eleanor0.01' or file == 'eleanor0.34':
             D_ax.set_ylim(0, 0.08)
-        if file == 'eleanor0.34':
-            D_ax.set_ylim(0, 0.08)
+            pass
         
         # D_long  = {0.34: 0.023, 0.66: 0.006}
         # D_short = {0.34: 0.033, 0.66: 0.018}
@@ -198,5 +245,10 @@ for file in sys.argv[1:]:
     plt.suptitle(fr'F or F_s (k, t), {file}')
     plt.tight_layout()
 
-    plt.savefig(f'scattering_functions/figures_png/Fs_decay_t_{file}.png', dpi=300)
-    plt.show()
+    common.save_fig(plt.gcf(), f'scattering_functions/figures_png/Fs_decay_t_{file}.png', dpi=300)
+    
+    
+    np.savez(f'visualisation/data/Ds_from_f_{file}',
+             Ds=f_Ds_for_saving, D_uncs=f_D_uncs_for_saving, ks=ks_for_saving)
+    np.savez(f'visualisation/data/Ds_from_Fs_{file}',
+             Ds=Fs_Ds_for_saving, D_uncs=Fs_D_uncs_for_saving, ks=ks_for_saving)

@@ -63,8 +63,8 @@ if __name__ == '__main__':
 
         # box_sizes_px = np.array([ 2,  4,  8, 16, 32])
         # sep_sizes_px = np.array([20, 20, 20, 20, 20])
-        box_sizes_px = np.array([1,  2,  4,  8,  16,  32,  64])
-        sep_sizes_px = np.array([20, 20, 20, 20, 10, -10, -20])
+        box_sizes_px = np.array([1,  2,  4,  8,  16,  32,  64, 128, 256,])
+        sep_sizes_px = np.array([20, 20, 20, 20, 10, -10, -20, -100, -200])
 
         if file.startswith('marine'):
             box_sizes_px = box_sizes_px[1:]
@@ -72,19 +72,3 @@ if __name__ == '__main__':
 
         data = common.load(f'particle_detection/data/particles_{file}.npz')
         calc_and_save(box_sizes_px, sep_sizes_px, data, filename)
-
-        # box_sizes_px = np.array([16, 32, 64, 128])
-        # # sep_sizes_px = np.array([ 0,  0,  0,  0])
-        # sep_sizes_px = -box_sizes_px/2
-        # filename = f'box_counting/data/counted_{file}_overlapped_neg.npz'
-        # calc_and_save(box_sizes_px, sep_sizes_px, file, filename)
-
-        # box_sizes_px = np.array([16, 32, 64, 128])
-        # sep_sizes_px = np.array([-10, -20, -20, -20])
-        # filename = f'box_counting/data/counted_{file}_overlapped2.npz'
-        # calc_and_save(box_sizes_px, sep_sizes_px, file, filename)
-
-        # box_sizes_px = np.array([16, 32, 64, 128])
-        # sep_sizes_px = np.array([-10, -25, -40, -100])
-        # filename = f'box_counting/data/counted_{file}_overlapped3.npz'
-        # calc_and_save(box_sizes_px, sep_sizes_px, file, filename)

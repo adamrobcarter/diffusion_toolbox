@@ -4,12 +4,14 @@ import scipy.optimize
 import common
 import scipy.integrate
 import sDFT_interactions
-import sys
+import matplotlib.cm
 
-present_small = False
+present_small = True
+
 figsize = (6, 4.5)
 if present_small:
     figsize = (4.5, 4)
+    figsize = (3.5, 3.2)
 
 collapse_x = True
 collapse_y = True
@@ -50,17 +52,27 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
     # # t_theory = np.logspace()
     # N2_mean  = N2_mean[:, ::reduce]
     # N2_std   = N2_std [:, ::reduce]
+    
+
+    Ds_for_saving = []
+    D_uncs_for_saving = []
+    Ls_for_saving = []
 
 
     # for box_size_index, L in enumerate(box_sizes):
     for box_size_index, L in list(enumerate(box_sizes)):
     # for L in [2**e for e in range(-2, 7)]:
+
+        if present_small:
+            if box_size_index % 2 == 1:
+                continue
+
         L = box_sizes[box_size_index]
 
         delta_N_sq     = N2_mean[box_size_index, :]
         delta_N_sq_err = N2_std [box_size_index, :]
         t = np.copy(t_all)
-        t_theory = np.logspace(np.log10(t_all[1] / 2), np.log10(t_all.max()))
+        t_theory = np.logspace(np.log10(t_all[1] / 2), np.log10(t_all.max()), 100)
 
         anomalous = delta_N_sq < 1e-14
         anomalous[0] = False # don't want to remove point t=0 as it could legit be zero
@@ -115,9 +127,13 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
         # fit to whole thing
         if depth_of_field:
             N2_theory = lambda t, D, N: common.N2_nointer_3D(t, D, N, L, L, depth_of_field)
+            type_of_fit = 'sDFT (no inter, 3D)'
         else:
+            N2_theory = lambda t, D, N : N * sDFT_interactions.sDFT_interactions(L, t, phi, D, sigma)
             N2_theory = lambda t, D, N: common.N2_nointer_2D(t, D, N, L, L)
-        fitting_points = np.unique(np.round(10**np.linspace(0, np.log10(t.max()))).astype('int'))
+            type_of_fit = 'sDFT (w/ inter.)'
+
+        fitting_points = common.exponential_integers(1, t.size//2)
         popt, pcov = scipy.optimize.curve_fit(N2_theory, t[fitting_points], delta_N_sq[fitting_points], maxfev=2000)
         # ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1, label='sDFT (no inter.)' if box_size_index==0 else None)
         
@@ -133,26 +149,40 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
         
         
         if not collapse_y:
-            ax.plot(t_theory[1:], N2_theory_points[1:], color='black', linewidth=1, label='sDFT (no inter.)' if box_size_index==0 else None)
+            ax.plot(t_theory[1:], N2_theory_points[1:], color='black', linewidth=1, label=type_of_fit if box_size_index==0 else None)
         # label += fr', $D_\mathrm{{fit}}={popt[0]:.3g}\pm {np.sqrt(pcov[0][0]):.3g} \mathrm{{\mu m^2/s}}$'
-        label += fr', $D_\mathrm{{fit}}={common.format_val_and_unc(popt[0], np.sqrt(pcov[0][0]), 2)} \mathrm{{\mu m^2/s}}$'
+        D_from_fit = popt[0]
+        D_from_fit_unc = np.sqrt(pcov[0][0])
+        label += fr', $D_\mathrm{{fit}}={common.format_val_and_unc(D_from_fit, D_from_fit_unc, 2)} \mathrm{{\mu m^2/s}}$'
         # ±{np.sqrt(pcov[0][0]):.3f}$'
+        
+        Ds_for_saving.append(D_from_fit)
+        D_uncs_for_saving.append(D_from_fit_unc)
+        Ls_for_saving.append(L)
         
         if collapse_x or collapse_y:
             markersize = 2
         else:
             markersize = 5
 
-        exp_plot = ax.plot(t[1:], delta_N_sq[1:], label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
+        color = matplotlib.cm.afmhot((box_size_index+2)/(len(box_sizes)+7))
+        exp_plot = ax.plot(t[1:], delta_N_sq[1:], label='observations' if box_size_index==0 else None, linestyle='none', marker='o', markersize=markersize, zorder=-1, color=color)
         # exp_plot = ax.errorbar(t[1:], delta_N_sq[1:], yerr=delta_N_sq_err[1:]/np.sqrt(num_of_boxes[box_size_index]), label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
         # exp_plot = ax.errorbar(t[1:], delta_N_sq[1:], yerr=delta_N_sq_err[1:], label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
     
+        t_index_for_text = int(t_theory.size // 1.6)
+        angle = np.tan(np.gradient(N2_theory_points, t_theory)[t_index_for_text]) * 180/np.pi
+        # plt.scatter(t_theory[t_index_for_text], N2_theory_points[t_index_for_text])
+        print(angle)
+        ax.text(t_theory[t_index_for_text+6], N2_theory_points[t_index_for_text+6]*1.4, rf'$L={L:.1f}\mathrm{{\mu m}}$',
+                horizontalalignment='center', color=color, fontsize=9,
+                transform_rotates_text=True, rotation=angle, rotation_mode='anchor')
 
-    ax.legend(fontsize=7, loc='lower right')
+    ax.legend(fontsize=7)
     ax.semilogy()
     ax.semilogx()
     xlabel = '$t/L^2$' if collapse_x else '$t$'
-    ylabel = r'$\Delta N^2(t)/\langle N \rangle$' if collapse_y else '$\Delta N^2(t)$'
+    ylabel = r'$\Delta N^2(t)/\langle N \rangle$' if collapse_y else r'$\langle \Delta N^2(t) \rangle$'
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     
@@ -165,6 +195,12 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
     if sigma_calced := data.get('particle_diameter_calced'):
         title += f', $\sigma_\mathrm{{calc}}={sigma_calced:.3f}\mathrm{{\mu m}}$'
         # print('sigma calced hidden from legend')
-    ax.set_title(title)
+    if not present_small:
+        ax.set_title(title)
 
-    common.save_fig(fig, f'box_counting/figures_png/msd_{file}.png', dpi=300)
+    common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/boxcounting_{file}.png', dpi=200, hide_metadata=True)
+    common.save_fig(fig, f'box_counting/figures_png/msd_{file}.png', dpi=200 if present_small else 100)
+
+    np.savez(f'visualisation/data/Ds_from_boxcounting_{file}',
+             Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, Ls=Ls_for_saving)
+    

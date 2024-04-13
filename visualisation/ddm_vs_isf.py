@@ -187,7 +187,7 @@ for file in sys.argv[1:]:
             # D_ax.set_ylim(0, 0.08)
             pass
         if file == 'eleanor0.34':
-            D_ax.set_ylim(0, 0.5)
+            # D_ax.set_ylim(0, 0.5)
             pass
         
         # D_long  = {0.34: 0.023, 0.66: 0.006}
