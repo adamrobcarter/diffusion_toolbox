@@ -5,11 +5,15 @@ import scipy.optimize
 
 for file in common.files_from_argv('DDM/data', 'ddm_'):
     data = common.load(f'DDM/data/ddm_{file}.npz')
-    k         = data['k']
-    F_D_sq    = data['F_D_sq']
-    t         = data['t']
+    k          = data['k']
+    F_D_sq     = data['F_D_sq']
+    F_D_sq_unc = data['F_D_sq_unc']
+    t          = data['t']
 
-    target_ks = list(np.logspace(np.log10(0.25), np.log10(7), 8))
+    DDM_f     = np.full_like(F_D_sq,     np.nan)
+    DDM_f_unc = np.full_like(F_D_sq_unc, np.nan)
+
+    target_ks = list(np.logspace(np.log10(0.25), np.log10(6), 19))
     # target_ks = list(np.logspace(np.log10(0.4), np.log10(7), 7))
     # target_ks = (0.28, 0.38, 0.5, 1.3, 2, 4, 8)
     # target_ks = (0.1, 0.14, 0.5, 1.3, 2, 4, 8)
@@ -23,6 +27,10 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
     D_uncs_for_saving = []
     ks_for_saving = []
 
+    A_of_q = []
+    B_of_q = []
+    q = []
+
     for graph_i in range(len(target_ks)):
         target_k = target_ks[graph_i]
 
@@ -31,21 +39,25 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
 
         ax = axs[graph_i+1]
 
-        ax.scatter(t[1:], F_D_sq[1:, k_index], s=10)
+        ax.errorbar(t[1:], F_D_sq[1:, k_index], yerr=F_D_sq_unc[1:, k_index], marker='.', linestyle='none')
 
 
         func = lambda t, A, B, tau : A * (1 - np.exp(-t/tau)) + B
         rescale = F_D_sq[1:, k_index].max()
         F_D_sq_rescaled = F_D_sq[:, k_index] / rescale
+        F_D_sq_unc_rescaled = F_D_sq_unc[:, k_index] / rescale
         if np.isnan(F_D_sq_rescaled[1:]).sum()/F_D_sq_rescaled[1:].size == 1.0:
             continue
 
         weights = np.ones_like(F_D_sq_rescaled[1:])
-        weights[0] = 1/8
-        weights[1] = 1/4
-        weights[2] = 1/2
+        # weights = F_D_sq_unc[1:, k_index]
+        # weights = F_D_sq_unc_rescaled[1:]
+        weights[0] *= 1/8
+        weights[1] *= 1/4
+        weights[2] *= 1/2
+        weights[-20:-1:2] = np.inf
         # popt, pcov = scipy.optimize.curve_fit(func, t[1:], F_D_norm[1:], p0=(F_D_norm.max(), F_D_norm.min(), 0.1), maxfev=10000)
-        popt, pcov = scipy.optimize.curve_fit(func, t[1:], F_D_sq_rescaled[1:], sigma=weights, p0=(F_D_sq_rescaled.max(), F_D_sq_rescaled.min(), 0.1), maxfev=10000)
+        popt, pcov = scipy.optimize.curve_fit(func, t[1:], F_D_sq_rescaled[1:], sigma=weights, p0=(F_D_sq_rescaled.max(), F_D_sq_rescaled.min(), 0.1), maxfev=10000)#, absolute_sigma=True)
         t_theory = np.logspace(np.log10(t[1]), np.log10(t[-1]))
         D_POPT_INDEX = 2
         D = 1 / (popt[D_POPT_INDEX] * k[k_index]**2)
@@ -66,7 +78,15 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
 
         A = popt[0] * rescale
         B = popt[1] * rescale
-        D_of_t = -1/(k[k_index]**2 * t) * np.log(1 - (F_D_sq[:, k_index] - B)/A)
+        dA = np.sqrt(pcov)[0, 0] * rescale
+        dB = np.sqrt(pcov)[1, 1] * rescale
+        A_of_q.append(A)
+        B_of_q.append(B)
+        q.append(k[k_index])
+
+        DDM_f[:, k_index] = (F_D_sq[:, k_index] - B)/A
+        DDM_f_unc[:, k_index] = np.sqrt((1/A * dB)**2 + (1/A * F_D_sq_unc[:, k_index])**2 + ((F_D_sq[:, k_index] - B)/A**2 * dA)**2)
+        D_of_t = -1/(k[k_index]**2 * t) * np.log(1 - DDM_f[:, k_index])
         
         D_ax = D_axs[graph_i+1]
         D_ax.scatter(t[1:], D_of_t[1:], s=10)
@@ -77,7 +97,7 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
 
     for graph_i in range(len(target_ks)):
         D_ax = D_axs[graph_i+1]
-        D_ax.set_ylim(0, D_max*1.1)
+        # D_ax.set_ylim(0, D_max*1.1)
         # D_ax.set_ylim(0, D_max/5)
 
     k_th = np.logspace(np.log10(0.05), np.log10(10), 100)
@@ -92,3 +112,9 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
     common.save_fig(fig, f'DDM/figures_png/ddm_{file}.png')
     np.savez(f'visualisation/data/Ds_from_DDM_{file}',
              Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, ks=ks_for_saving)
+    common.save_data(f'DDM/data/A_B_of_q_{file}.npz',
+             A=A_of_q, B=B_of_q, q=q,
+             pack_frac_given=data.get('pack_frac_given'), particle_diameter=data.get('particle_diameter'))
+    
+    common.save_data(f'scattering_functions/data/DDM_{file}.npz',
+                     t=t, F=DDM_f, F_unc=DDM_f_unc, k=k)

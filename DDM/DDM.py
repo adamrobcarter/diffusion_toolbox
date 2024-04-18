@@ -74,6 +74,7 @@ def calc(stack, pixel_size, time_step, num_k_bins):
     print('max u', u.max(), u_bins.max())
 
     F_D_sq_avg = np.nanmean(F_D_sq, axis=0) # average over time origins
+    F_D_sq_std = np.nanstd(F_D_sq, axis=0) # average over time origins
 
     # assert np.isnan(F_D_sq_avg).sum()/F_D_sq_avg.size < 0.1, f'F_D_sq_avg was {np.isnan(F_D_sq_avg).sum()/F_D_sq_avg.size:.2f} nan'
 
@@ -81,4 +82,4 @@ def calc(stack, pixel_size, time_step, num_k_bins):
     
     k_avg = 2 * np.pi * u_avg
 
-    return k_avg, used_times*time_step, F_D_sq_avg, use_every_nth_frame
+    return k_avg, used_times*time_step, F_D_sq_avg, F_D_sq_std, use_every_nth_frame

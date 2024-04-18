@@ -7,15 +7,33 @@ import scipy.optimize
 
 subplot_i = 0
 
+Fs_type = 'DDM'
+
 for file in sys.argv[1:]:
 
     f_Ds_for_saving = []
     f_D_uncs_for_saving = []
-    ks_for_saving = []
+    f_ks_for_saving = []
     
     Fs_Ds_for_saving = []
     Fs_D_uncs_for_saving = []
-    ks_for_saving = []
+    Fs_ks_for_saving = []
+    
+    f_Ds_for_saving_short = []
+    f_D_uncs_for_saving_short = []
+    f_ks_for_saving_short = []
+    
+    Fs_Ds_for_saving_short = []
+    Fs_D_uncs_for_saving_short = []
+    Fs_ks_for_saving_short = []
+
+    f_Ds_for_saving_long = []
+    f_D_uncs_for_saving_long = []
+    f_ks_for_saving_long = []
+    
+    Fs_Ds_for_saving_long = []
+    Fs_D_uncs_for_saving_long = []
+    Fs_ks_for_saving_long = []
 
     d = common.load(f"scattering_functions/data/F_{file}.npz")
     t         = d["t"]
@@ -31,12 +49,14 @@ for file in sys.argv[1:]:
 
     F_D_all = 2 * F0_all - 2 * F_all
 
-    d2 = common.load(f"scattering_functions/data/F_s_{file}.npz")
+    d2 = common.load(f"scattering_functions/data/{Fs_type}_{file}.npz")
     t2         = d2["t"]
     Fs_all     = d2["F"]
     Fs_unc_all = d2['F_unc']
     k2_all     = d2["k"]
 
+    print(k_all)
+    print(k2_all)
     assert np.array_equal(k_all, k2_all)
     assert np.array_equal(t, t2)
     
@@ -46,6 +66,7 @@ for file in sys.argv[1:]:
     num_ks = k_all.shape[1]
 
     target_ks = (0.1, 0.14, 0.5, 1.3, 2, 4, 8)
+    target_ks = list(np.logspace(np.log10(0.1), np.log10(8), 20))
     # target_ks = (0.5, 1.3, 2, 4, 8)
     # target_ks = (1.3, 6)
 
@@ -129,30 +150,36 @@ for file in sys.argv[1:]:
         # F_bad   = (3*FoF0_unc)   > FoF0
         # print('a', F_bad.shape)
         # print('b', F_bad.shape)
-        
-        f_bad   = f_unc*4 > f
-        F_s_bad = Fs_unc * 4 > Fs
-        f_bad = f < 2e-2
-        F_s_bad = Fs < 1.7e-2
-        f_bad[0] = True
-        F_s_bad[0] = True
 
-        ax.scatter(t2[~F_s_bad], Fs  [~F_s_bad], label='F_s', color='tab:orange'  , s=6)
+
+        
+        # f_bad   = f_unc*4 > f
+        # F_s_bad = Fs_unc * 4 > Fs
+        f_noise   = f  < 3e-2
+        F_s_noise = Fs < 1.7e-2
+        f_toolong   = t > 200
+        F_s_toolong = t > 400
+        f_bad   = f_noise   | f_toolong
+        Fs_bad = F_s_noise | F_s_toolong
+        f_bad[0] = True
+        Fs_bad[0] = True
+
+        ax.scatter(t2[~Fs_bad], Fs  [~Fs_bad], label='F_s', color='tab:orange'  , s=6)
         ax.scatter(t [~f_bad  ], f[~f_bad  ], label='F/F0', color='tab:blue'    , s=6)
         # ax2.scatter(t [~F_bad  ], FoF0[~F_bad  ], label='F/F0', color='tab:blue'    , s=6)
-        ax.scatter(t2[F_s_bad ], Fs  [F_s_bad ],              color='bisque'      , s=6)
+        ax.scatter(t2[Fs_bad ], Fs  [Fs_bad ],              color='bisque'      , s=6)
         ax.scatter(t [f_bad   ], f[f_bad   ],              color='lightskyblue', s=6)
         # ax2.scatter(t [F_bad   ], FoF0[F_bad   ],              color='lightskyblue', s=6)
         # ax.scatter(t[F_s_bad ], Fs  [F_s_bad ],              color='bisque'      , s=6)
-        ax.scatter(t [~f_bad], 1-F_D[~f_bad],           color='tab:green',   s=6)
-        ax.scatter(t [ f_bad], 1-F_D[ f_bad],           color='tab:green',   s=6)
+        # ax.scatter(t [~f_bad], 1-F_D[~f_bad],           color='tab:green',   s=6)
+        # ax.scatter(t [ f_bad], 1-F_D[ f_bad],           color='tab:green',   s=6)
         
         
         # ax.scatter(t[:], Fs_skold[:], label=f'Fs Sköld $k={k_skold_all[0, k_index_skold]:.2f}$',            color='tab:green'      , s=6)
 
-        # ax.set_ylim(5e-4, 3)
-        ax.set_ylim(max(Fs[~F_s_bad].max(), f[~f_bad].max())*1.1)
-        ax.set_ylim(min(Fs[~F_s_bad].min(), f[~f_bad].min())/1.1)
+        # ax.set_ylim(max(Fs[~F_s_bad].max(), f[~f_bad].max())*1.1)
+        # ax.set_ylim(min(Fs[~F_s_bad].min(), f[~f_bad].min())/1.1)
+        
         offscreen = f <= 0
         print(f'offscreen: {offscreen.sum()/offscreen.size}')
 
@@ -160,14 +187,75 @@ for file in sys.argv[1:]:
 
 
         # fits
-        print(f_unc [~f_bad].mean(), f_unc[0])
-        print(Fs_unc [~F_s_bad].mean(), Fs_unc[0])
+        # we fit to log(f(k, t)) because otherwise points near one make a much
+        # larger impact to the fit than points near zero
+        # print(f_unc [~f_bad].mean(), f_unc[0])
+        # print(Fs_unc [~Fs_bad].mean(), Fs_unc[0])
         func = lambda t, D : np.exp(-t * k**2 * D)
-        f_popt,  f_pcov  = scipy.optimize.curve_fit(func, t [~f_bad],   f [~f_bad],   sigma=f_unc [~f_bad],   absolute_sigma=True)
-        Fs_popt, Fs_pcov = scipy.optimize.curve_fit(func, t2[~F_s_bad], Fs[~F_s_bad], sigma=Fs_unc[~F_s_bad], absolute_sigma=True)
+        log_func = lambda t, D: np.log10( func(t, D) )
+        print('av unc f ', np.log10(f_unc [~f_bad]).mean())
+        print('av unc Fs', np.log10(Fs_unc [~Fs_bad]).mean())
+        # log_f_unc  = np.log10(f [~f_bad ] + f_unc [~f_bad ]) - np.log10(f [~f_bad ])
+        # log_Fs_unc = np.log10(Fs[~Fs_bad] + Fs_unc[~Fs_bad]) - np.log10(Fs[~Fs_bad])
+        log_unc = lambda x, dx : 0.5 * np.log((x+dx)/(x-dx))
+        log_f_unc  = log_unc(f , f_unc )
+        log_Fs_unc = log_unc(Fs, Fs_unc)
+        print('av unc f ', log_f_unc.mean())
+        print('av unc Fs', log_Fs_unc.mean())
+        # f_popt,  f_pcov  = scipy.optimize.curve_fit(log_func, t [~f_bad],   np.log10(f [~f_bad]),   sigma=np.log10(f_unc [~f_bad]))#,   absolute_sigma=True)
+        # Fs_popt, Fs_pcov = scipy.optimize.curve_fit(log_func, t2[~Fs_bad], np.log10(Fs[~Fs_bad]), sigma=np.log10(Fs_unc[~Fs_bad]))#, absolute_sigma=True)
+        f_popt,  f_pcov  = scipy.optimize.curve_fit(log_func, t [~f_bad],  np.log10(f [~f_bad]),  sigma=log_f_unc[~f_bad ],  absolute_sigma=True)
+        Fs_popt, Fs_pcov = scipy.optimize.curve_fit(log_func, t2[~Fs_bad], np.log10(Fs[~Fs_bad]), sigma=log_Fs_unc[~Fs_bad], absolute_sigma=True)
         t_th = np.logspace(np.log10(t[1]), np.log10(t[-1]))
         ax.plot(t_th, func(t_th, *f_popt),  color='tab:blue', linestyle='dotted')
         ax.plot(t_th, func(t_th, *Fs_popt), color='tab:orange',   linestyle='dotted')
+
+        f_points_short  = (~f_bad)  & (t  < 10)
+        Fs_points_short = (~Fs_bad) & (t2 < 10)
+        
+        if f_points_short.sum() > 2:
+            f_popt_short,  f_pcov_short  = scipy.optimize.curve_fit(log_func, t [f_points_short],  np.log10(f [f_points_short]),  sigma=log_f_unc [f_points_short],  absolute_sigma=True)
+            ax.plot(t_th, func(t_th, *f_popt_short),  color='tab:blue', linestyle='dotted')
+       
+            f_Ds_for_saving_short.append(f_popt_short[0])
+            f_D_uncs_for_saving_short.append(np.sqrt(f_pcov_short)[0][0])
+            f_ks_for_saving_short.append(k)
+        if Fs_points_short.sum() > 2:
+            Fs_popt_short, Fs_pcov_short = scipy.optimize.curve_fit(log_func, t2[Fs_points_short], np.log10(Fs[Fs_points_short]), sigma=log_Fs_unc[Fs_points_short], absolute_sigma=True)
+            ax.plot(t_th, func(t_th, *Fs_popt_short), color='tab:orange',   linestyle='dotted')
+
+            Fs_Ds_for_saving_short.append(Fs_popt_short[0])
+            Fs_D_uncs_for_saving_short.append(np.sqrt(Fs_pcov_short)[0][0])
+            Fs_ks_for_saving_short.append(k)
+
+        f_points_long  = (~f_bad)  & (t  > 100)
+        Fs_points_long = (~Fs_bad) & (t2 > 100)
+        if f_points_long.sum() > 2:
+            f_popt_long,  f_pcov_long  = scipy.optimize.curve_fit(log_func, t [f_points_long,],  np.log10(f [f_points_long,]),  sigma=log_f_unc [f_points_long,],  absolute_sigma=True)
+            ax.plot(t_th, func(t_th, *f_popt_long),  color='tab:blue', linestyle='dotted')
+            
+            f_Ds_for_saving_long.append(f_popt_long[0])
+            f_D_uncs_for_saving_long.append(np.sqrt(f_pcov_long)[0][0])
+            f_ks_for_saving_long.append(k)
+        if Fs_points_long.sum() > 2:
+            Fs_popt_long, Fs_pcov_long = scipy.optimize.curve_fit(log_func, t2[Fs_points_long,], np.log10(Fs[Fs_points_long,]), sigma=log_Fs_unc[Fs_points_long,], absolute_sigma=True)
+            ax.plot(t_th, func(t_th, *Fs_popt_long), color='tab:orange',   linestyle='dotted')
+
+            Fs_Ds_for_saving_long.append(Fs_popt_long[0])
+            Fs_D_uncs_for_saving_long.append(np.sqrt(Fs_pcov_long)[0][0])
+            Fs_ks_for_saving_long.append(k)
+
+
+        ax.legend()
+        # ax.semilogx()
+        ax.semilogy()
+        ax.set_title(label)
+        print(~f_bad[1:5])
+        print(np.argmax(f_bad[1:5]))
+        print(np.argmax(f_bad[1:] ))
+        ax.set_xlim(0, t[np.argmax(f_bad[1:])+5])
+
+        ax.set_ylim(func(t[np.argmax(f_bad[1:])+5], *f_popt), 1.1)
 
         if np.isinf(np.sqrt(f_pcov)[0][0]):
             print(f'skipping {k:.2f}um, f_unc inf')
@@ -175,6 +263,7 @@ for file in sys.argv[1:]:
             print('f: D=', common.format_val_and_unc(f_popt[0], np.sqrt(f_pcov)[0][0]))
             f_Ds_for_saving.append(f_popt[0])
             f_D_uncs_for_saving.append(np.sqrt(f_pcov)[0][0])
+            f_ks_for_saving.append(k)
         
         if np.isinf(np.sqrt(Fs_pcov)[0][0]):
             print(f'skipping {k:.2f}um, Fs_unc inf')
@@ -182,21 +271,7 @@ for file in sys.argv[1:]:
             print('Fs: D=', common.format_val_and_unc(Fs_popt[0], np.sqrt(Fs_pcov)[0][0]))
             Fs_Ds_for_saving.append(Fs_popt[0])
             Fs_D_uncs_for_saving.append(np.sqrt(Fs_pcov)[0][0])
-
-        if not (np.isinf(np.sqrt(f_pcov)[0][0]) or np.isinf(np.sqrt(Fs_pcov)[0][0])):
-            ks_for_saving.append(k)
-
-
-
-
-        ax.legend()
-        ax.semilogx()
-        # ax2.semilogx()
-        ax.semilogy()
-
-        ax .set_title(label)
-        # ax2.set_title(label)
-        # ax2.set_ylim(-0.03, 0.03)
+            Fs_ks_for_saving.append(k)
 
         
         D_ax = D_axes[graph_i]
@@ -208,18 +283,30 @@ for file in sys.argv[1:]:
 
         D2     = -1/k**2 * np.gradient(np.log(f), t)
         D2_unc =  1/k**2 * np.gradient(1/f, t) * f_unc
+        Ds2     = -1/k**2 * np.gradient(np.log(Fs), t)
+        Ds2_unc =  1/k**2 * np.gradient(1/Fs, t) * Fs_unc
         
-        D_ax.scatter(t [~f_bad  ], D [~f_bad  ], label='D from F/F0', color='tab:blue'    , s=6)
-        D_ax.scatter(t2[~F_s_bad], Ds[~F_s_bad], label='D from F_s' , color='tab:orange'  , s=6)
-        # D_ax.scatter(t [~F_bad  ], D2[~F_bad  ], label='D2' , color='tab:green'  , s=6)
+        D_ax.scatter(t [~f_bad  ], D [~f_bad  ], label='D from f', color='tab:blue'    , s=6)
+        D_ax.scatter(t2[~Fs_bad], Ds[~Fs_bad], label='D from F_s' , color='tab:orange'  , s=6)
+        # D_ax.scatter(t [~f_bad  ], D2[~f_bad  ], label='D2 from f' , color='tab:green'  , s=6)
+        # D_ax.scatter(t2[~F_s_bad  ], Ds2[~F_s_bad  ], label='D2 from F_s' , color='tab:red'  , s=6)
         D_ax.scatter(t [ f_bad  ], D [ f_bad  ],                      color='lightskyblue', s=6)
-        D_ax.scatter(t2[ F_s_bad], Ds[ F_s_bad],                      color='bisque'      , s=6)
+        D_ax.scatter(t2[ Fs_bad], Ds[ Fs_bad],                      color='bisque'      , s=6)
         D_ax.errorbar(t2, Ds, yerr=Ds_unc, color='tab:orange', fmt='', alpha=0.3, linestyle='none')
         D_ax.errorbar(t , D , yerr=D_unc , color='tab:blue'  , fmt='', alpha=0.2, linestyle='none')
         
         D_ax.hlines(f_popt[0],  t.min(), t.max(), color='tab:blue', linestyle='dotted')
         D_ax.hlines(Fs_popt[0], t.min(), t.max(), color='tab:orange', linestyle='dotted')
 
+        if f_points_short.sum() > 2:
+            D_ax.hlines(f_popt_short[0],  t.min(), t.max(), color='tab:blue', linestyle='dotted')
+        if Fs_points_short.sum() > 2:
+            D_ax.hlines(Fs_popt_short[0], t.min(), t.max(), color='tab:orange', linestyle='dotted')
+
+        if f_points_long.sum() > 2:
+            D_ax.hlines(f_popt_long[0],  t.min(), t.max(), color='tab:blue', linestyle='dotted')
+        if Fs_points_long.sum() > 2:
+            D_ax.hlines(Fs_popt_long[0], t.min(), t.max(), color='tab:orange', linestyle='dotted')
 
 
         D_ax.semilogx()
@@ -232,7 +319,14 @@ for file in sys.argv[1:]:
             D_ax.set_ylim(0, 0.0175*1.6)
             pass
         if file == 'eleanor0.01' or file == 'eleanor0.34':
-            D_ax.set_ylim(0, 0.08)
+            # D_ax.set_ylim(0, 0.08)
+            # D_ax.set_ylim(0, 1)
+            D_ax.set_ylim(0, np.nanmax(D))
+        if file == 'eleanor0.34':
+            D_ax.set_ylim(0, 0.25)
+            
+            # ax.relim() # tell mpl to ignore errorbars when
+            # ax.autoscale_view() # calcing axis limits
             pass
         
         # D_long  = {0.34: 0.023, 0.66: 0.006}
@@ -247,8 +341,15 @@ for file in sys.argv[1:]:
 
     common.save_fig(plt.gcf(), f'scattering_functions/figures_png/Fs_decay_t_{file}.png', dpi=300)
     
-    
-    np.savez(f'visualisation/data/Ds_from_f_{file}',
-             Ds=f_Ds_for_saving, D_uncs=f_D_uncs_for_saving, ks=ks_for_saving)
-    np.savez(f'visualisation/data/Ds_from_Fs_{file}',
-             Ds=Fs_Ds_for_saving, D_uncs=Fs_D_uncs_for_saving, ks=ks_for_saving)
+    common.save_data(f'visualisation/data/Ds_from_f_{file}',
+             Ds=f_Ds_for_saving, D_uncs=f_D_uncs_for_saving, ks=f_ks_for_saving)
+    common.save_data(f'visualisation/data/Ds_from_{Fs_type}_{file}',
+             Ds=Fs_Ds_for_saving, D_uncs=Fs_D_uncs_for_saving, ks=Fs_ks_for_saving)
+    common.save_data(f'visualisation/data/Ds_from_f_short_{file}',
+             Ds=f_Ds_for_saving_short, D_uncs=f_D_uncs_for_saving_short, ks=f_ks_for_saving_short)
+    common.save_data(f'visualisation/data/Ds_from_{Fs_type}_short_{file}',
+             Ds=Fs_Ds_for_saving, D_uncs=Fs_D_uncs_for_saving, ks=Fs_ks_for_saving)
+    common.save_data(f'visualisation/data/Ds_from_f_long_{file}',
+             Ds=f_Ds_for_saving_long, D_uncs=f_D_uncs_for_saving_long, ks=f_ks_for_saving_long)
+    common.save_data(f'visualisation/data/Ds_from_{Fs_type}_long_{file}',
+             Ds=Fs_Ds_for_saving_long, D_uncs=Fs_D_uncs_for_saving_long, ks=Fs_ks_for_saving_long)

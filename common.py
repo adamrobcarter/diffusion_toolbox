@@ -61,6 +61,22 @@ def load(filename):
         
     return data
 
+def save_data(filename, **data):
+    print(f'saving {filename}')
+    for key in data.keys():
+        if isinstance(data[key], np.ndarray):
+            if data[key].shape: # array
+                print(f'  saving {key}, dtype={data[key].dtype}, shape={data[key].shape}, size={arraysize(data[key])}')
+            else: # single value
+                print(f'  saving {key}, dtype={data[key].dtype}, value={data[key]}')
+        else:
+            if type(data[key]) in [list,tuple]:
+                print(f'  saving {key}, type={type(data[key])}')
+            else:
+                print(f'  saving {key}, type={type(data[key])}, value={data[key]}')
+    
+    np.savez(filename, **data)
+
 def arraysize(arr):
     size = arr.size * arr.itemsize
     if size < 1e3:
@@ -77,7 +93,6 @@ def arraysize(arr):
         return f'{size/1e9:.0f}GB'
 
 def fourier(t, x):
-    print("doing fft")
     N = x.shape[0]
     r_spacing = t[1] - t[0]
     X = scipy.fft.rfft(x)
@@ -90,8 +105,10 @@ def fourier(t, x):
     return f, X#f[:N//2], X[:N//2]
 
 def fourier_2D(x, spacing, axes):
-    N_x = x.shape[1]
-    N_y = x.shape[2]
+    assert len(axes) == 2
+    assert max(axes) < len(x.shape), f'you have asked for axis {max(axes)}, but your data only has {len(x.shape)} axes'
+    N_x = x.shape[axes[0]]
+    N_y = x.shape[axes[1]]
     X = scipy.fft.fftn(x, axes=axes, workers=16)
     f_x = scipy.fft.fftfreq(N_x, spacing)
     f_y = scipy.fft.fftfreq(N_y, spacing)
@@ -123,11 +140,13 @@ def save_fig(fig, path, dpi=100, only_plot=False, hide_metadata=False):
     # only_plot gets rid of the axes labels and border leaving you with just the chart area (for pictures)
 
     fig.tight_layout()
+    args = {}
 
-    if not hide_metadata:
+    if hide_metadata:
+        args['bbox_inches'] = 'tight'
+    else:
         add_watermark(fig, only_plot)
 
-    args = {}
     if only_plot:
         for ax in fig.axes:
             ax.set_axis_off() # hide axes, ticks, etc
@@ -139,8 +158,8 @@ def save_fig(fig, path, dpi=100, only_plot=False, hide_metadata=False):
     fig.savefig(path, dpi=dpi, **args)
 
 def add_scale_bar(ax, pixel_size, color='black'):
-    image_width = ax.get_ylim()[1] - ax.get_ylim()[0]
-    target_scale_bar_length = image_width / 10
+    image_width = ax.get_xlim()[1] - ax.get_xlim()[0]
+    target_scale_bar_length = image_width * pixel_size / 10
     possible_scale_bar_lengths = (1, 2, 5, 10, 20, 50)
 
     takeClosest = lambda num,collection:min(collection,key=lambda x:abs(x-num))
