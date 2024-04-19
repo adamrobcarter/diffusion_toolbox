@@ -128,7 +128,9 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
             
             N2_theory = lambda t, D : 2*N_mean[box_size_index] * sDFT_interactions.sDFT_interactions(L, t, phi, D, sigma)
             # N2_theory = lambda t, D, N: common.N2_nointer_2D(t, D, N, L, L)
-            type_of_fit = 'sDFT (w/ inter.)'
+            type_of_fit = 'sDFT'
+            print('reinstante below line!')
+            # type_of_fit = 'sDFT (w/ inter.)'
 
         log_N2_theory = lambda t, *args : np.log(N2_theory(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
         fitting_points = common.exponential_integers(1, t.size//2)
@@ -237,11 +239,13 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
     if not present_small:
         ax.set_title(title)
 
-    common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/boxcounting_{file}.pdf', hide_metadata=True)
+    # common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/boxcounting_{file}.pdf', hide_metadata=True)
     common.save_fig(fig, f'box_counting/figures_png/msd_{file}.png', dpi=200 if present_small else 100)
 
     np.savez(f'visualisation/data/Ds_from_boxcounting_{file}',
-             Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, Ls=Ls_for_saving)
+             Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, Ls=Ls_for_saving,
+             particle_diameter=sigma)
     np.savez(f'visualisation/data/Ds_from_boxcounting_shorttime_{file}',
-             Ds=Ds_shorttime_for_saving, D_uncs=D_uncs_shorttime_for_saving, Ls=Ls_shorttime_for_saving)
+             Ds=Ds_shorttime_for_saving, D_uncs=D_uncs_shorttime_for_saving, Ls=Ls_shorttime_for_saving,
+             particle_diameter=sigma)
     

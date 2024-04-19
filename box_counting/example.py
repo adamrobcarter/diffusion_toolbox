@@ -58,5 +58,5 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
     ax.set_xlim(000, window_size)
 
     common.save_fig(fig, f'box_counting/figures_png/example_{file}.png', dpi=300, only_plot=True)
-    common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/boxcounting_example_{file}.pdf', only_plot=True, hide_metadata=True)
+    # common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/boxcounting_example_{file}.pdf', only_plot=True, hide_metadata=True)
     

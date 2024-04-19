@@ -474,3 +474,6 @@ def format_val_and_unc(val, unc, sigfigs=2):
         digits_after_decimal = 0
     # assert digits_after_decimal
     return f'{val:.{digits_after_decimal}f} \pm {unc:.{digits_after_decimal}f}'
+
+def nanfrac(arr):
+    return np.isnan(arr).sum() / arr.size

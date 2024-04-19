@@ -10,13 +10,14 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
     F_D_sq_unc = data['F_D_sq_unc']
     t          = data['t']
 
-    DDM_f     = np.full_like(F_D_sq,     np.nan)
-    DDM_f_unc = np.full_like(F_D_sq_unc, np.nan)
-
-    target_ks = list(np.logspace(np.log10(0.25), np.log10(6), 19))
     # target_ks = list(np.logspace(np.log10(0.4), np.log10(7), 7))
     # target_ks = (0.28, 0.38, 0.5, 1.3, 2, 4, 8)
     # target_ks = (0.1, 0.14, 0.5, 1.3, 2, 4, 8)
+    target_ks = list(np.logspace(np.log10(0.1), np.log10(8), 20))
+
+    DDM_f     = np.full((F_D_sq.shape[0], len(target_ks)), np.nan)
+    DDM_f_unc = np.full((F_D_sq.shape[0], len(target_ks)), np.nan)
+
     real_ks = []
 
     fig, (axs, D_axs) = plt.subplots(2, len(target_ks)+1, figsize=(len(target_ks)*3.5, 6))
@@ -57,13 +58,14 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
         weights[2] *= 1/2
         weights[-20:-1:2] = np.inf
         # popt, pcov = scipy.optimize.curve_fit(func, t[1:], F_D_norm[1:], p0=(F_D_norm.max(), F_D_norm.min(), 0.1), maxfev=10000)
-        popt, pcov = scipy.optimize.curve_fit(func, t[1:], F_D_sq_rescaled[1:], sigma=weights, p0=(F_D_sq_rescaled.max(), F_D_sq_rescaled.min(), 0.1), maxfev=10000)#, absolute_sigma=True)
+        popt, pcov = scipy.optimize.curve_fit(func, t[1:], F_D_sq_rescaled[1:], sigma=weights, p0=(F_D_sq_rescaled.max(), F_D_sq_rescaled.min(), 0.05), maxfev=10000)#, absolute_sigma=True)
         t_theory = np.logspace(np.log10(t[1]), np.log10(t[-1]))
         D_POPT_INDEX = 2
         D = 1 / (popt[D_POPT_INDEX] * k[k_index]**2)
         D_unc = 1 / (k[k_index]**2 * popt[D_POPT_INDEX]**2) * np.sqrt(pcov)[D_POPT_INDEX][D_POPT_INDEX]
         # print(D, D_unc)
-        label = f'fit $D={common.format_val_and_unc(D, D_unc)}$\n$A=${popt[0]*rescale:.2g}\n$B=${popt[1]*rescale:.2g}'
+
+        label = f'fit $D={common.format_val_and_unc(D, D_unc)}$\n$A=${popt[0]*rescale:.2g} p {np.sqrt(pcov)[0,0]*rescale:.2g}\n$B=${popt[1]*rescale:.2g} p {np.sqrt(pcov)[1,1]*rescale:.2g}'
         ax.plot(t_theory, func(t_theory, *popt)*rescale, color='black', label=label, zorder=-1)
         # ax.plot(t_theory, func(t_theory, popt[0], popt[1], 1/(0.03*k[k_index]**2))*rescale, color='grey', label=label, zorder=-1)
 
@@ -84,9 +86,14 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
         B_of_q.append(B)
         q.append(k[k_index])
 
-        DDM_f[:, k_index] = (F_D_sq[:, k_index] - B)/A
-        DDM_f_unc[:, k_index] = np.sqrt((1/A * dB)**2 + (1/A * F_D_sq_unc[:, k_index])**2 + ((F_D_sq[:, k_index] - B)/A**2 * dA)**2)
-        D_of_t = -1/(k[k_index]**2 * t) * np.log(1 - DDM_f[:, k_index])
+        DDM_f    [:, graph_i]
+        DDM_f    [:, graph_i] = 1 - (F_D_sq[:, k_index] - B)/A
+        DDM_f_unc[:, graph_i] = np.sqrt((1/A * dB)**2 + (1/A * F_D_sq_unc[:, k_index])**2 + ((F_D_sq[:, k_index] - B)/A**2 * dA)**2)
+        DDM_f_unc[:, graph_i] = np.sqrt(DDM_f[:, graph_i]**2) * np.sqrt( (F_D_sq_unc[:, k_index]/F_D_sq[:, k_index])**2 + (dB/B)**2 + (dA/A)**2 )
+        print('had to do weird error propagation')
+        D_of_t = -1/(k[k_index]**2 * t) * np.log(DDM_f[:, graph_i])
+
+        # print('DDM_f nan', common.nanfrac(DDM_f[:, graph_i]))
         
         D_ax = D_axs[graph_i+1]
         D_ax.scatter(t[1:], D_of_t[1:], s=10)
@@ -117,4 +124,5 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
              pack_frac_given=data.get('pack_frac_given'), particle_diameter=data.get('particle_diameter'))
     
     common.save_data(f'scattering_functions/data/DDM_{file}.npz',
-                     t=t, F=DDM_f, F_unc=DDM_f_unc, k=k)
+                     t=t, F=DDM_f, F_unc=DDM_f_unc, k=real_ks,
+                     particle_diameter=data.get('particle_diameter'))

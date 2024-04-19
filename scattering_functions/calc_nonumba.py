@@ -13,8 +13,8 @@ num_k_bins = 100
 num_iters = 24 # was 10
 #                                       9.1 so that 9 gets included                round as we need integer frames
 
-F_types = ['F', 'F_s']
-# F_types = ['F']
+F_types = ['F', 'Fs']
+F_types = ['F']
 
 drift_removed = False
 # crop = 0.5 if F_type == 'F' else 1.0
@@ -26,7 +26,7 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
     for F_type in F_types:
         t0 = time.time()
 
-        if F_type == 'F_s':
+        if F_type == 'Fs':
             filepath = f"particle_linking/data/trajs_{file}.npz"
         else:
             filepath = f"particle_detection/data/particles_{file}.npz"

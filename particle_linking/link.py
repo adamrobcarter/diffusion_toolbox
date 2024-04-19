@@ -37,6 +37,6 @@ for file in common.files_from_argv('particle_detection/data', 'particlesdf_'):
     np.savez(f'particle_linking/data/trajs_{file}.npz',
             #  particle_picklepath=picklepath,
             particles=particles, radius=radius, time_step=data['time_step'],
-            pixel_size=pixel_size)
-            # particle_diameter=particle_diameter,
+            pixel_size=pixel_size,
+            particle_diameter=data['particle_diameter'])
             # particle_diameter_calced=particle_diameter_calced)

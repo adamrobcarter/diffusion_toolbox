@@ -36,8 +36,8 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
     }
 
     # for source in ['f', 'Fs', 'DDM', 'boxcounting', 'boxcounting_shorttime', 'MSD']:
-    # for source in ['boxcounting', 'MSD', 'Fs', 'f', 'DDM']:
-    for source in ['boxcounting', 'MSD', 'Fs_short', 'Fs_long', 'f_short', 'f_long', 'DDM']:
+    for source in ['boxcounting', 'MSD', 'Fs', 'f', 'DDM']:
+    # for source in ['boxcounting', 'MSD', 'Fs_short', 'Fs_long', 'f_short', 'f_long', 'DDM']:
         data = np.load(f'visualisation/data/Ds_from_{source}_{file}.npz')
         Ds     = data['Ds']
         D_uncs = data['D_uncs']
@@ -48,7 +48,10 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
 
         label = f'$D$ from {source_names[source]}'
         label = f'{source_names[source]}'
-        plotted = ax.errorbar(xs, Ds, D_uncs, linestyle='none', marker='_')
+        # plotted = ax.errorbar(xs, Ds, D_uncs, linestyle='none', marker='_')
+        plotted = ax.plot(xs, Ds, linestyle='none', marker='_')
+        ax.errorbar(xs, Ds, yerr=D_uncs, linestyle='none', marker='none', alpha=0.3, color=plotted[0].get_color())
+
 
         # label_y = Ds.min()-0.01
         if file == 'eleanor0.01':
@@ -76,10 +79,11 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
     ax.set_ylim(0, ax.get_ylim()[1])
 
     if file == 'eleanor0.01':
+        print('median', np.median(all_Ds))
         ax.set_ylim(0, np.median(all_Ds)*2)
     if file == 'eleanor0.34':
         pass
-    ax.set_ylim(-0.12, 0.3)
+    ax.set_ylim(-0.12, 0.2)
     # ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, pos: f'{x:0.2f}' if x >= 0 else ''))
     ax.set_yticks(np.arange(0, 0.3, 0.05))
     # ax.set_xlim(ax.get_xlim()[0], ax.get_xlim()[1]+0.0)
@@ -90,5 +94,5 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
     # fig.legend(loc='upper right', bbox_to_anchor=(0.96, 0.9), fontsize=9)
     # ax.set_title(f'{file}')
 
-    common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/Ds_{file}.pdf', hide_metadata=True)
+    # common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/Ds_{file}.pdf', hide_metadata=True)
     common.save_fig(fig, f'visualisation/figures_png/Ds_{file}.png', dpi=200)

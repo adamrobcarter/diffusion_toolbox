@@ -6,7 +6,7 @@ import warnings
 import scipy.optimize
 
 subplot_i = 0
-
+"""
 Fs_type = 'DDM'
 
 for file in sys.argv[1:]:
@@ -83,6 +83,7 @@ for file in sys.argv[1:]:
         target_k = target_ks[graph_i]
 
         k_index = np.argmax(k_all[0, :] > target_k)
+        k_index = np.argmax(k2_all[:] > target_k)
         k_index_skold = np.argmax(k_skold_all[0, :] > target_k)
 
         k        = k_all      [0, k_index]
@@ -322,8 +323,10 @@ for file in sys.argv[1:]:
             # D_ax.set_ylim(0, 0.08)
             # D_ax.set_ylim(0, 1)
             D_ax.set_ylim(0, np.nanmax(D))
+            pass
         if file == 'eleanor0.34':
             D_ax.set_ylim(0, 0.25)
+            pass
             
             # ax.relim() # tell mpl to ignore errorbars when
             # ax.autoscale_view() # calcing axis limits

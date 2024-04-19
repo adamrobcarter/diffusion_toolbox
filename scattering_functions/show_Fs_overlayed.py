@@ -182,5 +182,5 @@ for file in sys.argv[1:]:
         fileprefix = 'fkt' if type == 'f' else 'Fs'
 
         # common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/{fileprefix}_{file}.png', dpi=300, hide_metadata=True)
-        common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/{fileprefix}_{file}.pdf', hide_metadata=True)
+        # common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/{fileprefix}_{file}.pdf', hide_metadata=True)
         common.save_fig(fig, f'scattering_functions/figures_png/{fileprefix}_decay_overlayed_{file}.png', dpi=300)

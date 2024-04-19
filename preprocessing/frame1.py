@@ -60,4 +60,4 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     common.add_scale_bar(plt.gca(), data['pixel_size'], color=color)
 
     common.save_fig(plt.gcf(), f'preprocessing/figures_png/frame1_{file}.png', dpi=600, only_plot=True)
-    common.save_fig(plt.gcf(), f'/home/acarter/presentations/intcha24/figures/frame1_{file}.png', dpi=600, only_plot=True)
+    # common.save_fig(plt.gcf(), f'/home/acarter/presentations/intcha24/figures/frame1_{file}.png', dpi=600, only_plot=True)

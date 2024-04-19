@@ -29,5 +29,5 @@ for file in common.files_from_argv('box_counting/data', 'raw_counts_'):
     ax.set_xlabel('$t$ (s)')
     ax.set_ylabel('$N(t)$')
 
-    common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/raw_counts_{file}.pdf', hide_metadata=True)
+    # common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/raw_counts_{file}.pdf', hide_metadata=True)
     common.save_fig(fig, f'box_counting/figures_png/raw_counts_{file}.png')
