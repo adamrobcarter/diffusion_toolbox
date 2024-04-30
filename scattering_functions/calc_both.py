@@ -13,17 +13,16 @@ num_k_bins = 100
 num_iters = 24 # was 10
 #                                       9.1 so that 9 gets included                round as we need integer frames
 
-F_types = ['F', 'Fs']
-F_types = ['F']
-
 drift_removed = False
 # crop = 0.5 if F_type == 'F' else 1.0
 # crop = 0.5 # to force the same
 crop = 1.0
 
-for file in common.files_from_argv('particle_detection/data', 'particles_'):
+def calc_for_f_type(F_type):
 
-    for F_type in F_types:
+    for file in common.files_from_argv('particle_detection/data', 'particles_'):
+
+    # for F_type in F_types:
         t0 = time.time()
 
         if F_type == 'Fs':
@@ -105,3 +104,7 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
                 particle_diameter=particle_diameter, drift_removed=drift_removed)
 
         print()
+
+if __name__ == '__main__':
+    calc_for_f_type('Fs')
+    calc_for_f_type('f')

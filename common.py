@@ -395,6 +395,7 @@ def find_drift(particles):
     # tactic:
     # for each particle, do a linear fit to where it exists
     # then weight the fits by length
+    assert particles.shape[1] == 4, 'you should provide linked data to find_drift'
     num_particles = int(particles[:, 3].max())
     assert particles[:, 3].min() == 0, 'particles should be zero-based'
 

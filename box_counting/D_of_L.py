@@ -234,7 +234,8 @@ for file in sys.argv[1:]:
         # popt_full, pcov_full = scipy.optimize.curve_fit(integrand_full, t[:M2_index], T_integrand[:M2_index], maxfev=2000)
 
     
-        if box_size_index%1 == 0:
+        # if box_size_index%1 == 0:
+        if True:
 
             integrand_ax = integ_axs
 
@@ -318,14 +319,12 @@ for file in sys.argv[1:]:
 
 
             # full sDFT (fit to D0)
-            full_theory_N2 = lambda t, D0 : sDFT_interactions.sDFT_interactions(L=L, t=t, phi=phi, D0=D0, sigma=sigma)
-            full_theory_integrand = lambda t, D0 : (1 - 0.5 * full_theory_N2(t, D0) / (full_theory_N2(np.inf, D0)/2) )**2
-            #                                                         ^^^^^^^^^^^^^^^^^^^^^^^^ should be N_var
-            
-            fitting_points = common.exponential_integers(1, M2_index)
-            popt_full, pcov_full = scipy.optimize.curve_fit(full_theory_integrand, t[fitting_points], T_integrand[fitting_points])
-            print(popt_full)
-            integrand_ax.plot(t_theory, full_theory_integrand(t_theory, *popt_full), color='black', linestyle='dotted', linewidth=1, label='sDFT inter. fit D' if box_size_index==0 else None)
+            # full_theory_N2 = lambda t, D0 : sDFT_interactions.sDFT_interactions(L=L, t=t, phi=phi, D0=D0, sigma=sigma)
+            # full_theory_integrand = lambda t, D0 : (1 - 0.5 * full_theory_N2(t, D0) / (full_theory_N2(np.inf, D0)/2) )**2
+            # #                                                         ^^^^^^^^^^^^^^^^^^^^^^^^ should be N_var
+            # fitting_points = common.exponential_integers(1, M2_index)
+            # popt_full, pcov_full = scipy.optimize.curve_fit(full_theory_integrand, t[fitting_points], T_integrand[fitting_points])
+            # integrand_ax.plot(t_theory, full_theory_integrand(t_theory, *popt_full), color='black', linestyle='dotted', linewidth=1, label='sDFT inter. fit D' if box_size_index==0 else None)
 
 
 
@@ -333,35 +332,40 @@ for file in sys.argv[1:]:
             
 
 
-            integrand_ax.set_ylim(1e-5, 1e0)
+            integrand_ax.set_ylim(1e-7, 1e0)
 
 
-    D_ax.plot(box_sizes/sigma, D_of_Ls,  label=f'')
+    D_ax.plot(box_sizes/sigma, D_of_Ls/D0,  label=f'')
     T_ax.plot(box_sizes/sigma, T_of_Ls, label=f'')
-
+    common.save_data(f'visualisation/data/Ds_from_timescaleint_{file}',
+             Ds=D_of_Ls, D_uncs=np.zeros_like(D_of_Ls), Ls=box_sizes,
+             particle_diameter=sigma)
 
 
     D_ax.legend()
     D_ax.loglog()
     D_ax.set_xlabel('$L/\sigma$')
     D_ax.set_ylabel(r'$D(L) / D_0$')
-    D_fig.savefig(f'box_counting/figures_png/D_of_L_{file}.png')
+    common.save_fig(D_fig, f'box_counting/figures_png/D_of_L_{file}.png')
 
     T_ax.legend()
     T_ax.loglog()
     T_ax.set_xlabel('$L/\sigma$')
     T_ax.set_ylabel(r'$T(L)$')
-    T_fig.savefig(f'box_counting/figures_png/T_of_L_{file}.png')
+    common.save_fig(T_fig, f'box_counting/figures_png/T_of_L_{file}.png')
 
     integrand_rescaled_ax.legend()
     integrand_rescaled_ax.loglog()
     integrand_rescaled_ax.set_xlabel('$t/L^2$')
     integrand_rescaled_ax.set_ylabel(r'integrand')
-    integrand_rescaled_fig.savefig(f'box_counting/figures_png/integrand_rescaled_{file}.png', dpi=300)
-
+    integrand_rescaled_ax.set_ylim(1e-6, 1.1e0)
+    common.save_fig(integrand_rescaled_fig, f'box_counting/figures_png/integrand_rescaled_{file}.png', dpi=300)
+    # integrand
     # integrand_ax.seintegrand_xlabel('$L/\sigma$')
     # integrand_ax.seintegrand_ylabel(r'$integrand(L)$')
     # integrand_ax.set_ylim(1e-4, 1.1e0)
     # integrand_fig.savefig('figures_png/integrand.png', dpi=300)
     integrand_ax.set_title(fr'{file} timescale integrand, $\phi={phi:.3f}$, $\sigma={sigma}$')
-    integ_fig.savefig(f'box_counting/figures_png/integrand_{file}.png', dpi=300)
+    common.save_fig(integ_fig, f'box_counting/figures_png/integrand_{file}.png', dpi=300)
+
+    # common.save_fig(integ_fig,  f'box_counting/figures_png/integrand_{file}.png', dpi=300)

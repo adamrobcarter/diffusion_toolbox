@@ -47,7 +47,7 @@ def calc_and_save(box_sizes_px, sep_sizes_px, file, output_file_name, drift):
     density = particles.shape[0]/num_timesteps / (window_width * window_height)
     pack_frac = np.pi/4 * density * particle_diameter**2
 
-    np.savez(output_file_name, N2_mean=N2_mean, N2_std=N2_std,
+    common.save_data(output_file_name, N2_mean=N2_mean, N2_std=N2_std,
              N_stats=N_stats, box_sizes=box_sizes,
              time_step=time_step, pack_frac=pack_frac, particle_diameter=particle_diameter,
              drift_x=drift_x, drift_y=drift_y,
@@ -59,7 +59,7 @@ if __name__ == '__main__':
         box_sizes_px = np.array([32,  64,  96,  128])
         box_sizes_sigma = np.array([2.9, 4.1, 5.7, 8.3, 11.4])
         box_sizes_px = box_sizes_sigma * 2.8 / 0.17
-        sep_sizes_px = 100 - box_sizes_px
+        sep_sizes_px = 20 - box_sizes_px
         
         # box_sizes_px = np.array([4,   8, 16, 22, 32])
         # sep_sizes_px = np.array([20, 15, 5, 5, 5])

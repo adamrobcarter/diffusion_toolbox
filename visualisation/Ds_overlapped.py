@@ -7,25 +7,26 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
 
     source_names = {
         'DDM': 'DDM',
-        'DDM_short': 'DDM',
-        'DDM_long': 'DDM',
+        'DDM_short': 'DDM short',
+        'DDM_long': 'DDM long',
         'f': '$f(k, t)$',
         'Fs': '$F_s(k, t)$',
-        'f_short': '$f(k, t)$',
+        'f_short': '$f(k, t)$ short',
         'Fs_short': '$F_s(k, \mathrm{short})$',
-        'f_long': '$f(k, \mathrm{long})$',
+        'f_long': '$f(k, t)$ long',
         'Fs_long': '$F_s(k, \mathrm{long})$',
         'boxcounting': 'counting',
         'MSD': 'MSD',
         'MSD_short': 'MSD',
         'MSD_long': 'MSD',
-        'boxcounting_shorttime': 'Box Counting s.t.a.'
+        'boxcounting_shorttime': 'Box Counting s.t.a.',
+        'timescaleint': 'timescale integral'
     }
 
     all_Ds = []
 
     skips = ['Fs_long', 'Fs_short']
-    # skips = ['boxcounting', 'Fs_long', 'Fs_short']
+    skips = ['boxcounting', 'Fs_long', 'Fs_short']
 
     colors = {
         'DDM_short': 'tab:purple',
@@ -38,14 +39,13 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
     markers = {
         'DDM_short': '*',
         'f_short': 'x',
+        'DDM_long': '*',
+        'f_long': 'x',
+        'DDM': '*',
+        'f': 'x',
         'MSD_short': '_',
-        'boxcounting': '+'
-    }
-    markersizes = {
-        'DDM_short': 4,
-        'f_short': 4,
-        'MSD_short': 6,
-        'boxcounting': 4
+        'boxcounting': '+',
+        'timescaleint': 'o'
     }
 
     # timescaleintegral    = 1    * np.array([np.nan,     3.7504e-01, 1.4125e+00, 4.5840e+00, 1.0473e+01, 1.3479e+01, 1.9825e+01, 3.0339e+01, 4.9982e+01, 9.1947e+01, 1.7270e+02, 3.4680e+02, 7.5721e+02, 1.0308e+03, 1.4394e+03, 1.8460e+03])
@@ -60,7 +60,8 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
         # for source in ['f', 'Fs', 'DDM', 'boxcounting', 'boxcounting_shorttime', 'MSD']:
         # for source in ['boxcounting', 'MSD', 'Fs', 'f', 'DDM']:
         # for source in ['boxcounting', f'Fs_{timescale}', f'f_{timescale}', f'DDM_{timescale}', 'MSD']:
-        for source in ['boxcounting', f'MSD_{timescale}', f'Fs_{timescale}', f'f_{timescale}', f'DDM_{timescale}']:
+        # for source in ['boxcounting', f'MSD_{timescale}', f'Fs_{timescale}', f'f_{timescale}', f'DDM_{timescale}', f'f_long', f'DDM_long', 'f', 'DDM', 'timescaleint']:
+        for source in [f'f_{timescale}', f'DDM_{timescale}', f'f_long', f'DDM_long', 'f', 'DDM', 'timescaleint']:
             data = common.load(f'visualisation/data/Ds_from_{source}_{file}.npz')
             Ds     = data['Ds']
             D_uncs = data['D_uncs']
@@ -75,6 +76,7 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
             elif source.startswith('boxcounting'):
                 # xs = data['Ls'] / diameter
                 xs = timescaleintegral_x
+                print('x', xs * diameter)
                 Ds = timescaleintegral_y * 0.0455840
                 D_uncs = np.full_like(timescaleintegral_y, np.nan)
             elif source.startswith('MSD'):
@@ -100,8 +102,8 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
                 continue
 
             # if not source.startswith('MSD'):
-            lines = ax.plot(xs, Ds/0.0455840, linestyle='none', marker=markers[source], markersize=markersizes[source], label=f'{source_names[source]}' if not source.startswith('MSD') else None)
-            # ax.errorbar(xs, Ds/0.0455840, yerr=D_uncs/0.0455840, linestyle='none', marker='none', alpha=0.3, color=lines[0].get_color())
+            lines = ax.plot(xs, Ds/0.0455840, linestyle='none', marker=markers[source], markersize=4, label=f'{source_names[source]}' if not source.startswith('MSD') else None)
+            ax.errorbar(xs, Ds/0.0455840, yerr=D_uncs/0.0455840, linestyle='none', marker='none', alpha=0.3, color=lines[0].get_color())
 
             [all_Ds.append(D) for D in Ds]
         # ax.set_ylim(-0.12, 0.3)

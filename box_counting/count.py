@@ -42,16 +42,16 @@ def calc_and_save(box_sizes_px, sep_sizes_px, data, particles, output_file_name,
     density = particles.shape[0]/num_timesteps / (window_width * window_height)
     pack_frac = np.pi/4 * density * particle_diameter**2
 
-    # np.savez(output_file_name, N2_mean=N2_mean, N2_std=N2_std,
-    #          N_stats=N_stats, box_sizes=box_sizes, sep_sizes=sep_sizes,
-    #          time_step=time_step, pack_frac=pack_frac, particle_diameter=particle_diameter,
-    #          particle_diameter_calced=particle_diameter_calced, computation_time=time.time()-t0,
-    #          depth_of_field=depth_of_field, **extra_to_save)
-    np.savez(f'box_counting/data/raw_counts_{file}.npz', counts=counts,
+    np.savez(output_file_name, N2_mean=N2_mean, N2_std=N2_std,
              N_stats=N_stats, box_sizes=box_sizes, sep_sizes=sep_sizes,
              time_step=time_step, pack_frac=pack_frac, particle_diameter=particle_diameter,
              particle_diameter_calced=particle_diameter_calced, computation_time=time.time()-t0,
              depth_of_field=depth_of_field, **extra_to_save)
+    # np.savez(f'box_counting/data/raw_counts_{file}.npz', counts=counts,
+    #          N_stats=N_stats, box_sizes=box_sizes, sep_sizes=sep_sizes,
+    #          time_step=time_step, pack_frac=pack_frac, particle_diameter=particle_diameter,
+    #          particle_diameter_calced=particle_diameter_calced, computation_time=time.time()-t0,
+    #          depth_of_field=depth_of_field, **extra_to_save)
 
 if __name__ == '__main__':
     for file in common.files_from_argv('particle_detection/data', 'particles_'):
@@ -62,8 +62,9 @@ if __name__ == '__main__':
 
         # box_sizes_px = np.array([ 2,  4,  8, 16, 32])
         # sep_sizes_px = np.array([20, 20, 20, 20, 20])
-        box_sizes_px = np.array([128])
-        sep_sizes_px = np.array([10])
+        box_sizes_px = np.array([128, 128])
+        sep_sizes_px = np.array([10,  -10])
+        # sep_sizes_px = np.array([10,  -10])
         # box_sizes_px = np.array([1,  2,  4,  8,  16,  32,  64, 128, 256,])
         # sep_sizes_px = np.array([20, 20, 20, 20, 10, -10, -20, -100, -200])
 

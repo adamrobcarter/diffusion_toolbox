@@ -13,6 +13,7 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     stack = data['stack']
 
     print(stack.shape[1], 'x', stack.shape[2], 'px')
+    print(stack.shape[1]*data['pixel_size'], 'x', stack.shape[2]*data['pixel_size'], 'um')
 
 
         

@@ -193,7 +193,7 @@ def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, 
     F = np.full((num_used_frames, num_k_bins),    np.nan)
     k = np.full((num_used_frames, num_k_bins+1,), np.nan) # +1 b/c we get the left and right of the final bin
                     
-    if F_type == 'F_s':
+    if F_type == 'F_s' or F_type == 'Fs':
         # func = self_intermediate_scattering_internal
         raise Exception("not yet implemented")
     else:
