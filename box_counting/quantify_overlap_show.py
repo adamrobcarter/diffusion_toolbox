@@ -5,10 +5,10 @@ import numpy as np
 import matplotlib.cm
 
 NUM_SPLITS = 30
-NUM_SPLITS = 3
+NUM_SPLITS = 10
 # NUM_SPLITS = 7
 SPACINGS =  [100.5, 30.5, 10.5, 3.5]
-SPACINGS = [256.5, 128.5, 64.5, 32.5, 16.5, 8.5, 4.5, 2.5, 1.5, 0.5]
+SPACINGS = [512.5, 256.5, 128.5, 64.5, 32.5, 16.5, 8.5, 4.5, 2.5, 1.5, 0.5]
 
 # on the alice0.02/34/66, need to check that the splits have the same time length!
 # if not, crop them in time (before splitting/counting) so they do!
@@ -87,9 +87,9 @@ for file in sys.argv[1:]:
                 label = rf'$L={L:.1f}\mathrm{{\mu m}}$'
                 # label += f', $D={D0:.3f}±{np.sqrt(pcov[0][0]):.3f}$'
 
-
-
-                ax.plot(t[1:], delta_N_sq[1:], linestyle='none', marker='o', markersize=1, color=matplotlib.cm.tab10(box_size_index)) if plot else None
+                color =  matplotlib.cm.afmhot(np.interp(box_size_index, (0, len(box_sizes)), (0.2, 0.75)))
+                # color = matplotlib.cm.tab10(box_size_index)
+                ax.plot(t[1:], delta_N_sq[1:], linestyle='none', marker='o', markersize=1, color=color) if plot else None
 
         N2_means_from_diff_splits_combined = np.stack(N2_means, axis=2)
         # ^ axes are box x timestep x split
@@ -123,21 +123,44 @@ for file in sys.argv[1:]:
     # std_devs is now (num spacings) x (num box sizes)
     num_boxes = np.array(num_boxes)
 
+    print('nb shape', num_boxes.shape)
+
+    total_area = num_boxes * box_sizes**2
+    # area_fraction = total_area / ()
+    total_perim = num_boxes * box_sizes * 4
+
     fig_summary, ax_summary = plt.subplots(1, 1)
 
     for box_size_index in range(num_box_sizes):
         print(num_boxes.shape)
         print(std_devs[:, box_size_index].shape)
-        ax_summary.scatter(num_boxes[:, box_size_index], std_devs[:, box_size_index],
-                           label=fr'${box_sizes[box_size_index]}\mathrm{{\mu m}}$')
+        # color = matplotlib.cm.afmhot((box_size_index+1)/(len(box_sizes)+5))
+        color =  matplotlib.cm.afmhot(np.interp(box_size_index, (0, len(box_sizes)), (0.15, 0.75)))
+        # x = num_boxes[:, box_size_index]
+        # x = total_area[:, box_size_index]
+        x = total_perim[:, box_size_index]
+        ax_summary.scatter(x, std_devs[:, box_size_index],
+                           label=fr'${box_sizes[box_size_index]}\mathrm{{\mu m}}$',
+                           color=color)
 
     ax_summary.semilogx()
-    ax_summary.set_xlabel('number of boxes')
-    ax_summary.set_ylabel('average std. dev. / mean')
+    ax_summary.set_xlabel('total perimeter ($\mathrm{\mu m}$)')
+    ax_summary.set_ylabel('normalised error')
     ax_summary.legend()
     
     common.save_fig(fig_summary, f'box_counting/figures_png/quantify_overlap_summary_{file}.png')
 
     ax_summary.semilogy()
+    # func = lambda x, m, c: m*x + c
+    # log_func = lambda x, m, c: np.log10(func(x, m, c))
+    # popt, pcov = scipy.optimize.curve_fit(log_func, np.log10())
+    x_ind = np.logspace(0.7, 2.5)
+    m = -1/2
+    c = -0.5
+    y_ind = 10**(m * np.log10(x_ind) + c)
+    ax_summary.plot(x_ind, y_ind, color='black', linewidth=2)
+    print(y_ind)
+    ax_summary.text(0.3e2, 2e-2, r'$n^{-\frac{1}{2}}$', fontsize=14)
+
     common.save_fig(fig_summary, f'box_counting/figures_png/quantify_overlap_summary_{file}_logy.png')
     

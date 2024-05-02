@@ -3,9 +3,12 @@ import box_counting.count
 import numpy as np
 import tqdm
 
-NUM_SPLITS = 10
-SPACINGS = [256.5, 128.5, 64.5, 32.5, 16.5, 8.5, 4.5, 2.5, 1.5, 1, 0.5, 0.3, 0.15]
+NUM_SPLITS = 1
+SPACINGS = [512.5, 256.5, 128.5, 64.5, 32.5, 16.5, 8.5, 4.5, 2.5, 1.5, 1, 0.5, 0.3, 0.15]
 # SPACINGS = [16.5]
+SPACINGS = [512.5]
+SPACINGS = np.round(np.logspace(np.log10(0.4), np.log10(512.5), 30), decimals=2)
+print(SPACINGS)
 
 for file in common.files_from_argv('particle_detection/data', 'particles_'):
     # box_sizes_px = np.array([ 1,  2,  4,  8, 16, 32, 64, 128])

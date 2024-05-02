@@ -99,7 +99,7 @@ def calc_for_f_type(F_type):
 
         t1 = time.time()
             
-        np.savez(f"scattering_functions/data/{F_type}_{file}", F=Fs, F_unc=F_unc, k=ks, t=d_frames*time_step, crop=crop,
+        common.save_data(f"scattering_functions/data/{F_type}_{file}", F=Fs, F_unc=F_unc, k=ks, t=d_frames*time_step, crop=crop,
                 num_k_bins=num_k_bins, use_every_nth_frame=use_every_nth_frame, computation_time=t1-t0, log=log,
                 particle_diameter=particle_diameter, drift_removed=drift_removed)
 
