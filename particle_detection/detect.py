@@ -1,71 +1,89 @@
 import common
 import numpy as np
-import stracking.detectors
 import time
 import sys
-"""
-for datasource in sys.argv[1:]:
+import trackpy
+import matplotlib.pyplot as plt
+
+for datasource in common.files_from_argv('preprocessing/data/', 'stack_'):
     data = common.load(f'preprocessing/data/stack_{datasource}.npz')
     stack             = data['stack']
     pixel_size        = data['pixel_size']
     particle_diameter = data['particle_diameter']
     time_step         = data['time_step']
+    depth_of_field    = data.get('depth_of_field')
     num_timesteps = stack.shape[0]
-
-    print('dtype before', stack.dtype)
 
     stack = stack - stack.mean(axis=0)
     stack = np.interp(stack, (stack.min(), stack.max()), (0, 1)) # convert to 0->1 range
 
-    overlap = 0.5
+    threshold = 1/255
+    maxsize = None
+    minmass = 0
+    diameter = None
+    separation = None
+
     if datasource == 'pierre_simdownsampled':
-        min_sigma = 0.5
-        max_sigma = 2
-        threshold = 0.1 / 256 # guess
+        pass
+        # min_sigma = 0.5
+        # max_sigma = 2
+        # threshold = 0.1
     if datasource == 'pierre_sim':
-        min_sigma = 2
-        max_sigma = 8
-        threshold = 0.1 / 256 # guess
+        pass
+        # min_sigma = 2
+        # max_sigma = 8
+        # threshold = 0.1
     elif datasource == 'pierre_exp': 
-        min_sigma = 3
-        max_sigma = 5
-        threshold = 3 / 256
-    elif datasource == 'eleanor0.34':
-        min_sigma = 2
-        max_sigma = 8
-        threshold = 25 / 256
-    elif datasource == 'eleanor0.01':
-        min_sigma = 2
-        max_sigma = 8
-        threshold = 25 / 256
+        diameter = 7
+        minmass = 0.2
+        separation = 5
+        # would threshold be good here, as it's meant to be for when the bkg is noisy?
+    elif datasource == 'eleanor0.34' or datasource == 'eleanor0.01':
+        diameter = 7
+        minmass = 1
+        # min_sigma = 2
+        # max_sigma = 8
+        # threshold = 25
+
     elif datasource.startswith('marine'):
-        min_sigma = 1
-        max_sigma = 4
-        threshold = 0.03
-        overlap = 0.5
+        # for marine10 at least
+        diameter = 5
+        minmass = 0.2
+        # min_sigma = 1
+        # max_sigma = 4
+        # threshold = 1500
+        # overlap = 0.5
 
     t0 = time.time()
 
     print('starting detector')
 
-    detector = stracking.detectors.DoGDetector(min_sigma=min_sigma, max_sigma=max_sigma, threshold=threshold)
-    detector_output = detector.run(stack)
+    assert diameter is not None, "you haven't yet provided `diameter`"
+
+    # features = trackpy.batch(stack[:100], 11, processes=16)
+    trackpy.quiet() # turns off reporting every frame as it's processed
+    features = trackpy.batch(stack, processes=16, diameter=diameter, minmass=minmass,
+                             separation=separation, threshold=threshold)
+    print(features.describe())
+
+    # detector = stracking.detectors.DoGDetector(min_sigma=min_sigma, max_sigma=max_sigma, threshold=threshold)
+    # detector_output = detector.run(stack)
 
     print(f'detector finished in {time.time()-t0:.0f}s')
 
-    particles = detector_output.data # rows of t, x, y
+    particles = features[['y', 'x', 'frame']].to_numpy()
+    #                      ^    ^   I am aware these are the wrong way round
+    # but it has to be so to work. possibly we introduced this error in the sparticles
+    # tracking, but now we have to be consistant
+
+    # radius = 
+    print(particles.shape)
     # if datasource == 'sim':
     #     PIXEL = 0.1
     # if datasource == 'sim_downsampled':
     #     PIXEL = 0.4
-    particles[:, [1, 2]] *= pixel_size
+    particles[:, [0, 1]] *= pixel_size
 
-    # rearrange from t, x, y to x, y, t
-    particles = particles[:, [1, 2, 0]]
-
-    assert particles.shape[0] > 0, 'no particles were found'
-
-    print(detector_output.properties.keys())
     # print(detector_output.properties['radius'].shape)
     # print(detector_output.properties['radius'].mean(), detector_output.properties['radius'].std(), detector_output.properties['radius'].max())
 
@@ -73,9 +91,14 @@ for datasource in sys.argv[1:]:
     # with open(picklepath, 'wb') as handle:
     #     pickle.dump(detector_output, handle)
 
-    radius = detector_output.properties['radius']
+    radius = features[['size']].to_numpy()[:, 0] # we use radius not diameter(size) for backward compatibility
+    print('radius shape', radius.shape)
 
-    particle_diameter_calced = 2 * np.sqrt(2) * radius.mean() * pixel_size
+    # plt.hist(features[['mass']].to_numpy(), bins=20)
+    # plt.semilogy()
+    # plt.savefig('hist.png')
+
+    particle_diameter_calced = 2 * radius.mean() * pixel_size
         # there is a line in the DoGDetector source about this sqrt 2
     print(f'calced diameter {particle_diameter_calced:.3f}um')
 
@@ -83,11 +106,17 @@ for datasource in sys.argv[1:]:
     density = particles.shape[0]/num_timesteps / (stack.shape[0]*stack.shape[1]*pixel_size**2)
     pack_frac = np.pi/4 * density * particle_diameter**2
     print(f'so packing fraction phi = {pack_frac:.3f}')
+    
+    print('it', particles[:, 2].min(), particles[:, 2].max())
 
+    # np.savez(f'particle_detection/data/particles_{datasource}_trackpy.npz',
     np.savez(f'particle_detection/data/particles_{datasource}.npz',
             #  particle_picklepath=picklepath,
             particles=particles, radius=radius, time_step=time_step,
-            min_sigma=min_sigma, max_sigma=max_sigma, threshold=threshold, computation_time=time.time()-t0,
+            threshold=threshold, maxsize=maxsize, minmass=minmass, diameter=diameter, separation=separation,
+            computation_time=time.time()-t0, depth_of_field=depth_of_field,
             pixel_size=pixel_size, num_timesteps=num_timesteps, particle_diameter=particle_diameter,
             particle_diameter_calced=particle_diameter_calced)
-            """
+    
+    # we also save the whole dataframe so we can use it for linking if we want
+    features.to_pickle(f'particle_detection/data/particlesdf_{datasource}.pickle')
