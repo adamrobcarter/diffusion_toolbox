@@ -4,9 +4,9 @@ import multiprocessing
 import functools
 import common
 import tqdm
-import warnings
+import warnings, time
 
-def intermediate_scattering(log, F_type, crop, num_k_bins, use_every_nth_frame, d_frames, particles, max_K, width, height):
+def intermediate_scattering(log, F_type, crop, num_k_bins, max_time_origins, d_frames, particles, max_K, width, height):
     assert not np.isnan(max_K)
 
     # data is x,y,t
@@ -21,10 +21,16 @@ def intermediate_scattering(log, F_type, crop, num_k_bins, use_every_nth_frame, 
 
     # first find the particles at each timestep, otherwise we're transferring
     # the whole of data to each process
-    
+    print('finding particles at each timestep')
+
     num_timesteps = int(particles[:, 2].max()) + 1
     # num_timesteps = int(particles[:, 2].max())
-    
+
+    # first find max number of particles at any one timestep
+    num_particles_at_frame = np.bincount(particles[:, 2].astype('int'))
+    max_particles_at_frame = num_particles_at_frame.max()
+    print('max particles at any one frame', max_particles_at_frame)
+
     if F_type == 'F_s':
         # for Fself, we need the IDs, so we provide a list where the nth element is the nth particle
         assert particles.shape[1] == 4, 'for self intermediate scattering, you should provide rows of x,y,t,#'
@@ -32,36 +38,64 @@ def intermediate_scattering(log, F_type, crop, num_k_bins, use_every_nth_frame, 
         # make sure IDs are 0-based
         particles[:, 3] -= particles[:, 3].min()
 
+        # there's probably a quicker way to do the below loop - see num_particles_at_frame
+        raise Exception('you need to convert this so that particles_at_frame is an ndarray')
+
         num_particles = int(particles[:, 3].max()) + 1
         assert num_particles > 0
         # particles_at_frame = [np.full((num_particles, 2), np.nan) for _ in range(num_timesteps)]
         particles_at_frame = [np.full((num_particles, 4), np.nan) for _ in range(num_timesteps)]
-        for i in range(len(particles)):
+        for i in tqdm.trange(len(particles)):
             t = int(particles[i, 2])
             id = int(particles[i, 3])
-            # particles_at_frame[t][id, :] = particles[i, [0, 1]]
-            particles_at_frame[t]
             particles_at_frame[t][id, :] = particles[i, :]
 
-        for t in range(num_timesteps):
+        for t in tqdm.trange(num_timesteps):
             assert np.isnan(particles_at_frame[t]).sum() < particles_at_frame[t].size, f'particles_at_frame[{t}] was all nan'
 
     else:
         # for F (not self), we don't need the ID, so we just provide a list of particles
-        particles_at_frame = []
+        # some datasets may already have the ID in column 4, so we only select the first 3 columns
+        particles = particles[:, [0, 1, 2]]
+
+        # the below is a heavily-optimised method for turning the array of particles
+        # into an array that is (num timesteps) x (max particles per timestep) x 2
+        # we add extra nan rows such that each timestep has the same number of rows
+        num_extra_rows = (max_particles_at_frame - num_particles_at_frame).sum()
+        extra_rows = np.full((num_extra_rows, 3), np.nan)
+        num_rows_added = 0
         for frame in range(num_timesteps):
-            # select only particles at the relevent time step
-            particles_at_t = particles[particles[:, 2]==frame, :]
-            # select only x and y columns
-            particles_at_t = particles_at_t[:, 0:2]
-            particles_at_frame.append(particles_at_t)
+            for i in range(max_particles_at_frame-num_particles_at_frame[frame]):
+                extra_rows[num_rows_added, 2] = frame
+                num_rows_added += 1
+        all_rows = np.concatenate((particles, extra_rows), axis=0)
+        # then by sorting and reshaping, we can get the structure we want
+        all_rows_sorted = all_rows[all_rows[:, 2].argsort()]
+        particles_at_frame = all_rows_sorted.reshape((num_timesteps, max_particles_at_frame, 3))
+        # now remove the time column, leaving just x and y
+        particles_at_frame = particles_at_frame[:, :, [0, 1]]
+        # remove the nan rows too
+        # @TODO:
+        # nans = np.isnan(particles_at_frame[:, :, 0])
+        # print(nans.shape)
+        # print(particles_at_frame.shape)
+        # particles_at_frame = particles_at_frame[~nans, :]
+        # print(particles_at_frame.shape)
+
+    del particles
+
+    use_every_nth_frame = max(int(num_timesteps / max_time_origins), 1)
 
     if use_every_nth_frame > 1:
         warnings.warn(f'Using every {use_every_nth_frame}th frame as a time origin. Eventually you may want to use every frame')
 
+    print('beginning computation')
+    print('particles_at_frame:', common.arraysize(particles_at_frame))
+
     parallel = True
     if parallel:
-        cores = 32
+        cores = 8
+        print('total_RAM', common.arraysize(particles_at_frame, cores))
         if cores > 16:
             warnings.warn(f'using {cores} cores')
         with multiprocessing.Pool(cores) as pool:
@@ -139,7 +173,7 @@ def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, 
         frame = int(frames_to_use[frame_index])
         # print(frame, frame + d_frame)
 
-        particles_t0, particles_t1 = preprocess_scattering(particles_at_frame[frame], particles_at_frame[frame+d_frame], crop=crop)
+        particles_t0, particles_t1 = preprocess_scattering(particles_at_frame[frame, :], particles_at_frame[frame+d_frame, :], crop=crop)
         width  = width  * crop
         height = height * crop
     
@@ -167,13 +201,13 @@ def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, 
     return np.mean(F, axis=0), np.std(F, axis=0)/np.sqrt(num_used_frames), k
 
 def preprocess_scattering(particles_t0, particles_t1, crop):
-    # first remove any nan particles (particles that exist at t0 but not t1)
-    # t0_nans = np.any(np.isnan(particles_t0), axis=1)
-    # t1_nans = np.any(np.isnan(particles_t1), axis=1)
+    # first remove any nan particles
+    t0_nans = np.any(np.isnan(particles_t0), axis=1)
+    t1_nans = np.any(np.isnan(particles_t1), axis=1)
     # # nans = t0_nans | t1_nans
     # # print(f'missing particles: {nans.sum()/nans.size*100}%')
-    # particles_t0 = particles_t0[~t0_nans, :]
-    # particles_t1 = particles_t1[~t1_nans, :]
+    particles_t0 = particles_t0[~t0_nans, :]
+    particles_t1 = particles_t1[~t1_nans, :]
 
     # assert np.isnan(particles_t0).sum() == 0
     # assert np.isnan(particles_t1).sum() == 0

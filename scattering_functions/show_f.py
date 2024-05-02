@@ -9,5 +9,4 @@ for file in sys.argv[1:]:
             
     plt.suptitle(fr'f(k, t), {file}')
 
-    common.save_fig(plt.gcf(), f'scattering_functions/figures_png/Fs_decay_t_{file}.png', dpi=300)
-        
+    common.save_fig(plt.gcf(), f'scattering_functions/figures_png/f_decay_t_{file}.png', dpi=300)

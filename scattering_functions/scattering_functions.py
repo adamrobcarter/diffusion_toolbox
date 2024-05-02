@@ -10,7 +10,7 @@ import scipy.fft
 import common
 import warnings
 import numba
-
+"""
 # def theoretical_c_hat(k, rho, sigma):
 #     # sigma is disk diameter
 #     phi = np.pi/4 * rho * sigma**2
