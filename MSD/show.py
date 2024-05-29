@@ -8,6 +8,11 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
     data = np.load(f'MSD/data/msd_{file}.npz')
     msd = data['msd']
     msd_unc = data['msd_unc']
+    
+    t = np.arange(0, msd.size)
+    n = (msd.size-1) / t
+    msd_unc = msd_unc / np.sqrt(n)
+    # ^^ this is based on thinking about how many independent measurements there are
 
     fig, ax = plt.subplots(1, 1, figsize=(3.5, 3))
 
@@ -15,7 +20,16 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
 
     # ax.errorbar(t[1:], msd[1:], msd_unc[1:], linestyle='none', marker='none', color='lightskyblue')
     ax.plot(t[1:], msd[1:], marker='.', markersize=8, linestyle='none', color=matplotlib.cm.afmhot(0.3), label='observations')
-    # ax.fill_between(t[1:], msd[1:]-msd_unc[1:], msd[1:]+msd_unc[1:], alpha=0.2)
+    ax.fill_between(t[1:], msd[1:]-msd_unc[1:], msd[1:]+msd_unc[1:], alpha=0.2, color=matplotlib.cm.afmhot(0.3))
+    
+    ax.loglog()
+    ax.set_ylim(msd[1:].min()*0.6, msd.max()/0.8)
+    # ax.set_xlim(t[1]*0.8, t[-1]/0.8)
+
+    ax.set_ylabel(r'$\langle r(\Delta t)^2 \rangle$ ($\mathrm{\mu m}$)')
+    ax.set_xlabel('$\Delta t$ (s)')
+    
+    common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/msd_nofit_{file}.pdf', hide_metadata=True)
 
     fitting_points = common.exponential_integers(1, t.size-1)
     func = lambda t, D: 4*D*t
@@ -27,23 +41,17 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
     func_short = lambda t, D: 4*D*t
     popt_short, pcov_short = scipy.optimize.curve_fit(func_short, t[fitting_points_short], msd[fitting_points_short])
     t_th_short = np.logspace(np.log10(t[fitting_points_short[0]]), np.log10(t[fitting_points_short[-1]]))
-    ax.plot(t_th_short, func_short(t_th_short, *popt_short), color='black', linewidth=1, label='fit')
+    ax.plot(t_th_short, func_short(t_th_short, *popt_short), color='black', linewidth=1)
 
     fitting_points_long = common.exponential_integers(t.size//10, t.size-1)
     func_long = lambda t, D, a: 4*D*t + a
     popt_long, pcov_long = scipy.optimize.curve_fit(func_long, t[fitting_points_long], msd[fitting_points_long])
     t_th_long = np.logspace(np.log10(t[fitting_points_long[1]]), np.log10(t[fitting_points_long[-1]]))
-    ax.plot(t_th_long, func_long(t_th_long, *popt_long), color='black', linewidth=1, label='fit')
+    ax.plot(t_th_long, func_long(t_th_long, *popt_long), color='black', linewidth=1)
 
-    ax.loglog()
-    ax.set_ylim(msd[1:].min()*0.6, msd.max()/0.8)
-    # ax.set_xlim(t[1]*0.8, t[-1]/0.8)
-
-    ax.set_ylabel(r'$\langle r(t)^2 \rangle$ ($\mathrm{\mu m}$)')
-    ax.set_xlabel('$t$ (s)')
     ax.legend()
 
-    # common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/msd_{file}.pdf', hide_metadata=True)
+    common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/msd_{file}.pdf', hide_metadata=True)
     common.save_fig(fig, f'MSD/figures_png/msd_{file}.png')
     np.savez(f'visualisation/data/Ds_from_MSD_{file}',
              Ds=[popt[0]], D_uncs=[np.sqrt(pcov)[0][0]], labels=[''])

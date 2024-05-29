@@ -36,7 +36,8 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
     }
 
     # for source in ['f', 'Fs', 'DDM', 'boxcounting', 'boxcounting_shorttime', 'MSD']:
-    for source in ['boxcounting', 'MSD', 'Fs', 'f', 'DDM']:
+    # for source in ['boxcounting', 'MSD', 'Fs', 'f', 'DDM']:
+    for source in ['boxcounting_shorttime']:
     # for source in ['boxcounting', 'MSD', 'Fs_short', 'Fs_long', 'f_short', 'f_long', 'DDM']:
         data = np.load(f'visualisation/data/Ds_from_{source}_{file}.npz')
         Ds     = data['Ds']
@@ -76,20 +77,21 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
     ax.relim() # tell mpl to ignore errorbars when
     ax.autoscale_view() # calcing axis limits
 
-    ax.set_ylim(0, ax.get_ylim()[1])
+    # ax.set_ylim(0, ax.get_ylim()[1])
 
     if file == 'eleanor0.01':
         print('median', np.median(all_Ds))
         ax.set_ylim(0, np.median(all_Ds)*2)
     if file == 'eleanor0.34':
         pass
-    ax.set_ylim(-0.12, 0.2)
+    # ax.set_ylim(-0.12, 0.2)
     # ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, pos: f'{x:0.2f}' if x >= 0 else ''))
-    ax.set_yticks(np.arange(0, 0.3, 0.05))
+    # ax.set_yticks(np.arange(0, 0.3, 0.05))
     # ax.set_xlim(ax.get_xlim()[0], ax.get_xlim()[1]+0.0)
     # ax.hlines(np.median(all_Ds) * (1 - 0.34))
     ax.set_ylabel('$D$ ($\mathrm{\mu m}^{-1}$)')
     ax.set_xticks([])
+    ax.semilogy()
     # fig.legend()
     # fig.legend(loc='upper right', bbox_to_anchor=(0.96, 0.9), fontsize=9)
     # ax.set_title(f'{file}')

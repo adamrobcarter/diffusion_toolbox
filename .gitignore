@@ -21,3 +21,4 @@ MSD/data/*
 MSD/figures_png/*
 visualisation/data/*
 nohup.out
+.vscode/settings.json

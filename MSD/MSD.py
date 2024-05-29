@@ -56,16 +56,43 @@ def reshape(particles):
 
     return data
 
-def calc(particles):
-    data = reshape(particles)
-    # data should be of shape (num particles) x (num timesteps) x (2)
-
+def calc_internal(data):
     x_MSDs = msd_matrix(data[:, :, 0])
     y_MSDs = msd_matrix(data[:, :, 1])
     MSDs = x_MSDs + y_MSDs
 
-    # return MSDs.mean(axis=0)
-    return np.nanmean(MSDs, axis=0), np.nanstd(MSDs, axis=0)
+    mean, std = np.nanmean(MSDs, axis=0), np.nanstd(MSDs, axis=0)
+
+    assert common.nanfrac(mean) < 0.1, f'MSDs nanfrac was {common.nanfrac(mean)}'
+
+    return mean, std
+
+def calc(particles):
+    data = reshape(particles)
+    # data should be of shape (num particles) x (num timesteps) x (2)
+
+    return calc_internal(data)
+
+def calc_individuals(particles):
+    data = reshape(particles)
+    # data should be of shape (num particles) x (num timesteps) x (2)
+    
+    x_MSDs = msd_matrix(data[:, :, 0])
+    y_MSDs = msd_matrix(data[:, :, 1])
+    MSDs = x_MSDs + y_MSDs
+
+    return MSDs
+
+def calc_centre_of_mass(data, groupsize):
+
+    np.random.shuffle(data) # shuffles along first axes (num particles)
+
+    groups = np.array_split(data, np.ceil(data.shape[0]/groupsize), axis=0) # ceil needed otherwise the groups will be 1 too big because of roundind down
+    
+    centre_of_masses = np.array([np.nanmean(group, axis=0) for group in groups])
+    print('need to consider that many of your group might be nan')
+    return calc_internal(centre_of_masses)
+
 
 """
 @numba.njit()

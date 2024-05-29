@@ -66,6 +66,8 @@ def save_data(filename, **data):
     for key in data.keys():
         if isinstance(data[key], np.ndarray):
             if data[key].shape: # array
+                if data[key].size * data[key].itemsize > 10e9:
+                    warnings.warn(f'Saving array of size {arraysize(data[key])}')
                 print(f'  saving {key}, dtype={data[key].dtype}, shape={data[key].shape}, size={arraysize(data[key])}')
             else: # single value
                 print(f'  saving {key}, dtype={data[key].dtype}, value={data[key]}')
@@ -77,8 +79,8 @@ def save_data(filename, **data):
     
     np.savez(filename, **data)
 
-def arraysize(arr):
-    size = arr.size * arr.itemsize
+def arraysize(arr, mult=1):
+    size = arr.size * arr.itemsize * mult
     if size < 1e3:
         # return str(size) + 'B'
         return f'{size}B'
@@ -154,13 +156,15 @@ def save_fig(fig, path, dpi=100, only_plot=False, hide_metadata=False):
         args['pad_inches'] = 0
 
     # path = path.replace('*', '')
-    print(f'saving {path}, {len(fig.axes)} axes')
+    if not path.startswith('/'):
+        path = f'/data/acarter/toolbox/{path}'
+    print(f'saving {path} {len(fig.axes)} axes')
     fig.savefig(path, dpi=dpi, **args)
 
 def add_scale_bar(ax, pixel_size, color='black'):
     image_width = ax.get_xlim()[1] - ax.get_xlim()[0]
     target_scale_bar_length = image_width * pixel_size / 10
-    possible_scale_bar_lengths = (1, 2, 5, 10, 20, 50)
+    possible_scale_bar_lengths = (0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000)
 
     takeClosest = lambda num,collection:min(collection,key=lambda x:abs(x-num))
     scale_bar_length = takeClosest(target_scale_bar_length, possible_scale_bar_lengths)
@@ -178,11 +182,19 @@ def save_gif(func, frames, fig, file, fps=1, dpi=300):
         func(timestep)
         progress.update()
 
-    add_watermark(fig, False)
+    # add_watermark(fig, False)
 
     ani = matplotlib.animation.FuncAnimation(fig, frame, frames=frames, interval=500, repeat=False)
-    ani.save(file, dpi=dpi, writer=matplotlib.animation.PillowWriter(fps=fps))
+    # ani.save(file, dpi=dpi, writer=matplotlib.animation.PillowWriter(fps=fps))
+    writer = None
+    if file.endswith('.gif'):
+        writer = matplotlib.animation.PillowWriter(fps=fps)
+        fps = None
+
+    fig.tight_layout()
+    ani.save(file, dpi=dpi, fps=fps, writer=writer)
     progress.close()
+    print(f'saved {file}')
 
     
 def N2_nointer_2D(t, D0, N_mean, Lx, Ly=None):
@@ -478,3 +490,22 @@ def format_val_and_unc(val, unc, sigfigs=2):
 
 def nanfrac(arr):
     return np.isnan(arr).sum() / arr.size
+
+def add_drift_intensity(stack, drift):
+    # drift is px/frame
+    assert np.mod(drift, 1) == 0 # check integer-ness
+    fraction_of_width_kept = 0.6
+    new_width = int(stack.shape[1] * fraction_of_width_kept)
+    useable_timesteps = (stack.shape[1] - new_width) // drift
+    print(new_width, useable_timesteps)
+
+    output = np.full((useable_timesteps, new_width, new_width), np.nan)
+
+    new_x = np.arange(useable_timesteps) * drift
+    # new_x[new_x.size//2:] = new_x[:new_x.size//2-1:-1]
+
+    for t in range(useable_timesteps):
+        output[t, :, :] = stack[t, t*drift:t*drift+new_width, :new_width] # we could actually make the y axis keep it's original height, but for now, we crop to square
+        # output[t, :, :] = stack[0, new_x[t]:new_x[t]+new_width, :new_width] # we could actually make the y axis keep it's original height, but for now, we crop to square
+
+    return output

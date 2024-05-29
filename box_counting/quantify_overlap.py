@@ -3,11 +3,13 @@ import box_counting.count
 import numpy as np
 import tqdm
 
-NUM_SPLITS = 1
+NUM_SPLITS = 10
 SPACINGS = [512.5, 256.5, 128.5, 64.5, 32.5, 16.5, 8.5, 4.5, 2.5, 1.5, 1, 0.5, 0.3, 0.15]
 # SPACINGS = [16.5]
 SPACINGS = [512.5]
 SPACINGS = np.round(np.logspace(np.log10(0.4), np.log10(512.5), 30), decimals=2)
+SPACINGS = np.round(np.logspace(np.log10(0.4), np.log10(512.5), 50), decimals=2)
+# SPACINGS = np.round(np.logspace(np.log10(2.5), np.log10(156.5), 50), decimals=2)
 print(SPACINGS)
 
 for file in common.files_from_argv('particle_detection/data', 'particles_'):
@@ -17,6 +19,12 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
     data = common.load(f'particle_detection/data/particles_{file}.npz')
     particles = data['particles']
     max_t = particles[:, 2].max()
+
+    # max_dim = 500
+    # x_too_big = particles[:, 0] > 200
+    # y_too_big = particles[:, 1] > 200
+    # keep = (~x_too_big) & (~y_too_big)
+    # particles = particles[keep, :]
 
     progress = tqdm.tqdm(total=NUM_SPLITS*len(SPACINGS))
 
@@ -31,11 +39,9 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
         particles_t = particles[t_indexes, :]
 
         box_sizes_px = np.array([1, 4, 16, 64, 256])
-        # box_sizes_px = np.array([25])
 
-        # for spacing in [100.5, 30.5, 10.5, 3.5]:
         for spacing in SPACINGS:
-            output_filename = f'box_counting/data/counted_{file}_extra3_qo_split{split_i}_spacing{spacing}.npz'
+            output_filename = f'box_counting/data/counted_{file}_extra4_qo_split{split_i}_spacing{spacing}.npz'
             sep_sizes_px = spacing - box_sizes_px
             box_counting.count.calc_and_save(box_sizes_px, sep_sizes_px, data, particles_t, output_filename)
             progress.update()

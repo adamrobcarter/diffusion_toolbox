@@ -10,10 +10,10 @@ subplot_i = 0
 colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
 target_ks = (0.1, 0.14, 0.5, 1.3, 2, 4, 8)
-target_ks = list(np.logspace(np.log10(0.01), np.log10(8), 25))
+target_ks = list(np.logspace(np.log10(0.02), np.log10(8), 20))
 # target_ks = list(np.logspace(np.log10(0.02), np.log10(0.1), 25))
 
-fig, (lin_axes, D_axes) = plt.subplots(2, len(target_ks), figsize=(len(target_ks)*3, 6))
+fig, (lin_short_axes, lin_axes, D_axes) = plt.subplots(3, len(target_ks), figsize=(len(target_ks)*3, 3*3))
 
 
 def show_single_F_type(file, type_index, Ftype):
@@ -49,14 +49,15 @@ def show_single_F_type(file, type_index, Ftype):
         k_index = np.argmax(ks >= target_k)
         k = ks[k_index]
 
-        print(f'k: target {target_k:.2f}, real {k:.2f}, index {k_index}')
+        print(f'k: target {target_k:.3f}, real {k:.3f}, index {k_index}, 2pi/k={2*np.pi/k:.1f}um')
 
         f     = F_all    [:, k_index]
         f_unc = F_unc_all[:, k_index]
         if Ftype == 'f':
             f /= F_all[0, k_index]
-            f_unc_sq = (F_unc_all / F_all[0, :])**2 + (F_all * F_unc_all[0, :] / F_all[0, :]**2)**2
-            f_unc = np.sqrt(f_unc)
+            f_unc_sq_all = (F_unc_all / F_all[0, :])**2 + (F_all * F_unc_all[0, :] / F_all[0, :]**2)**2
+            # assert f_unc_sq.shape == f_unc.shape, f'{f_unc_sq.shape} {f_unc.shape}'
+            f_unc = np.sqrt(f_unc_sq_all)[:, k_index]
 
             # assert k_index != 0, "k_index == 0, which probably means everything is 1 because of the normalisation"
             # if k_index == 0:
@@ -64,6 +65,7 @@ def show_single_F_type(file, type_index, Ftype):
             #     continue
 
         ax = lin_axes[graph_i]
+        ax_short = lin_short_axes[graph_i]
         D_ax = D_axes[graph_i]
 
         label = fr"$k={k:.3f}\mathrm{{\mu m}}$ ($L\approx{2*np.pi/k:.1f}\mathrm{{\mu m}}$)"
@@ -85,13 +87,14 @@ def show_single_F_type(file, type_index, Ftype):
 
         f_noise   = f < noise_thresh
         f_toolong = t > time_thresh
-            # f_bad   = f_noise | f_toolong # f_toolong should on k!!!!
+            # f_bad   = f_noise | f_toolong # f_toolong should depend on k!!!!
         f_bad   = f_noise
         f_bad[0] = True
 
         ax.plot(t[~f_bad], f[~f_bad], color=colors[type_index], linestyle='', label=f'{Ftype}', marker='.')
         ax.errorbar(t[~f_bad], f[~f_bad], yerr=f_unc[~f_bad], color=colors[type_index], linestyle='', alpha=0.2, marker='none')
         ax.errorbar(t[ f_bad], f[ f_bad], yerr=f_unc[ f_bad], color=colors[type_index], linestyle='', alpha=0.2,        marker='.')
+
             # ax.errorbar(t[~f_bad], f[~f_bad], yerr=0,           color=colors[type_index], linestyle='', label=f'{Ftype}', marker='.')
             # ax.errorbar(t[ f_bad], f[ f_bad], yerr=0,           color=colors[type_index], linestyle='', alpha=0.2,        marker='.')
             # ax.scatter(t[~f_bad], f[~f_bad], color=colors[type_index], label=f'{Ftype}', s=6)
@@ -124,37 +127,47 @@ def show_single_F_type(file, type_index, Ftype):
         t_th = np.logspace(np.log10(t[1]), np.log10(t[-1]))
 
         if np.isfinite(np.sqrt(f_pcov)[0,0]):
-            print('  f: D=', common.format_val_and_unc(f_popt[0], np.sqrt(f_pcov)[0][0]))
-            ax.plot(t_th, func(t_th, *f_popt), color=colors[type_index], linestyle='dashdot')
+            print('  total:', common.format_val_and_unc(f_popt[0], np.sqrt(f_pcov)[0][0]))
+            ax.plot(t_th, func(t_th, *f_popt), color=colors[type_index], linestyle='dashdot', label='total')
                 # ax.plot(t_th, func(t_th, *Fs_popt), color='tab:orange',   linestyle='dotted')
 
             Ds_for_saving.append(f_popt[0])
             D_uncs_for_saving.append(np.sqrt(f_pcov)[0][0])
             ks_for_saving.append(k)
 
-            D_ax.hlines(f_popt[0], t.min(), t.max(), color=colors[type_index], linestyle='dashdot')
+            D_ax.hlines(f_popt[0], t.min(), t.max(), color=colors[type_index], linestyle='dashdot', label='total')
 
         else:
             print(f'  total: covariance not estimated')
 
         f_points_short = (~f_bad) & (t < 10)
         f_points_long  = (~f_bad) & (t > 100)
+
+        SHORT_PLOT_MAX_X = 20
+        ax_short.errorbar(t, f, yerr=f_unc, color=colors[type_index], linestyle='', alpha=0.2)
+        ax_short.errorbar(t, f, yerr=0, color=colors[type_index], linestyle='', marker='.')
+        # ax_short.errorbar(t, f, yerr=0, color=colors[type_index], linestyle='', marker='.')
+        ax_short.semilogy()
+        ax_short.set_xlim(0, SHORT_PLOT_MAX_X)
+        ax_short.set_ylim(f[0:SHORT_PLOT_MAX_X+1].min(), f[0:SHORT_PLOT_MAX_X+1].max())
             
         if f_points_short.sum() > 2:
             f_popt_short, f_pcov_short = scipy.optimize.curve_fit(
                     log_func, t[f_points_short], np.log10(f[f_points_short]),
-                    # p0=p0, sigma=log_f_unc[f_points_short], absolute_sigma=True
+                    p0=p0, sigma=log_f_unc[f_points_short], absolute_sigma=True
                 )
-            print('  short: we had to disable sigma fitting')
+            # print('  short: we had to disable sigma fitting')
                 
             if np.isfinite(np.sqrt(f_pcov_short)[0][0]):
-                ax.plot(t_th, func(t_th, *f_popt_short), color=colors[type_index], linestyle='dotted')
+                ax.plot(t_th, func(t_th, *f_popt_short), color=colors[type_index], linestyle='dotted', label='short')
+                ax_short.plot(t_th, func(t_th, *f_popt_short), color=colors[type_index], linestyle='dotted', label='short')
         
+                print(f'  short: {common.format_val_and_unc(f_popt_short[0], np.sqrt(f_pcov_short)[0][0])}')
                 Ds_for_saving_short    .append(f_popt_short[0])
                 D_uncs_for_saving_short.append(np.sqrt(f_pcov_short)[0][0])
                 ks_for_saving_short    .append(k)
                     
-                D_ax.hlines(f_popt_short[0],  t.min(), t.max(), color=colors[type_index], linestyle='dotted')
+                D_ax.hlines(f_popt_short[0],  t.min(), t.max(), color=colors[type_index], linestyle='dotted', label='short')
             else:
                 print('  short: covariance not estimated')
         else:
@@ -165,22 +178,22 @@ def show_single_F_type(file, type_index, Ftype):
                     log_func, t[f_points_long], np.log10(f[f_points_long,]), 
                     # p0=p0, sigma=log_f_unc[f_points_long], absolute_sigma=True
                 )
-            print('  total: disabled sigma fitting')
+            print('  long:  disabled sigma fitting')
                 
             if np.isfinite(np.sqrt(f_pcov_long)[0][0]):
-                ax.plot(t_th, func(t_th, *f_popt_long), color=colors[type_index], linestyle='dashed')
+                ax.plot(t_th, func(t_th, *f_popt_long), color=colors[type_index], linestyle='dashed', label='long')
                 
                 Ds_for_saving_long    .append(f_popt_long[0])
                 D_uncs_for_saving_long.append(np.sqrt(f_pcov_long)[0][0])
                 ks_for_saving_long    .append(k)
 
-                D_ax.hlines(f_popt_long[0],  t.min(), t.max(), color=colors[type_index], linestyle='dashed')
+                D_ax.hlines(f_popt_long[0],  t.min(), t.max(), color=colors[type_index], linestyle='dashed', label='long')
             else:
-                print('  long: covariance not estimated')
+                print('  long:  covariance not estimated')
         else:
-            print('  long: not attempting')
+            print('  long:  not attempting')
 
-        ax.legend()
+        ax.legend(fontsize=7)
             # ax.semilogx()
         ax.semilogy()
         if ax.get_title() != label:
@@ -193,10 +206,10 @@ def show_single_F_type(file, type_index, Ftype):
             # ax.set_ylim(9.9e-1, 1.01)
             # ax.set_xlim(0, 1000)
             # ax.set_ylim(1e-3 * (1/k) , 1.1)
-        end_plot_time = 1/(k+1) * 300
-        end_plot_y = f[np.argmax(t > end_plot_time)]
+        end_plot_time = 1/(k+0.1) * 500
+        end_plot_y = f[np.argmax(t > end_plot_time)] * 0.8
         if end_plot_y > 1: end_plot_y = 0.9
-        if end_plot_y < 1e-3: end_plot_y = 1e-3
+        if end_plot_y < 1e-4: end_plot_y = 1e-4
         ax.set_ylim(end_plot_y , 1.01)
             # ax.set_xlim(0, 1/k**2 * 100)
         ax.set_xlim(0, end_plot_time)
@@ -213,8 +226,10 @@ def show_single_F_type(file, type_index, Ftype):
             
         D_ax.scatter(t [~f_bad  ], D [~f_bad  ], color=colors[type_index], label=Ftype, s=6)
         D_ax.scatter(t [ f_bad  ], D [ f_bad  ], color=colors[type_index],   alpha=0.2, s=6)
+        # D_ax.scatter(t [~f_bad  ], D2[~f_bad  ], color=colors[type_index+1], label=Ftype, s=6)
+        # D_ax.scatter(t [ f_bad  ], D2[ f_bad  ], color=colors[type_index+1],   alpha=0.2, s=6)
             # D_ax.errorbar(t , D , yerr=D_unc , fmt='', color=colors[type_index], alpha=0.2, linestyle='none')
-        D_ax.errorbar(t , D , yerr=0 , fmt='', color=colors[type_index], alpha=0.2, linestyle='none')
+        D_ax.errorbar(t , D , yerr=D_unc , fmt='', color=colors[type_index], alpha=0.2, linestyle='none')
             # D_ax.errorbar(t , D , yerr=D_unc , fmt='', color=colors[type_index], alpha=0.2, linestyle='none')
             
             # D_ax.hlines(Fs_popt[0], t.min(), t.max(), color='tab:orange', linestyle='dotted')
@@ -255,7 +270,7 @@ def show_single_F_type(file, type_index, Ftype):
             # D_ax.axhline(y=D_short[phi], color='black', linewidth=1, linestyle=':', label=r'D from MSD')
             # D_ax.axhline(y=D_long [phi], color='black', linewidth=1, linestyle=':')
             
-        D_ax.legend()
+        D_ax.legend(fontsize=7)
         D_ax.semilogy()
 
     common.save_data(f'visualisation/data/Ds_from_{Ftype}_{file}',

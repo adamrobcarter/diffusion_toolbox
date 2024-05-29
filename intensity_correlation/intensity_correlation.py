@@ -26,7 +26,7 @@ def correlate_two_frames(frame1, frame2, pixel_size):
     # r_bins = np.linspace(0, max_k, num_k_bins)
 
     # we can get a saving here because we're counting each pair of pixels in both directions
-    num_bins = 50
+    num_bins = 100
 
     all_corr_binned = np.zeros((num_bins))
     # print('starting parallel computation', 'eta', 429/1.07/12)
@@ -37,18 +37,18 @@ def correlate_two_frames(frame1, frame2, pixel_size):
     # print('finished parallel computation')
 
     all_corr_binned /= (num_x_pixels * num_y_pixels)
-    return all_corr_binned, np.mean([frame1.mean(), frame2.mean()])
+    return all_corr_binned, np.mean([frame1.mean(), frame2.mean()]), np.linspace(0, 100, num_bins+1)
 
 @numba.njit(parallel=True)
 def outer_inner(frame1, frame2, num_x_pixels, num_y_pixels, num_bins, x_index_1):
-    all_corr_binned = np.zeros((num_bins))
+    all_corr_binned = np.zeros(num_bins)
 
     for y_index_1 in numba.prange(0, num_y_pixels):
     # for y_index_1 in numba.prange(0, 100):
         corrs, rs = inner(num_x_pixels, num_y_pixels, frame1, frame2, x_index_1, y_index_1)
-        binned, bins, _ += common.numba_binned_statistic(rs.flatten(), corrs.flatten(), num_bins)
+        bins = np.linspace(0, 100, num_bins+1)
+        binned, bins, _ = common.numba_binned_statistic(rs.flatten(), corrs.flatten(), bins)
         all_corr_binned += binned
-        # break
 
     # corr_binned, r_binned, _ = scipy.stats.binned_statistic(rs.flatten(), corrs.flatten(), 'mean', bins=num_bins)
     

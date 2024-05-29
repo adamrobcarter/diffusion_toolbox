@@ -1,15 +1,24 @@
+import countoscope_theory.nmsd
+import countoscope_theory.structure_factor
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize
 import common
 import scipy.integrate
-import sDFT_interactions
+# import sDFT_interactions
 import matplotlib.cm
 
-present_small = True
+import countoscope_theory
+
+PRESENT_SMALL = False
+LABELS_ON_PLOT = False
+SHOW_THEORY_FIT = True
+SHOW_PLATEAUS = False
+SHOW_VARIANCE = False
+SHOW_MEAN = False
 
 figsize = (6, 4.5)
-if present_small:
+if PRESENT_SMALL:
     figsize = (4.5, 4)
     figsize = (3.5, 3.2)
 
@@ -32,16 +41,21 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
     # data = common.load(f'data/counted_driftremoved_{phi}.npz')
     N2_mean        = data['N2_mean']
     N2_std         = data['N2_std']
-    N_stats        = data['N_stats']
+    # N_stats        = data['N_stats']
     phi            = data['pack_frac']
     sigma          = data['particle_diameter']
     time_step      = data['time_step']
     depth_of_field = data.get('depth_of_field')
 
-    box_sizes = N_stats[:, 0]
-    N_mean    = N_stats[:, 1]
-    N_var     = N_stats[:, 2]
-    num_of_boxes = N_stats[:, 5]
+    # box_sizes    = N_stats[:, 0]
+    # N_mean       = N_stats[:, 1]
+    # N_var        = N_stats[:, 2]
+    # num_of_boxes = N_stats[:, 5]
+    box_sizes    = data['box_sizes']
+    N_mean       = data['N_mean']
+    N_var        = data['N_var']
+    num_of_boxes = data['num_boxes']
+    sep_sizes    = data['sep_sizes']
 
     num_timesteps = N2_mean.shape[1]
     num_boxes     = N2_mean.shape[0]
@@ -67,7 +81,8 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
     for box_size_index, L in list(enumerate(box_sizes)):
     # for L in [2**e for e in range(-2, 7)]:
 
-        L = box_sizes[box_size_index]
+        L   = box_sizes[box_size_index]
+        sep = sep_sizes[box_size_index]
 
         delta_N_sq     = N2_mean[box_size_index, :]
         delta_N_sq_err = N2_std [box_size_index, :]
@@ -96,8 +111,12 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
 
         # ax.plot(t_theory, N2_func_full(t_theory, D0), color='black', zorder=5, linestyle='dotted', linewidth=1, label='sFDT (no inter.)' if box_size_index==0 else None)
 
-        # ax.hlines(2*N_mean[box_size_index], t.min(), t.max(), color='grey', linewidth=1, label=r'$2 \langle N \rangle$' if box_size_index==0 else None)
-        # ax.hlines(2*N_var [box_size_index], t.min(), t.max(), linestyles='dashed', color='grey', linewidth=1, label=r'$\mathrm{Var}(N)$' if box_size_index==0 else None)
+        color = matplotlib.cm.afmhot((box_size_index+2)/(len(box_sizes)+7))
+        
+        if SHOW_MEAN:
+            ax.hlines(2*N_mean[box_size_index], t.min(), t.max(), color=color, linewidth=1, linestyle='dashdot', label=r'$2 \langle N \rangle$' if box_size_index==0 else None)
+        if SHOW_VARIANCE:
+            ax.hlines(2*N_var [box_size_index], t.min(), t.max(), linestyles='dashed', color='grey', linewidth=1, label=r'$2\mathrm{Var}(N)$' if box_size_index==0 else None)
 
 
         # N2_theory = 2 * N_mean[box_size_index] * (1 - f(4*D0*t/L**2)**2) # countoscope eq. 2
@@ -123,16 +142,10 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
             N2_theory = lambda t, D, N: common.N2_nointer_3D(t, D, N, L, L, depth_of_field)
             type_of_fit = 'sDFT (no inter, 3D)'
         else:
-            # N2_theory = lambda t, D, N : N * sDFT_interactions.sDFT_interactions(L, t, phi, D, sigma)
-            # N2_theory = lambda t, D : 2*N_var[box_size_index] * sDFT_interactions.sDFT_interactions(L, t, phi, D, sigma)
-            
-            N2_theory = lambda t, D : 2*N_mean[box_size_index] * sDFT_interactions.sDFT_interactions(L, t, phi, D, sigma)
-            # N2_theory = lambda t, D, N: common.N2_nointer_2D(t, D, N, L, L)
-            type_of_fit = 'sDFT'
-            print('reinstante below line!')
-            # type_of_fit = 'sDFT (w/ inter.)'
-
+            N2_theory = lambda t, D : countoscope_theory.nmsd.inter_2d(t, D, N_mean[box_size_index], L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma))
+            type_of_fit = 'sDFT (w/ inter.)'
         log_N2_theory = lambda t, *args : np.log(N2_theory(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
+        print('tsh', t.shape)
         fitting_points = common.exponential_integers(1, t.size//2)
         # p0 = (0.05, N_mean[box_size_index])
         p0 = [0.05]
@@ -140,14 +153,6 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
         # ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1, label='sDFT (no inter.)' if box_size_index==0 else None)
         D_from_fit = popt[0]
         D_from_fit_unc = np.sqrt(pcov[0][0])
-        
-
-        # fitting_points_shorttime = [1, 2, 3, 4, 5, 6, 8, 10]
-        # N2_theory_shorttime = lambda t, D : 8 / np.sqrt(pi)
-        # popt_shorttime, pcov_shorttime = scipy.optimize.curve_fit(N2_theory, t[fitting_points], delta_N_sq[fitting_points], maxfev=2000)
-        # # ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1, label='sDFT (no inter.)' if box_size_index==0 else None)
-        # D_from_shorttime = popt[0]
-        # D_from_shorttime_unc = np.sqrt(pcov[0][0])
         
         N2_theory_points = N2_theory(t_theory, *popt)
         
@@ -167,45 +172,62 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
         info = fr'L = {L/sigma:.1f}σ, D_fit = {common.format_val_and_unc(D_from_fit, D_from_fit_unc, 2)} um^2/s'
         # ±{np.sqrt(pcov[0][0]):.3f}$'
         print(info)
-        
-        if not present_small or box_size_index % 2 != 1:
-            # only plot sometimes
 
-            if not collapse_y:
+        
+        # linear fit to start
+        fit_end = 6
+        fit_func_2 = lambda t, D : 8 / np.sqrt(np.pi) * N_mean[box_size_index] * np.sqrt(t * D / L**2)
+        popt, pcov = scipy.optimize.curve_fit(fit_func_2, t[1:fit_end], delta_N_sq[1:fit_end])
+        D_from_shorttime = popt[0]
+        D_unc_from_shorttime = np.sqrt(pcov)[0, 0]
+        # print(f'L={L}um, D_unc/D={D_unc_from_shorttime/D_from_shorttime:.3f}')
+        if D_unc_from_shorttime/D_from_shorttime > 0.03:
+            pass
+        else:
+            Ds_shorttime_for_saving.append(D_from_shorttime)
+            D_uncs_shorttime_for_saving.append(D_unc_from_shorttime)
+            Ls_shorttime_for_saving.append(L)
+        
+        if (not PRESENT_SMALL and len(box_sizes)<15) or box_size_index % (len(box_sizes) // 10) == 0:
+            # only plot sometimes
+            
+            
+
+            if not collapse_y and SHOW_THEORY_FIT:
                 ax.plot(t_theory[1:], N2_theory_points[1:], color='black', linewidth=1, label=type_of_fit if box_size_index==0 else None)
             # label += fr', $D_\mathrm{{fit}}={popt[0]:.3g}\pm {np.sqrt(pcov[0][0]):.3g} \mathrm{{\mu m^2/s}}$'
 
-        
-            label += fr', $D_\mathrm{{fit}}={common.format_val_and_unc(D_from_fit, D_from_fit_unc, 2)} \mathrm{{\mu m^2/s}}$'
-            # ±{np.sqrt(pcov[0][0]):.3f}$'
-            
             if collapse_x or collapse_y:
                 markersize = 2
             else:
-                markersize = 5
+                if PRESENT_SMALL:
+                    markersize = 5
+                else:
+                    markersize = 3
 
-            color = matplotlib.cm.afmhot((box_size_index+2)/(len(box_sizes)+7))
-            exp_plot = ax.plot(t[1:], delta_N_sq[1:], label='observations' if box_size_index==0 else None, linestyle='none', marker='o', markersize=markersize, zorder=-1, color=color)
+            # actual data
+            if LABELS_ON_PLOT:
+                label = label='observations' if box_size_index==0 else None
+            else:
+                label = f'L={L:.2f}'
+                label += f', s={sep:.2f}'
+            label += fr', $D_\mathrm{{short\:fit}}={common.format_val_and_unc(D_from_fit, D_from_fit_unc, 2)} \mathrm{{\mu m^2/s}}$'
+            # ±{np.sqrt(pcov[0][0]):.3f}$'
+            exp_plot = ax.plot(t[1:], delta_N_sq[1:], label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1, color=color)
             # exp_plot = ax.errorbar(t[1:], delta_N_sq[1:], yerr=delta_N_sq_err[1:]/np.sqrt(num_of_boxes[box_size_index]), label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
             # exp_plot = ax.errorbar(t[1:], delta_N_sq[1:], yerr=delta_N_sq_err[1:], label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
         
-            t_index_for_text = int(t_theory.size // 1.6)
-            angle = np.tan(np.gradient(N2_theory_points, t_theory)[t_index_for_text]) * 180/np.pi
-            # plt.scatter(t_theory[t_index_for_text], N2_theory_points[t_index_for_text])
-            L_label = rf'$L={L:.1f}\mathrm{{\mu m}}$'
-            L_label = rf'$L={L/sigma:.1f}\sigma$'
-            ax.text(t_theory[t_index_for_text+6], N2_theory_points[t_index_for_text+6]*1.4, L_label,
-                    horizontalalignment='center', color=color, fontsize=9,
-                    transform_rotates_text=True, rotation=angle, rotation_mode='anchor')
-            
+            if LABELS_ON_PLOT:
+                t_index_for_text = int(t_theory.size // 1.6)
+                angle = np.tan(np.gradient(N2_theory_points, t_theory)[t_index_for_text]) * 180/np.pi
+                # plt.scatter(t_theory[t_index_for_text], N2_theory_points[t_index_for_text])
+                L_label = rf'$L={L:.1f}\mathrm{{\mu m}}$'
+                L_label = rf'$L={L/sigma:.1f}\sigma$'
+                ax.text(t_theory[t_index_for_text+6], N2_theory_points[t_index_for_text+6]*1.4, L_label,
+                        horizontalalignment='center', color=color, fontsize=9,
+                        transform_rotates_text=True, rotation=angle, rotation_mode='anchor')
             
             # linear fit to start
-            fit_end = 6
-            fit_func_2 = lambda t, D : 8 / np.sqrt(np.pi) * N_mean[box_size_index] * np.sqrt(t * D / L**2)
-            popt, pcov = scipy.optimize.curve_fit(fit_func_2, t[1:fit_end], delta_N_sq[1:fit_end])
-            D_from_shorttime = popt[0]
-            D_unc_from_shorttime = np.sqrt(pcov)[0, 0]
-            # print(f'L={L}um, D_unc/D={D_unc_from_shorttime/D_from_shorttime:.3f}')
             if D_unc_from_shorttime/D_from_shorttime > 0.03:
                 print(f'skipping short time fit at L={L}um, D_unc/D={D_unc_from_shorttime/D_from_shorttime:.2f}')
             else:
@@ -214,12 +236,14 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
                 if D_ratio > 1.5 or 1/D_ratio > 1.5:
                     print(f'problem! D fit = {common.format_val_and_unc(D_from_fit, D_from_fit_unc, 2)} D shorttime = {common.format_val_and_unc(D_from_shorttime, D_unc_from_shorttime, 2)}')
                 ax.plot(t[1:fit_end], fit_func_2(t[1:fit_end], *popt), linestyle=':', color='gray')
-            
-                Ds_shorttime_for_saving.append(D_from_shorttime)
-                D_uncs_shorttime_for_saving.append(D_unc_from_shorttime)
-                Ls_shorttime_for_saving.append(L)
 
-    ax.legend(fontsize=7)
+        if SHOW_PLATEAUS:
+            print(phi, sigma)
+            ax.hlines(
+                countoscope_theory.nmsd.plateau_inter_2d(N_mean[box_size_index], L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma)),
+                t[0], t[-1], linestyle='dotted', color=color, label='sDFT plateau' if box_size_index==0 else None)
+
+    ax.legend(fontsize=6 if not PRESENT_SMALL else 7, loc='lower right')
     ax.semilogy()
     ax.semilogx()
     xlabel = '$t/L^2$' if collapse_x else '$t$ ($\mathrm{s}$)'
@@ -236,16 +260,16 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
     if sigma_calced := data.get('particle_diameter_calced'):
         title += f', $\sigma_\mathrm{{calc}}={sigma_calced:.3f}\mathrm{{\mu m}}$'
         # print('sigma calced hidden from legend')
-    if not present_small:
+    if not PRESENT_SMALL:
         ax.set_title(title)
 
     # common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/boxcounting_{file}.pdf', hide_metadata=True)
-    common.save_fig(fig, f'box_counting/figures_png/msd_{file}.png', dpi=200 if present_small else 100)
+    common.save_fig(fig, f'box_counting/figures_png/msd_{file}.png', dpi=200)
 
-    np.savez(f'visualisation/data/Ds_from_boxcounting_{file}',
+    common.save_data(f'visualisation/data/Ds_from_boxcounting_{file}',
              Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, Ls=Ls_for_saving,
              particle_diameter=sigma)
-    np.savez(f'visualisation/data/Ds_from_boxcounting_shorttime_{file}',
+    common.save_data(f'visualisation/data/Ds_from_boxcounting_shorttime_{file}',
              Ds=Ds_shorttime_for_saving, D_uncs=D_uncs_shorttime_for_saving, Ls=Ls_shorttime_for_saving,
              particle_diameter=sigma)
     

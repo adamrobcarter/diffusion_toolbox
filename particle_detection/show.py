@@ -5,6 +5,8 @@ import numpy as np
 import sys
 import warnings
 
+print('change this to use preprocessing.show!')
+
 def show_frame(fig, ax, stack, pixel_size, particles, radius, timestep, file):
 
     # crop = 0.18
@@ -31,20 +33,21 @@ def show_frame(fig, ax, stack, pixel_size, particles, radius, timestep, file):
     # im = ax.imshow(stack[timestep, :, :], cmap=matplotlib.cm.Greys)#, vmin=-2, vmax=2)
     # fig.colorbar(im)
 
-    TIME_INDEX = 2
-    X_INDEX = 1
-    Y_INDEX = 0 # why not 0/1?
+    return add_particle_outlines(ax, pixel_size, particles, radius, timestep)
 
-    particles_at_t = particles[:, TIME_INDEX] == timestep
+    common.add_scale_bar(ax, pixel_size)
+
+def add_particle_outlines(ax, pixel_size, particles, radius, timestep):
+    particles_at_t = particles[:, 2] == timestep
     # print(particles_at_t.sum())
     if particles_at_t.sum() == 0:
-        warnings.warn('No particles found at timestep')
+        warnings.warn(f'No particles found at timestep')
     # assert particles_at_t.sum() > 0
     # plt.scatter(particles[particles_at_t, X_INDEX]/pixel_size, particles[particles_at_t, Y_INDEX]/pixel_size, s=50*radius[particles_at_t]**2*pixel_size**2,
     #             facecolors='none', edgecolors='red', alpha=0.5, linewidth=0.8)
 
-    x = particles[particles_at_t, X_INDEX]/pixel_size
-    y = particles[particles_at_t, Y_INDEX]/pixel_size
+    x = particles[particles_at_t, 1]/pixel_size
+    y = particles[particles_at_t, 0]/pixel_size
     r = radius[particles_at_t] * np.sqrt(2) # TODO: should this be /pixel_size?
     if particles.shape[1] == 4:
         id = particles[particles_at_t, 3]
@@ -57,8 +60,11 @@ def show_frame(fig, ax, stack, pixel_size, particles, radius, timestep, file):
         
     alpha = 0.7
 
+    cross = False
     outline = True
-    if outline:
+    if cross:
+        pass
+    elif outline:
         circles = [plt.Circle((x[i], y[i]), edgecolor=color(i), facecolor='none', radius=r[i]*2, linewidth=0.5, alpha=alpha) for i in range(particles_at_t.sum())]
         # c = matplotlib.collections.PatchCollection(circles, facecolor='red', alpha=0.5)
         c = matplotlib.collections.PatchCollection(circles, match_original=True)
@@ -68,8 +74,6 @@ def show_frame(fig, ax, stack, pixel_size, particles, radius, timestep, file):
 
     ax.add_collection(c)
 
-    common.add_scale_bar(ax, pixel_size)
-
 if __name__ == '__main__':
     for datasource in sys.argv[1:]:
         datasource2 = datasource
@@ -78,10 +82,11 @@ if __name__ == '__main__':
         data = common.load(f'preprocessing/data/stack_{datasource2}.npz')
         stack             = data['stack']
         pixel_size        = data['pixel_size']
-        particle_diameter = data['particle_diameter']
+        particle_diameter = data.get('particle_diameter')
         num_timesteps = stack.shape[0]
         
-        stack = stack - stack.mean(axis=0)
+        if num_timesteps > 1:
+            stack = stack - stack.mean(axis=0)
         stack = np.interp(stack, (stack.min(), stack.max()), (0, 1)) # convert to 0->1 range
 
         # frame_average = stack.mean(axis=0)
@@ -100,9 +105,10 @@ if __name__ == '__main__':
 
         ##### radii are wrong! pls fix!!
 
-        density = particles.shape[0]/num_timesteps / (stack.shape[0]*stack.shape[1]*pixel_size**2)
-        pack_frac = np.pi/4 * density * particle_diameter**2
-        print(f'packing fraction phi = {pack_frac:.3f}')
+        if particle_diameter is not None:
+            density = particles.shape[0]/num_timesteps / (stack.shape[0]*stack.shape[1]*pixel_size**2)
+            pack_frac = np.pi/4 * density * particle_diameter**2
+            print(f'packing fraction phi = {pack_frac:.3f}')
 
         print(f'radius min', radius.min(), 'median', np.median(radius), 'max', radius.max())
         print(f'radius min', radius.min()* np.sqrt(2), 'median', np.median(radius)* np.sqrt(2), 'max', radius.max()* np.sqrt(2))
@@ -115,7 +121,6 @@ if __name__ == '__main__':
         if True:
             timestep = num_timesteps // 2
 
-            show_frame(fig, ax, stack, pixel_size, particles, radius, timestep)
+            show_frame(fig, ax, stack, pixel_size, particles, radius, timestep, datasource)
 
-            # plt.axis('off') # hides all axes, leaving just figure
-            fig.savefig(f'particle_detection/figures_png/particles_{datasource}.png', dpi=300, bbox_inches='tight', pad_inches=0)
+            common.save_fig(fig, f'particle_detection/figures_png/particles_{datasource}.png', dpi=300)

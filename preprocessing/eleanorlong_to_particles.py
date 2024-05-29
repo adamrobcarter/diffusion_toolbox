@@ -10,3 +10,5 @@ num_timesteps = data_param[:, 2].max() - data_param[:, 2].min()
 np.savez(f'particle_detection/data/particles_eleanorlong.npz', particles=data_param,
             time_step=0.5, particle_diameter=2.8, pixel_size=PIXEL,
             num_timesteps=num_timesteps)
+np.save(f'particle_detection/data/particles_eleanorlong.npy', data_param)
+print('done')

@@ -13,6 +13,9 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
     real_ks = []
 
     fig, ax = plt.subplots(1, 1, figsize=(3.5, 3.4))
+    ax.semilogx()
+    ax.set_xlabel('$\Delta t$ (s)')
+    ax.set_ylabel('$d(k, \Delta t)$')
 
     target_ks = (0.2, 0.8, 2.4)
 
@@ -25,6 +28,12 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
         color = matplotlib.cm.afmhot((graph_i+0.8)/(len(target_ks)+2))
         ax.scatter(t[1:], F_D_sq[1:, k_index], s=15, color=color)
 
+    common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/ddm_overlapped_nofit_{file}.pdf', hide_metadata=True)
+    
+
+    for graph_i in range(len(target_ks)):
+        target_k = target_ks[graph_i]
+        k_index = np.argmax(k > target_k)
 
         func = lambda t, A, B, tau : A * (1 - np.exp(-t/tau)) + B
         rescale = F_D_sq[1:, k_index].max()
@@ -66,11 +75,7 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
     # ax.semilogy()
     # ax.set_title(fr'$k={k[k_index]:.2f}$ ($\approx{2*np.pi/k[k_index]:.2f}\mathrm{{\mu m}}$)')
     # ax.legend(fontsize=8)
-    ax.semilogx()
 
-    ax.set_xlabel('$t$ (s)')
-    ax.set_ylabel('$d(k, t)$')
-
-    # common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/ddm_overlapped_{file}.pdf', hide_metadata=True)
+    common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/ddm_overlapped_{file}.pdf', hide_metadata=True)
     common.save_fig(fig, f'DDM/figures_png/ddm_overlapped_{file}.png', dpi=200)
     

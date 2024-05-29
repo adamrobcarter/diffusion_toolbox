@@ -22,16 +22,16 @@ for file in sys.argv[1:]:
     F_unc_all = d['F_unc']
     k_all     = d["k"]
 
-    d2 = common.load(f"scattering_functions/data/F_s_{file}.npz")
-    t2         = d2["t"]
-    Fs_all     = d2["F"]
-    Fs_unc_all = d2['F_unc']
-    k2_all     = d2["k"]
+    # d2 = common.load(f"scattering_functions/data/F_s_{file}.npz")
+    # t2         = d2["t"]
+    # Fs_all     = d2["F"]
+    # Fs_unc_all = d2['F_unc']
+    # k2_all     = d2["k"]
 
-    assert np.array_equal(k_all, k2_all)
-    assert np.array_equal(t, t2)
+    # assert np.array_equal(k_all, k2_all)
+    # assert np.array_equal(t, t2)
 
-    for type in ['f', 'Fs']:
+    for type in ['f']:
 
         F0_all     = F_all    [0, :]
         F0_unc_all = F_unc_all[0, :]
@@ -66,8 +66,8 @@ for file in sys.argv[1:]:
             f     = f_all    [:, k_index]
             f_unc = f_unc_all[:, k_index]
 
-            Fs     = Fs_all     [:, k_index]
-            Fs_unc = Fs_unc_all [:, k_index]
+            # Fs     = Fs_all     [:, k_index]
+            # Fs_unc = Fs_unc_all [:, k_index]
 
             # k_skold  = k_skold_all [0, k_index_skold]
             Fs_skold = Fs_skold_all[:, k_index_skold]
@@ -121,20 +121,21 @@ for file in sys.argv[1:]:
 
 
             f_noise   = f  < 3e-2
-            F_s_noise = Fs < 1.7e-2
+            # F_s_noise = Fs < 1.7e-2
             f_toolong   = t > 200
             F_s_toolong = t > 400
             f_bad   = f_noise   | f_toolong
-            F_s_bad = F_s_noise | F_s_toolong
+            # F_s_bad = F_s_noise | F_s_toolong
             f_bad[0] = True
-            F_s_bad[0] = True
+            # F_s_bad[0] = True
             
 
             if type == 'Fs':
-                t_for_plot = t2
-                F_for_plot = Fs
-                bad_for_plot = F_s_bad
-                F_unc_for_plot = Fs_unc
+                pass
+            #     t_for_plot = t2
+            #     F_for_plot = Fs
+            #     bad_for_plot = F_s_bad
+            #     F_unc_for_plot = Fs_unc
             elif type == 'f':
                 t_for_plot = t
                 F_for_plot = f
@@ -174,13 +175,13 @@ for file in sys.argv[1:]:
         ax.semilogy()
 
         if not PRESENT_SMALL:
-            ax.set_title(f'$F_s(t)$, {file}')
-        ax.set_xlabel('$t$ (s)')
-        ylabel = '$F_s(k, t)$' if type == 'Fs' else '$f(k, t)$' if type == 'f' else None
+            ax.set_title(f'$F_s(\Delta t)$, {file}')
+        ax.set_xlabel('$\Delta t$ (s)')
+        ylabel = '$F_s(k, \Delta t)$' if type == 'Fs' else '$f(k, \Delta t)$' if type == 'f' else None
         ax.set_ylabel(ylabel)
 
         fileprefix = 'fkt' if type == 'f' else 'Fs'
 
         # common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/{fileprefix}_{file}.png', dpi=300, hide_metadata=True)
-        # common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/{fileprefix}_{file}.pdf', hide_metadata=True)
+        common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/{fileprefix}_decay_overlayed_{file}.pdf', hide_metadata=True)
         common.save_fig(fig, f'scattering_functions/figures_png/{fileprefix}_decay_overlayed_{file}.png', dpi=300)

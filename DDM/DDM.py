@@ -22,6 +22,8 @@ def calc(stack, pixel_size, time_step, num_k_bins):
     use_every_nth_frame = max(int(stack.size / 1e8), 1)
     print(f'automatic: use every {use_every_nth_frame}th frame')
     # use_every_nth_frame = 1 # 10 is a good number for Alice, 1 for Marine]
+    
+    # use_every_nth_frame = max(num_timesteps / max_time_origins, 1) this is what we use in scattering_functions btw
 
     time_origins = range(0, I.shape[0], use_every_nth_frame)
 
@@ -38,9 +40,15 @@ def calc(stack, pixel_size, time_step, num_k_bins):
     # a = 0
     # b = 0
 
+    # print('doing big fourier')
+    # # instead of taking the intensity differences and fourier transforming them, we could fourier transform the intensities
+    # # and then take the differences. This is okay cause the fourier transform is linear. However we don't do that cause the 
+    # # speed bottleneck is binned_statistic, not the fourier transform
+    # u_x, u_y, I_fourier = common.fourier_2D(I, spacing=pixel_size, axes=(1, 2))
+    # u = np.sqrt(u_x**2 + u_y**2)
+    # print('done')
+
     for time_origin_index, time_origin in tqdm.tqdm(enumerate(time_origins), total=len(time_origins)):
-        
-        # t0 = time.time()
 
         time_indexes = time_origin+used_times
         time_indexes = time_indexes[time_indexes < I.shape[0]] # remove any that are longer than the data
@@ -49,32 +57,26 @@ def calc(stack, pixel_size, time_step, num_k_bins):
         D = I[time_indexes, :, :] - I[time_origin, :, :] # need -1 cause used_times[0]==1
 
         u_x, u_y, F_D = common.fourier_2D(D, spacing=pixel_size, axes=(1, 2))
+        # F_D = I_fourier[time_indexes, :, :] - I_fourier[time_origin, :, :]
+
+        print('see static_fourier.py, should you be using fftshift?')
         
         F_D_sq_this = np.abs(F_D)**2
         # print('how real:', np.nanmean(np.imag(F_D))/np.nanmean(np.real(F_D)), np.nanmean(np.imag(F_D)), np.nanmean(np.real(F_D)))
     
         u = np.sqrt(u_x**2 + u_y**2)
 
-        # t1 = time.time()
-
         # this loop below is very surely the time bottleneck
         u_flat = u.flatten()
         for t_index in range(slice_length):
             F_D_sq[time_origin_index, t_index, :], _, _ = scipy.stats.binned_statistic(u_flat, F_D_sq_this[t_index, :, :].flatten(), bins=u_bins)
             # should we check that this line is doing exactly what we expect?
+            # it would be quicker for F_D_sq to have dimensions u_x, u_y instead of |u|, and then we could do the binned_statistic
+            # afterwards, but this would make the size of the array huge
         # F_D_sq[time_origin_index, :, :] = do_binning(slice_length, F_D_sq_this, u_flat, u_bins)
-            
-        # t2 = time.time()
-
-        # a += t1 - t0
-        # b += t2 - t1
-
-    # print(f'{a:.3f}:{b:.3f}')
-
-    print('max u', u.max(), u_bins.max())
 
     F_D_sq_avg = np.nanmean(F_D_sq, axis=0) # average over time origins
-    F_D_sq_std = np.nanstd(F_D_sq, axis=0) # average over time origins
+    F_D_sq_std = np.nanstd (F_D_sq, axis=0) # average over time origins
 
     # assert np.isnan(F_D_sq_avg).sum()/F_D_sq_avg.size < 0.1, f'F_D_sq_avg was {np.isnan(F_D_sq_avg).sum()/F_D_sq_avg.size:.2f} nan'
 

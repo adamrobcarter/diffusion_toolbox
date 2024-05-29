@@ -54,7 +54,9 @@ def calc_for_f_type(F_type):
         #print(f"min K = {min_K:.3f}")
         max_K = 10 # was 10
 
-        max_time_origins = 50
+        # max_time_origins = 50
+        max_time_origins = 100
+        max_time_origins = 1000
 
         print('starting calculation')
 
