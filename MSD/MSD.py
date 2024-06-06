@@ -3,7 +3,7 @@ import numba
 import common
 import tqdm
 
-
+@numba.njit
 def autocorrFFT(x):
     N = len(x)
     F = np.fft.fft(x, n=2*N)  # 2*N because of zero-padding
@@ -19,7 +19,7 @@ def msd_fft1d(r):
     D = np.square(r)
     D = np.append(D, 0)
     with numba.objmode(S2='float64[:]'):
-        S2 = autocorrFFT(r)
+        S2 = autocorrFFT(r) # we have to run in objmode cause numba does not support fft
     Q = 2 * D.sum()
     S1 = np.zeros(N)
     for m in range(N):
@@ -50,16 +50,36 @@ def reshape(particles):
 
     data = np.full((num_particles, num_timesteps, 2), np.nan)
 
-    for row_index in tqdm.trange(particles.shape[0]):
+    for row_index in tqdm.trange(particles.shape[0], desc='reshaping'):
         x, y, t, num = particles[row_index]
         data[int(num)-0, int(t)-0, :] = x, y # -0 cause they are 0-based
 
     return data
 
 def calc_internal(data):
+    print('nanfrac before', common.nanfrac(data))
+
+    i = 0
+    ps = np.full_like(data, np.nan)
+    for particle in range(data.shape[0]):
+        # print(common.nanfrac(data[particle, :, :]))
+        if common.nanfrac(data[particle, :, :]) == 0:
+            ps[i, :, :] = data[particle, :, :]
+            i += 1
+
+    hist = [common.nanfrac(data[p, :, :]) for p in range(data.shape[0])]
+    common.term_hist(hist)
+
+    ps = ps[:i, :, :]
+    print(ps)
+    print(type(ps))
+    print('shapes', data.shape, ps.shape)
+    data = ps
+
     x_MSDs = msd_matrix(data[:, :, 0])
     y_MSDs = msd_matrix(data[:, :, 1])
     MSDs = x_MSDs + y_MSDs
+    print('nanfrac after', common.nanfrac(MSDs))
 
     mean, std = np.nanmean(MSDs, axis=0), np.nanstd(MSDs, axis=0)
 

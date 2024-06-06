@@ -3,7 +3,6 @@ import numpy as np
 import scipy.optimize
 import common
 import scipy.integrate
-import sDFT_interactions
 import sys
 import matplotlib.cm
 
@@ -47,17 +46,17 @@ for file in (files := common.files_from_argv('box_counting/data', 'counted_')):
     # data = common.load(f'data/counted_driftremoved_{phi}.npz')
     N2_mean = data['N2_mean']
     N2_std  = data['N2_std']
-    N_stats = data['N_stats']
+    # N_stats = data['N_stats']
     phi     = data['pack_frac']
     sigma   = data['particle_diameter']
     time_step    = data['time_step']
     depth_of_field = data.get('depth_of_field')
 
-    box_sizes = N_stats[:, 0]
+    box_sizes = data['box_sizes']
     sep_sizes = data['sep_sizes']
-    N_mean    = N_stats[:, 1]
-    N_var     = N_stats[:, 2]
-    num_boxes_used = N_stats[:, 5]
+    # N_mean    = N_stats[:, 1]
+    # N_var     = N_stats[:, 2]
+    # num_boxes_used = N_stats[:, 5]
 
     num_timesteps = N2_mean.shape[1]
     num_boxes     = N2_mean.shape[0]
@@ -78,6 +77,7 @@ for file in (files := common.files_from_argv('box_counting/data', 'counted_')):
 
     # for box_size_index in boxes_to_use:
     for box_size_index in range(len(box_sizes)):
+    # for box_size_index in [1]:
     # for L in [2**e for e in range(-2, 7)]:
         L = box_sizes[box_size_index]
         t = np.copy(t_all)
@@ -148,7 +148,7 @@ for file in (files := common.files_from_argv('box_counting/data', 'counted_')):
         label += f', {file}'
         # label += f', D={D0:.3f}'
         # label += f', $sep = {sep_sizes[box_size_index]:.1f}\mathrm{{\mu m}}$'
-        label += f', $n = {num_boxes_used[box_size_index]:.0f}$'
+        # label += f', $n = {num_boxes_used[box_size_index]:.0f}$'
         
         if frac := data.get('data_fraction'):
             label += f', {frac:.3f} used'
@@ -156,9 +156,9 @@ for file in (files := common.files_from_argv('box_counting/data', 'counted_')):
         if collapse_x or collapse_y:
             markersize = 2
         else:
-            markersize = 5
+            markersize = 2
         ax.plot(t[1:], delta_N_sq[1:], label=label, color=color, linestyle='none', marker='o', markersize=markersize, markeredgecolor='none')
-        ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1, label='sDFT (no inter.)' if box_size_index==0 else None)
+        # ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1, label='sDFT (no inter.)' if box_size_index==0 else None)
         
 
     titles.append(f'{file}, $\phi_\mathrm{{calc}}={phi:.3f}$, $\sigma={sigma}$')

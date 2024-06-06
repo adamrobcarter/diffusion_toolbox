@@ -21,7 +21,8 @@ for file in sys.argv[1:]:
         ax.set_ylabel('$G(r, \Delta t)$')
         ax.set_xlabel('$r/\sigma$')
         # ax.semilogy() set_ylim(0.5, 30)
-        ax.set_ylim(0, 30)
+        ax.set_ylim(0.7, 70)
+        ax.semilogy()
 
         ax.plot(r/particle_diameter, G[t_index, :], marker='.')
         ax.text(0.7, 0.9, f'$\Delta t={t[t_index]}\mathrm{{s}}$', transform=ax.transAxes)

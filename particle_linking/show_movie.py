@@ -24,5 +24,5 @@ for file in sys.argv[1:]:
     filename = f'movie_linked_{file}'
     preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"particle_linking/figures_png/{filename}.gif",
                                                func=add_outlines)
-    preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}.mp4",
-                                               func=add_outlines)
+    # preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}.mp4",
+    #                                            func=add_outlines)

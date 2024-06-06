@@ -31,9 +31,9 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
     plot_plateau = ax.errorbar(sep_sizes[:20], plateaus[:20], yerr=0, zorder=10)
     plot_plateau = ax.errorbar(sep_sizes[:20], plateaus[:20], yerr=uncs[:20], color='tab:blue', alpha=0.7)
     # ax.set_xlim(sep_sizes.max()*1.1, sep_sizes.min()*1.1)
-    ax.set_xlim(16, -16)
-    ax.set_ylim(27, 35)
-    common.save_fig(fig, f'/home/acarter/presentations/countoscope_may/plateaus_justhalf_{file}.png', dpi=200)
+    # ax.set_xlim(16, -16)
+    # ax.set_ylim(27, 35)
+    # common.save_fig(fig, f'/home/acarter/presentations/countoscope_may/plateaus_justhalf_{file}.png', dpi=200)
 
     plot_plateau = ax.errorbar(sep_sizes, plateaus, yerr=0, zorder=10, color='tab:blue')
     color_plateau = plot_plateau[0].get_color()
@@ -53,10 +53,10 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
 
     ax.set_title(fr'$\phi={phi:.3f}$, $L={box_sizes.mean():.1f}\mathrm{{\mu m}}$')
     # ax.legend(loc='center left', fontsize=8)
-    ax.set_xlim(16, -16)
+    # ax.set_xlim(16, -16)
     
-    common.save_fig(fig, f'box_counting/figures_png/plateaus_just_{file}.png', dpi=200)
-    common.save_fig(fig, f'/home/acarter/presentations/countoscope_may/plateaus_just_{file}.png', dpi=200)
+    # common.save_fig(fig, f'box_counting/figures_png/plateaus_just_{file}.png', dpi=200)
+    # common.save_fig(fig, f'/home/acarter/presentations/countoscope_may/plateaus_just_{file}.png', dpi=200)
 
 
     ax_mean = ax.twinx()
@@ -84,14 +84,14 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
 
 
     common.save_fig(fig, f'box_counting/figures_png/plateaus_{file}.png', dpi=200)
-    common.save_fig(fig, f'/home/acarter/presentations/countoscope_may/plateaus_{file}.png', dpi=200)
+    # common.save_fig(fig, f'/home/acarter/presentations/countoscope_may/plateaus_{file}.png', dpi=200)
 
 
     ax2.invert_xaxis()
     ax2.set_xlabel('sep')
     ax2.set_ylabel(r'plateau / $\langle N \rangle$')
     ax2.errorbar(sep_sizes, plateaus/N_mean, yerr=uncs/N_mean)
-    common.save_fig(fig2, f'box_counting/figures_png/plateaus_rescaled_{file}.png', dpi=200)
+    # common.save_fig(fig2, f'box_counting/figures_png/plateaus_rescaled_{file}.png', dpi=200)
 
     # print(data['countsa'].mean(axis=2))
     # print(data['countsa'].std(axis=2).mean())

@@ -4,7 +4,7 @@ import time
 import sys
 import common
 
-def calc_and_save(box_sizes_px, sep_sizes_px, data, particles, output_file_name, extra_to_save={}, save_counts=False):
+def calc_and_save(box_sizes_px, sep_sizes_px, data, particles, output_file_name, extra_to_save={}, save_counts=False, use_old_overlap=False):
     t0 = time.time()
 
     a = 1.395 #radius of particles
@@ -17,8 +17,8 @@ def calc_and_save(box_sizes_px, sep_sizes_px, data, particles, output_file_name,
     particle_diameter        = data.get('particle_diameter', np.nan)
     particle_diameter_calced = data.get('particle_diameter_calced')
     depth_of_field           = data.get('depth_of_field')
-    window_size_x = None
-    window_size_y = None
+    window_size_x            = data.get('window_size_x')
+    window_size_y            = data.get('window_size_y')
 
     # if file == 'eleanorlong':
     #     pixel_size = 0.17 # so the boxes are the same size as aliceXXX
@@ -33,7 +33,8 @@ def calc_and_save(box_sizes_px, sep_sizes_px, data, particles, output_file_name,
                                          window_size_x=window_size_x, window_size_y=window_size_y, 
                                          box_sizes=box_sizes,
                                          #  box_sizes_x=box_sizes_x, box_sizes_y=box_sizes_y,
-                                         sep_sizes=sep_sizes,)
+                                         sep_sizes=sep_sizes,
+                                         use_old_overlap=use_old_overlap)
     
     N2_mean = results.nmsd
     N2_std = results.nmsd_std
@@ -52,10 +53,12 @@ def calc_and_save(box_sizes_px, sep_sizes_px, data, particles, output_file_name,
     common.save_data(output_file_name, N2_mean=N2_mean, N2_std=N2_std,
              box_sizes=box_sizes, sep_sizes=sep_sizes,
              num_boxes=results.num_boxes, N_mean=results.N_mean, N_var=results.N_var,
-             N_var_old=results.N_var_old, N_var_std=results.N_var_std, N_mean_std=results.N_mean_std,
+             N_var_mod=results.N_var_mod, N_var_mod_std=results.N_var_mod_std, N_mean_std=results.N_mean_std,
              time_step=time_step, pack_frac=pack_frac, particle_diameter=particle_diameter,
              particle_diameter_calced=particle_diameter_calced, computation_time=time.time()-t0,
-             depth_of_field=depth_of_field,
+             depth_of_field=depth_of_field, old_overlap=use_old_overlap,
+             box_coords=results.box_coords,
+             window_size_x=window_size_x, window_size_y=window_size_y,
              **extra_to_save)
     # np.savez(f'box_counting/data/raw_counts_{file}.npz', counts=counts,
     #          N_stats=N_stats, box_sizes=box_sizes, sep_sizes=sep_sizes,
@@ -96,11 +99,12 @@ if __name__ == '__main__':
         # sep_sizes_px = np.linspace(10, -110, 7) # 41
         # box_sizes_px = np.full_like(sep_sizes_px, 128)
 
-        # sep_sizes_px = np.linspace(20, -20, 7) # 41
-        # box_sizes_px = np.full_like(sep_sizes_px, 32)
+        sep_sizes_px = np.linspace(5, -5, 2) # 23
+        # sep_sizes_px = [20, -20]
+        box_sizes_px = np.full_like(sep_sizes_px, 8)
 
-        box_sizes_px = np.array([4, 16, 64, 256, 1024]) / 2
-        sep_sizes_px = 100 - box_sizes_px
+        # box_sizes_px = np.array([4, 16, 64, 256, 1024]) / 2
+        # sep_sizes_px = 100 - box_sizes_px
 
         if file.startswith('marine'):
             box_sizes_px = box_sizes_px[1:]
@@ -109,5 +113,18 @@ if __name__ == '__main__':
         data = common.load(f'particle_detection/data/particles_{file}.npz')
         particles = data['particles']
         # output_filename = f'box_counting/data/counted_{file}_sep0.npz'
+        
+        # for use_old_overlap in [True, False]:
+        # # for use_old_overlap in [True, False]:
+        #     ov_str = 'oldov' if use_old_overlap else 'newov'
+        #     output_filename = f'box_counting/data/counted_{file}_plateaus_{ov_str}.npz'
+        #     calc_and_save(box_sizes_px, sep_sizes_px, data, particles,
+        #         output_filename, save_counts=False, use_old_overlap=use_old_overlap)
+
+        
         output_filename = f'box_counting/data/counted_{file}.npz'
-        calc_and_save(box_sizes_px, sep_sizes_px, data, particles, output_filename, save_counts=False)
+
+        t0 = time.time()
+        calc_and_save(box_sizes_px, sep_sizes_px, data, particles,
+            output_filename, save_counts=False, use_old_overlap=False)
+        print(f'took {time.time()-t0:.0f}s')

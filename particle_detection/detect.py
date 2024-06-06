@@ -5,8 +5,9 @@ import sys
 import trackpy
 import matplotlib.pyplot as plt
 import termplotlib
+import tqdm
 
-NO_MINMASS = True
+NO_MINMASS = False
 
 if NO_MINMASS:
     print('warning, running with no minmass')
@@ -29,8 +30,9 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     maxsize = None
     minmass = 0
     diameter = None
-    separation = None
+    separation = None # default diameter + 1
     invert = False
+    percentile = None # default 64
 
     if file == 'pierre_simdownsampled':
         pass
@@ -44,6 +46,25 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     elif file == 'eleanor0.34' or file == 'eleanor0.01':
         diameter = 7
         minmass = 1
+        
+    elif file == 'eleanor0.34' or file == 'eleanor0.01' or file == 'eleanor0.34_ds1' or file == 'eleanor0.01_ds1':
+        diameter = 7
+        minmass = 1
+        
+    elif file == 'eleanor0.34_ds2' or file == 'eleanor0.01_ds2':
+        diameter = 5
+        minmass = 1/2
+        
+    elif file == 'eleanor0.34_ds4' or file == 'eleanor0.01_ds4':
+        diameter = 3
+        minmass = 0.01
+        separation = 2.8
+        
+    elif file == 'eleanor0.34_ds8' or file == 'eleanor0.01_ds8':
+        diameter = 3
+        minmass = 0.0001
+        separation = 2.8
+        percentile = 20
 
     elif file.startswith('marine'):
         # for marine10 at least
@@ -69,8 +90,15 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
 
     # features = trackpy.batch(stack[:100], 11, processes=16)
     trackpy.quiet() # turns off reporting every frame as it's processed
+    progress = tqdm.tqdm(total=stack.shape[0])
+    def update(frame, features):
+        progress.update()
+        return features
     features = trackpy.batch(stack, processes=16, diameter=diameter, minmass=minmass,
-                             separation=separation, threshold=threshold, invert=invert)
+                             separation=separation, threshold=threshold, invert=invert,
+                             after_locate=update)
+    progress.close()
+
     print(features.describe())
 
     print('mass:')
@@ -114,6 +142,7 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
         # there is a line in the DoGDetector source about this sqrt 2
     print(f'calced diameter {particle_diameter_calced:.3f}um')
 
+    print(file)
     assert particles.shape[0] > 0, 'no particles were found'
 
     print(f'found {(particles.shape[0]/num_timesteps):0f} particles per frame')
@@ -122,13 +151,14 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
         pack_frac = np.pi/4 * density * particle_diameter**2
         print(f'so packing fraction phi = {pack_frac:.3f}')
 
-    np.savez(f'particle_detection/data/particles_{outfile}.npz',
+    common.save_data(f'particle_detection/data/particles_{outfile}.npz',
             #  particle_picklepath=picklepath,
             particles=particles, radius=radius, time_step=time_step,
             threshold=threshold, maxsize=maxsize, minmass=minmass, diameter=diameter, separation=separation,
             computation_time=time.time()-t0, depth_of_field=depth_of_field,
             pixel_size=pixel_size, num_timesteps=num_timesteps, particle_diameter=particle_diameter,
-            particle_diameter_calced=particle_diameter_calced)
+            particle_diameter_calced=particle_diameter_calced,
+            window_size_x=pixel_size*stack.shape[1], window_size_y=pixel_size*stack.shape[2])
     
     # we also save the whole dataframe so we can use it for linking if we want
     features.to_pickle(f'particle_detection/data/particlesdf_{outfile}.pickle')

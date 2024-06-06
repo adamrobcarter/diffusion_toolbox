@@ -28,7 +28,7 @@ def show_frame(fig, ax, stack, pixel_size, particles, radius, timestep, file):
     elif file == 'pierre_exp':
         vmin = 0.3
         vmax = 0.6
-    im = ax.imshow(stack[timestep, :, :], cmap=matplotlib.cm.Greys, vmin=vmin, vmax=vmax)#, vmin=-2, vmax=2)
+    im = ax.imshow(stack[timestep, :, :], cmap=matplotlib.cm.Greys, vmin=vmin, vmax=vmax, interpolation='none')#, vmin=-2, vmax=2)
     # im = ax.imshow(stack[timestep, :, :], cmap=matplotlib.cm.Greys, vmin=0, vmax=1)#, vmin=-2, vmax=2)
     # im = ax.imshow(stack[timestep, :, :], cmap=matplotlib.cm.Greys)#, vmin=-2, vmax=2)
     # fig.colorbar(im)
@@ -49,6 +49,8 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep):
     x = particles[particles_at_t, 1]/pixel_size
     y = particles[particles_at_t, 0]/pixel_size
     r = radius[particles_at_t] * np.sqrt(2) # TODO: should this be /pixel_size?
+    r = np.full_like(r, r.mean())
+    warnings.warn('i disabled showing radius')
     if particles.shape[1] == 4:
         id = particles[particles_at_t, 3]
 
@@ -75,11 +77,8 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep):
     ax.add_collection(c)
 
 if __name__ == '__main__':
-    for datasource in sys.argv[1:]:
-        datasource2 = datasource
-        if datasource.endswith('_trackpy'):
-            datasource2 = datasource.split('_trackpy')[0]
-        data = common.load(f'preprocessing/data/stack_{datasource2}.npz')
+    for file in common.files_from_argv('particle_detection/data', 'particles_'):
+        data = common.load(f'preprocessing/data/stack_{file}.npz')
         stack             = data['stack']
         pixel_size        = data['pixel_size']
         particle_diameter = data.get('particle_diameter')
@@ -98,7 +97,7 @@ if __name__ == '__main__':
         
         # stack = np.interp(stack, (stack.min(), stack.max()), (0, 1)) # convert to 0->1 range
 
-        data = common.load(f'particle_detection/data/particles_{datasource}.npz')
+        data = common.load(f'particle_detection/data/particles_{file}.npz')
         particles = data['particles']
         radius = data['radius']
         print(particles.shape)
@@ -121,6 +120,6 @@ if __name__ == '__main__':
         if True:
             timestep = num_timesteps // 2
 
-            show_frame(fig, ax, stack, pixel_size, particles, radius, timestep, datasource)
+            show_frame(fig, ax, stack, pixel_size, particles, radius, timestep, file)
 
-            common.save_fig(fig, f'particle_detection/figures_png/particles_{datasource}.png', dpi=300)
+            common.save_fig(fig, f'particle_detection/figures_png/particles_{file}.png', dpi=300)

@@ -1,9 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import sys
+import common
 
-for file in sys.argv[1:]:
-    data = np.load(f'particle_detection/data/particles_{file}.npz')
+for file in common.files_from_argv('particle_detection/data', 'particles_'):
+    data = common.load(f'particle_detection/data/particles_{file}.npz')
     particles  = data['particles'] # rows of x,y,t
     pixel_size = data['pixel_size']
     particles[[0, 1], :] /= pixel_size # go back to pixel units not real space units
@@ -15,4 +15,4 @@ for file in sys.argv[1:]:
     ax_x.set_xlim(0, 1)
     ax_y.set_xlim(0, 1)
     fig.suptitle(f'subpixel bias {file}')
-    fig.savefig(f'particle_detection/figures_png/subpixel_bias_{file}.png')
+    common.save_fig(fig, f'particle_detection/figures_png/subpixel_bias_{file}.png')

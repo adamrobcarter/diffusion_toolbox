@@ -36,7 +36,7 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=la
 
     def show(timestep):
         ax.clear()
-        im = ax.imshow(stack[timestep, :, :], vmin=stack.min(), vmax=stack.max(), cmap=matplotlib.cm.Greys)
+        im = ax.imshow(stack[timestep, :, :], vmin=stack.min(), vmax=stack.max(), cmap=matplotlib.cm.Greys, interpolation='none')
         # if timestep == 0:
         #     fig.colorbar(im)
         # plt.imshow(stack.min(axis=0))
@@ -78,4 +78,4 @@ if __name__ == '__main__':
 
             filename = f'stack_movie_bkgrem_{file}' if bkg else f'stack_movie_{file}'
             save_array_movie(stack_copy, pixel_size, time_step, file, f"preprocessing/figures_png/{filename}.gif")
-            save_array_movie(stack_copy, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}.mp4")
+            # save_array_movie(stack_copy, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}.mp4")

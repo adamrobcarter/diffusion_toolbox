@@ -9,6 +9,7 @@ import numba
 import scipy.stats
 import warnings, time
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
+import termplotlib
 
 def get_directory_files(directory, extension, file_starts_with=''):
     filenames = []
@@ -427,13 +428,13 @@ def find_drift(particles):
         x = particles[indexes, 0]
         y = particles[indexes, 1]
         t = particles[indexes, 2]
+
+        if t.size < 2:
+            # can't regress with only one point!
+            continue
         
         res_x = scipy.stats.linregress(t, x)
         res_y = scipy.stats.linregress(t, y)
-
-        if np.isnan(res_x.slope) or np.isnan(res_y.slope):
-            warnings.warn('skipping a particle because linregress gave nan. not sure why this is happening')
-            continue
 
         drift_xs.append(res_x.slope)
         drift_ys.append(res_y.slope)
@@ -509,3 +510,9 @@ def add_drift_intensity(stack, drift):
         # output[t, :, :] = stack[0, new_x[t]:new_x[t]+new_width, :new_width] # we could actually make the y axis keep it's original height, but for now, we crop to square
 
     return output
+
+def term_hist(data):
+    counts, bin_edges = np.histogram(data, bins=20)
+    term_fig = termplotlib.figure()
+    term_fig.hist(counts, bin_edges, force_ascii=False, orientation="horizontal")
+    term_fig.show()

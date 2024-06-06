@@ -71,7 +71,7 @@ for file in common.files_from_argv('particle_detection/data/', 'particles_'):
     fig, ((r_ax_2d, r_ax_1d), (k_ax_2d, k_ax_1d)) = plt.subplots(2, 2, figsize=(6, 6))
     avg_image = np.nanmean(used_images, axis=0)
     # note: don't just do binning on the average image, because you have lost subpixel accuracy if you do that
-    r_ax_2d.imshow(avg_image)
+    r_ax_2d.imshow(avg_image, interpolation='none')
     # ax_2d.imshow(d_px)
     r_bins_px_av = (r_bins_px[:-1] + r_bins_px[1:]) / 2 # middle of bin
     # print()
@@ -82,7 +82,7 @@ for file in common.files_from_argv('particle_detection/data/', 'particles_'):
 
     k_xx, k_yy, k_image = common.fourier_2D(avg_image, pixel_size, axes=(0, 1))
     print('k image.shape', k_image.shape)
-    k_ax_2d.imshow(np.abs(k_image))
+    k_ax_2d.imshow(np.abs(k_image), interpolation='none')
 
     test_f, test_fft = common.fourier(r_bins_px_av, intensity_profiles[0, :])
     k_profiles = np.full((len(lines_to_use), test_fft.size), np.nan)

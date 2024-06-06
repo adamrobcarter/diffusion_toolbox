@@ -55,7 +55,8 @@ import particle_detection.show
 
 
 if __name__ == '__main__':
-    SUFFIX = '_nominmass'
+    # SUFFIX = '_nominmass'
+    SUFFIX = ''
 
     for file in sys.argv[1:]:
         data_stack = common.load(f'preprocessing/data/stack_{file}.npz')

@@ -15,7 +15,7 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
 
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
 
-    ax.imshow(stack[0, :, :], cmap=matplotlib.cm.Greys)
+    ax.imshow(stack[0, :, :], cmap=matplotlib.cm.Greys, interpolation='none')
     # plt.imshow(stack.min(axis=0))
     
     # excess = stack - stack.min(axis=0)

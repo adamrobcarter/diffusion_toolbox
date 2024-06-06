@@ -17,7 +17,7 @@ def msd_fft1d(r):
     D = np.square(r)
     D = np.append(D, 0)
     with numba.objmode(S2='float64[:]'):
-        S2 = autocorrFFT(r)
+        S2 = autocorrFFT(r) # we have to run in objmode cause numba does not support fft
     Q = 2 * D.sum()
     S1 = np.zeros(N)
     for m in range(N):

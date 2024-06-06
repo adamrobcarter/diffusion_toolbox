@@ -41,12 +41,12 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
     # data = common.load(f'data/counted_driftremoved_{phi}.npz')
     N2_mean        = data['N2_mean']
     N2_std         = data['N2_std']
-    # N_stats        = data['N_stats']
     phi            = data['pack_frac']
     sigma          = data['particle_diameter']
     time_step      = data['time_step']
     depth_of_field = data.get('depth_of_field')
 
+    # N_stats        = data['N_stats']
     # box_sizes    = N_stats[:, 0]
     # N_mean       = N_stats[:, 1]
     # N_var        = N_stats[:, 2]
@@ -111,8 +111,9 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
 
         # ax.plot(t_theory, N2_func_full(t_theory, D0), color='black', zorder=5, linestyle='dotted', linewidth=1, label='sFDT (no inter.)' if box_size_index==0 else None)
 
-        color = matplotlib.cm.afmhot((box_size_index+2)/(len(box_sizes)+7))
-        
+        # color = matplotlib.cm.afmhot((box_size_index+2)/(len(box_sizes)+7))
+        color =  matplotlib.cm.afmhot(np.interp(box_size_index, (0, len(box_sizes)), (0.2, 0.75)))
+                
         if SHOW_MEAN:
             ax.hlines(2*N_mean[box_size_index], t.min(), t.max(), color=color, linewidth=1, linestyle='dashdot', label=r'$2 \langle N \rangle$' if box_size_index==0 else None)
         if SHOW_VARIANCE:
@@ -145,7 +146,7 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
             N2_theory = lambda t, D : countoscope_theory.nmsd.inter_2d(t, D, N_mean[box_size_index], L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma))
             type_of_fit = 'sDFT (w/ inter.)'
         log_N2_theory = lambda t, *args : np.log(N2_theory(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
-        print('tsh', t.shape)
+        
         fitting_points = common.exponential_integers(1, t.size//2)
         # p0 = (0.05, N_mean[box_size_index])
         p0 = [0.05]
@@ -171,7 +172,7 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
         
         info = fr'L = {L/sigma:.1f}σ, D_fit = {common.format_val_and_unc(D_from_fit, D_from_fit_unc, 2)} um^2/s'
         # ±{np.sqrt(pcov[0][0]):.3f}$'
-        print(info)
+        # print(info)
 
         
         # linear fit to start
@@ -213,6 +214,7 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
                 label += f', s={sep:.2f}'
             label += fr', $D_\mathrm{{short\:fit}}={common.format_val_and_unc(D_from_fit, D_from_fit_unc, 2)} \mathrm{{\mu m^2/s}}$'
             # ±{np.sqrt(pcov[0][0]):.3f}$'
+            print(delta_N_sq.size, common.nanfrac(delta_N_sq))
             exp_plot = ax.plot(t[1:], delta_N_sq[1:], label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1, color=color)
             # exp_plot = ax.errorbar(t[1:], delta_N_sq[1:], yerr=delta_N_sq_err[1:]/np.sqrt(num_of_boxes[box_size_index]), label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
             # exp_plot = ax.errorbar(t[1:], delta_N_sq[1:], yerr=delta_N_sq_err[1:], label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
@@ -232,7 +234,7 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
                 print(f'skipping short time fit at L={L}um, D_unc/D={D_unc_from_shorttime/D_from_shorttime:.2f}')
             else:
                 D_ratio = D_from_shorttime/D_from_fit
-                print(f'D_short / D_fit = {D_ratio:.2f}')
+                # print(f'D_short / D_fit = {D_ratio:.2f}')
                 if D_ratio > 1.5 or 1/D_ratio > 1.5:
                     print(f'problem! D fit = {common.format_val_and_unc(D_from_fit, D_from_fit_unc, 2)} D shorttime = {common.format_val_and_unc(D_from_shorttime, D_unc_from_shorttime, 2)}')
                 ax.plot(t[1:fit_end], fit_func_2(t[1:fit_end], *popt), linestyle=':', color='gray')

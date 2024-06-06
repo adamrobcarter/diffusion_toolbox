@@ -27,7 +27,7 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     if file.startswith('marine'):
         cmap = matplotlib.cm.Greys_r
 
-    plt.imshow(frame1, cmap=cmap)
+    plt.imshow(frame1, cmap=cmap, interpolation='none')
     # plt.imshow(stack.min(axis=0))
     
     # excess = stack - stack.min(axis=0)
@@ -36,8 +36,8 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     color = 'white' if frame1.mean()/(frame1.max()-frame1.min()) < 0.2 else 'black'
 
     if SMALL and file.startswith('eleanor0.'):
-        plt.ylim(000, 400)
-        plt.xlim(000, 400)
+        plt.ylim(000, min(400, stack.shape[2]))
+        plt.xlim(000, min(400, stack.shape[1]))
     if SMALL and file == 'pierre_exp':
         plt.ylim(000, 300)
         plt.xlim(000, 300)
@@ -59,9 +59,9 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
             plt.gca().text(0.45, 0.15, f'$\phi={pack_frac:.2f}$', color=color, transform=plt.gca().transAxes,
                         horizontalalignment='left', verticalalignment='bottom')
     except:
-        print('ohnoooo')
+        print('failed to find particle diamter / pack frac for annotations')
 
     common.add_scale_bar(plt.gca(), data['pixel_size'], color=color)
 
     common.save_fig(plt.gcf(), f'preprocessing/figures_png/frame1_{file}.png', dpi=600, only_plot=True)
-    common.save_fig(plt.gcf(), f'/home/acarter/presentations/cin_first/figures/frame1_{file}.png', dpi=300, only_plot=True)
+    # common.save_fig(plt.gcf(), f'/home/acarter/presentations/cin_first/figures/frame1_{file}.png', dpi=300, only_plot=True)

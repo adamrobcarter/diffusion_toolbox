@@ -29,7 +29,7 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
     ax.set_ylabel(r'$\langle r(\Delta t)^2 \rangle$ ($\mathrm{\mu m}$)')
     ax.set_xlabel('$\Delta t$ (s)')
     
-    common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/msd_nofit_{file}.pdf', hide_metadata=True)
+    # common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/msd_nofit_{file}.pdf', hide_metadata=True)
 
     fitting_points = common.exponential_integers(1, t.size-1)
     func = lambda t, D: 4*D*t
@@ -41,17 +41,17 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
     func_short = lambda t, D: 4*D*t
     popt_short, pcov_short = scipy.optimize.curve_fit(func_short, t[fitting_points_short], msd[fitting_points_short])
     t_th_short = np.logspace(np.log10(t[fitting_points_short[0]]), np.log10(t[fitting_points_short[-1]]))
-    ax.plot(t_th_short, func_short(t_th_short, *popt_short), color='black', linewidth=1)
+    # ax.plot(t_th_short, func_short(t_th_short, *popt_short), color='black', linewidth=1)
 
     fitting_points_long = common.exponential_integers(t.size//10, t.size-1)
     func_long = lambda t, D, a: 4*D*t + a
     popt_long, pcov_long = scipy.optimize.curve_fit(func_long, t[fitting_points_long], msd[fitting_points_long])
     t_th_long = np.logspace(np.log10(t[fitting_points_long[1]]), np.log10(t[fitting_points_long[-1]]))
-    ax.plot(t_th_long, func_long(t_th_long, *popt_long), color='black', linewidth=1)
+    # ax.plot(t_th_long, func_long(t_th_long, *popt_long), color='black', linewidth=1)
 
     ax.legend()
 
-    common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/msd_{file}.pdf', hide_metadata=True)
+    # common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/msd_{file}.pdf', hide_metadata=True)
     common.save_fig(fig, f'MSD/figures_png/msd_{file}.png')
     np.savez(f'visualisation/data/Ds_from_MSD_{file}',
              Ds=[popt[0]], D_uncs=[np.sqrt(pcov)[0][0]], labels=[''])

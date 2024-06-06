@@ -22,3 +22,5 @@ MSD/figures_png/*
 visualisation/data/*
 nohup.out
 .vscode/settings.json
+van_hove/data/*
+van_hove/figures_png/*

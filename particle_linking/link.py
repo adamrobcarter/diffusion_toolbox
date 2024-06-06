@@ -5,7 +5,9 @@ import trackpy
 
 for file in common.files_from_argv('particle_detection/data', 'particlesdf_'):
     data = common.load(f'particle_detection/data/particles_{file}.npz')
-    pixel_size = data['pixel_size']
+    pixel_size    = data['pixel_size']
+    window_size_x = data.get('window_size_x')
+    window_size_y = data.get('window_size_y')
 
     features = pandas.read_pickle(f'particle_detection/data/particlesdf_{file}.pickle')
     if file.startswith('eleanor'):
@@ -34,9 +36,11 @@ for file in common.files_from_argv('particle_detection/data', 'particlesdf_'):
     radius = trajs[['size']].to_numpy()[:, 0] # we use radius not diameter(size) for backward compatibility
     # ^^^ TODO I don't like this!!!!!!!!! call it diameter or size ffs
     
-    np.savez(f'particle_linking/data/trajs_{file}.npz',
+    common.save_data(f'particle_linking/data/trajs_{file}.npz',
             #  particle_picklepath=picklepath,
             particles=particles, radius=radius, time_step=data['time_step'],
             pixel_size=pixel_size,
-            particle_diameter=data['particle_diameter'])
+            particle_diameter=data['particle_diameter'],
+            num_timesteps=particles[:, 2].max(),
+            window_size_x=window_size_x, window_size_y=window_size_y)
             # particle_diameter_calced=particle_diameter_calced)
