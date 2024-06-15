@@ -62,21 +62,22 @@ def load(filename):
         
     return data
 
-def save_data(filename, **data):
-    print(f'saving {filename}')
-    for key in data.keys():
-        if isinstance(data[key], np.ndarray):
-            if data[key].shape: # array
-                if data[key].size * data[key].itemsize > 10e9:
-                    warnings.warn(f'Saving array of size {arraysize(data[key])}')
-                print(f'  saving {key}, dtype={data[key].dtype}, shape={data[key].shape}, size={arraysize(data[key])}')
-            else: # single value
-                print(f'  saving {key}, dtype={data[key].dtype}, value={data[key]}')
-        else:
-            if type(data[key]) in [list,tuple]:
-                print(f'  saving {key}, type={type(data[key])}')
+def save_data(filename, quiet=False, **data):
+    if not quiet:
+        print(f'saving {filename}')
+        for key in data.keys():
+            if isinstance(data[key], np.ndarray):
+                if data[key].shape: # array
+                    if data[key].size * data[key].itemsize > 10e9:
+                        warnings.warn(f'Saving array of size {arraysize(data[key])}')
+                    print(f'  saving {key}, dtype={data[key].dtype}, shape={data[key].shape}, size={arraysize(data[key])}')
+                else: # single value
+                    print(f'  saving {key}, dtype={data[key].dtype}, value={data[key]}')
             else:
-                print(f'  saving {key}, type={type(data[key])}, value={data[key]}')
+                if type(data[key]) in [list,tuple]:
+                    print(f'  saving {key}, type={type(data[key])}')
+                else:
+                    print(f'  saving {key}, type={type(data[key])}, value={data[key]}')
     
     np.savez(filename, **data)
 
@@ -156,10 +157,10 @@ def save_fig(fig, path, dpi=100, only_plot=False, hide_metadata=False):
         args['bbox_inches'] = 'tight'
         args['pad_inches'] = 0
 
-    # path = path.replace('*', '')
-    if not path.startswith('/'):
-        path = f'/data/acarter/toolbox/{path}'
-    print(f'saving {path} {len(fig.axes)} axes')
+    path2 = path.replace('*', '')
+    if not path2.startswith('/'):
+        path2 = f'~/Michot_0624/toolbox/{path}'
+    print(f'saving {path2}    {len(fig.axes)} axes')
     fig.savefig(path, dpi=dpi, **args)
 
 def add_scale_bar(ax, pixel_size, color='black'):
@@ -463,13 +464,14 @@ import fnmatch
 
 def files_from_argv(location, prefix):
     files = sys.argv[1:]
-    
+
     if len(files) == 1 and files[0].endswith('*'):
         target = prefix + files[0]
         
         files = []
         all_filenames = os.listdir(location)
         all_filenames.sort()
+        print(all_filenames)
 
         filenames = fnmatch.filter(all_filenames, target)
         
@@ -516,3 +518,47 @@ def term_hist(data):
     term_fig = termplotlib.figure()
     term_fig.hist(counts, bin_edges, force_ascii=False, orientation="horizontal")
     term_fig.show()
+
+names = {
+    'psiche0': '?',
+    'psiche0007': '?',
+    'psiche0008': 'solution_mere_10dil_3mu_COOH_NaOH',
+    'psiche0009': 'test_flat_long_corr',
+    'psiche0010': 'emptyglasscap',
+    'psiche0011': 'H2O_glass_cap',
+    'psiche0012': 'PS2um_COOH_Au_solution_mere',
+    'psiche0013': '',
+    'psiche0014': 'vermiculite_1_2um-dil10',
+    'psiche0020': 'silice7p75um_sediment_x6p8_z15',
+    'psiche0021': 'silice1p7um',
+    'psiche0024': 'silice4um_sediment',
+    'psiche0026': 'silice1p7um_texp500ms',
+    'psiche0027': 'silice1p7um_texp200ms',
+    'psiche0028': 'silice1p7um_bottom_texp1s',
+    'psiche0029': 'silice0p96_texp500ms',
+    'psiche0030': 'silice0p96_texp500ms',
+    'psiche0031': 'silice0p96_texp1s',
+    'psiche0035': 'PS2um_Au_texp200ms',
+    'psiche0036': 'PS2um_Au_texp500ms',
+    'psiche0036': 'PS2um_Au_texp1s',    
+    'psiche0040': 'silice0p9um_10dil_texp200ms',
+    'psiche0041': 'silice0p9um_10dil_texp500ms',
+    'psiche0042': 'silice0p9um_10dil_texp1s',
+    'psiche0045': 'muscovite_100_200um',
+    'psiche0047': '0047_muscovite_100-200um_time15min-silice4um',
+
+    
+    'psiche0047': '0047_muscovite_100-200um_time15min-silice4um'
+    
+
+}
+
+def name(file):
+    if file.startswith('psiche'):
+        try:
+            with open(f'raw_data/psiche/{file}/NAME', 'r') as namefile:
+                name = namefile.read()
+            return f'{file} {name}'
+        except FileNotFoundError:
+            pass
+    return names.get(file, file)

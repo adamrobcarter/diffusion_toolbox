@@ -6,19 +6,34 @@ import scipy.special
 
 FIT_USE_FLOW = True
 
-def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
+# target_ks = list(np.logspace(np.log10(0.4), np.log10(7), 7))
+# target_ks = (0.28, 0.38, 0.5, 1.3, 2, 4, 8)
+# target_ks = (0.1, 0.14, 0.5, 1.3, 2, 4, 8)
+target_ks = list(np.logspace(np.log10(0.2), np.log10(8), 14))
+fig, axs = plt.subplots(1, len(target_ks), figsize=(len(target_ks)*3.5, 4))
 
-    # target_ks = list(np.logspace(np.log10(0.4), np.log10(7), 7))
-    # target_ks = (0.28, 0.38, 0.5, 1.3, 2, 4, 8)
-    # target_ks = (0.1, 0.14, 0.5, 1.3, 2, 4, 8)
-    target_ks = list(np.logspace(np.log10(0.2), np.log10(8), 14))
+
+for file in (files := common.files_from_argv('DDM/data', 'ddm_')):
+    data = common.load(f'DDM/data/ddm_{file}.npz')
+    k          = data['k']
+    F_D_sq     = data['F_D_sq']
+    F_D_sq_unc = data['F_D_sq_unc']
+    t          = data['t']
+    time_step = t[1] - t[0]
+
+    if file.endswith('_5'):
+        print('note dividing by 5')
+        time_step /= 5
+    print('t', time_step)
+
+    sigma = data['particle_diameter']
+    pixel = data['pixel_size']
+
 
     DDM_f     = np.full((F_D_sq.shape[0], len(target_ks)), np.nan)
     DDM_f_unc = np.full((F_D_sq.shape[0], len(target_ks)), np.nan)
 
     real_ks = []
-
-    fig, axs = plt.subplots(1, len(target_ks), figsize=(len(target_ks)*3.5, 4))
 
     D_max = 0
 
@@ -38,19 +53,15 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
 
         ax = axs[graph_i]
 
-        to_plot = np.full_like(F_D_sq[:, k_index], True, dtype='bool')
-        to_plot[0] = 0
-        anomalous = F_D_sq_unc[:, k_index] > F_D_sq[:, k_index]
-        # print(anomalous)
-        to_plot[anomalous] = False
-        print(f'removed {(to_plot==0).sum()-1}')
-        # print(to_plot)
+        
 
         # ax.errorbar(t[1:], F_D_sq[1:, k_index], yerr=F_D_sq_unc[1:, k_index], marker='.', linestyle='none')
-        ax.errorbar(t[to_plot], F_D_sq[to_plot, k_index], yerr=F_D_sq_unc[to_plot, k_index], marker='.', linestyle='none')
+        norm = F_D_sq[np.argmax(t>10), k_index]
+        ax.errorbar(t[1:-2], F_D_sq[1:-2, k_index]/norm, yerr=F_D_sq_unc[1:-2, k_index]/norm, marker='.', linestyle='none', label=common.name(file))
+        # ax.errorbar(t[1:-2], F_D_sq[1:-2, k_index]/time_step**2, yerr=F_D_sq_unc[1:-2, k_index]/time_step**2, marker='.', linestyle='none')
 
 
-        if not live:
+        if False:
 
             rescale = F_D_sq[1:, k_index].max()
             F_D_sq_rescaled = F_D_sq[:, k_index] / rescale
@@ -122,12 +133,12 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
         ax.semilogx()
         # ax.semilogy()
         ax.set_title(fr'$k={k[k_index]:.2f}$ ($\approx{2*np.pi/k[k_index]:.2f}\mathrm{{\mu m}}$)')
-        ax.legend(fontsize=9)
+        ax.legend(fontsize=7)
 
-        # print('DDM_f nan', common.nanfrac(DDM_f[:, graph_i]))
-        
-        # ax.set_ylim([np.min(F_D_sq[1:-2, k_index]-F_D_sq_unc[1:-2, k_index]),np.max(F_D_sq[1:-2, k_index]+F_D_sq_unc[1:-2, k_index])])
-        ax.set_ylim([np.min(F_D_sq[1:-4, k_index]) - (np.max(F_D_sq[1:-4, k_index])-np.min(F_D_sq[1:-4, k_index]))*0.1,np.max(F_D_sq[1:-4, k_index]) + (np.max(F_D_sq[1:-4, k_index])-np.min(F_D_sq[1:-4, k_index]))*0.1])
+    # print('DDM_f nan', common.nanfrac(DDM_f[:, graph_i]))
+    
+    ax.set_ylim([np.min(F_D_sq[1:-2, k_index]-F_D_sq_unc[1:-2, k_index]),np.max(F_D_sq[1:-2, k_index]+F_D_sq_unc[1:-2, k_index])])
+    ax.set_ylim([np.min(F_D_sq[1:-4, k_index]) - (np.max(F_D_sq[1:-4, k_index])-np.min(F_D_sq[1:-4, k_index]))*0.1,np.max(F_D_sq[1:-4, k_index]) + (np.max(F_D_sq[1:-4, k_index])-np.min(F_D_sq[1:-4, k_index]))*0.1])
 
         # D_ax = D_axs[graph_i+1]
         # D_ax.scatter(t[1:], D_of_t[1:], s=10)
@@ -144,10 +155,11 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
     # axs[0].semilogx()
     # axs[0].vlines(real_ks, 0, 1.5, color='black')
 
-    fig.suptitle(f'{common.name(file)}, $\sigma={sigma}$, pixel$={pixel}$')
-    
-    filename = f'DDM/figures_png/ddm_{file}_live.png' if live else f'DDM/figures_png/ddm_{file}.png'
-    common.save_fig(fig, filename)
+fig.suptitle(f'{common.name(file)}, $\sigma={sigma}$, pixel$={pixel}$')
+
+filestring = '_'.join(files)
+filename = f'DDM/figures_png/ddm_mult_{filestring}.png'
+common.save_fig(fig, filename)
     # np.savez(f'visualisation/data/Ds_from_DDM_{file}',
     #          Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, ks=ks_for_saving)
     # common.save_data(f'DDM/data/A_B_of_q_{file}.npz',
@@ -157,16 +169,3 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
     # common.save_data(f'scattering_functions/data/DDM_{file}.npz',
     #                  t=t, F=DDM_f, F_unc=DDM_f_unc, k=real_ks,
     #                  particle_diameter=data.get('particle_diameter'))
-
-if __name__ == '__main__':
-    for file in common.files_from_argv('DDM/data', 'ddm_'):
-        data = common.load(f'DDM/data/ddm_{file}.npz')
-        k          = data['k']
-        F_D_sq     = data['F_D_sq']
-        F_D_sq_unc = data['F_D_sq_unc']
-        t          = data['t']
-
-        sigma = data['particle_diameter']
-        pixel = data['pixel_size']
-
-        show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel)

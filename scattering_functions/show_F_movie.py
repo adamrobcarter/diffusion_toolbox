@@ -30,7 +30,7 @@ for file in sys.argv[1:]:
     
 
     common.save_gif(func, range(len(t)), fig, f'scattering_functions/figures_png/F_{file}.gif', fps=4)
-    common.save_gif(func, range(len(t)), fig, f'/home/acarter/presentations/cin_first/figures/F_{file}.mp4', fps=4)
+    # common.save_gif(func, range(len(t)), fig, f'/home/acarter/presentations/cin_first/figures/F_{file}.mp4', fps=4)
 
 
     

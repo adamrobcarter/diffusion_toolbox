@@ -51,7 +51,7 @@ def go(intensities, box_sizes_um, sep_sizes_um, pixel_size):
 
     assert np.all((box_sizes < window_width) & (box_sizes < window_height)), 'Box sizes must be smaller than window size'
 
-    print('box sizes px', box_sizes, sep_sizes)
+    # print('box sizes px', box_sizes, sep_sizes)
 
     msd_means, avgs, variances, all_counts = inner_loop(intensities, num_timesteps, box_sizes, sep_sizes, window_width, window_height)
 
@@ -70,28 +70,75 @@ def inner_loop(intensities, num_timesteps, box_sizes, sep_sizes, window_width, w
         box_size = box_sizes[box_size_index]
         sep      = sep_sizes[box_size_index]
         msds, avg, variance, counts = msds_for_box_size(intensities, box_size, sep, window_width, window_height, msd_length)
-        msd_means[box_size_index, :] = msds.mean(axis=0)
+        msd_means[box_size_index, :] = msds.mean(axis=0) # average over boxes
         # msd_stds [box_size_index, :] = msd_std
         avgs     [box_size_index]    = avg
         variances[box_size_index]    = variance
-        print('avg', avg)
+        # print('avg', avg)
         all_counts.append(counts)
     
     return msd_means, avgs, variances, all_counts
 
-@numba.njit(fastmath=True, parallel=True)
+@numba.njit(fastmath=True)
 def msds_for_box_size(intensities, box_size, sep, window_width, window_height, msd_length):
     # count the intensities for one box size
 
+    counts = count_at_box_size(intensities, box_size, sep, window_width, window_height)
+
+    avg = counts.mean()
+    variance = counts.var()
+    # variance = np.mean(counts**2) - avg**2
+
+    msds = (counts[:, :] - counts[0, :])**2
+
+    msds = np.transpose(msds)
+    # counts_t = np.transpose(counts)
+    # msds = msd_matrix(counts_t)
+
+
+    # msd_avgs = np.mean(msds, axis=0)
+    # return msds, avg, variance, counts[:, 0:100:10]
+    return msds, avg, variance, None
+
+@numba.njit(fastmath=True)
+def N1N2_for_box_size(intensities, box_size, sep, window_width, window_height, msd_length, direction='x'):
+    # count the intensities for one box size
+
+    if direction == 'x':
+        offset_x = box_size
+        offset_y = 0
+    if direction == 'y':
+        offset_x = 0
+        offset_y = box_size
+    counts1 = count_at_box_size(intensities, box_size, sep, window_width, window_height)
+    counts2 = count_at_box_size(intensities, box_size, sep, window_width, window_height, offset_x=offset_x, offset_y=offset_y)
+
+    avg = (counts1.mean() + counts2.mean()) / 2
+    variance = (counts1.var() + counts2.var()) / 2 # is this the right way to do this?
+    # variance = np.mean(counts**2) - avg**2
+
+    msds = (counts2[:, :]*counts1[0, ] - counts[0, :])**2
+
+    msds = np.transpose(msds)
+    # counts_t = np.transpose(counts)
+    # msds = msd_matrix(counts_t)
+
+
+    # msd_avgs = np.mean(msds, axis=0)
+    # return msds, avg, variance, counts[:, 0:100:10]
+    return msds, avg, variance, None
+
+@numba.njit(fastmath=True, parallel=True)
+def count_at_box_size(intensities, box_size, sep, window_width, window_height, offset_x=0, offset_y=0):
     num_timesteps = intensities.shape[0]
 
     num_boxes_x = int(np.floor(window_width  / (box_size + sep)))
     num_boxes_y = int(np.floor(window_height / (box_size + sep)))
     counts = np.full((num_timesteps, num_boxes_x * num_boxes_y), np.nan)
-    print('L =', box_size, 'sep =', sep, ':', num_boxes_x, '*', num_boxes_y)
+    # print('L =', box_size, 'sep =', sep, ':', num_boxes_x, '*', num_boxes_y)
     
-    box_xs = np.arange(0, num_boxes_x) * (box_size + sep) #+ sep/2
-    box_ys = np.arange(0, num_boxes_y) * (box_size + sep) #+ sep/2
+    box_xs = np.arange(0, num_boxes_x) * (box_size + sep) + offset_x
+    box_ys = np.arange(0, num_boxes_y) * (box_size + sep) + offset_y
 
     if sep < 0 and box_size % np.abs(sep) == 0:
         print('Negative overlap is an exact divisor of box size. This will lead to correlated boxes.')
@@ -104,12 +151,4 @@ def msds_for_box_size(intensities, box_size, sep, window_width, window_height, m
                 box_y = box_ys[box_y_index]
 
                 counts[timestep, box_x_index * num_boxes_y + box_y_index] = intensities[timestep, box_x:box_x+box_size, box_y:box_y+box_size].sum()
-
-    avg = counts.mean()
-    variance = counts.var()
-    # variance = np.mean(counts**2) - avg**2
-
-    counts_t = np.transpose(counts)
-    msds = msd_matrix(counts_t)
-    # msd_avgs = np.mean(msds, axis=0)
-    return msds, avg, variance, counts[:, 0:100:10]
+    return counts

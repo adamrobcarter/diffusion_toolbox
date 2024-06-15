@@ -75,9 +75,9 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
     
 
     k_th = np.logspace(np.log10(0.7), np.log10(5), 100)
-    axs[0].plot(k_th, common.structure_factor_2d_hard_spheres(k, 0.34, 2.82))
-    axs[0].semilogx()
-    axs[0].vlines(real_ks, 0, 1.5, color='black')
+    # axs[0].plot(k_th, common.structure_factor_2d_hard_spheres(k, 0.34, 2.82))
+    # axs[0].semilogx()
+    # axs[0].vlines(real_ks, 0, 1.5, color='black')
 
     fig.suptitle(file)
     

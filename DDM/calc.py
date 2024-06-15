@@ -1,4 +1,4 @@
-import DDM.DDM
+import DDM.DDM as DDM
 import common
 import numpy as np
 import time
@@ -16,11 +16,11 @@ for file in common.files_from_argv('preprocessing/data', 'stack_'):
 
     t0 = time.time()
     num_k_bins = 100
-    k, t, F_D_sq, F_D_sq_unc, use_every_nth_frame = DDM.DDM.calc(stack, pixel_size, time_step, num_k_bins)
+    k, t, F_D_sq, F_D_sq_unc, use_every_nth_frame = DDM.calc(stack, pixel_size, time_step, num_k_bins)
     t1 = time.time()
 
     common.save_data(f'DDM/data/ddm_{file}.npz', k=k, F_D_sq=F_D_sq, F_D_sq_unc=F_D_sq_unc, t=t,
-             background_removed=background_removed, use_every_nth_frame=use_every_nth_frame,
-             computation_time_ddm=t1-t0, num_k_bins=num_k_bins,
-             pixel_size=pixel_size, particle_diameter=data['particle_diameter'],
-             pack_frac_given=data.get('pack_frac_given'))
+        background_removed=background_removed, use_every_nth_frame=use_every_nth_frame,
+        computation_time_ddm=t1-t0, num_k_bins=num_k_bins,
+        pixel_size=pixel_size, particle_diameter=data.get('particle_diameter'),
+        pack_frac_given=data.get('pack_frac_given'))

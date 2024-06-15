@@ -5,7 +5,8 @@ import tqdm
 import numba
 import warnings
 import time
-
+import DDM.show
+"""
 @numba.njit
 def do_binning(slice_length, F_D_sq_this, u_flat, u_bins):
     F_D_sq = np.zeros((slice_length, len(u_bins)-1))
@@ -16,8 +17,9 @@ def do_binning(slice_length, F_D_sq_this, u_flat, u_bins):
 
 max_K = 10
 
-def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D, F_D_unc, t : None):
-    I = stack # we use Cerbino's notation
+def calc(file, I, pixel_size, time_step, num_k_bins):
+    # we use Cerbino's notation, I is what we normally call stack
+
 
     use_every_nth_frame = 2
     warnings.warn('using every 2nd frame')
@@ -28,11 +30,10 @@ def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D, F_
     # use_every_nth_frame = max(num_timesteps / max_time_origins, 1) this is what we use in scattering_functions btw
 
     time_origins = range(0, I.shape[0], use_every_nth_frame)
-    print(f'num time origins: {len(time_origins)}')
 
     used_times = common.exponential_integers(1, I.shape[0]-1) - 1
 
-    min_K = 2*np.pi/( min(stack.shape[1], stack.shape[2]) * pixel_size )
+    min_K = 2*np.pi/( min(I.shape[1], I.shape[2]) * pixel_size )
     k_bins = np.logspace(np.log10(min_K), np.log10(max_K), num_k_bins)
     u_bins = k_bins / (2*np.pi)
     num_u_bins = u_bins.size - 1 # minus 1 because we specify right and left of final bin
@@ -81,12 +82,16 @@ def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D, F_
         F_D_sq_avg = np.nanmean(F_D_sq, axis=0) # average over time origins
         F_D_sq_std = np.nanstd (F_D_sq, axis=0) # average over time origins
 
-        # assert np.isnan(F_D_sq_avg).sum()/F_D_sq_avg.size < 0.1, f'F_D_sq_avg was {np.isnan(F_D_sq_avg).sum()/F_D_sq_avg.size:.2f} nan'
-
         u_avg = ( u_bins[:-1] + u_bins[1:] ) / 2
         
         k_avg = 2 * np.pi * u_avg
 
-        callback(time_origin_index, k_avg, F_D_sq_avg, F_D_sq_std, used_times*time_step, F_D_sq, time_origins)
+        if time_origin_index % 10 == 0:
+            sigma = 0
+            pixel = 0
+            DDM.show.show(file, k_avg, F_D_sq_avg, F_D_sq_std, used_times*time_step, sigma, pixel, live=True)
 
-    return k_avg, used_times*time_step, F_D_sq_avg, F_D_sq_std, use_every_nth_frame, F_D_sq, time_origins
+
+    # assert np.isnan(F_D_sq_avg).sum()/F_D_sq_avg.size < 0.1, f'F_D_sq_avg was {np.isnan(F_D_sq_avg).sum()/F_D_sq_avg.size:.2f} nan'
+
+    return k_avg, used_times*time_step, F_D_sq_avg, F_D_sq_std, use_every_nth_frame

@@ -10,6 +10,15 @@ def speed_string(time_mult, every_nth_frame):
     return f'{time_mult*every_nth_frame}x speed'
 
 def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=lambda timestep, ax : None):
+
+    # putting in a step frame for synchrotron June
+    tottime = stack.shape[0]
+    maxframes = 49.0
+    steptime = int(tottime/maxframes)
+    every_nth_frame = steptime
+
+
+
     print('arrived in save_array_movie')
     dpi = 200
     figsize = np.array(stack.shape)[[2, 1]] / dpi
@@ -28,7 +37,6 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=la
     if file.startswith('marine'):
         time_mult = 0.25
     
-    every_nth_frame = 1
     if file == 'pierre_exp':
         every_nth_frame = 10
         time_mult = 0.1
@@ -37,8 +45,8 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=la
     frames = range(0, min(stack.shape[0], 50*every_nth_frame), every_nth_frame)
 
     print('finding quantiles')
-    vmin = np.quantile(stack[:50, :, :], 0.05)
-    vmax = np.quantile(stack[:50, :, :], 0.95)
+    vmin = np.quantile(stack[frames, :, :], 0.05)
+    vmax = np.quantile(stack[frames, :, :], 0.95)
     # vmin = stack.min()
     # vmax = stack.max()
     print('ready to render')
@@ -52,8 +60,7 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=la
         ax.set_axis_off() # hide axes, ticks, ...
     
         common.add_scale_bar(ax, pixel_size)
-        ax.text(0.95, 0.05, speed_string(time_mult, every_nth_frame), transform=ax.transAxes, ha='right')
-        ax.text(0.95, 0.10, f'time = {int(timestep*time_step)} s', transform=ax.transAxes, ha='right')
+        ax.text(0.95, 0.05, f'time = {int(timestep*time_step)} s', transform=ax.transAxes, ha='right')
 
         func(timestep, ax)
         # print(stack[:, :, timestep].mean())
@@ -77,12 +84,8 @@ if __name__ == '__main__':
         print(stack.shape[1], 'x', stack.shape[2], 'px')
         # print(stack.min(), stack.max())
 
-        remove_background = True
+        stack = stack[:-1, :, :] - stack[1:, :, :] # do differences between frames
 
-        if remove_background:
-            print('subtracting mean')
-            stack = stack - stack[:50, :, :].mean(axis=0) # remove space background
-
-        filename = f'stack_movie_{file}_bkgrem' if remove_background else f'stack_movie_{file}'
+        filename = f'stack_movie_{file}_diff'
         save_array_movie(stack, pixel_size, time_step, file, f"preprocessing/figures_png/{filename}.gif")
         # save_array_movie(stack_copy, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}.mp4")

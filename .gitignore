@@ -24,3 +24,4 @@ nohup.out
 .vscode/settings.json
 van_hove/data/*
 van_hove/figures_png/*
+intensity_counting/figures_png/*

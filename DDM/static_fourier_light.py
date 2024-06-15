@@ -3,13 +3,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats
 import scipy.optimize
-import scipy.fft
 
 FIRST_FRAME = False
 FRAME_DIFF = True
 REMOVE_BKG = False
 
-def do_static_fourier(file, stack, pixel_size, particle_diameter=None):
+def do_static_fourier():
+
+    for file in common.files_from_argv('preprocessing/data', 'stack_'):
+        data = common.load(f'preprocessing/data/stack_{file}.npz')
+        stack      = data['stack']
+        pixel_size = data['pixel_size']
+
     if REMOVE_BKG:
         print('subtracting mean')
         stack = stack - stack.mean(axis=0)
@@ -51,6 +56,7 @@ def do_static_fourier(file, stack, pixel_size, particle_diameter=None):
     title += ', bkg rem' if REMOVE_BKG else ', no bkg rem'
 
     # a = np.abs(fourier)
+    import scipy.fft
     a = np.abs(scipy.fft.fftshift(fourier))**2
     # TODO: should we be doing fftshift in the DDM code?
     # print(a.mean(), a.std())
@@ -60,6 +66,7 @@ def do_static_fourier(file, stack, pixel_size, particle_diameter=None):
     # im = ax.imshow(log_a, vmin=log_a.mean()-2*log_a.std(), vmax=log_a.mean()+2*log_a.std(), extent=(fx.min(), fx.max(), fy.min(), fy.max()), interpolation='none')
     im = ax.imshow(log_a, extent=(fx.min(), fx.max(), fy.min(), fy.max()), interpolation='none')
     fig.colorbar(im)
+    # plt.imshow(image)
     ax.set_title(title)
     # ax.set_xlabel('$k_x$')
     # ax.set_ylabel('$k_y$')
@@ -73,9 +80,7 @@ def do_static_fourier(file, stack, pixel_size, particle_diameter=None):
     print('bin_sep', 2*np.pi/(bins[1]-bins[0]))
     ff = np.abs(fourier)**2
     print('f, a', f.shape, a.shape)
-    f_flat = f.flatten()
-    a_flat = a.flatten()
-    v, bins, _ = scipy.stats.binned_statistic(f_flat, a_flat, bins=bins)
+    v, bins, _ = scipy.stats.binned_statistic(f.flatten(), a.flatten(), bins=bins)
     err, _, _ = scipy.stats.binned_statistic(f.flatten(), a.flatten(), statistic='std', bins=bins)
     n, _, _ = scipy.stats.binned_statistic(f.flatten(), a.flatten(), statistic='count', bins=bins)
     fig, ax = plt.subplots(1, 1, figsize=(5, 5))
@@ -127,9 +132,5 @@ def do_static_fourier(file, stack, pixel_size, particle_diameter=None):
     common.save_fig(fig, f'DDM/figures_png/static_fourier_av_{file}.png', dpi=200)
 
 if __name__ == '__main__':
-    for file in common.files_from_argv('preprocessing/data', 'stack_'):
-        data = common.load(f'preprocessing/data/stack_{file}.npz')
-        stack      = data['stack']
-        pixel_size = data['pixel_size']
 
-    do_static_fourier(file, stack, pixel_size, data.get('particle_diameter'))
+    do_static_fourier()
