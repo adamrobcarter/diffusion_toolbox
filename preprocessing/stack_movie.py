@@ -4,12 +4,14 @@ import common
 import sys
 import matplotlib.cm
 
+HIGHLIGHTS = True
+
 def speed_string(time_mult, every_nth_frame):
     if time_mult*every_nth_frame == 1:
         return 'realtime'
     return f'{time_mult*every_nth_frame}x speed'
 
-def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=lambda timestep, ax : None):
+def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=lambda timestep, ax : None, remove_background=True):
     print('arrived in save_array_movie')
     dpi = 200
     figsize = np.array(stack.shape)[[2, 1]] / dpi
@@ -28,7 +30,11 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=la
     if file.startswith('marine'):
         time_mult = 0.25
     
-    every_nth_frame = 1
+    if HIGHLIGHTS:
+        every_nth_frame = stack.shape[0] // 50
+    else:
+        every_nth_frame = 1
+
     if file == 'pierre_exp':
         every_nth_frame = 10
         time_mult = 0.1
@@ -37,11 +43,17 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=la
     frames = range(0, min(stack.shape[0], 50*every_nth_frame), every_nth_frame)
 
     print('finding quantiles')
-    vmin = np.quantile(stack[:50, :, :], 0.05)
-    vmax = np.quantile(stack[:50, :, :], 0.95)
+    vmin = np.quantile(stack[frames, :, :], 0.05)
+    vmax = np.quantile(stack[frames, :, :], 0.95)
     # vmin = stack.min()
     # vmax = stack.max()
     print('ready to render')
+
+    
+
+    if remove_background:
+        print('subtracting mean')
+        stack = stack - stack[:, :, :].mean(axis=0) # remove space background
 
     def show(timestep):
         ax.clear()
@@ -52,8 +64,8 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=la
         ax.set_axis_off() # hide axes, ticks, ...
     
         common.add_scale_bar(ax, pixel_size)
-        ax.text(0.95, 0.05, speed_string(time_mult, every_nth_frame), transform=ax.transAxes, ha='right')
-        ax.text(0.95, 0.10, f'time = {int(timestep*time_step)} s', transform=ax.transAxes, ha='right')
+        ax.text(0.95, 0.05, speed_string(time_mult, every_nth_frame), transform=ax.transAxes, ha='right', fontsize=15)
+        ax.text(0.95, 0.10, f'time = {int(timestep*time_step)} s',    transform=ax.transAxes, ha='right', fontsize=15)
 
         func(timestep, ax)
         # print(stack[:, :, timestep].mean())
@@ -79,10 +91,8 @@ if __name__ == '__main__':
 
         remove_background = True
 
-        if remove_background:
-            print('subtracting mean')
-            stack = stack - stack[:50, :, :].mean(axis=0) # remove space background
-
         filename = f'stack_movie_{file}_bkgrem' if remove_background else f'stack_movie_{file}'
-        save_array_movie(stack, pixel_size, time_step, file, f"preprocessing/figures_png/{filename}.gif")
+        if HIGHLIGHTS:
+            filename += '_highlights'
+        save_array_movie(stack, pixel_size, time_step, file, f"preprocessing/figures_png/{filename}.gif", remove_background=remove_background)
         # save_array_movie(stack_copy, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}.mp4")
