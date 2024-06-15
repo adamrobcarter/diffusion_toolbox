@@ -107,9 +107,9 @@ def show_single_F_type(file, type_index, Ftype):
             print(f'  negative: {negative.sum()/negative.size:.2f}')
 
 
-            # fits
-            # we fit to log(f(k, t)) because otherwise points near one make a much
-            # larger impact to the fit than points near zero
+        # fits
+        # we fit to log(f(k, t)) because otherwise points near one make a much
+        # larger impact to the fit than points near zero
         func = lambda t, D : np.exp(-t * k**2 * D)
         log_func = lambda t, D: np.log10( func(t, D) )
         log_unc = lambda x, dx : 0.5 * np.log((x+dx)/(x-dx))
@@ -139,6 +139,15 @@ def show_single_F_type(file, type_index, Ftype):
 
         else:
             print(f'  total: covariance not estimated')
+
+        # new fit
+        new_func = lambda t, a, b, c : a*t**2 + b*t + c
+        # log_func = lambda t, D: np.log10( func(t, D) )
+        # log_unc = lambda x, dx : 0.5 * np.log((x+dx)/(x-dx))
+        # log_f_unc  = log_unc(f, f_unc )
+        new_popt, new__pcov = scipy.optimize.curve_fit(new_func, t[~f_bad], f[~f_bad])
+        ax      .plot(t_th, new_func(t_th, *new_popt), color='red', alpha=0.5)
+        ax_short.plot(t_th, new_func(t_th, *new_popt), color='red', alpha=0.5)
 
         f_points_short = (~f_bad) & (t < 10)
         f_points_long  = (~f_bad) & (t > 100)

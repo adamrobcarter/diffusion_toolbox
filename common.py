@@ -10,6 +10,7 @@ import scipy.stats
 import warnings, time
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 import termplotlib
+import psutil
 
 def get_directory_files(directory, extension, file_starts_with=''):
     filenames = []
@@ -519,6 +520,14 @@ def term_hist(data):
     term_fig.hist(counts, bin_edges, force_ascii=False, orientation="horizontal")
     term_fig.show()
 
+    
+def print_memory_use():
+    pid = os.getpid()
+    python_process = psutil.Process(pid)
+    memoryUse = python_process.memory_info().rss / 2.0**30  # memory use in GB...I think
+    print(f'memory use: {memoryUse:.1f}GB')
+
+    
 names = {
     'psiche0': '?',
     'psiche0007': '?',

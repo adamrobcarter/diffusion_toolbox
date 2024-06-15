@@ -54,7 +54,8 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
     timescaleintegral_x = np.array([	0.103942652329749,0.207885304659498,0.519713261648746,1.03942652329749,1.43440860215054,2.07885304659498,2.87921146953405,4.15770609318996,5.75842293906810,8.31541218637993,11.5064516129032,16.6308243727599,19.7491039426523,22.8673835125448,24.4265232974910])
     timescaleintegral_y = np.array([0.715084639456640,0.759462918744972,1.46261640042440,2.56073086204352,3.78909538953524,5.41105358248309,6.78255486238759,8.58502158959043,8.95193674486290,9.93854195925673,9.47657037534071,9.06689661448547,9.39221079633647,9.01776477004307,8.02304202449399])
 
-    for sources in [['f_short'], [f'f_short', 'DDM_short'], ['timescaleint']]:
+    # for sources in [['f_short'], [f'f_short', 'DDM_short'], ['timescaleint']]:
+    for sources in [[f'f_short', 'DDM_short', 'timescaleint']]:
         print()
         
         name = '_'.join(sources)
@@ -138,6 +139,14 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
             ax.errorbar(xs, Ds/0.0455840, yerr=D_uncs/0.0455840, linestyle='none', marker='none', alpha=0.3, color=color)
 
             [all_Ds.append(D) for D in Ds]
+
+
+        phi = 0.34
+        D_th_self = ( 1 - 1.73*phi )
+        D_th_coll = ( 1 + 1.45*phi )
+        ax.hlines([D_th_coll, D_th_self], xs.min(), xs.max(), color='black')
+
+
         # ax.set_ylim(np.min(all_Ds)*0.8, np.max(all_Ds)/0.8)
         ax.semilogy()
 
@@ -160,5 +169,5 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
         # ax.semilogy()
         ax.legend(fontsize=8)
         # ax.set_title(f'{file}, errorbars not yet all correct')
-        common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/Ds_overlapped_{file}_{name}.pdf', hide_metadata=True)
+        # common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/Ds_overlapped_{file}_{name}.pdf', hide_metadata=True)
         common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_{file}_{name}.png', dpi=200)

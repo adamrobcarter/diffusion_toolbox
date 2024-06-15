@@ -96,7 +96,8 @@ for file in sys.argv[1:]:
         fitting_points = common.exponential_integers(1, t.shape[0]-1)
         popt, pcov = scipy.optimize.curve_fit(N2_theory, t[fitting_points], intensity_diff[fitting_points]/intensity_factor)
         if not collapse_x and not collapse_y:
-            ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1)
+            pass
+            # ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1)
         label += fr', $D_\mathrm{{fit}}={popt[0]:.3f}$'
 
 
@@ -116,12 +117,13 @@ for file in sys.argv[1:]:
 
     ax.legend(loc='lower right', fontsize=6)
     # ax.legend(fontsize=5)
-    ax.semilogy()
-    ax.semilogx()
+    # ax.semilogy()
+    ax.set_ylim(0, 0.1)
+    ax.set_xlim(0, 10)
+    # ax.semilogx()
     ax.set_xlabel(xlabel)
     ylabel = r'$\Delta I^2(t) / \rangle I \langle I_f{}^2$' if collapse_y else '$\Delta I^2(t) / I_f{}^2$'
     ax.set_ylabel(ylabel)
     ax.set_title(fr'{file} intensity counting, $\sigma={particle_diameter}\mathrm{{\mu m}}$')
 
-    fig.tight_layout()
-    fig.savefig(f'visualisation/figures_png/msd_int_{file}.png', dpi=600)
+    common.save_fig(fig, f'visualisation/figures_png/msd_int_{file}.png', dpi=600)

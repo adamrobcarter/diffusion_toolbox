@@ -8,6 +8,7 @@ import countoscope_theory.nmsd, countoscope_theory.structure_factor
 import tqdm
 import sys
 import matplotlib.cm
+import box_counting.msd_single
 
 """
 Countoscope appendix:
@@ -27,7 +28,7 @@ f = lambda tau: np.sqrt(tau / np.pi) * ( np.exp(-1/tau) - 1) + scipy.special.erf
 import warnings
 warnings.filterwarnings('ignore')
 
-for file in sys.argv[1:]:
+for file in common.files_from_argv('box_counting/data', 'counted_'):
 
     D_fig = plt.figure()
     T_fig = plt.figure()
@@ -63,6 +64,7 @@ for file in sys.argv[1:]:
     box_sizes = data['box_sizes']
     N_mean    = data['N_mean']
     N_var     = data['N_var']
+    N_var_mod = data['N_var_mod']
     sep_sizes = data['sep_sizes']
 
     num_timesteps = N2_mean.shape[1]
@@ -82,9 +84,21 @@ for file in sys.argv[1:]:
         L = box_sizes[box_size_index]
         # D_of_Ls[box_size_index] = common.D_of_L(N2_mean[box_size_index, :], N_var[box_size_index], t, L) / D0
 
+        print('inffrac', np.isinf(N2_mean[box_size_index, :]).sum())
+
         print(f'L={L:.1f} N_var={N_var[box_size_index]:.4f}, N_var/L^2={N_var[box_size_index]/L**2:.4f}')
 
-        T_integrand_func = lambda nmsd: (1 - 0.5 * nmsd / N_var[box_size_index] )**2 # countoscope paper eq. 8
+
+        plateau, plateau_std = box_counting.msd_single.get_plateau(N2_mean[box_size_index, :])
+
+        var_label = 'original'
+        var = N_var[box_size_index]
+
+        # print('plat', plateau, N_var[box_size_index])
+        # var_label = 'plateau'
+        # var = plateau / 2
+
+        T_integrand_func = lambda nmsd: (1 - 0.5 * nmsd / var )**2 # countoscope paper eq. 8
         T_integrand     = T_integrand_func(N2_mean[box_size_index, :])
         T_integrand_min = T_integrand_func(N2_mean[box_size_index, :] + N2_std[box_size_index, :])
         T_integrand_max = T_integrand_func(N2_mean[box_size_index, :] - N2_std[box_size_index, :])
@@ -100,16 +114,17 @@ for file in sys.argv[1:]:
         early_fit_func = lambda t, a: f(t/a)**4
         early_fit_xdata = [0, t[1]]
         early_fit_ydata = [1, T_integrand[1]]
+        print(early_fit_xdata, early_fit_ydata)
         early_popt, early_pcov = scipy.optimize.curve_fit(early_fit_func, early_fit_xdata, early_fit_ydata)
         early_integral = scipy.integrate.quad(early_fit_func, 0, t[1], args=early_popt[0])[0]
         
-        early_fit_ydata = [1, T_integrand_min[1]]
-        early_popt, early_pcov = scipy.optimize.curve_fit(early_fit_func, early_fit_xdata, early_fit_ydata)
-        early_integral_min = scipy.integrate.quad(early_fit_func, 0, t[1], args=early_popt[0])[0]
+        early_fit_ydata_min = [1, T_integrand_min[1]]
+        early_popt_min, early_pcov_min = scipy.optimize.curve_fit(early_fit_func, early_fit_xdata, early_fit_ydata_min)
+        early_integral_min = scipy.integrate.quad(early_fit_func, 0, t[1], args=early_popt_min[0])[0]
         
-        early_fit_ydata = [1, T_integrand_max[1]]
-        early_popt, early_pcov = scipy.optimize.curve_fit(early_fit_func, early_fit_xdata, early_fit_ydata)
-        early_integral_max = scipy.integrate.quad(early_fit_func, 0, t[1], args=early_popt[0])[0]
+        early_fit_ydata_max = [1, T_integrand_max[1]]
+        early_popt_max, early_pcov_max = scipy.optimize.curve_fit(early_fit_func, early_fit_xdata, early_fit_ydata_max)
+        early_integral_max = scipy.integrate.quad(early_fit_func, 0, t[1], args=early_popt_max[0])[0]
         
         # late time integral
         
@@ -128,11 +143,14 @@ for file in sys.argv[1:]:
         M1_index = None
         D0 = None
 
-        if file.startswith('eleanorlong'):
+        if file.startswith('eleanorlong') or file.startswith('eleanor0.01'):
             M2_index = min(int(300 * L), t.shape[0]-1)
             M2_index = max(M2_index, MIN_M2_INDEX)
             M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
-            D0 = 0.028
+            if file.startswith('eleanorlong'):
+                D0 = 0.028
+            elif file.startswith('eleanor0.01'):
+                D0 = 0.0416
         elif file == 'alice0.02':
             M2_index = min(int(60 * L), t.shape[0]-1)
             M2_index = max(M2_index, MIN_M2_INDEX)
@@ -368,11 +386,11 @@ for file in sys.argv[1:]:
 
 
 
-            integrand_ax.plot(t_fit_late, late_fit_func_real(t_fit_late, a, b), color='grey', linewidth=1, label='counto. SI fit' if box_size_index==0 else None, zorder=6)
-            integrand_ax.plot(t_fit_late, late_fit_func_real(t_fit_late, a+a_unc, b+b_unc), color='grey', linewidth=1.5, zorder=6)
-            integrand_ax.plot(t_fit_late, late_fit_func_real(t_fit_late, a+a_unc, b-b_unc), color='grey', linewidth=2, zorder=6)
-            integrand_ax.plot(t_fit_late, late_fit_func_real(t_fit_late, a-a_unc, b+b_unc), color='grey', linewidth=2.5, zorder=6)
-            integrand_ax.plot(t_fit_late, late_fit_func_real(t_fit_late, a-a_unc, b-b_unc), color='grey', linewidth=3, zorder=6)
+            # integrand_ax.plot(t_fit_late, late_fit_func_real(t_fit_late, a, b), color='grey', linewidth=1, label='counto. SI fit' if box_size_index==0 else None, zorder=6)
+            # integrand_ax.plot(t_fit_late, late_fit_func_real(t_fit_late, a+a_unc, b+b_unc), color='grey', linewidth=1.5, zorder=6)
+            # integrand_ax.plot(t_fit_late, late_fit_func_real(t_fit_late, a+a_unc, b-b_unc), color='grey', linewidth=2, zorder=6)
+            # integrand_ax.plot(t_fit_late, late_fit_func_real(t_fit_late, a-a_unc, b+b_unc), color='grey', linewidth=2.5, zorder=6)
+            # integrand_ax.plot(t_fit_late, late_fit_func_real(t_fit_late, a-a_unc, b-b_unc), color='grey', linewidth=3, zorder=6)
             
 
 
@@ -410,7 +428,7 @@ for file in sys.argv[1:]:
     # integrand_ax.seintegrand_ylabel(r'$integrand(L)$')
     # integrand_ax.set_ylim(1e-4, 1.1e0)
     # integrand_fig.savefig('figures_png/integrand.png', dpi=300)
-    integrand_ax.set_title(fr'{file} timescale integrand, $\phi={phi:.3f}$, $\sigma={sigma}$')
+    integrand_ax.set_title(fr'{file} timescale integrand, $\phi={phi:.3f}$, $\sigma={sigma}$, var:{var_label}')
     common.save_fig(integ_fig, f'box_counting/figures_png/integrand_{file}.png', dpi=300)
 
     # common.save_fig(integ_fig,  f'box_counting/figures_png/integrand_{file}.png', dpi=300)
