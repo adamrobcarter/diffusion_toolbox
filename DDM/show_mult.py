@@ -54,10 +54,14 @@ for file in (files := common.files_from_argv('DDM/data', 'ddm_')):
         ax = axs[graph_i]
 
         
+        to_plot = np.full_like(F_D_sq[:, k_index], True, dtype='bool')
+        to_plot[0] = 0
+        anomalous = F_D_sq_unc[:, k_index] > F_D_sq[:, k_index]
+        # to_plot[anomalous] = False
 
         # ax.errorbar(t[1:], F_D_sq[1:, k_index], yerr=F_D_sq_unc[1:, k_index], marker='.', linestyle='none')
         norm = F_D_sq[np.argmax(t>10), k_index]
-        ax.errorbar(t[1:-2], F_D_sq[1:-2, k_index]/norm, yerr=F_D_sq_unc[1:-2, k_index]/norm, marker='.', linestyle='none', label=common.name(file))
+        ax.errorbar(t[to_plot], F_D_sq[to_plot, k_index]/norm, yerr=F_D_sq_unc[to_plot, k_index]/norm, marker='.', linestyle='none', label=common.name(file))
         # ax.errorbar(t[1:-2], F_D_sq[1:-2, k_index]/time_step**2, yerr=F_D_sq_unc[1:-2, k_index]/time_step**2, marker='.', linestyle='none')
 
 
@@ -133,7 +137,7 @@ for file in (files := common.files_from_argv('DDM/data', 'ddm_')):
         ax.semilogx()
         # ax.semilogy()
         ax.set_title(fr'$k={k[k_index]:.2f}$ ($\approx{2*np.pi/k[k_index]:.2f}\mathrm{{\mu m}}$)')
-        ax.legend(fontsize=7)
+        ax.legend(fontsize=6)
 
     # print('DDM_f nan', common.nanfrac(DDM_f[:, graph_i]))
     

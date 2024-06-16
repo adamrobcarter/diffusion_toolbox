@@ -62,12 +62,11 @@ for file in sys.argv[1:]:
             for i in tqdm.trange(obj.shape[0]):
                 proj[i, :, :] = obj[i, :, :]
 
+    proj = proj[:500, :, :] # beamstop
+
     # load refs and dark
     with h5py.File(f'raw_data/psiche/{file}/pre_ref.nxs', 'r') as f:
         refA = f['ref_2d'][:]
-
-    with h5py.File(f'raw_data/psiche/{file}/post_ref.nxs', 'r') as f:
-        refB = f['ref_2d'][:]
 
     with h5py.File(f'raw_data/psiche/{file}/post_dark.nxs', 'r') as f:
         dark = f['dark_2d'][:]
@@ -75,20 +74,19 @@ for file in sys.argv[1:]:
 
     print('subtracting dark 1')
     refA -= dark
-    print('subtracting dark 2')
-    refB -= dark
     print('subtracting dark 3')
     proj -= dark
     del dark
 
 
+
+
     print('changing dtypes')
     refA = refA.astype(np.uint32)
-    refB = refB.astype(np.uint32)
 
     print('averaging ref')
-    ref = (refA + refB)/2
-    del refA, refB
+    ref = refA
+    del refA
     
     print('checking no negative')
     assert np.all(ref > 0)

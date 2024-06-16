@@ -25,7 +25,7 @@ def do_reduce():
         
         print(f'Will make a reduced stack from {first_frame} to {last_frame}')
         stackr = stack[first_frame-1:last_frame-1:interval, :, :]
-        common.save_data(f'preprocessing/data/stack_{file}_red_{first_frame}_{last_frame}_{interval}.npz', stack=stackr, pixel_size=pixel_size, time_step=time_step*interval)
+        common.save_data(f'preprocessing/data/stack_{file}_red_{first_frame}_{last_frame}_{interval}.npz', stack=stackr, pixel_size=pixel_size, time_step=time_step*interval, nth_frame=interval)
         del stackr
         print(f'Saved a reduced stack as {file}_red_{first_frame}_{last_frame}_{interval}, Call this in the future')
     

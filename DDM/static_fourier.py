@@ -6,8 +6,8 @@ import scipy.optimize
 import scipy.fft
 
 FIRST_FRAME = False
-FRAME_DIFF = True
-REMOVE_BKG = False
+FRAME_DIFF = False
+REMOVE_BKG = True
 
 def do_static_fourier(file, stack, pixel_size, particle_diameter=None):
     if REMOVE_BKG:
@@ -23,7 +23,7 @@ def do_static_fourier(file, stack, pixel_size, particle_diameter=None):
         if FRAME_DIFF:
             images = stack[1::5, :, :] - stack[:-1:5, :, :]
         else:
-            images = stack[:, :, :]
+            images = stack[::5, :, :]
     del stack
     num_frames = images.shape[0]
     
@@ -63,10 +63,64 @@ def do_static_fourier(file, stack, pixel_size, particle_diameter=None):
     ax.set_title(title)
     # ax.set_xlabel('$k_x$')
     # ax.set_ylabel('$k_y$')
-    common.save_fig(fig, f'DDM/figures_png/static_fourier_{file}.png')
+    filename = f'static_fourier_{file}'
+    filename += '_diff' if FRAME_DIFF else '_nodiff'
+    filename += '_bkgrem' if REMOVE_BKG else '_nobkgrem'
+    common.save_fig(fig, f'DDM/figures_png/{filename}.png')
+
+    ##################################
+    # x and y fft 
+    ##################################
+    title = common.name(file)
+    title += f'\n{num_frames} frames'
+    title += ', diff' if FRAME_DIFF else ', nodiff'
+    title += ', bkg rem' if REMOVE_BKG else ', no bkg rem'
+
+    lf = log_a.shape[1]
+    aver = 5
+    ax = np.zeros((aver,lf))
+    ay = np.zeros((aver,lf))
+    for ix in range(aver): #this is stupid but I couldn't find a better way of doing this
+         for iy in range(lf):
+            ax[ix][iy] = log_a[lf//2 - aver//2 + ix][iy]
+            ay[ix][iy] = log_a[iy][lf//2 - aver//2 + ix]
+
+    axx = ax.mean(axis = 0)
+    ayy = ay.mean(axis = 0)
+    axx = axx[0:lf//2-1]
+    ayy = ayy[0:lf//2-1]
 
     
+    bins = np.linspace(fx.max(), 0, lf//2+1)[1:]
+    x = (bins[1:] + bins[:-1]) / 2
+    k = 2 * np.pi * x
+    k.transpose()
+
+    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+    ax.scatter(k, axx, s=2, label = 'x dir')
+    ax.scatter(k, ayy, s=2, label = 'y dir')
+    ax.semilogx()
+    ax.set_xlabel(r'$k$ ($\mathrm{\mu m}^{-1}$)')
+    ax.set_ylabel(r'$\langle I(kx,ky) \rangle$')
+
+    ax.grid()
+    plt.legend()
+    ax.set_title(title)
+    
+    filename = f'static_fourier_xy_{file}'
+    filename += '_diff' if FRAME_DIFF else '_nodiff'
+    filename += '_bkgrem' if REMOVE_BKG else '_nobkgrem'
+    common.save_fig(fig, f'DDM/figures_png/{filename}.png', dpi=200)
+
+
+    ##################################
     # radial average
+    ##################################
+    title = common.name(file)
+    title += f'\n{num_frames} frames'
+    title += ', diff' if FRAME_DIFF else ', nodiff'
+    title += ', bkg rem' if REMOVE_BKG else ', no bkg rem'
+    
     f = scipy.fft.fftshift( np.sqrt( fx**2 + fy**2 ) )
     print('f', f.min(), f.max())
     bins = np.linspace(0, f.max()/np.sqrt(2), 1000)[1:]
@@ -124,7 +178,11 @@ def do_static_fourier(file, stack, pixel_size, particle_diameter=None):
     # print(average_I_sq, '<I^2>')
 
     # common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/static_fourier_av_{file}.pdf', hide_metadata=True)
-    common.save_fig(fig, f'DDM/figures_png/static_fourier_av_{file}.png', dpi=200)
+    
+    filename = f'static_fourier_av_{file}'
+    filename += '_diff' if FRAME_DIFF else '_nodiff'
+    filename += '_bkgrem' if REMOVE_BKG else '_nobkgrem'
+    common.save_fig(fig, f'DDM/figures_png/{filename}.png', dpi=200)
 
 if __name__ == '__main__':
     for file in common.files_from_argv('preprocessing/data', 'stack_'):
@@ -132,4 +190,4 @@ if __name__ == '__main__':
         stack      = data['stack']
         pixel_size = data['pixel_size']
 
-    do_static_fourier(file, stack, pixel_size, data.get('particle_diameter'))
+        do_static_fourier(file, stack, pixel_size, data.get('particle_diameter'))

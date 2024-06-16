@@ -6,7 +6,7 @@ import h5py
 import os
 import sys
 import DDM.static_fourier
-
+"""
 for file in sys.argv[1:]:
     print('processing', file)
 

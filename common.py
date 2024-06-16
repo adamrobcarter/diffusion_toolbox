@@ -46,11 +46,17 @@ def intensity_correlation(data1, data2):
     print(r_sq.shape)
 
 def load(filename):
-    modified = datetime.datetime.fromtimestamp(os.path.getmtime(f'{filename}'))
-    diff = datetime.datetime.now() - modified
-    print(f'loading {filename}, last modified {str(diff)[:-10]} ago')
+    # modified = datetime.datetime.fromtimestamp(os.path.getmtime(f'{filename}'))
+    # diff = datetime.datetime.now() - modified
+    # print(f'loading {filename}, last modified {str(diff)[:-10]} ago')
+    print(f'loading {filename}, last modified ago')
 
-    data = np.load(f'{filename}', allow_pickle=True)
+    try:
+        data = np.load(f'{filename}', allow_pickle=True)
+    except FileNotFoundError:
+        psiche = filename.split('/')[-1]
+        print(psiche)
+        data = np.load(f'/media/com-psiche/Sans titre/psiche_export1_npzFiles/{psiche}', allow_pickle=True)
 
     if filename.endswith('.npz'):
         for key in data.keys():
@@ -497,10 +503,12 @@ def nanfrac(arr):
 
 def add_drift_intensity(stack, drift):
     # drift is px/frame
+    assert drift != 0
     assert np.mod(drift, 1) == 0 # check integer-ness
     fraction_of_width_kept = 0.6
     new_width = int(stack.shape[1] * fraction_of_width_kept)
     useable_timesteps = (stack.shape[1] - new_width) // drift
+    useable_timesteps = min(useable_timesteps, stack.shape[0])
     print(new_width, useable_timesteps)
 
     output = np.full((useable_timesteps, new_width, new_width), np.nan)
@@ -509,6 +517,8 @@ def add_drift_intensity(stack, drift):
     # new_x[new_x.size//2:] = new_x[:new_x.size//2-1:-1]
 
     for t in range(useable_timesteps):
+        # print(t, useable_timesteps)
+        output[t, :, :]
         output[t, :, :] = stack[t, t*drift:t*drift+new_width, :new_width] # we could actually make the y axis keep it's original height, but for now, we crop to square
         # output[t, :, :] = stack[0, new_x[t]:new_x[t]+new_width, :new_width] # we could actually make the y axis keep it's original height, but for now, we crop to square
 
@@ -521,11 +531,11 @@ def term_hist(data):
     term_fig.show()
 
     
-def print_memory_use():
+def print_memory_use(s=''):
     pid = os.getpid()
     python_process = psutil.Process(pid)
     memoryUse = python_process.memory_info().rss / 2.0**30  # memory use in GB...I think
-    print(f'memory use: {memoryUse:.1f}GB')
+    print(f'memory use: {memoryUse:.1f}GB', s)
 
     
 names = {
@@ -554,16 +564,27 @@ names = {
     'psiche0041': 'silice0p9um_10dil_texp500ms',
     'psiche0042': 'silice0p9um_10dil_texp1s',
     'psiche0045': 'muscovite_100_200um',
-    'psiche0047': '0047_muscovite_100-200um_time15min-silice4um',
+    'psiche0047': 'muscovite_100-200um_time15min-silice4um',
+    'psiche0048': 'muscovite 100-200um silica 4um interface',
+    'psiche0049': 'muscovite_100-200um_time15min-silice4um',
 
-    
-    'psiche0047': '0047_muscovite_100-200um_time15min-silice4um'
-    
-
+    # 'psiche0047': 'muscovite_100-200um_time15min-silice4um',
+    # 'psiche0048': 'muscovite 100-200um silica 4um interface',
+    # 'psiche0049': 'muscovite_100-200um_time15min-silice4um',
 }
 
 def name(file):
     if file.startswith('psiche'):
+        if file.endswith('_small'):
+            file = file[:-6]
+
+        try:
+            with open(f'/media/com-psiche/Sans titre/psiche_export_1/{file}/NAME', 'r') as namefile:
+                name = namefile.read()
+            return f'{file} {name}'
+        except FileNotFoundError:
+            pass
+
         try:
             with open(f'raw_data/psiche/{file}/NAME', 'r') as namefile:
                 name = namefile.read()

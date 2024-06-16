@@ -5,7 +5,7 @@ import sys
 import matplotlib.cm
 
 SMALL = False
-REMOVE_BACKGROUND = True
+AVG_5_FRAMES = True
 
 for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     data = common.load(f'preprocessing/data/stack_{file}.npz')
@@ -17,15 +17,19 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     print(stack.shape[1]*data['pixel_size'], 'x', stack.shape[2]*data['pixel_size'], 'um')
 
         
+
+    dpi = 600
     # stack = stack - stack.mean(axis=0) # remove space background
     # stack = stack.mean(axis=0)
-    fig, ax = plt.subplots(1, 1, figsize=(2.3, 2.3) if SMALL else None)
+    # fig, ax = plt.subplots(1, 1, figsize=(2.3, 2.3) if SMALL else None)
+    fig, ax = plt.subplots(1, 1, figsize=(stack.shape[1]/dpi, stack.shape[2]/dpi))
     
-    frame1 = stack[0, :, :]
-
-    if REMOVE_BACKGROUND:
-        print('subtracting background!!!')
-        frame1 -= stack.mean(axis=0)
+    
+    frame1 = stack[0, :, :] - stack[-1, :, :]
+    if AVG_5_FRAMES:
+        frame1 = stack[0:5, :, :].mean(axis=0) - stack[-6:-1, :, :].mean(axis=0)
+    # print('looking at background!!!')
+    # frame1 = stack.mean(axis=0)
 
     cmap = matplotlib.cm.Greys
     if file.startswith('marine'):
@@ -52,26 +56,22 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
         ax.ylim(000, 150)
         ax.xlim(000, 150)
 
-    try:
-        data2 = common.load(f'particle_detection/data/particles_{file}.npz')
-        sigma = data2.get('particle_diameter')
-        if not sigma or np.isnan(sigma):
-            sigma = data2['particle_diameter_calced']
-            assert not np.isnan(sigma)
-        label = fr'$\sigma={sigma:.2f}\mathrm{{\mu m}}$'
-        ax.text(0.45, 0.05, label, color=color, transform=ax.transAxes,
-                    horizontalalignment='left', verticalalignment='bottom')
+    # try:
+    #     data2 = common.load(f'particle_detection/data/particles_{file}.npz')
+    #     sigma = data2.get('particle_diameter')
+    #     if not sigma or np.isnan(sigma):
+    #         sigma = data2['particle_diameter_calced']
+    #         assert not np.isnan(sigma)
+    #     label = fr'$\sigma={sigma:.2f}\mathrm{{\mu m}}$'
+    #     ax.text(0.45, 0.05, label, color=color, transform=ax.transAxes,
+    #                 horizontalalignment='left', verticalalignment='bottom')
         
-        if pack_frac := data.get('pack_frac_given'):
-            ax.text(0.45, 0.15, f'$\phi={pack_frac:.2f}$', color=color, transform=ax.transAxes,
-                        horizontalalignment='left', verticalalignment='bottom')
-    except:
-        print('failed to find particle diamter / pack frac for annotations')
+    #     if pack_frac := data.get('pack_frac_given'):
+    #         ax.text(0.45, 0.15, f'$\phi={pack_frac:.2f}$', color=color, transform=ax.transAxes,
+    #                     horizontalalignment='left', verticalalignment='bottom')
+    # except:
+    #     print('failed to find particle diamter / pack frac for annotations')
 
     common.add_scale_bar(ax, data['pixel_size'], color=color)
-
-    filename = f'frame1_{file}'
-    if REMOVE_BACKGROUND:
-        filename += '_bkgrem'
-    common.save_fig(fig, f'preprocessing/figures_png/{filename}.png', dpi=600, only_plot=True)
+    common.save_fig(fig, f'preprocessing/figures_png/frame_diff_{file}.png', dpi=dpi, only_plot=True)
     # common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/frame1_{file}.png', dpi=300, only_plot=True)

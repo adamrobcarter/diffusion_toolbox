@@ -42,15 +42,19 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
         to_plot[0] = 0
         anomalous = F_D_sq_unc[:, k_index] > F_D_sq[:, k_index]
         # print(anomalous)
+
         to_plot[anomalous] = False
-        print(f'removed {(to_plot==0).sum()-1}')
+
+
+        if num_removed := (to_plot==0).sum()-1:
+            print(f'removed {num_removed}')
         # print(to_plot)
 
         # ax.errorbar(t[1:], F_D_sq[1:, k_index], yerr=F_D_sq_unc[1:, k_index], marker='.', linestyle='none')
         ax.errorbar(t[to_plot], F_D_sq[to_plot, k_index], yerr=F_D_sq_unc[to_plot, k_index], marker='.', linestyle='none')
 
 
-        if not live:
+        if not live and False:
 
             rescale = F_D_sq[1:, k_index].max()
             F_D_sq_rescaled = F_D_sq[:, k_index] / rescale
@@ -58,7 +62,7 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
             if np.isnan(F_D_sq_rescaled[1:]).sum()/F_D_sq_rescaled[1:].size == 1.0:
                 continue
 
-            weights = np.ones_like(F_D_sq_rescaled[1:])
+            weights = np.ones_like(F_D_sq_rescaled)
             # weights = F_D_sq_unc[1:, k_index]
             # weights = F_D_sq_unc_rescaled[1:]
             weights[0] *= 1/8
@@ -73,7 +77,7 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
                 # func = lambda t, A, B, tau, v : A * (1 - np.exp(-t/tau) * J0(k[k_index]*v*t)) + B
                 func = lambda t, A, B, D, v : A * (1 - np.exp(-t*k[k_index]**2*D) * J0(k[k_index]*v*t)) + B
 
-                popt, pcov = scipy.optimize.curve_fit(func, t[1:], F_D_sq_rescaled[1:], sigma=weights, p0=(F_D_sq_rescaled.max(), F_D_sq_rescaled.min(), 0.001, 0.01), maxfev=100000)#, absolute_sigma=True)
+                popt, pcov = scipy.optimize.curve_fit(func, t[to_plot], F_D_sq_rescaled[to_plot], sigma=weights[to_plot], p0=(F_D_sq_rescaled.max(), F_D_sq_rescaled.min(), 0.001, 0.01), maxfev=100000)#, absolute_sigma=True)
                 
                 D = popt[2] 
                 D_unc = np.sqrt(pcov)[2][2]
@@ -127,7 +131,7 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
         # print('DDM_f nan', common.nanfrac(DDM_f[:, graph_i]))
         
         # ax.set_ylim([np.min(F_D_sq[1:-2, k_index]-F_D_sq_unc[1:-2, k_index]),np.max(F_D_sq[1:-2, k_index]+F_D_sq_unc[1:-2, k_index])])
-        ax.set_ylim([np.min(F_D_sq[1:-4, k_index]) - (np.max(F_D_sq[1:-4, k_index])-np.min(F_D_sq[1:-4, k_index]))*0.1,np.max(F_D_sq[1:-4, k_index]) + (np.max(F_D_sq[1:-4, k_index])-np.min(F_D_sq[1:-4, k_index]))*0.1])
+        ax.set_ylim([np.min(F_D_sq[to_plot, k_index]) - (np.max(F_D_sq[to_plot, k_index])-np.min(F_D_sq[to_plot, k_index]))*0.1,np.max(F_D_sq[to_plot, k_index]) + (np.max(F_D_sq[to_plot, k_index])-np.min(F_D_sq[to_plot, k_index]))*0.1])
 
         # D_ax = D_axs[graph_i+1]
         # D_ax.scatter(t[1:], D_of_t[1:], s=10)

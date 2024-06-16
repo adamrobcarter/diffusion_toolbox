@@ -5,10 +5,9 @@ import sys
 import matplotlib.cm
 import warnings
 
-# HIGHLIGHTS = True # displays 50 frames evenly throughout the stack instead of the first 50
-HIGHLIGHTS = False
-# BACKWARDS = True
-BACKWARDS = False # plays the stack backwards. DIFF_WITH_ZERO is now compared to the last frame
+HIGHLIGHTS = True # displays 50 frames evenly throughout the stack instead of the first 50
+BACKWARDS = True
+# BACKWARDS = False # plays the stack backwards. DIFF_WITH_ZERO is now compared to the last frame
 
 # possible display methods
 REMOVE_BACKGROUND = 1
@@ -18,12 +17,8 @@ NONE = 4
 
 # select your method here
 # METHOD = DIFF_WITH_PREVIOUS
-# METHOD = DIFF_WITH_ZERO
+METHOD = DIFF_WITH_ZERO
 # METHOD = NONE
-METHOD = REMOVE_BACKGROUND
-
-if METHOD == NONE:
-    BACKWARDS = False
 
 def speed_string(time_mult, every_nth_frame):
     if time_mult*every_nth_frame == 1:
@@ -89,8 +84,8 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=la
         usedstack = stack[frames, :, :]
 
     print('finding quantiles')
-    vmin = np.quantile(usedstack, 0.01)
-    vmax = np.quantile(usedstack, 0.99)
+    vmin = np.quantile(usedstack, 0.1)
+    vmax = np.quantile(usedstack, 0.9)
     # vmin = stack.min()
     # vmax = stack.max()
     # vmin = -5.5e-2
@@ -104,12 +99,9 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=la
     # print('min mean max', usedstack.min(), usedstack.mean(), usedstack.max())
 
     def show(index):
-        if BACKWARDS:
-            timestep = frames[-index]
-        else:
-            timestep = frames[index]
+        timestep = frames[index]
         ax.clear()
-        im = ax.imshow(usedstack[index, :, :], vmin=vmin, vmax=vmax, cmap=matplotlib.cm.Greys_r, interpolation='none')
+        im = ax.imshow(usedstack[index, :, :], vmin=vmin, vmax=vmax, cmap=matplotlib.cm.Greys, interpolation='none')
         # if timestep == 0:
         #     fig.colorbar(im)
         # plt.imshow(stack.min(axis=0))
@@ -125,6 +117,17 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=la
     common.save_gif(show, range(usedstack.shape[0]), fig, outputfilename, fps=fps)
 
 if __name__ == '__main__':
+
+    dpi = 200
+    figsize = np.array(stack.shape)[[2, 1]] / dpi
+    if figsize.mean() < 1.5:
+        figsize *= 2
+    
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    fig.tight_layout()
+    fig.set_size_inches(*fig.get_size_inches()) # apparently this is needed to make subplots_adjust work
+    fig.subplots_adjust(left=0, bottom=0, right=1, top=1)
+
     for file in common.files_from_argv('preprocessing/data/', 'stack_'):
         data = common.load(f'preprocessing/data/stack_{file}.npz')
         
@@ -151,6 +154,6 @@ if __name__ == '__main__':
             filename += '_highlights'
         if BACKWARDS:
             filename += '_backwards'
-        save_array_movie(stack, pixel_size, time_step, file, f"preprocessing/figures_png/{filename}.gif",
+        save_array_movie(ax, stack, pixel_size, time_step, file, f"preprocessing/figures_png/{filename}.gif",
                          nth_frame=data.get('nth_frame', 1))
         # save_array_movie(stack_copy, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}.mp4")

@@ -19,8 +19,10 @@ max_K = 10
 def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D, F_D_unc, t : None):
     I = stack # we use Cerbino's notation
 
-    use_every_nth_frame = 2
-    warnings.warn('using every 2nd frame')
+    use_every_nth_frame = 1
+    if stack.shape[0] > 100:
+        use_every_nth_frame = 2
+        warnings.warn('using every 2nd frame')
     # use_every_nth_frame = max(int(stack.size / 1e8), 1)
     # print(f'automatic: use every {use_every_nth_frame}th frame')
     # use_every_nth_frame = 1 # 10 is a good number for Alice, 1 for Marine]
