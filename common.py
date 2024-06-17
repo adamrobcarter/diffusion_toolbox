@@ -185,6 +185,10 @@ def add_scale_bar(ax, pixel_size, color='black'):
     ax.add_artist(asb)
 
 def save_gif(func, frames, fig, file, fps=1, dpi=300):
+    if fps > 10:
+        warnings.warn(f'fps = {fps:.1f} which seems dangerous')
+        fps = 5
+
     progress = tqdm.tqdm(total=len(frames)+1) # unsure why +1 but it seems to be needed
 
     def frame(timestep):
@@ -196,6 +200,7 @@ def save_gif(func, frames, fig, file, fps=1, dpi=300):
     ani = matplotlib.animation.FuncAnimation(fig, frame, frames=frames, interval=500, repeat=False)
     # ani.save(file, dpi=dpi, writer=matplotlib.animation.PillowWriter(fps=fps))
     writer = None
+    used_fps = fps
     if file.endswith('.gif'):
         writer = matplotlib.animation.PillowWriter(fps=fps)
         fps = None
@@ -203,7 +208,7 @@ def save_gif(func, frames, fig, file, fps=1, dpi=300):
     fig.tight_layout()
     ani.save(file, dpi=dpi, fps=fps, writer=writer)
     progress.close()
-    print(f'saved {file}')
+    print(f'saved {file} fps={used_fps}')
 
     
 def N2_nointer_2D(t, D0, N_mean, Lx, Ly=None):

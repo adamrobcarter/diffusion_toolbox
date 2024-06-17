@@ -6,8 +6,8 @@ import scipy.optimize
 import scipy.fft
 
 FIRST_FRAME = False
-FRAME_DIFF = False
-REMOVE_BKG = True
+FRAME_DIFF = True
+REMOVE_BKG = False
 
 def do_static_fourier(file, stack, pixel_size, particle_diameter=None):
     if REMOVE_BKG:
@@ -68,6 +68,7 @@ def do_static_fourier(file, stack, pixel_size, particle_diameter=None):
     filename += '_bkgrem' if REMOVE_BKG else '_nobkgrem'
     common.save_fig(fig, f'DDM/figures_png/{filename}.png')
 
+    """
     ##################################
     # x and y fft 
     ##################################
@@ -112,7 +113,7 @@ def do_static_fourier(file, stack, pixel_size, particle_diameter=None):
     filename += '_bkgrem' if REMOVE_BKG else '_nobkgrem'
     common.save_fig(fig, f'DDM/figures_png/{filename}.png', dpi=200)
 
-
+    """
     ##################################
     # radial average
     ##################################

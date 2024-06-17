@@ -19,8 +19,8 @@ NONE = 4
 # select your method here
 # METHOD = DIFF_WITH_PREVIOUS
 # METHOD = DIFF_WITH_ZERO
-# METHOD = NONE
-METHOD = REMOVE_BACKGROUND
+METHOD = NONE
+# METHOD = REMOVE_BACKGROUND
 
 if METHOD == NONE:
     BACKWARDS = False
@@ -59,11 +59,15 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=la
         time_mult = 0.1
 
     fps = 1/time_step * time_mult
+    print(fps, 'fps')
 
     # these are cause of the reduce operation
     if file.endswith('_25'):
         fps *= 25
-    fps *= nth_frame
+    fps *= nth_frame#*every_nth_frame
+
+    print(fps, 'fps', nth_frame)
+
 
     if fps < 0.2:
         warnings.warn(f'fps = {fps}')
@@ -117,7 +121,7 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=la
     
         common.add_scale_bar(ax, pixel_size)
         ax.text(0.95, 0.05, speed_string(time_mult, every_nth_frame*nth_frame), transform=ax.transAxes, ha='right', fontsize=15)
-        ax.text(0.95, 0.10, f'time = {int(timestep*time_step)} s',    transform=ax.transAxes, ha='right', fontsize=15)
+        ax.text(0.95, 0.10, f'time = {int(timestep*time_step*nth_frame)}s',    transform=ax.transAxes, ha='right', fontsize=15)
 
         func(timestep, ax)
         # print(stack[:, :, timestep].mean())
