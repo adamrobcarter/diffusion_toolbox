@@ -3,7 +3,7 @@ import common
 import numpy as np
 import time
 
-background_removed = True
+background_removed = False
 
 for file in common.files_from_argv('preprocessing/data', 'stack_'):
     data = common.load(f'preprocessing/data/stack_{file}.npz')
@@ -16,7 +16,7 @@ for file in common.files_from_argv('preprocessing/data', 'stack_'):
 
     t0 = time.time()
     num_k_bins = 100
-    k, t, F_D_sq, F_D_sq_unc, use_every_nth_frame = DDM.calc(stack, pixel_size, time_step, num_k_bins)
+    k, t, F_D_sq, F_D_sq_unc, use_every_nth_frame, F_D_sq_all, time_origins = DDM.calc(stack, pixel_size, time_step, num_k_bins)
     t1 = time.time()
 
     common.save_data(f'DDM/data/ddm_{file}.npz', k=k, F_D_sq=F_D_sq, F_D_sq_unc=F_D_sq_unc, t=t,

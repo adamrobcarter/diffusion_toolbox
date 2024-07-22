@@ -34,7 +34,7 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=la
     print('arrived in save_array_movie')
     dpi = 200
     figsize = np.array(stack.shape)[[2, 1]] / dpi
-    if figsize.mean() < 1.5:
+    while figsize.mean() < 3:
         figsize *= 2
     
     fig, ax = plt.subplots(1, 1, figsize=figsize)
@@ -119,10 +119,11 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=la
         # plt.imshow(stack.min(axis=0))
         ax.set_axis_off() # hide axes, ticks, ...
     
-        common.add_scale_bar(ax, pixel_size)
-        ax.text(0.95, 0.05, speed_string(time_mult, every_nth_frame*nth_frame), transform=ax.transAxes, ha='right', fontsize=15)
-        ax.text(0.95, 0.10, f'time = {int(timestep*time_step*nth_frame)}s',    transform=ax.transAxes, ha='right', fontsize=15)
-
+    
+        color = 'white' if usedstack.mean()/(usedstack.max()-usedstack.min()) < 0.2 else 'black'
+        common.add_scale_bar(ax, pixel_size, color=color)
+        ax.text(0.95, 0.1, speed_string(time_mult, every_nth_frame*nth_frame)+f'\ntime = {timestep*time_step*nth_frame:.1f}s', color=color, transform=ax.transAxes, ha='right', fontsize=15)
+        
         func(timestep, ax)
         # print(stack[:, :, timestep].mean())
 

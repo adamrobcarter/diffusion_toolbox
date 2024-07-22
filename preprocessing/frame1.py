@@ -5,7 +5,7 @@ import sys
 import matplotlib.cm
 
 SMALL = False
-REMOVE_BACKGROUND = True
+REMOVE_BACKGROUND = False
 
 for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     data = common.load(f'preprocessing/data/stack_{file}.npz')

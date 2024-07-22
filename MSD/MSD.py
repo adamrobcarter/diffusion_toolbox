@@ -41,6 +41,7 @@ def msd_matrix(matrix):
 
 def reshape(particles):    
     # reformat to be (num particles) x (num timesteps) x (x, y)
+    assert particles.shape[1] == 4, 'you need to use linked data'
     
     num_particles = int(particles[:, 3].max()) + 1
     num_timesteps = int(particles[:, 2].max()) + 1

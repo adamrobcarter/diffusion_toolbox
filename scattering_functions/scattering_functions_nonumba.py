@@ -6,7 +6,7 @@ import common
 import tqdm
 import warnings, time
 
-def intermediate_scattering(log, F_type, crop, num_k_bins, max_time_origins, d_frames, particles, max_K, width, height):
+def intermediate_scattering(log, F_type, num_k_bins, max_time_origins, d_frames, particles, max_K, min_K):
     assert not np.isnan(max_K)
 
     # data is x,y,t
@@ -16,8 +16,6 @@ def intermediate_scattering(log, F_type, crop, num_k_bins, max_time_origins, d_f
     F_unc = np.full((len(d_frames), num_k_bins), np.nan)
     # print(f'F size {common.arraysize(Fs)}')
     ks   = np.full((len(d_frames), num_k_bins+1), np.nan) # +1 because we get the bin edges
-
-    min_K = 2*np.pi/( min(width, height) * crop )
 
     # first find the particles at each timestep, otherwise we're transferring
     # the whole of data to each process
@@ -100,9 +98,9 @@ def intermediate_scattering(log, F_type, crop, num_k_bins, max_time_origins, d_f
         #     warnings.warn(f'using {cores} cores')
         # with multiprocessing.Pool(cores) as pool:
 
-        #     internal_bound = functools.partial(intermediate_scattering_for_dframe, log=log, F_type=F_type, crop=crop,
+        #     internal_bound = functools.partial(intermediate_scattering_for_dframe, log=log, F_type=F_type,
         #                         num_k_bins=num_k_bins, use_every_nth_frame=use_every_nth_frame, d_frames=d_frames, particles_at_frame=particles_at_frame,
-        #                         num_frames=num_timesteps, min_K=min_K, max_K=max_K, width=width, height=height)
+        #                         num_frames=num_timesteps, min_K=min_K, max_K=max_K)
 
         #     computation = pool.imap(internal_bound, range(len(d_frames)), chunksize=1)
         #     results = list(tqdm.tqdm(computation, total=len(d_frames)))
@@ -118,9 +116,9 @@ def intermediate_scattering(log, F_type, crop, num_k_bins, max_time_origins, d_f
         pass
     else:
         for dframe_i in tqdm.trange(len(d_frames)):
-            F_, F_unc_, k_ = intermediate_scattering_for_dframe(dframe_i, log=log, F_type=F_type, crop=crop,
+            F_, F_unc_, k_ = intermediate_scattering_for_dframe(dframe_i, log=log, F_type=F_type,
                                 num_k_bins=num_k_bins, use_every_nth_frame=use_every_nth_frame, d_frames=d_frames, particles_at_frame=particles_at_frame,
-                                num_frames=num_timesteps, min_K=min_K, max_K=max_K, width=width, height=height)
+                                num_frames=num_timesteps, min_K=min_K, max_K=max_K)
             
             Fs   [dframe_i, :] = F_
             F_unc[dframe_i, :] = F_unc_
@@ -146,7 +144,7 @@ def intermediate_scattering(log, F_type, crop, num_k_bins, max_time_origins, d_f
 
     return Fs,F_unc,ks
 
-def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, use_every_nth_frame, d_frames, particles_at_frame, num_frames, min_K, max_K, width, height):
+def intermediate_scattering_for_dframe(dframe_i, log, F_type, num_k_bins, use_every_nth_frame, d_frames, particles_at_frame, num_frames, min_K, max_K):
     d_frame = int(d_frames[dframe_i])
     # offset = (num_frames - d_frame - 1) // num_iters
     # assert(num_iters * offset + d_frame < num_frames)
@@ -182,7 +180,7 @@ def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, 
             frame = int(frames_to_use[frame_index])
 
             particles = (particles_at_frame[frame, :, :], particles_at_frame[frame+d_frame, :, :])
-            k_, F_ = intermediate_scattering_internal_internal(crop, min_K, max_K, num_k_bins, log, func, particles)
+            k_, F_ = intermediate_scattering_internal_internal(min_K, max_K, num_k_bins, log, func, particles)
             
             F[frame_index, :] = F_
             if frame_index == 0:
@@ -191,9 +189,13 @@ def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, 
                 assert np.array_equal(k, k_)
 
     else:   
-        with multiprocessing.Pool(16) as pool:
+        cores = 32
+        if cores > 16:
+            warnings.warn(f'using {cores} cores')
+
+        with multiprocessing.Pool(cores) as pool:
             bound = functools.partial(intermediate_scattering_internal_internal,
-                                    crop, min_K, max_K, num_k_bins, log, func)
+                                      min_K, max_K, num_k_bins, log, func)
             
             particles = []
             for frame_index in range(num_used_frames):
@@ -223,11 +225,9 @@ def intermediate_scattering_for_dframe(dframe_i, log, F_type, crop, num_k_bins, 
     # need nanmean because binned_statistic will return nan if the bin is empty
     return np.nanmean(F, axis=0), np.nanstd(F, axis=0)/np.sqrt(num_used_frames), k
 
-def intermediate_scattering_internal_internal(crop, min_K, max_K, num_k_bins, log, func, particles):
+def intermediate_scattering_internal_internal(min_K, max_K, num_k_bins, log, func, particles):
     
-    particles_t0, particles_t1 = preprocess_scattering(particles[0], particles[1], crop=crop)
-    # width  = width  * crop
-    # height = height * crop
+    particles_t0, particles_t1 = preprocess_scattering(particles[0], particles[1])
 
     k_x, k_y, k_bins = get_k_and_bins_for_intermediate_scattering(min_K, max_K, num_k_bins, log_calc=log, log_bins=log)
 
@@ -238,7 +238,7 @@ def intermediate_scattering_internal_internal(crop, min_K, max_K, num_k_bins, lo
     k_, F_ = postprocess_scattering(k_unbinned, F_unbinned, k_bins)
     return k_, F_
 
-def preprocess_scattering(particles_t0, particles_t1, crop):
+def preprocess_scattering(particles_t0, particles_t1):
     # first remove any nan particles
     t0_nans = np.any(np.isnan(particles_t0), axis=1)
     t1_nans = np.any(np.isnan(particles_t1), axis=1)
@@ -249,15 +249,6 @@ def preprocess_scattering(particles_t0, particles_t1, crop):
 
     # assert np.isnan(particles_t0).sum() == 0
     # assert np.isnan(particles_t1).sum() == 0
-
-    # then do the crop
-    # width_thresh  = ( particles_t0[:, 0].max() - particles_t0[:, 0].min() ) * crop
-    # height_thresh = ( particles_t0[:, 1].max() - particles_t0[:, 1].min() ) * crop
-    # removed_particles_t0 = (particles_t0[:, 0] > width_thresh) | (particles_t0[:, 1] > height_thresh)
-    # removed_particles_t1 = (particles_t1[:, 0] > width_thresh) | (particles_t1[:, 1] > height_thresh)
-    # removed_particles = removed_particles_t0 | removed_particles_t1
-    # particles_t0 = particles_t0[~removed_particles, :]
-    # particles_t1 = particles_t1[~removed_particles, :]
 
     return particles_t0, particles_t1
 
@@ -279,13 +270,14 @@ def postprocess_scattering(k, F, k_bins):
     return k_binned, F_binned
 
 def get_k_and_bins_for_intermediate_scattering(min_K, max_K, num_k_bins, log_calc, log_bins):
-    k_x_pos =  np.logspace(np.log10(min_K), np.log10(max_K), num_k_bins, dtype='float64')
-    k_x_neg = -np.logspace(np.log10(min_K), np.log10(max_K), num_k_bins, dtype='float64')
-    bin_edges = np.concatenate(((0,), k_x_pos))
 
     sym = False
 
     if log_calc:
+        k_x_pos =  np.logspace(np.log10(min_K), np.log10(max_K), num_k_bins, dtype='float64')
+        k_x_neg = -np.logspace(np.log10(min_K), np.log10(max_K), num_k_bins, dtype='float64')
+        bin_edges = np.concatenate(((0,), k_x_pos))
+
         k_x = np.concatenate((k_x_neg, (0,), k_x_pos))
         if sym:
             k_y = np.copy(k_x)
@@ -295,7 +287,7 @@ def get_k_and_bins_for_intermediate_scattering(min_K, max_K, num_k_bins, log_cal
         # here we invent a bin 0 < k < min_K. Anything in here should be thrown away later
     else:
         # have checked this starting from min_K not -max_K and it does indeed seem to make no difference
-        k_x_pos = np.arange(min_K, max_K, min_K, dtype='float64')
+        k_x_pos = np.linspace(min_K, max_K, num_k_bins, dtype='float64')
         k_x_neg = -np.copy(k_x_pos)
         k_x = np.concatenate((k_x_neg, (0,), k_x_pos))
         # ^^ this is because if we do arange(-max_K, max_K, min_K), if min_K is not a divisor of max_K, k will not
@@ -303,7 +295,7 @@ def get_k_and_bins_for_intermediate_scattering(min_K, max_K, num_k_bins, log_cal
         if sym:
             k_y = np.copy(k_x)
         else:
-            k_y = np.arange( 0,     max_K, min_K, dtype='float64')
+            k_y = np.concatenate(((0,), np.linspace(min_K, max_K, num_k_bins, dtype='float64')))
 
     bins = bin_edges if log_bins else num_k_bins
 

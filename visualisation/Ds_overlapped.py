@@ -2,7 +2,7 @@ import common
 import numpy as np
 import matplotlib.pyplot as plt
 
-PLOT_AGAINST_K = True
+PLOT_AGAINST_K = False
 
 for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
     x = 0
@@ -51,8 +51,8 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
     # timescaleintegral    = 1    * np.array([np.nan,     3.7504e-01, 1.4125e+00, 4.5840e+00, 1.0473e+01, 1.3479e+01, 1.9825e+01, 3.0339e+01, 4.9982e+01, 9.1947e+01, 1.7270e+02, 3.4680e+02, 7.5721e+02, 1.0308e+03, 1.4394e+03, 1.8460e+03])
     # timescale_integral_L = 0.29 * np.array([5.0000e-01, 1.0000e+00, 2.0000e+00, 5.0000e+00, 1.0000e+01, 1.3800e+01, 2.0000e+01, 2.7700e+01, 4.0000e+01, 5.5400e+01, 8.0000e+01, 1.1070e+02, 1.6000e+02, 1.9000e+02, 2.2000e+02, 2.3500e+02])
 
-    timescaleintegral_x = np.array([	0.103942652329749,0.207885304659498,0.519713261648746,1.03942652329749,1.43440860215054,2.07885304659498,2.87921146953405,4.15770609318996,5.75842293906810,8.31541218637993,11.5064516129032,16.6308243727599,19.7491039426523,22.8673835125448,24.4265232974910])
-    timescaleintegral_y = np.array([0.715084639456640,0.759462918744972,1.46261640042440,2.56073086204352,3.78909538953524,5.41105358248309,6.78255486238759,8.58502158959043,8.95193674486290,9.93854195925673,9.47657037534071,9.06689661448547,9.39221079633647,9.01776477004307,8.02304202449399])
+    # timescaleintegral_x = np.array([	0.103942652329749,0.207885304659498,0.519713261648746,1.03942652329749,1.43440860215054,2.07885304659498,2.87921146953405,4.15770609318996,5.75842293906810,8.31541218637993,11.5064516129032,16.6308243727599,19.7491039426523,22.8673835125448,24.4265232974910])
+    # timescaleintegral_y = np.array([0.715084639456640,0.759462918744972,1.46261640042440,2.56073086204352,3.78909538953524,5.41105358248309,6.78255486238759,8.58502158959043,8.95193674486290,9.93854195925673,9.47657037534071,9.06689661448547,9.39221079633647,9.01776477004307,8.02304202449399])
 
     # for sources in [['f_short'], [f'f_short', 'DDM_short'], ['timescaleint']]:
     for sources in [[f'f_short', 'DDM_short', 'timescaleint']]:
@@ -82,40 +82,51 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
             Ds     = data['Ds']
             D_uncs = data['D_uncs']
 
+            pixel_size = None
+
             if source.startswith('f') or source.startswith('Fs') or source.startswith('DDM'):
                 # xs = 1 / data['ks']
+                print('max k', data['ks'].max(), '2pi over over D', 2*np.pi/data['ks'].max()/2.82)
+
                 if PLOT_AGAINST_K:
                     xs = data['ks']
                 else:
                     xs = 2 * np.pi / data['ks']
-                print(xs)
-                print(Ds)
+                # print(xs)
+                # print(Ds)
+
+                # pixel_size = data['pixel_size']
+                print('HACK')
+                pixel_size = 0.288
+                assert file == 'eleanorlong'
+
                 # xs = data['ks'] / (2 * np.pi / diameter)
-            elif source.startswith('boxcounting'):
-                # xs = data['Ls'] / diameter
-                if PLOT_AGAINST_K:
-                    raise
-                else:
-                    xs = timescaleintegral_x
-                print('x', xs * diameter)
-                Ds = timescaleintegral_y * 0.0455840
-                D_uncs = np.full_like(timescaleintegral_y, np.nan)
+            # elif source.startswith('boxcounting'):
+            #     # xs = data['Ls'] / diameter
+            #     if PLOT_AGAINST_K:
+            #         raise
+            #     else:
+            #         xs = timescaleintegral_x
+            #     print('x', xs * diameter)
+            #     Ds = timescaleintegral_y * 0.0455840
+            #     D_uncs = np.full_like(timescaleintegral_y, np.nan)
             elif source.startswith('timescaleint'):
                 if PLOT_AGAINST_K:
-                    raise
+                    print('skipping timescaleint')
+                    continue
                 else:
                     xs = data['Ls']
             elif source.startswith('MSD'):
                 # xs = ax.get_xlim()[0]+0.1
-                xs = []
-                print(10/(Ds/0.0455840), 'D')
+                pixel_size = []
+                # print(10/(Ds/0.0455840), 'D')
                 ax.hlines(Ds/0.0455840, 0.04, 25, color='tab:orange', linestyle='dotted', label=f'{source_names[source]}')
                 # ax.hlines(Ds/0.0455840 / common.structure_factor_2d_hard_spheres(0.001, 0.34, diameter), 0.04, 25, color='grey', linestyle='dotted')
                 # ax.hlines(Ds/0.0455840 / common.structure_factor_2d_hard_spheres(0.01, 0.34, diameter), 0.04, 25, color='grey', linestyle='dotted')
                 # ax.hlines(Ds/0.0455840 / common.structure_factor_2d_hard_spheres(0.1, 0.34, diameter), 0.04, 25, color='grey', linestyle='dotted')
-                print(common.structure_factor_2d_hard_spheres(0.1, 0.34, diameter))
-                print(common.structure_factor_2d_hard_spheres(0.01, 0.34, diameter))
-                print(common.structure_factor_2d_hard_spheres(0.001, 0.34, diameter))
+                # print(common.structure_factor_2d_hard_spheres(0.1, 0.34, diameter))
+                # print(common.structure_factor_2d_hard_spheres(0.01, 0.34, diameter))
+                # print(common.structure_factor_2d_hard_spheres(0.001, 0.34, diameter))
                 # continue
                 Ds = np.array([])
                 D_uncs = np.array([])
@@ -126,17 +137,28 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
             diameter = data.get('particle_diameter')
             if diameter == None: diameter = 2.82
             print('must change above line!')
+            ten = 10
             if PLOT_AGAINST_K:
                 xs *= diameter
+                ten *= diameter
+                if pixel_size:
+                    pixel_size *= diameter
             else:
                 xs /= diameter
+                ten /= diameter
+                if pixel_size:
+                    pixel_size /= diameter
 
-            print(xs)
+            # print(xs)
 
             # if not source.startswith('MSD'):
             color = colors.get(source)
-            lines = ax.plot(xs, Ds/0.0455840, linestyle='none', marker=markers[source], markersize=4, color=color, label=f'{source_names[source]}' if not source.startswith('MSD') else None)
-            ax.errorbar(xs, Ds/0.0455840, yerr=D_uncs/0.0455840, linestyle='none', marker='none', alpha=0.3, color=color)
+            lines = ax.plot(xs, Ds, linestyle='none', marker=markers[source], markersize=4, color=color, label=f'{source_names[source]}' if not source.startswith('MSD') else None)
+            ax.errorbar(xs, Ds, yerr=D_uncs, linestyle='none', marker='none', alpha=0.3, color=color)
+
+            if pixel_size:
+                ax.vlines(pixel_size, Ds.min(), Ds.max(), linestyle='dotted', color='black', label='pixel')
+                ax.vlines(ten, Ds.min(), Ds.max(), linestyle='dotted', color='grey', label='pixel')
 
             [all_Ds.append(D) for D in Ds]
 
@@ -151,8 +173,9 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
         ax.semilogy()
 
         
-        ax.set_ylim(0.2, 20)
-        ax.set_ylabel('$D/D_0$')
+        ax.set_ylim(0.005, 0.5)
+        ax.set_ylabel('$D$')
+        # ax.set_ylabel('$D/D_0$')
         ax.set_xticks([])
         ax.semilogx()
         if PLOT_AGAINST_K:
@@ -167,7 +190,7 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
             ax.set_xlabel(r'$L / \sigma$')
         # ax.set_xlabel(r'$k / (2\pi / \sigma)$')
         # ax.semilogy()
-        ax.legend(fontsize=8)
+        ax.legend(fontsize=6, loc='lower center')
         # ax.set_title(f'{file}, errorbars not yet all correct')
         # common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/Ds_overlapped_{file}_{name}.pdf', hide_metadata=True)
         common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_{file}_{name}.png', dpi=200)

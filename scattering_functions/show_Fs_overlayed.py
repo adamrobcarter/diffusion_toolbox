@@ -8,13 +8,13 @@ import scipy.optimize
 
 subplot_i = 0
 
-PRESENT_SMALL = True
+PRESENT_SMALL = False
 
 figsize = (5, 4)
 if PRESENT_SMALL:
     figsize = (3.5, 3.2)
 
-for file in sys.argv[1:]:
+for file in common.files_from_argv("scattering_functions/data/", "F_"):
     
     d = common.load(f"scattering_functions/data/F_{file}.npz")
     t         = d["t"]

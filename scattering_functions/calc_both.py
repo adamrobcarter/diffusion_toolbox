@@ -2,20 +2,24 @@ import numpy as np
 import scattering_functions.scattering_functions_nonumba as scattering_functions
 import common
 import time
+import warnings
 
-log = True
+log = False
+if not log:
+    warnings.warn('not using log calculation')
 
-# num_k_bins = 200 # was 50
-# num_k_bins = int(max_K / min_K)
 # num_k_bins = 100
-num_k_bins = 100
-num_iters = 24 # was 10
-#                                       9.1 so that 9 gets included                round as we need integer frames
+num_k_bins = 50
+# computation time is proportional to this squared
 
 drift_removed = False
-# crop = 0.5 if F_type == 'F' else 1.0
-# crop = 0.5 # to force the same
-crop = 1.0
+
+
+
+max_time_origins = 1000
+# max_time_origins = 100
+# this sets (approx) how many different time origins will be averaged over
+# computation time is directly proportional
 
 def calc_for_f_type(F_type):
 
@@ -31,6 +35,7 @@ def calc_for_f_type(F_type):
         particles         = data['particles'] # rows of x,y,t
         time_step         = data['time_step']
         particle_diameter = data.get('particle_diameter')
+        pixel_size=data.get('pixel_size')
        
         num_timesteps = particles[:, 2].max()
         # d_frames = np.concatenate([np.arange(0, 9.1), np.logspace(1, np.log10(num_timesteps-100), 50)]).round()
@@ -39,35 +44,39 @@ def calc_for_f_type(F_type):
         if drift_removed:
             particles = common.remove_drift(particles)
 
-
         if False:
             print('adding drift')
             particles = common.add_drift(particles, 0.05, 0.05)
 
         width  = particles[:, 0].max() - particles[:, 0].min() # what are these for?
         height = particles[:, 1].max() - particles[:, 1].min()
+        
+        min_K = 2*np.pi/min(width, height)
+        if file.startswith('brennan') or file == 'eleanorlong':
+            min_K = 2*np.pi/293.216291078
+            # we use this cause it's the same as used by eleanorlong
 
-
-        # min_K = 2 * np.pi / (min(width, height) * 0.5) # 0.5 was crop but then min_K varies with F_type
-        # min_K = min_K * 2
-        # print("min_k", min_K)
-        #print(f"min K = {min_K:.3f}")
-        max_K = 10 # was 10
-
-        # max_time_origins = 50
-        max_time_origins = 100
-        max_time_origins = 1000
+        if pixel_size:
+            max_K = 2 * np.pi / pixel_size
+        else:
+            print('Pixel size not given, using max_K = 21.81661564992912')
+            max_K = 21.81661564992912 # was 10
+            # we use this cause it's the same as used by eleanorlong
 
         print('starting calculation')
 
-        Fs, F_unc, ks = scattering_functions.intermediate_scattering(log, F_type, crop, num_k_bins, max_time_origins, d_frames, 
-                                                                     particles, max_K, width=width, height=height)
+        Fs, F_unc, ks = scattering_functions.intermediate_scattering(log, F_type, num_k_bins, max_time_origins, d_frames, 
+                                                                     particles, max_K, min_K)
 
         t1 = time.time()
             
-        common.save_data(f"scattering_functions/data/{F_type}_{file}", F=Fs, F_unc=F_unc, k=ks, t=d_frames*time_step, crop=crop,
+        filename = f"scattering_functions/data/{F_type}_{file}"
+        if not log:
+            filename += '_nolog'
+        common.save_data(filename, F=Fs, F_unc=F_unc, k=ks, t=d_frames*time_step,
                 num_k_bins=num_k_bins, max_time_origins=max_time_origins, computation_time=t1-t0, log=log,
-                particle_diameter=particle_diameter, drift_removed=drift_removed)
+                particle_diameter=particle_diameter, drift_removed=drift_removed,
+                pixel_size=pixel_size)
 
         print()
 

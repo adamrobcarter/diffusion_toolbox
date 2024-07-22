@@ -16,7 +16,7 @@ def do_binning(slice_length, F_D_sq_this, u_flat, u_bins):
 
 max_K = 10
 
-def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D, F_D_unc, t : None):
+def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D_sq, F_D_sq_unc, t, F_D_sq_all, time_origins : None):
     I = stack # we use Cerbino's notation
 
     use_every_nth_frame = 1
@@ -61,6 +61,8 @@ def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D, F_
 
         D = I[time_indexes, :, :] - I[time_origin, :, :] # need -1 cause used_times[0]==1
 
+        print(D.shape)
+        sys.exit(0)
         u_x, u_y, F_D = common.fourier_2D(D, spacing=pixel_size, axes=(1, 2))
         # F_D = I_fourier[time_indexes, :, :] - I_fourier[time_origin, :, :]
 
@@ -74,6 +76,8 @@ def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D, F_
         # this loop below is very surely the time bottleneck
         u_flat = u.flatten()
         for t_index in range(slice_length):
+            print('shapes', u_flat.shape, F_D_sq_this[t_index, :, :].flatten().shape)
+            print(F_D_sq_this.shape)
             F_D_sq[time_origin_index, t_index, :], _, _ = scipy.stats.binned_statistic(u_flat, F_D_sq_this[t_index, :, :].flatten(), bins=u_bins)
             # should we check that this line is doing exactly what we expect?
             # it would be quicker for F_D_sq to have dimensions u_x, u_y instead of |u|, and then we could do the binned_statistic

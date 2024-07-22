@@ -46,17 +46,17 @@ def intensity_correlation(data1, data2):
     print(r_sq.shape)
 
 def load(filename):
-    # modified = datetime.datetime.fromtimestamp(os.path.getmtime(f'{filename}'))
-    # diff = datetime.datetime.now() - modified
-    # print(f'loading {filename}, last modified {str(diff)[:-10]} ago')
-    print(f'loading {filename}, last modified ago')
+    modified = datetime.datetime.fromtimestamp(os.path.getmtime(f'{filename}'))
+    diff = datetime.datetime.now() - modified
+    print(f'loading {filename}, last modified {str(diff)[:-10]} ago')
+    # print(f'loading {filename}, last modified ago')
 
-    try:
-        data = np.load(f'{filename}', allow_pickle=True)
-    except FileNotFoundError:
-        psiche = filename.split('/')[-1]
-        print(psiche)
-        data = np.load(f'/media/com-psiche/Sans titre/psiche_export1_npzFiles/{psiche}', allow_pickle=True)
+    # try:
+    data = np.load(f'{filename}', allow_pickle=True)
+    # except FileNotFoundError:
+    #     psiche = filename.split('/')[-1]
+    #     print(psiche)
+    #     data = np.load(f'/media/com-psiche/Sans titre/psiche_export1_npzFiles/{psiche}', allow_pickle=True)
 
     if filename.endswith('.npz'):
         for key in data.keys():
@@ -165,8 +165,8 @@ def save_fig(fig, path, dpi=100, only_plot=False, hide_metadata=False):
         args['pad_inches'] = 0
 
     path2 = path.replace('*', '')
-    if not path2.startswith('/'):
-        path2 = f'~/Michot_0624/toolbox/{path}'
+    # if not path2.startswith('/'):
+    #     path2 = f'~/Michot_0624/toolbox/{path}'
     print(f'saving {path2}    {len(fig.axes)} axes')
     fig.savefig(path, dpi=dpi, **args)
 
@@ -583,12 +583,12 @@ def name(file):
         if file.endswith('_small'):
             file = file[:-6]
 
-        try:
-            with open(f'/media/com-psiche/Sans titre/psiche_export_1/{file}/NAME', 'r') as namefile:
-                name = namefile.read()
-            return f'{file} {name}'
-        except FileNotFoundError:
-            pass
+        # try:
+        #     with open(f'/media/com-psiche/Sans titre/psiche_export_1/{file}/NAME', 'r') as namefile:
+        #         name = namefile.read()
+        #     return f'{file} {name}'
+        # except FileNotFoundError:
+        #     pass
 
         try:
             with open(f'raw_data/psiche/{file}/NAME', 'r') as namefile:
