@@ -59,26 +59,33 @@ if __name__ == '__main__':
     SUFFIX = ''
 
     for file in sys.argv[1:]:
-        data_stack = common.load(f'preprocessing/data/stack_{file}.npz')
-        
-        stack = data_stack['stack']
-        pixel_size = data_stack['pixel_size']
-        time_step = data_stack['time_step']
 
-        
         data_particles = common.load(f'particle_detection/data/particles_{file}{SUFFIX}.npz')
         particles = data_particles['particles']
-        radius    = data_particles['radius']
+        radius    = data_particles.get('radius')
+        time_step = data_particles['time_step']
 
-        # crop
-        stack = stack[:, :500, :500]
+        try:
+            data_stack = common.load(f'preprocessing/data/stack_{file}.npz')
+        
+            stack = data_stack['stack']
+            pixel_size = data_stack['pixel_size']
 
-        # stack = common.add_drift_intensity(stack, 1)
+            # crop
+            stack = stack[:, :500, :500]
 
-        print(stack.shape[1], 'x', stack.shape[2], 'px')
+            # stack = common.add_drift_intensity(stack, 1)
+
+            print(stack.shape[1], 'x', stack.shape[2], 'px')
 
 
-        stack = stack - stack.mean(axis=0) # remove space background
+            stack = stack - stack.mean(axis=0) # remove space background
+
+        except FileNotFoundError:
+            num_timesteps = int(particles[:, 2].max() - 1)
+            stack = np.zeros((num_timesteps, 320, 320))
+            pixel_size = 1
+            radius = np.full(particles.shape[0], 0.002*160)
         
         def add_outlines(timestep, ax):
             particle_detection.show.add_particle_outlines(ax, pixel_size, particles, radius, timestep)

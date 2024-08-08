@@ -4,8 +4,10 @@ import numpy as np
 import scipy.optimize
 import matplotlib.cm
 
+SHOW_ERRORBARS = False
+
 for file in common.files_from_argv('MSD/data', 'msd_'):
-    data = np.load(f'MSD/data/msd_{file}.npz')
+    data = common.load(f'MSD/data/msd_{file}.npz')
     msd = data['msd']
     msd_unc = data['msd_unc']
     
@@ -20,7 +22,8 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
 
     # ax.errorbar(t[1:], msd[1:], msd_unc[1:], linestyle='none', marker='none', color='lightskyblue')
     ax.plot(t[1:], msd[1:], marker='.', markersize=8, linestyle='none', color=matplotlib.cm.afmhot(0.3), label='observations')
-    ax.fill_between(t[1:], msd[1:]-msd_unc[1:], msd[1:]+msd_unc[1:], alpha=0.2, color=matplotlib.cm.afmhot(0.3))
+    if SHOW_ERRORBARS:
+        ax.fill_between(t[1:], msd[1:]-msd_unc[1:], msd[1:]+msd_unc[1:], alpha=0.2, color=matplotlib.cm.afmhot(0.3))
     
     ax.loglog()
     ax.set_ylim(msd[1:].min()*0.6, msd.max()/0.8)
@@ -37,21 +40,21 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
     t_th = np.logspace(np.log10(t[fitting_points[0]]), np.log10(t[fitting_points[-1]]))
     ax.plot(t_th, func(t_th, *popt), color='black', linewidth=1, label='fit')
 
-    fitting_points_short = common.exponential_integers(1, t.size//100)
+    fitting_points_short = common.exponential_integers(1, 10)
     func_short = lambda t, D: 4*D*t
     popt_short, pcov_short = scipy.optimize.curve_fit(func_short, t[fitting_points_short], msd[fitting_points_short])
     t_th_short = np.logspace(np.log10(t[fitting_points_short[0]]), np.log10(t[fitting_points_short[-1]]))
-    # ax.plot(t_th_short, func_short(t_th_short, *popt_short), color='black', linewidth=1)
+    ax.plot(t_th_short, func_short(t_th_short, *popt_short), color='black', linewidth=1)
 
     fitting_points_long = common.exponential_integers(t.size//10, t.size-1)
     func_long = lambda t, D, a: 4*D*t + a
     popt_long, pcov_long = scipy.optimize.curve_fit(func_long, t[fitting_points_long], msd[fitting_points_long])
     t_th_long = np.logspace(np.log10(t[fitting_points_long[1]]), np.log10(t[fitting_points_long[-1]]))
-    # ax.plot(t_th_long, func_long(t_th_long, *popt_long), color='black', linewidth=1)
+    ax.plot(t_th_long, func_long(t_th_long, *popt_long), color='black', linewidth=1)
 
     ax.legend()
 
-    # common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/msd_{file}.pdf', hide_metadata=True)
+    common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/msd_{file}.pdf', hide_metadata=True)
     common.save_fig(fig, f'MSD/figures_png/msd_{file}.png')
     np.savez(f'visualisation/data/Ds_from_MSD_{file}',
              Ds=[popt[0]], D_uncs=[np.sqrt(pcov)[0][0]], labels=[''])

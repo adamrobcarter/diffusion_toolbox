@@ -42,6 +42,8 @@ def calc_and_save(box_sizes_px, sep_sizes_px, data, particles, output_file_name,
 
     if save_counts:
         extra_to_save['counts'] = results.counts
+
+    # print(f'drift: {common.find_drift(particles)}')
  
 
     # also let's calc the packing fraction now as it'll be useful in the future
@@ -121,18 +123,34 @@ if __name__ == '__main__':
         #         output_filename, save_counts=False, use_old_overlap=use_old_overlap)
 
         # for spacing in [9, 13, 17, 23, 31, 51]:
-        box_sizes_px = np.array([1, 2, 4, 8, 16, 32, 64])
-        # spacing = 9
-        # sep_sizes_px = np.array([8, 7, 5, 1, -7, -23, -55])
-        spacings_px  = np.array([9, 9, 9, 9, 9, 4.5, 3.5])
-        sep_sizes_px = spacings_px - box_sizes_px
-        sep_sizes_px = np.array([8, 7, 5, 1, -7, -26, -59])
+        # box_sizes_px = np.array([1, 2, 4, 8, 16, 32, 64])
+        # sep_sizes_px = spacings_px - box_sizes_px
+        # # spacing = 9
+        # # sep_sizes_px = np.array([8, 7, 5, 1, -7, -23, -55])
+        # spacings_px  = np.array([9, 9, 9, 9, 9, 4.5, 3.5])
+        # sep_sizes_px = spacings_px - box_sizes_px
+        # sep_sizes_px = np.array([8, 7, 5, 1, -7, -26, -59])
 
-        box_sizes_px = box_sizes_px[::-1]
-        sep_sizes_px = sep_sizes_px[::-1]
+        # box_sizes_px = box_sizes_px[::-1]
+        # sep_sizes_px = sep_sizes_px[::-1]
         # sep_sizes_px = np.full_like(box_sizes_px, 20)
 
+
+        # for eleanorlong timescaleint
+        # getting rid of 160 to make the presentation nicer
+        box_sizes_px = np.logspace(np.log10(0.5), np.log10(100), 27)
+        sep_sizes_px = 69 - box_sizes_px
+
+        # for alice0.66 timescaleint        
+        # box_sizes_px = np.array([1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64])
+
+        # for strange brennan rises
+        # box_sizes_px = np.logspace(np.log10(1), np.log10(160), 20)
+        # sep_sizes_px = 69 - box_sizes_px
+        # sep_sizes_px[sep_sizes_px < 2] = 2
+
         output_filename = f'box_counting/data/counted_{file}.npz'
+
 
         t0 = time.time()
         calc_and_save(box_sizes_px, sep_sizes_px, data, particles,

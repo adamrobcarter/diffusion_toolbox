@@ -3,22 +3,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize
 import scipy.special
+import math
 
-FIT_USE_FLOW = True
+FIT_USE_FLOW = False
 
 def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
 
     # target_ks = list(np.logspace(np.log10(0.4), np.log10(7), 7))
     # target_ks = (0.28, 0.38, 0.5, 1.3, 2, 4, 8)
     # target_ks = (0.1, 0.14, 0.5, 1.3, 2, 4, 8)
-    target_ks = list(np.logspace(np.log10(0.2), np.log10(8), 14))
+    num_displayed_ks = 14
 
-    DDM_f     = np.full((F_D_sq.shape[0], len(target_ks)), np.nan)
-    DDM_f_unc = np.full((F_D_sq.shape[0], len(target_ks)), np.nan)
+    DDM_f     = np.full((F_D_sq.shape[0], num_displayed_ks), np.nan)
+    DDM_f_unc = np.full((F_D_sq.shape[0], num_displayed_ks), np.nan)
 
     real_ks = []
 
-    fig, axs = plt.subplots(1, len(target_ks), figsize=(len(target_ks)*3.5, 4))
+    fig, axs = plt.subplots(1, num_displayed_ks, figsize=(num_displayed_ks*3.5, 4))
 
     D_max = 0
 
@@ -30,23 +31,30 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
     B_of_q = []
     q = []
 
-    for graph_i in range(len(target_ks)):
-        target_k = target_ks[graph_i]
+    every_nth_k = k.size // num_displayed_ks
 
-        k_index = np.argmax(k > target_k)
+    for graph_i in range(num_displayed_ks):
+        k_index = graph_i * every_nth_k
+
         real_ks.append(k[k_index])
+        print(f'k={k[k_index]:.2f}')
 
         ax = axs[graph_i]
 
+        if (nanfrac := common.nanfrac(F_D_sq[1:, k_index])) > 0.5:
+            print(f'nanfrac = {nanfrac}')
+            print('SKIPPING')
+            continue
+
         to_plot = np.full_like(F_D_sq[:, k_index], True, dtype='bool')
-        to_plot[0] = 0
+        to_plot[0] = False
         anomalous = F_D_sq_unc[:, k_index] > F_D_sq[:, k_index]
         # print(anomalous)
 
-        to_plot[anomalous] = False
+        # to_plot[anomalous] = False
 
 
-        if num_removed := (to_plot==0).sum()-1:
+        if num_removed := (to_plot==False).sum()-1:
             print(f'removed {num_removed}')
         # print(to_plot)
 
@@ -54,12 +62,15 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
         ax.errorbar(t[to_plot], F_D_sq[to_plot, k_index], yerr=F_D_sq_unc[to_plot, k_index], marker='.', linestyle='none')
 
 
-        if not live and False:
-
+        if not live:
+            # curve_fit needs the params to have similar scale (https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html)
+            # we do not have that, so we rescale F_D by it's max value
             rescale = F_D_sq[1:, k_index].max()
+            assert not np.isnan(rescale)
             F_D_sq_rescaled = F_D_sq[:, k_index] / rescale
             # F_D_sq_unc_rescaled = F_D_sq_unc[:, k_index] / rescale
             if np.isnan(F_D_sq_rescaled[1:]).sum()/F_D_sq_rescaled[1:].size == 1.0:
+                print('nan problem, skipping')
                 continue
 
             weights = np.ones_like(F_D_sq_rescaled)
@@ -91,7 +102,7 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
             else: 
                 func = lambda t, A, B, D: A * (1 - np.exp(-t*k[k_index]**2*D)) + B
 
-                popt, pcov = scipy.optimize.curve_fit(func, t[1:], F_D_sq_rescaled[1:], sigma=weights, p0=(F_D_sq_rescaled.max(), F_D_sq_rescaled.min(), 0.1), maxfev=100000)#, absolute_sigma=True)
+                popt, pcov = scipy.optimize.curve_fit(func, t[1:], F_D_sq_rescaled[1:], sigma=weights[to_plot], p0=(F_D_sq_rescaled.max(), F_D_sq_rescaled.min(), 0.1), maxfev=100000)#, absolute_sigma=True)
                 
                 D = popt[2] 
                 D_unc = np.sqrt(pcov)[2][2]
@@ -131,7 +142,7 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
         # print('DDM_f nan', common.nanfrac(DDM_f[:, graph_i]))
         
         # ax.set_ylim([np.min(F_D_sq[1:-2, k_index]-F_D_sq_unc[1:-2, k_index]),np.max(F_D_sq[1:-2, k_index]+F_D_sq_unc[1:-2, k_index])])
-        ax.set_ylim([np.min(F_D_sq[to_plot, k_index]) - (np.max(F_D_sq[to_plot, k_index])-np.min(F_D_sq[to_plot, k_index]))*0.1,np.max(F_D_sq[to_plot, k_index]) + (np.max(F_D_sq[to_plot, k_index])-np.min(F_D_sq[to_plot, k_index]))*0.1])
+        # ax.set_ylim([np.min(F_D_sq[to_plot, k_index]) - (np.max(F_D_sq[to_plot, k_index])-np.min(F_D_sq[to_plot, k_index]))*0.1,np.max(F_D_sq[to_plot, k_index]) + (np.max(F_D_sq[to_plot, k_index])-np.min(F_D_sq[to_plot, k_index]))*0.1])
 
         # D_ax = D_axs[graph_i+1]
         # D_ax.scatter(t[1:], D_of_t[1:], s=10)

@@ -14,10 +14,14 @@ def do_binning(slice_length, F_D_sq_this, u_flat, u_bins):
         F_D_sq[t_index, :], _, _ = common.numba_binned_statistic(u_flat, F_D_sq_this[t_index, :, :].flatten(), bins=u_bins)
     return F_D_sq
 
-max_K = 10
 
 def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D_sq, F_D_sq_unc, t, F_D_sq_all, time_origins : None):
+    # num_k_bins is only used if the smallest image dimension > 150
+    # otherwise the bins will be linearly (not log) spaced between min_K and max_K
+     
     I = stack # we use Cerbino's notation
+    assert I.ndim == 3 # catch incase any 2-channel file has got through
+    assert common.nanfrac(I) == 0
 
     use_every_nth_frame = 1
     if stack.shape[0] > 100:
@@ -34,8 +38,20 @@ def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D_sq,
 
     used_times = common.exponential_integers(1, I.shape[0]-1) - 1
 
-    min_K = 2*np.pi/( min(stack.shape[1], stack.shape[2]) * pixel_size )
-    k_bins = np.logspace(np.log10(min_K), np.log10(max_K), num_k_bins)
+    smallest_image_dim = min(stack.shape[1], stack.shape[2])
+
+    assert num_k_bins <= smallest_image_dim
+
+    min_K = 2*np.pi/( smallest_image_dim * pixel_size )
+
+    if smallest_image_dim < 150:
+        max_K = 2*np.pi/ pixel_size
+        num_k_bins = 20
+        k_bins = np.logspace(np.log10(min_K), np.log10(max_K), num_k_bins)
+    else:
+        max_K = 10
+        k_bins = np.logspace(np.log10(min_K), np.log10(max_K), num_k_bins)
+    # assert k_bins[1] - k_bins[0] > min_K/2, f'you probably have num_k_bins too high or max_k too low (k_spacing[0]={k_bins[1] - k_bins[0]:.3f}, min_K={min_K:.3f})'
     u_bins = k_bins / (2*np.pi)
     num_u_bins = u_bins.size - 1 # minus 1 because we specify right and left of final bin
     
@@ -44,6 +60,7 @@ def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D_sq,
 
     # a = 0
     # b = 0
+
 
     # print('doing big fourier')
     # # instead of taking the intensity differences and fourier transforming them, we could fourier transform the intensities
@@ -61,9 +78,12 @@ def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D_sq,
 
         D = I[time_indexes, :, :] - I[time_origin, :, :] # need -1 cause used_times[0]==1
 
-        print(D.shape)
-        sys.exit(0)
         u_x, u_y, F_D = common.fourier_2D(D, spacing=pixel_size, axes=(1, 2))
+        # print('u spacing', u_x[0, 1] - u_x[0, 0], u_y[1, 0] - u_y[0, 0])
+        # print('u max', u_x.max(), u_y.max(), 'u_bins max', u_bins.max())
+        # print(u_x.shape, u_y.shape, F_D.shape)
+        # print('u bins', u_bins)
+
         # F_D = I_fourier[time_indexes, :, :] - I_fourier[time_origin, :, :]
 
         warnings.warn('see static_fourier.py, should you be using fftshift?')
@@ -73,21 +93,37 @@ def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D_sq,
     
         u = np.sqrt(u_x**2 + u_y**2)
 
+        
+        # for i in range(0, 10):
+        #     print()
+        #     if i == 0:
+        #         lower = 0
+        #     else:
+        #         lower = u_bins[i-1]
+        #     upper = u_bins[i]
+        #     print(lower, upper)
+        #     ins = ( lower < u ) & ( u < upper )
+        #     print(u_x[ins], u_y[ins])
+        # break
+
         # this loop below is very surely the time bottleneck
         u_flat = u.flatten()
         for t_index in range(slice_length):
-            print('shapes', u_flat.shape, F_D_sq_this[t_index, :, :].flatten().shape)
-            print(F_D_sq_this.shape)
             F_D_sq[time_origin_index, t_index, :], _, _ = scipy.stats.binned_statistic(u_flat, F_D_sq_this[t_index, :, :].flatten(), bins=u_bins)
+            a, _, _ = scipy.stats.binned_statistic(u_flat, F_D_sq_this[t_index, :, :].flatten(), statistic='count', bins=u_bins)
+            # print(' '.join([f'{b:.0f}' for b in a]))
+        
             # should we check that this line is doing exactly what we expect?
             # it would be quicker for F_D_sq to have dimensions u_x, u_y instead of |u|, and then we could do the binned_statistic
             # afterwards, but this would make the size of the array huge
+            # print(''.join(['*' if a else '-' for a in np.isnan(F_D_sq[time_origin_index, t_index, :])]))
         # F_D_sq[time_origin_index, :, :] = do_binning(slice_length, F_D_sq_this, u_flat, u_bins)
 
+        # we calculate these now, for the callback (otherwise we could calc them after the loop finishes)
         F_D_sq_avg = np.nanmean(F_D_sq, axis=0) # average over time origins
+        # assert common.nanfrac(F_D_sq_avg) < 0.1, f'F_D_sq_avg was {common.nanfrac(F_D_sq_avg):.2f} nan'
+        # print(f'F_D_sq_avg was {common.nanfrac(F_D_sq_avg):.2f} nan')
         F_D_sq_std = np.nanstd (F_D_sq, axis=0) # average over time origins
-
-        # assert np.isnan(F_D_sq_avg).sum()/F_D_sq_avg.size < 0.1, f'F_D_sq_avg was {np.isnan(F_D_sq_avg).sum()/F_D_sq_avg.size:.2f} nan'
 
         u_avg = ( u_bins[:-1] + u_bins[1:] ) / 2
         
@@ -95,4 +131,6 @@ def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D_sq,
 
         callback(time_origin_index, k_avg, F_D_sq_avg, F_D_sq_std, used_times*time_step, F_D_sq, time_origins)
 
+    print('final nanfrac', common.nanfrac(F_D_sq_avg))
+        
     return k_avg, used_times*time_step, F_D_sq_avg, F_D_sq_std, use_every_nth_frame, F_D_sq, time_origins

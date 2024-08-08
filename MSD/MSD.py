@@ -2,8 +2,9 @@ import numpy as np
 import numba
 import common
 import tqdm
+import time
 
-@numba.njit
+# @numba.njit
 def autocorrFFT(x):
     N = len(x)
     F = np.fft.fft(x, n=2*N)  # 2*N because of zero-padding
@@ -72,12 +73,10 @@ def calc_internal(data):
     common.term_hist(hist)
 
     ps = ps[:i, :, :]
-    print(ps)
-    print(type(ps))
-    print('shapes', data.shape, ps.shape)
     data = ps
 
-    x_MSDs = msd_matrix(data[:, :, 0])
+    print('calculating MSDs')
+    x_MSDs = msd_matrix(data[:, :, 0]) # should probably be msd_fft1d?
     y_MSDs = msd_matrix(data[:, :, 1])
     MSDs = x_MSDs + y_MSDs
     print('nanfrac after', common.nanfrac(MSDs))
@@ -114,6 +113,86 @@ def calc_centre_of_mass(data, groupsize):
     print('need to consider that many of your group might be nan')
     return calc_internal(centre_of_masses)
 
+def calc_incremental(particles):
+    # version that doesn't need reshaping - probably slower but a lot less memory
+    assert particles[:, 3].min() == 0
+
+    # need the data are sorted by particle ID
+    particles = particles[particles[:, 3].argsort()]
+    
+    num_particles = int(particles[:, 3].max()) + 1
+    num_timesteps = int(particles[:, 2].max()) + 1
+    print(f'{num_particles} particles, {num_timesteps} timesteps')
+
+    msd_sum = np.zeros(num_timesteps)
+    msd_sum_sq = np.zeros(num_timesteps)
+    msd_count = np.zeros(num_timesteps)
+
+    # for particle in tqdm.trange(num_particles):
+    progress = tqdm.tqdm(total=num_particles)
+
+    start_index = 0
+    current_id = 0
+    skipped = 0
+    while start_index < particles.shape[0]-1:
+        current_id = particles[start_index, 3]
+        end_index = start_index + 1
+        # print(start_index, end_index, particles.shape[0])
+        # find the index of the last row that has this particle ID
+        while end_index < particles.shape[0] and particles[end_index, 3] == current_id:
+            end_index += 1
+
+        t0 = time.time()
+        data_this_particle = particles[start_index:end_index, :]
+        assert np.all(data_this_particle[:, 3] == current_id)
+        
+        # now sort by time
+        data_this_particle = data_this_particle[data_this_particle[:, 2].argsort()]
+
+        if data_this_particle.shape[0] == 0:
+            pass
+
+        else:
+            # assert data_this_particle[0, 2] == 0
+            # num_timesteps_this_particle = int(data_this_particle[:, 2].max()) + 1
+            num_timesteps_this_particle = int(data_this_particle[-1, 2]) + 1
+            # print(num_timesteps_this_particle, data_this_particle.shape)
+            # print(data_this_particle)
+            # [print(data_this_particle[i, :]) for i in range(data_this_particle.shape[0])]
+            # print(num_timesteps_this_particle, data_this_particle.shape[0])
+            if num_timesteps_this_particle != data_this_particle.shape[0]:
+                # this means that the timestep was non-contiguous
+                skipped += 1
+            
+            else:
+                # assert data_this_particle[-1, 2] == num_timesteps_this_particle - 1
+                # t1 = time.time()
+                x_MSD = msd_fft1d(data_this_particle[:, 0])
+                y_MSD = msd_fft1d(data_this_particle[:, 1])
+                MSD = x_MSD + y_MSD
+                # t2 = time.time()
+                msd_sum[:num_timesteps_this_particle] += MSD
+                msd_sum_sq[:num_timesteps_this_particle] += MSD**2
+                msd_count[:num_timesteps_this_particle] += 1
+                # t3 = time.time()
+                # t_a = t1-t0
+                # t_b = t2-t1
+                # t_c = t3-t2
+                # t = t3-t0
+                # print(f'{t_a/t:.2f} {t_b/t:.2f} {t_c/t:.2f}')
+        progress.update()
+        start_index = end_index
+    progress.close()
+
+    print(f'skipped {skipped/num_particles:.2f}')
+    
+    avg = msd_sum / msd_count
+    std = msd_sum_sq / msd_count - avg**2
+
+    unc = std / np.sqrt(msd_count)
+    # unc = std
+
+    return avg, unc
 
 """
 @numba.njit()

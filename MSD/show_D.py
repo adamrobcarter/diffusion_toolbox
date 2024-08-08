@@ -3,6 +3,9 @@ import common
 import numpy as np
 import scipy.optimize
 
+def moving_average(x, w):
+    return np.convolve(x, np.ones(w), 'valid') / w
+
 for file in common.files_from_argv('MSD/data', 'msd_'):
     data = common.load(f'MSD/data/msd_{file}.npz')
     msd = data['msd']
@@ -26,6 +29,10 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
     ax.plot(t[1:END], D[1:END], marker='.', markersize=3, linestyle=r'none', label=r'$1/4 \cdot \mathrm{d}\langle r^2 \rangle/\mathrm{d}t$')
     ax.fill_between(t[1:END], D[1:END]-D_unc[1:END], D[1:END]+D_unc[1:END], alpha=0.2)
 
+    D_smooth = moving_average(D, 100)
+    ax.plot(t[500+50:END-49], D_smooth[500:END], marker='.', markersize=3, linestyle=r'none')
+    
+
     fitting_points = common.exponential_integers(1, t.size-1)
 
     func = lambda t, D: 4*D*t
@@ -44,5 +51,5 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
     ax.set_xlabel('$\Delta t$ (s)')
     # ax.legend()
 
-    common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/D_from_msd_{file}.pdf', hide_metadata=True)
+    # common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/D_from_msd_{file}.pdf', hide_metadata=True)
     common.save_fig(fig, f'MSD/figures_png/D_from_msd_{file}.png')

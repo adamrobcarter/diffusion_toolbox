@@ -6,9 +6,11 @@ import common
 import scipy.integrate, scipy.special, scipy.optimize, scipy.signal
 import countoscope_theory.nmsd, countoscope_theory.structure_factor
 import tqdm
-import sys
+import math
 import matplotlib.cm
 import box_counting.msd_single
+
+SHOW_THEORY = False
 
 """
 Countoscope appendix:
@@ -71,8 +73,9 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
     num_boxes     = N2_mean.shape[0]
     t = np.arange(0, num_timesteps) * time_step
 
-    D_of_Ls = np.full((num_boxes), np.nan)
-    T_of_Ls = np.full((num_boxes), np.nan)
+    D_of_Ls     = np.full((num_boxes), np.nan)
+    D_of_L_uncs = np.full((2, num_boxes), np.nan)
+    T_of_Ls     = np.full((num_boxes), np.nan)
 
     # sDFT_data = common.load(f'data/sDFT_{phi}.npz')
     # late_integrals    = sDFT_data['late_integrals']
@@ -84,19 +87,19 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
         L = box_sizes[box_size_index]
         # D_of_Ls[box_size_index] = common.D_of_L(N2_mean[box_size_index, :], N_var[box_size_index], t, L) / D0
 
-        print('inffrac', np.isinf(N2_mean[box_size_index, :]).sum())
+        # print('inffrac', np.isinf(N2_mean[box_size_index, :]).sum())
 
         print(f'L={L:.1f} N_var={N_var[box_size_index]:.4f}, N_var/L^2={N_var[box_size_index]/L**2:.4f}')
 
 
-        plateau, plateau_std = box_counting.msd_single.get_plateau(N2_mean[box_size_index, :])
+        plateau, plateau_std = box_counting.msd_single.get_plateau(N2_mean[box_size_index, :], file)
 
-        var_label = 'original'
-        var = N_var[box_size_index]
+        # var_label = 'original'
+        # var = N_var[box_size_index]
 
         # print('plat', plateau, N_var[box_size_index])
-        # var_label = 'plateau'
-        # var = plateau / 2
+        var_label = 'plateau'
+        var = plateau / 2
 
         T_integrand_func = lambda nmsd: (1 - 0.5 * nmsd / var )**2 # countoscope paper eq. 8
         T_integrand     = T_integrand_func(N2_mean[box_size_index, :])
@@ -114,7 +117,7 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
         early_fit_func = lambda t, a: f(t/a)**4
         early_fit_xdata = [0, t[1]]
         early_fit_ydata = [1, T_integrand[1]]
-        print(early_fit_xdata, early_fit_ydata)
+        # print(early_fit_xdata, early_fit_ydata)
         early_popt, early_pcov = scipy.optimize.curve_fit(early_fit_func, early_fit_xdata, early_fit_ydata)
         early_integral = scipy.integrate.quad(early_fit_func, 0, t[1], args=early_popt[0])[0]
         
@@ -126,6 +129,9 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
         early_popt_max, early_pcov_max = scipy.optimize.curve_fit(early_fit_func, early_fit_xdata, early_fit_ydata_max)
         early_integral_max = scipy.integrate.quad(early_fit_func, 0, t[1], args=early_popt_max[0])[0]
         
+        assert early_integral_min < early_integral
+        assert early_integral_max > early_integral
+
         # late time integral
         
         # log_derivative = np.gradient(T_integrand) / T_integrand
@@ -143,13 +149,13 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
         M1_index = None
         D0 = None
 
-        if file.startswith('eleanorlong') or file.startswith('eleanor0.01'):
+        if file.startswith('eleanorlong') or file.startswith('eleanor0.01') or file.startswith('brennan'):
             M2_index = min(int(300 * L), t.shape[0]-1)
             M2_index = max(M2_index, MIN_M2_INDEX)
             M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
             if file.startswith('eleanorlong'):
                 D0 = 0.028
-            elif file.startswith('eleanor0.01'):
+            elif file.startswith('eleanor0.01') or file.startswith('brennan'):
                 D0 = 0.0416
         elif file == 'alice0.02':
             M2_index = min(int(60 * L), t.shape[0]-1)
@@ -228,8 +234,17 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
 
         # data integral
         data_integral     = scipy.integrate.trapezoid(T_integrand    [1:M2_index], t[1:M2_index])
-        data_integral_min = scipy.integrate.trapezoid(T_integrand_min[1:M2_index], t[1:M2_index])
-        data_integral_max = scipy.integrate.trapezoid(T_integrand_max[1:M2_index], t[1:M2_index])
+        min_and_max = [
+            scipy.integrate.trapezoid(T_integrand    [1:M2_index], t[1:M2_index]),
+            scipy.integrate.trapezoid(T_integrand_max[1:M2_index], t[1:M2_index]),
+            scipy.integrate.trapezoid(T_integrand_min[1:M2_index], t[1:M2_index])
+        ]
+        data_integral_min = min(min_and_max)
+        data_integral_max = max(min_and_max)
+        assert data_integral_min <= data_integral
+        assert data_integral_max >= data_integral
+        if data_integral_min == data_integral:
+            warnings.warn('slightly strange uncertainty behavoir')
 
         # scipy.integrate.quad(early_func, 0, t[1])
         # T_of_Ls[box_size_index] = 2 * (scipy.integrate.quad(fit_func, 0, t[1])[0] + scipy.integrate.trapezoid(T_int[1:], t[1:])) # countoscope eq. 8
@@ -261,7 +276,6 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
         b_unc = np.sqrt(late_pcov)[1, 1]
         late_fit_func_real = lambda t, a, b: np.exp(0.5 * late_fit_func(np.log(t), a, b))
         t_fit_late = np.logspace(np.log10(t[M1_index]), np.log10(t.max()))
-        # t_fit_late = np.logspace(-2, np.log10(t.max()))
         assert np.all(late_fit_func_real(t_fit_late, *late_popt) > 0), f'some of late_fit_func_real were negative for L={L}'
         late_integral = scipy.integrate.quad(late_fit_func_real, t[M2_index], t.max(), args=(a, b))[0]
         # late_integral_00 = scipy.integrate.quad(late_fit_func_real, t[M2_index], t.max(), args=(a+a_unc))[0]
@@ -277,18 +291,56 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
         print(early_integral_min, early_integral, early_integral_max)
         print(data_integral_min, data_integral, data_integral_max)
 
+        print(f'data integral is {data_integral/(early_integral + data_integral + late_integral):.2f}')
+
         
-        T_of_Ls[box_size_index] = 2 * (early_integral + data_integral + late_integral) # countoscope eq. 8
+        total_integral     = early_integral     + data_integral     + late_integral
+        total_integral_min = early_integral_min + data_integral_min + late_integral
+        total_integral_max = early_integral_max + data_integral_max + late_integral
+        assert total_integral_min < total_integral
+        assert total_integral_max > total_integral
+
+        mindiff = total_integral - total_integral_min
+        maxdiff = total_integral_max - total_integral
+        # integral_unc = max(mindiff, maxdiff)
+
+        T_of_L = 2 * (total_integral) # countoscope eq. 8
+        # T_of_Ls[box_size_index] = 
+        # T_of_L_uncs[box_size_index] = 2 * integral_unc
+
+        T_of_L_min = 2 * total_integral_min
+        T_of_L_max = 2 * total_integral_max
+        assert T_of_L_min < T_of_L
+        assert T_of_L_max > T_of_L
+
         # T_of_Ls[box_size_index] = 2 * (early_integral + data_integral) # countoscope eq. 8
         alpha_T = 0.561244
-        D_of_Ls[box_size_index] = alpha_T * L**2 / (4 * T_of_Ls[box_size_index]) # countoscope eq. 9
+        D_of_L = alpha_T * L**2 / (4 * T_of_L) # countoscope eq. 9
+        D_of_Ls[box_size_index] = D_of_L
+        # D_of_L_uncs[box_size_index] = alpha_T * L**2 / (4 * T_of_L_uncs[box_size_index]**2)
 
+        D_of_L_min = alpha_T * L**2 / (4 * T_of_L_max)
+        D_of_L_max = alpha_T * L**2 / (4 * T_of_L_min)
+
+        assert D_of_L_min < D_of_L
+        assert D_of_L_max > D_of_L
+
+        D_of_L_uncs[:, box_size_index] = [D_of_L - D_of_L_min, D_of_L_max - D_of_L]
 
         # popt_full, pcov_full = scipy.optimize.curve_fit(integrand_full, t[:M2_index], T_integrand[:M2_index], maxfev=2000)
 
     
         # if box_size_index%1 == 0:
-        if True:
+        max_num_boxes = 12
+
+        if num_boxes <= max_num_boxes:
+            display = True
+        else:
+            divisor = math.ceil(num_boxes / max_num_boxes)
+            display = box_size_index % divisor == 0
+
+
+        if display:
 
             integrand_ax = integ_axs
 
@@ -345,7 +397,7 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
             t_fit_early = np.logspace(-2, np.log10(t[1]))
             integrand_ax.plot(t_fit_early, early_fit_func(t_fit_early, *early_popt), color=line[0].get_color(), linestyle=':')
             
-            # integrand_ax.plot(t_fit_late, late_fit_func_real(t_fit_late, *late_popt), color=line[0].get_color(), linestyle=':', linewidth=3)
+            integrand_ax.plot(t_fit_late, late_fit_func_real(t_fit_late, *late_popt), color=line[0].get_color(), linestyle=':', linewidth=4)
             
             t_to_inf = np.logspace(np.log10(t[M1_index]), 5)
             # integrand_ax.plot(t_to_inf, integrand_theorys[box_size_index, :], color=line[0].get_color(), linestyle=':', linewidth=3)
@@ -368,12 +420,13 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
             # extra_ax.semilogx()
 
             # full sDFT (provided D0)
-            t_theory = np.logspace(np.log10(t[1]), np.log10(t[-1]))
-            full_theory_N2 = lambda t, D0 : countoscope_theory.nmsd.inter_2d(t, D0, N_mean[box_size_index], L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma))
-            #                                                                some of these bits actually do nothing cause we take the ratio later
-            full_theory_integrand = lambda t, D0 : (1 - 0.5 * full_theory_N2(t, D0) / (full_theory_N2(np.inf, D0)/2) )**2
-            #                                                         ^^^^^^^^^^^^^^^^^^^^^^^^ should be N_var
-            integrand_ax.plot(t_theory, full_theory_integrand(t_theory, D0), color='black', linewidth=1, label='sDFT inter. (no fit)' if box_size_index==0 else None)
+            if SHOW_THEORY:
+                t_theory = np.logspace(np.log10(t[1]), np.log10(t[-1]))
+                full_theory_N2 = lambda t, D0 : countoscope_theory.nmsd.inter_2d(t, D0, N_mean[box_size_index], L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma))
+                #                                                                some of these bits actually do nothing cause we take the ratio later
+                full_theory_integrand = lambda t, D0 : (1 - 0.5 * full_theory_N2(t, D0) / (full_theory_N2(np.inf, D0)/2) )**2
+                #                                                         ^^^^^^^^^^^^^^^^^^^^^^^^ should be N_var
+                integrand_ax.plot(t_theory, full_theory_integrand(t_theory, D0), color='black', linewidth=1, label='sDFT inter. (no fit)' if box_size_index==0 else None)
 
 
             # full sDFT (fit to D0)
@@ -394,35 +447,36 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
             
 
 
-            integrand_ax.set_ylim(1e-5, 1.2e0)
+            integrand_ax.set_ylim(1e-6, 1.2e0)
             # integrand_ax.set_ylim(1e-7, 1.2e0)
 
 
     D_ax.plot(box_sizes/sigma, D_of_Ls/D0,  label=f'')
     T_ax.plot(box_sizes/sigma, T_of_Ls, label=f'')
     common.save_data(f'visualisation/data/Ds_from_timescaleint_{file}',
-             Ds=D_of_Ls, D_uncs=np.zeros_like(D_of_Ls), Ls=box_sizes,
+             Ds=D_of_Ls, D_uncs=np.zeros_like(D_of_L_uncs), Ls=box_sizes,
              particle_diameter=sigma)
+    
 
 
-    D_ax.legend()
-    D_ax.loglog()
-    D_ax.set_xlabel('$L/\sigma$')
-    D_ax.set_ylabel(r'$D(L) / D_0$')
-    common.save_fig(D_fig, f'box_counting/figures_png/D_of_L_{file}.png')
+    # D_ax.legend()
+    # D_ax.loglog()
+    # D_ax.set_xlabel('$L/\sigma$')
+    # D_ax.set_ylabel(r'$D(L) / D_0$')
+    # common.save_fig(D_fig, f'box_counting/figures_png/D_of_L_{file}.png')
 
-    T_ax.legend()
-    T_ax.loglog()
-    T_ax.set_xlabel('$L/\sigma$')
-    T_ax.set_ylabel(r'$T(L)$')
-    common.save_fig(T_fig, f'box_counting/figures_png/T_of_L_{file}.png')
+    # T_ax.legend()
+    # T_ax.loglog()
+    # T_ax.set_xlabel('$L/\sigma$')
+    # T_ax.set_ylabel(r'$T(L)$')
+    # common.save_fig(T_fig, f'box_counting/figures_png/T_of_L_{file}.png')
 
     integrand_rescaled_ax.legend()
     integrand_rescaled_ax.loglog()
     integrand_rescaled_ax.set_xlabel('$t/L^2$')
     integrand_rescaled_ax.set_ylabel(r'integrand')
     integrand_rescaled_ax.set_ylim(1e-6, 1.1e0)
-    common.save_fig(integrand_rescaled_fig, f'box_counting/figures_png/integrand_rescaled_{file}.png', dpi=300)
+    # common.save_fig(integrand_rescaled_fig, f'box_counting/figures_png/integrand_rescaled_{file}.png', dpi=300)
     # integrand
     # integrand_ax.seintegrand_xlabel('$L/\sigma$')
     # integrand_ax.seintegrand_ylabel(r'$integrand(L)$')
@@ -430,5 +484,6 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
     # integrand_fig.savefig('figures_png/integrand.png', dpi=300)
     integrand_ax.set_title(fr'{file} timescale integrand, $\phi={phi:.3f}$, $\sigma={sigma}$, var:{var_label}')
     common.save_fig(integ_fig, f'box_counting/figures_png/integrand_{file}.png', dpi=300)
+    # common.save_fig(integ_fig, f'/home/acarter/presentations/wiggly_august/figures/integrand_{file}.pdf', dpi=300)
 
     # common.save_fig(integ_fig,  f'box_counting/figures_png/integrand_{file}.png', dpi=300)

@@ -4,7 +4,7 @@ import common
 import time
 import warnings
 
-log = False
+log = True
 if not log:
     warnings.warn('not using log calculation')
 
@@ -12,7 +12,7 @@ if not log:
 num_k_bins = 50
 # computation time is proportional to this squared
 
-drift_removed = False
+drift_removed = True
 
 
 

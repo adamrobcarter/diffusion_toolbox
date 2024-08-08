@@ -38,6 +38,8 @@ def show_frame(fig, ax, stack, pixel_size, particles, radius, timestep, file):
     common.add_scale_bar(ax, pixel_size)
 
 def add_particle_outlines(ax, pixel_size, particles, radius, timestep):
+    # radius can be None
+
     particles_at_t = particles[:, 2] == timestep
     # print(particles_at_t.sum())
     if particles_at_t.sum() == 0:
@@ -47,6 +49,7 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep):
     #             facecolors='none', edgecolors='red', alpha=0.5, linewidth=0.8)
 
     x = particles[particles_at_t, 1]/pixel_size
+    common.term_hist(x)
     y = particles[particles_at_t, 0]/pixel_size
     r = radius[particles_at_t] * np.sqrt(2) # TODO: should this be /pixel_size?
     r = np.full_like(r, r.mean())

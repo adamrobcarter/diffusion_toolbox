@@ -15,7 +15,7 @@ for file in common.files_from_argv('preprocessing/data', 'stack_'):
         stack = stack - stack.mean(axis=0)
 
     t0 = time.time()
-    num_k_bins = 100
+    num_k_bins = 50
     k, t, F_D_sq, F_D_sq_unc, use_every_nth_frame, F_D_sq_all, time_origins = DDM.calc(stack, pixel_size, time_step, num_k_bins)
     t1 = time.time()
 

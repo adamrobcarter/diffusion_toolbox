@@ -12,11 +12,13 @@ import countoscope_theory
 
 PRESENT_SMALL = False
 LABELS_ON_PLOT = False
-SHOW_THEORY_FIT = True
+SHOW_THEORY_FIT = False
 SHOW_PLATEAUS_THEORY = False
-SHOW_VARIANCE = True
+SHOW_VARIANCE = False
 SHOW_MEAN = False
-SHOW_PLATEAUS_OBS = True
+SHOW_PLATEAUS_OBS = False
+SHOW_PLATEAU_OBS_AREA = False
+SHOW_SHORT_TIME_FIT = False
 
 figsize = (6, 4.5)
 if PRESENT_SMALL:
@@ -25,11 +27,20 @@ if PRESENT_SMALL:
 
 collapse_x = True
 collapse_y = True
-collapse_x = False
-collapse_y = False
+# collapse_x = False
+# collapse_y = False
 
-def get_plateau(nmsd):
-    used_data = nmsd[-300:-100]
+def get_plateau(nmsd, file):
+                
+    if file == 'eleanorlong': # hacky, pls don't do this
+        start_index = -70000
+        end_index   = -20000
+    else: # used to be -300, -100
+        start_index = -600
+        end_index   = -400
+
+    used_data = nmsd[start_index:end_index] # used to be -300:-100, we could do with a more inteligent method (use the gradient (smoothed?))
+    # used_data = nmsd[-300:-100]
     return used_data.mean(), used_data.std()
 
 if __name__ == '__main__':
@@ -150,10 +161,10 @@ if __name__ == '__main__':
             # fit to whole thing
             if depth_of_field:
                 N2_theory = lambda t, D, N: common.N2_nointer_3D(t, D, N, L, L, depth_of_field)
-                type_of_fit = 'sDFT (no inter, 3D)'
+                type_of_fit = 'sDFT fit (no inter, 3D)'
             else:
                 N2_theory = lambda t, D : countoscope_theory.nmsd.inter_2d(t, D, N_mean[box_size_index], L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma))
-                type_of_fit = 'sDFT (w/ inter.)'
+                type_of_fit = 'sDFT fit (w/ inter.)'
             log_N2_theory = lambda t, *args : np.log(N2_theory(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
             
             fitting_points = common.exponential_integers(1, t.size//2)
@@ -167,9 +178,11 @@ if __name__ == '__main__':
             N2_theory_points = N2_theory(t_theory, *popt)
             
             if collapse_y:
-                delta_N_sq       /= N_var[box_size_index]
-                delta_N_sq_err   /= N_var[box_size_index]
-                N2_theory_points /= N_var[box_size_index]
+                rescale = N_mean[box_size_index]
+                # rescale = N_var[box_size_index]
+                delta_N_sq       /= rescale
+                delta_N_sq_err   /= rescale
+                N2_theory_points /= rescale
             if collapse_x:
                 t /= L**2
                 t_theory /= L**2
@@ -198,10 +211,16 @@ if __name__ == '__main__':
                 D_uncs_shorttime_for_saving.append(D_unc_from_shorttime)
                 Ls_shorttime_for_saving.append(L)
             
-            if (not PRESENT_SMALL and len(box_sizes)<15) or box_size_index % (len(box_sizes) // 10) == 0:
-                # only plot sometimes
-                
-                
+
+            if len(box_sizes) <= 10:
+                display = True
+            else:
+                display = box_size_index % (len(box_sizes) // 10) == 0
+
+            # display = box_size_index == 20
+
+            # display = True
+            if display:
 
                 if not collapse_y and SHOW_THEORY_FIT:
                     ax.plot(t_theory[1:], N2_theory_points[1:], color='black', linewidth=1, label=type_of_fit if box_size_index==0 else None)
@@ -246,25 +265,28 @@ if __name__ == '__main__':
                     # print(f'D_short / D_fit = {D_ratio:.2f}')
                     if D_ratio > 1.5 or 1/D_ratio > 1.5:
                         print(f'problem! D fit = {common.format_val_and_unc(D_from_fit, D_from_fit_unc, 2)} D shorttime = {common.format_val_and_unc(D_from_shorttime, D_unc_from_shorttime, 2)}')
-                    ax.plot(t[1:fit_end], fit_func_2(t[1:fit_end], *popt), linestyle=':', color='gray')
+                    if SHOW_SHORT_TIME_FIT:
+                        ax.plot(t[1:fit_end], fit_func_2(t[1:fit_end], *popt), linestyle=':', color='gray')
 
             if SHOW_PLATEAUS_THEORY:
                 ax.hlines(
                     countoscope_theory.nmsd.plateau_inter_2d(N_mean[box_size_index], L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma)),
                     t[0], t[-1], linestyle='dotted', color=color, label='sDFT plateau' if box_size_index==0 else None)
             if SHOW_PLATEAUS_OBS:
-                plat, plat_std = get_plateau(N2_mean[box_size_index, :])
+
+                plat, plat_std = get_plateau(N2_mean[box_size_index, :], PLATEAU_OBS_START, PLATEAU_OBS_END)
                 ax.hlines(plat, t[0], t[-1], linestyle='dotted', color='white', label='obs plat' if box_size_index==0 else None)
         
 
-        ax.legend(fontsize=6 if not PRESENT_SMALL else 7, loc='lower right')
+        if not collapse_x:
+            ax.legend(fontsize=5 if not PRESENT_SMALL else 5, loc='lower left')
         ax.semilogy()
         ax.semilogx()
         xlabel = '$t/L^2$' if collapse_x else '$t$ ($\mathrm{s}$)'
-        ylabel = r'$\Delta N^2(t)/\langle N \rangle$' if collapse_y else r'$\langle \Delta N^2(t) \rangle$ ($\mathrm{\mu m^2}$)'
+        ylabel = r'$\Delta N^2(t)/ Var(N)$' if collapse_y else r'$\langle \Delta N^2(t) \rangle$ ($\mathrm{\mu m^2}$)'
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
-        
+
         title = file
         # title = f'Simulated colloids in RCP spheres\n$\phi={phi:.3f}$'
         if not np.isnan(phi):
@@ -277,8 +299,8 @@ if __name__ == '__main__':
         if not PRESENT_SMALL:
             ax.set_title(title)
 
-        # common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/boxcounting_{file}.pdf', hide_metadata=True)
-        common.save_fig(fig, f'box_counting/figures_png/msd_{file}.png', dpi=200)
+        # common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/nmsd_one_{file}.pdf', hide_metadata=True)
+        common.save_fig(fig, f'box_counting/figures_png/nmsd_{file}.png', dpi=200)
 
         common.save_data(f'visualisation/data/Ds_from_boxcounting_{file}',
                 Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, Ls=Ls_for_saving,
