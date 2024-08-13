@@ -29,12 +29,17 @@ def calc_and_save(box_sizes_px, sep_sizes_px, data, particles, output_file_name,
     # bigger sep at low box sizes to reduce the number of boxes, as we already have loads of stats for small boxes
     # sep[0] = -60
 
+    extra_params_to_countoscope = {}
+    if save_counts:
+        extra_params_to_countoscope['return_counts'] = True
+
     results = countoscope.calculate_nmsd(data=particles,
                                          window_size_x=window_size_x, window_size_y=window_size_y, 
                                          box_sizes=box_sizes,
                                          #  box_sizes_x=box_sizes_x, box_sizes_y=box_sizes_y,
                                          sep_sizes=sep_sizes,
-                                         use_old_overlap=use_old_overlap)
+                                         use_old_overlap=use_old_overlap,
+                                         **extra_params_to_countoscope)
     
     N2_mean = results.nmsd
     N2_std = results.nmsd_std
@@ -42,6 +47,7 @@ def calc_and_save(box_sizes_px, sep_sizes_px, data, particles, output_file_name,
 
     if save_counts:
         extra_to_save['counts'] = results.counts
+        assert results.counts is not None
 
     # print(f'drift: {common.find_drift(particles)}')
  
@@ -138,7 +144,7 @@ if __name__ == '__main__':
 
         # for eleanorlong timescaleint
         # getting rid of 160 to make the presentation nicer
-        box_sizes_px = np.logspace(np.log10(0.5), np.log10(100), 27)
+        box_sizes_px = np.logspace(np.log10(0.5), np.log10(500), 35)
         sep_sizes_px = 69 - box_sizes_px
 
         # for alice0.66 timescaleint        

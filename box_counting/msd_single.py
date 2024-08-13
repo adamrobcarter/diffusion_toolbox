@@ -10,6 +10,10 @@ import matplotlib.cm
 
 import countoscope_theory
 
+# enums
+RESCALE_Y_VAR_N = 1
+RESCALE_Y_N = 2
+
 PRESENT_SMALL = False
 LABELS_ON_PLOT = False
 SHOW_THEORY_FIT = False
@@ -18,17 +22,18 @@ SHOW_VARIANCE = False
 SHOW_MEAN = False
 SHOW_PLATEAUS_OBS = False
 SHOW_PLATEAU_OBS_AREA = False
-SHOW_SHORT_TIME_FIT = False
+SHOW_SHORT_TIME_FIT = True
+
+RESCALE_X_L2 = False
+RESCALE_Y = False
+# RESCALE_Y = RESCALE_Y_VAR_N
+# RESCALE_Y = RESCALE_Y_N
+
 
 figsize = (6, 4.5)
 if PRESENT_SMALL:
     figsize = (4.5, 4)
     figsize = (3.5, 3.2)
-
-collapse_x = True
-collapse_y = True
-# collapse_x = False
-# collapse_y = False
 
 def get_plateau(nmsd, file):
                 
@@ -46,8 +51,10 @@ def get_plateau(nmsd, file):
 if __name__ == '__main__':
     for file in common.files_from_argv('box_counting/data/', 'counted_'):
 
-        D0_from_fits     = [{}, {}]
-        D0_unc_from_fits = [{}, {}]
+        # D0_from_fits     = [{}, {}]
+        # D0_unc_from_fits = [{}, {}]
+        # Dc_from_fits     = [{}, {}]
+        # Dc_unc_from_fits = [{}, {}]
 
         LOWTIME_FIT_END = 20
 
@@ -93,6 +100,14 @@ if __name__ == '__main__':
         Ds_shorttime_for_saving = []
         D_uncs_shorttime_for_saving = []
         Ls_shorttime_for_saving = []
+
+        Ds_first_quad_for_saving = []
+        D_uncs_first_quad_for_saving = []
+        Ls_first_quad_for_saving = []
+        
+        Ds_for_saving_collective = []
+        D_uncs_for_saving_collective = []
+        Ls_for_saving_collective = []
 
 
         # for box_size_index, L in enumerate(box_sizes):
@@ -176,14 +191,44 @@ if __name__ == '__main__':
             D_from_fit_unc = np.sqrt(pcov[0][0])
             
             N2_theory_points = N2_theory(t_theory, *popt)
+
             
-            if collapse_y:
-                rescale = N_mean[box_size_index]
-                # rescale = N_var[box_size_index]
+            # fit to whole thing 2 - replace timescaleint
+            def timescaleint_replacement(nmsd):
+                N2_theory2 = lambda t, D : get_plateau(nmsd, file)[0] * (1 - countoscope_theory.nmsd.famous_f(4*D*t/L**2)**2)
+                log_N2_theory2 = lambda t, *args : np.log(N2_theory2(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
+                
+                fitting_points2 = common.exponential_integers(1, t.size//2)
+                # p0 = (0.05, N_mean[box_size_index])
+                p02 = [0.05]
+                popt2, pcov2 = scipy.optimize.curve_fit(log_N2_theory2, t[fitting_points2], np.log(delta_N_sq[fitting_points2]), p0=p02, maxfev=2000)
+                # ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1, label='sDFT (no inter.)' if box_size_index==0 else None)
+                D_from_fit2 = popt2[0]
+                D_from_fit_unc2 = np.sqrt(pcov2[0][0])
+
+                return D_from_fit2, D_from_fit_unc2
+
+            Dc, Dc_unc = timescaleint_replacement(N2_mean[box_size_index, :])
+            Dc_lower, Dc_unc_lower = timescaleint_replacement(N2_mean[box_size_index, :]-N2_std[box_size_index])
+            Dc_upper, Dc_unc_upper = timescaleint_replacement(N2_mean[box_size_index, :]+N2_std[box_size_index])
+            Dc_unc_final = max(Dc_unc, abs(Dc-Dc_lower), abs(Dc-Dc_upper))
+            Dc_unc_final = Dc_unc
+
+            Ds_for_saving_collective.append(Dc)
+            D_uncs_for_saving_collective.append(Dc_unc_final)
+            Ls_for_saving_collective.append(L)
+            
+            # N2_theory_points = N2_theory(t_theory, *popt)
+            
+            if RESCALE_Y:
+                if RESCALE_Y == RESCALE_Y_N:
+                    rescale = N_mean[box_size_index]
+                elif RESCALE_Y == RESCALE_Y_VAR_N:
+                    rescale = N_var[box_size_index]
                 delta_N_sq       /= rescale
                 delta_N_sq_err   /= rescale
                 N2_theory_points /= rescale
-            if collapse_x:
+            if RESCALE_X_L2:
                 t /= L**2
                 t_theory /= L**2
             
@@ -200,6 +245,7 @@ if __name__ == '__main__':
             # linear fit to start
             fit_end = 6
             fit_func_2 = lambda t, D : 8 / np.sqrt(np.pi) * N_mean[box_size_index] * np.sqrt(t * D / L**2)
+            
             popt, pcov = scipy.optimize.curve_fit(fit_func_2, t[1:fit_end], delta_N_sq[1:fit_end])
             D_from_shorttime = popt[0]
             D_unc_from_shorttime = np.sqrt(pcov)[0, 0]
@@ -210,6 +256,25 @@ if __name__ == '__main__':
                 Ds_shorttime_for_saving.append(D_from_shorttime)
                 D_uncs_shorttime_for_saving.append(D_unc_from_shorttime)
                 Ls_shorttime_for_saving.append(L)
+
+            
+            # quadratic fit to start
+            # fit_end = 6
+            # fit_func_quad = lambda t, D : 8 / np.sqrt(np.pi) * N_mean[box_size_index] * np.sqrt(t * D / L**2)
+            
+            # popt, pcov = scipy.optimize.curve_fit(fit_func_quad, t[1:fit_end], delta_N_sq[1:fit_end])
+            # D_from_shorttime_quad = popt[0]
+            # D_unc_from_shorttime_quad = np.sqrt(pcov)[0, 0]
+            # # print(f'L={L}um, D_unc/D={D_unc_from_shorttime/D_from_shorttime:.3f}')
+            # if D_unc_from_shorttime_quad/D_from_shorttime_quad > 0.03:
+            #     pass
+            # else:
+            D_from_first_quad = np.pi * L**2 / ( 4 * time_step ) * (1 - np.sqrt(1 - delta_N_sq[1]/(2*N_mean[box_size_index])))**2
+            # error propagation for that is complicated (type d/dx A(1-sqrt(1-x/(2B)))^2 into wolfram so let's hack)
+            D_unc_from_first_quad = delta_N_sq_err[1] / delta_N_sq[1] * D_from_first_quad
+            Ds_first_quad_for_saving.append(D_from_first_quad)
+            D_uncs_first_quad_for_saving.append(D_unc_from_first_quad)
+            Ls_first_quad_for_saving.append(L)
             
 
             if len(box_sizes) <= 10:
@@ -222,11 +287,11 @@ if __name__ == '__main__':
             # display = True
             if display:
 
-                if not collapse_y and SHOW_THEORY_FIT:
+                if not RESCALE_Y and SHOW_THEORY_FIT:
                     ax.plot(t_theory[1:], N2_theory_points[1:], color='black', linewidth=1, label=type_of_fit if box_size_index==0 else None)
                 # label += fr', $D_\mathrm{{fit}}={popt[0]:.3g}\pm {np.sqrt(pcov[0][0]):.3g} \mathrm{{\mu m^2/s}}$'
 
-                if collapse_x or collapse_y:
+                if RESCALE_X_L2 or RESCALE_Y:
                     markersize = 2
                 else:
                     if PRESENT_SMALL:
@@ -274,16 +339,16 @@ if __name__ == '__main__':
                     t[0], t[-1], linestyle='dotted', color=color, label='sDFT plateau' if box_size_index==0 else None)
             if SHOW_PLATEAUS_OBS:
 
-                plat, plat_std = get_plateau(N2_mean[box_size_index, :], PLATEAU_OBS_START, PLATEAU_OBS_END)
+                plat, plat_std = get_plateau(N2_mean[box_size_index, :], file)
                 ax.hlines(plat, t[0], t[-1], linestyle='dotted', color='white', label='obs plat' if box_size_index==0 else None)
         
 
-        if not collapse_x:
-            ax.legend(fontsize=5 if not PRESENT_SMALL else 5, loc='lower left')
+        if not RESCALE_X_L2:
+            ax.legend(fontsize=5 if not PRESENT_SMALL else 5, loc='lower center')
         ax.semilogy()
         ax.semilogx()
-        xlabel = '$t/L^2$' if collapse_x else '$t$ ($\mathrm{s}$)'
-        ylabel = r'$\Delta N^2(t)/ Var(N)$' if collapse_y else r'$\langle \Delta N^2(t) \rangle$ ($\mathrm{\mu m^2}$)'
+        xlabel = '$t/L^2$' if RESCALE_X_L2 else '$t$ ($\mathrm{s}$)'
+        ylabel = r'$\Delta N^2(t)/ Var(N)$' if RESCALE_Y else r'$\langle \Delta N^2(t) \rangle$ ($\mathrm{\mu m^2}$)'
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
 
@@ -307,5 +372,11 @@ if __name__ == '__main__':
                 particle_diameter=sigma)
         common.save_data(f'visualisation/data/Ds_from_boxcounting_shorttime_{file}',
                 Ds=Ds_shorttime_for_saving, D_uncs=D_uncs_shorttime_for_saving, Ls=Ls_shorttime_for_saving,
+                particle_diameter=sigma)
+        common.save_data(f'visualisation/data/Ds_from_boxcounting_first_quad_{file}',
+                Ds=Ds_first_quad_for_saving, D_uncs=D_uncs_first_quad_for_saving, Ls=Ls_first_quad_for_saving,
+                particle_diameter=sigma)
+        common.save_data(f'visualisation/data/Ds_from_boxcounting_collective_{file}',
+                Ds=Ds_for_saving_collective, D_uncs=D_uncs_for_saving_collective, Ls=Ls_for_saving_collective,
                 particle_diameter=sigma)
         

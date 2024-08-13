@@ -7,6 +7,16 @@ import tqdm
 import warnings, time
 
 def intermediate_scattering(log, F_type, num_k_bins, max_time_origins, d_frames, particles, max_K, min_K):
+    """
+    log: if True, the k bins will be logarithmically spaced
+    F_type: 'F' or 'F_s' for the self-ISF. The self-ISF code is probably broken atm
+    num_k_bins: number of k points. Computation time is proportional to this squared
+    max_time_origins: averages will be taken over this many different time origins. Computation time is directly proportional to this
+    d_frames: an array of values of delta (frame number) that will be calculated (s.t. delta t is this multiplied by the timestep)
+    particles: list of rows of (x, y, t) or (x, y, t, #)
+    max_K:
+    min_K:
+    """
     assert not np.isnan(max_K)
 
     # data is x,y,t

@@ -11,8 +11,8 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
     msd = data['msd']
     msd_unc = data['msd_unc']
     
-    t = np.arange(0, msd.size)
-    n = (msd.size-1) / t
+    t_indexes = np.arange(0, msd.size)
+    n = (msd.size-1) / t_indexes
     msd_unc = msd_unc / np.sqrt(n)
     # ^^ this is based on thinking about how many independent measurements there are
 
@@ -51,6 +51,14 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
     popt_long, pcov_long = scipy.optimize.curve_fit(func_long, t[fitting_points_long], msd[fitting_points_long])
     t_th_long = np.logspace(np.log10(t[fitting_points_long[1]]), np.log10(t[fitting_points_long[-1]]))
     ax.plot(t_th_long, func_long(t_th_long, *popt_long), color='black', linewidth=1)
+    
+    first_point_D = msd[1] / (2 * 2 * t[1])
+    first_point_D_unc = msd_unc[1] / (2 * 2 * t[1])
+
+    print(f'full  fit: D={popt[0]:.4f}')
+    print(f'short fit: D={popt_short[0]:.4f}')
+    print(f'long  fit: D={popt_long[0]:.4f}')
+    print(f'first p  : D={first_point_D:.4f}')
 
     ax.legend()
 
@@ -62,3 +70,5 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
              Ds=[popt_short[0]], D_uncs=[np.sqrt(pcov_short)[0][0]], labels=[''])
     np.savez(f'visualisation/data/Ds_from_MSD_long_{file}',
              Ds=[popt_long[0]], D_uncs=[np.sqrt(pcov_long)[0][0]], labels=[''])
+    np.savez(f'visualisation/data/Ds_from_MSD_first_{file}',
+             Ds=[first_point_D], D_uncs=[first_point_D_unc], labels=[''])

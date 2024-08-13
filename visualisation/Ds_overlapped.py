@@ -2,7 +2,7 @@ import common
 import numpy as np
 import matplotlib.pyplot as plt
 
-PLOT_AGAINST_K = True
+PLOT_AGAINST_K = False
 TWO_PI = False
 
 for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
@@ -22,11 +22,12 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
         'MSD': 'MSD',
         'MSD_short': 'MSD short time',
         'MSD_long': 'MSD long time',
+        'MSD_first': 'MSD first',
         'boxcounting_shorttime': 'counting short time fit',
+        'boxcounting_first_quad': 'Counting first point quadratic',
+        'boxcounting_collective': 'counting collective',
         'timescaleint': 'timescale integral'
     }
-
-    all_Ds = []
 
     colors = {
         'DDM_short': 'tab:orange',
@@ -35,7 +36,10 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
         'Fs_short': 'tab:green',
         # 'boxcounting': 'counting',
         # 'MSD_short': 'MSD',
-        'timescaleint': 'tab:green'
+        'timescaleint': 'tab:green',
+        'boxcounting_collective': 'tab:red',
+        'boxcounting_shorttime': 'tab:blue',
+        'boxcounting_first_quad': 'tab:blue',
     }
 
     markers = {
@@ -48,8 +52,11 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
         'MSD': '_',
         'MSD_short': '_',
         'MSD_long': '_',
-        'boxcounting': '+',
-        'boxcounting_shorttime': '+',
+        'MSD_first': '_',
+        'boxcounting': '_',
+        'boxcounting_first_quad': '_',
+        'boxcounting_shorttime': '_',
+        'boxcounting_collective': '_',
         'timescaleint': 'o'
     }
 
@@ -60,9 +67,15 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
     # timescaleintegral_y = np.array([0.715084639456640,0.759462918744972,1.46261640042440,2.56073086204352,3.78909538953524,5.41105358248309,6.78255486238759,8.58502158959043,8.95193674486290,9.93854195925673,9.47657037534071,9.06689661448547,9.39221079633647,9.01776477004307,8.02304202449399])
 
     # for sources in [['f_short'], [f'f_short', 'DDM_short'], ['timescaleint']]:
-    for sources in [['f_short']]:
+    # for sources in [['f_short']]:
+    for sources in [
+        ['timescaleint', 'boxcounting_collective'],
+        ['boxcounting_first_quad', 'MSD_short']
+    ]:
     # for sources in [[f'f_short', 'timescaleint', 'MSD_short', 'MSD_long', 'boxcounting', 'boxcounting_shorttime']]:
         print()
+
+        all_Ds = []
         
         name = '_'.join(sources)
 
@@ -138,6 +151,10 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
                 # print(common.structure_factor_2d_hard_spheres(0.01, 0.34, diameter))
                 # print(common.structure_factor_2d_hard_spheres(0.001, 0.34, diameter))
                 # continue
+                print('MSD errors hacked')
+                ax.fill_between(ax.get_xlim(), Ds[0]*0.97, Ds[0]*1.03, facecolor='tab:orange', alpha=0.3)
+                print('msd unc', D_uncs)
+                all_Ds.append(Ds[0])
                 xs = np.array([])
                 Ds = np.array([])
                 D_uncs = np.array([])
@@ -165,7 +182,8 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
             # if not source.startswith('MSD'):
             color = colors.get(source)
             lines = ax.plot(xs, Ds, linestyle='none', marker=markers[source], markersize=4, color=color, label=source_label)
-            ax.errorbar(xs, Ds, yerr=D_uncs, linestyle='none', marker='none', alpha=0.3, color=color)
+            print(color)
+            ax.errorbar(xs, Ds, yerr=D_uncs, linestyle='none', marker='none', alpha=0.5, color=color)
 
             # if pixel_size:
             #     ax.vlines(pixel_size, Ds.min(), Ds.max(), linestyle='dotted', color='black', label='pixel')
@@ -179,12 +197,9 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
         D_th_coll = ( 1 + 1.45*phi )
         # ax.hlines([D_th_coll, D_th_self], xs.min(), xs.max(), color='black')
 
-
-        # ax.set_ylim(np.min(all_Ds)*0.8, np.max(all_Ds)/0.8)
         ax.semilogy()
 
         
-        ax.set_ylim(0.005, 0.5)
         ax.set_ylim(np.min(all_Ds)/1.2, np.max(all_Ds)*1.2)
         ax.set_ylabel('$D$')
         # ax.set_ylabel('$D/D_0$')
@@ -202,7 +217,8 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
             ax.set_xlabel(r'$L / \sigma$')
         # ax.set_xlabel(r'$k / (2\pi / \sigma)$')
         # ax.semilogy()
-        ax.legend(fontsize=5, loc='upper left')
+        # ax.legend(fontsize=5, loc='upper left')
+        ax.legend(fontsize=7, loc='lower right')
         # ax.set_title(f'{file}, errorbars not yet all correct')
-        common.save_fig(fig, f'/home/acarter/presentations/wiggly_august/figures/Ds_overlapped_{file}_{name}_2pi_{TWO_PI}.pdf', hide_metadata=True)
+        common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/Ds_overlapped_{file}_{name}.pdf', hide_metadata=True)
         common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_{file}_{name}.png', dpi=200)
