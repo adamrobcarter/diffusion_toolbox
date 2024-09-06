@@ -14,26 +14,46 @@ import countoscope_theory
 RESCALE_Y_VAR_N = 1
 RESCALE_Y_N = 2
 
-PRESENT_SMALL = False
-LABELS_ON_PLOT = False
+PRESENT_SMALL = True
+SHOW_JUST_ONE_BOX = False
+
+LABELS_ON_PLOT = True
+LABELS_ON_PLOT_Y_SHIFT = 1.4 if SHOW_JUST_ONE_BOX else 1.25
+
+FORCE_HIDE_LEGEND = False
+SHOW_D_IN_LEGEND = False
+
 SHOW_THEORY_FIT = False
 SHOW_PLATEAUS_THEORY = False
 SHOW_VARIANCE = False
 SHOW_MEAN = False
 SHOW_PLATEAUS_OBS = False
 SHOW_PLATEAU_OBS_AREA = False
-SHOW_SHORT_TIME_FIT = True
+SHOW_SHORT_TIME_FIT = False
+SHOW_TIMESCALEINT_REPLACEMENT = False
+SHOW_T_SLOPE = False
+
+MAX_BOXES_ON_PLOT = 6
+DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE = True
+
+# if SHOW_JUST_ONE_BOX:
+    # LABELS_ON_PLOT = False
 
 RESCALE_X_L2 = False
 RESCALE_Y = False
 # RESCALE_Y = RESCALE_Y_VAR_N
 # RESCALE_Y = RESCALE_Y_N
 
+if RESCALE_X_L2 and RESCALE_Y:
+    LABELS_ON_PLOT = False
+
 
 figsize = (6, 4.5)
 if PRESENT_SMALL:
     figsize = (4.5, 4)
     figsize = (3.5, 3.2)
+
+have_displayed_at_least_one = False
 
 def get_plateau(nmsd, file):
                 
@@ -146,14 +166,7 @@ if __name__ == '__main__':
             # ax.plot(t_theory, N2_func_full(t_theory, D0), color='black', zorder=5, linestyle='dotted', linewidth=1, label='sFDT (no inter.)' if box_size_index==0 else None)
 
             # color = matplotlib.cm.afmhot((box_size_index+2)/(len(box_sizes)+7))
-            color =  matplotlib.cm.afmhot(np.interp(box_size_index, (0, len(box_sizes)), (0.2, 0.75)))
-                    
-            if SHOW_MEAN:
-                ax.hlines(2*N_mean[box_size_index], t.min(), t.max(), color=color, linewidth=1, linestyle='dashdot', label=r'$2 \langle N \rangle$' if box_size_index==0 else None)
-            if SHOW_VARIANCE:
-                ax.hlines(2*N_var [box_size_index], t.min(), t.max(), linestyles='dashed', color='grey', linewidth=1, label=r'$2\mathrm{Var}(N)$' if box_size_index==0 else None)
-                ax.hlines(2*N_var_mod[box_size_index], t.min(), t.max(), linestyles='dotted', color='grey', linewidth=1, label=r'$2\mathrm{Var}(N)$' if box_size_index==0 else None)
-
+            color =  common.colormap(box_size_index, 0, len(box_sizes))
 
             # N2_theory = 2 * N_mean[box_size_index] * (1 - f(4*D0*t/L**2)**2) # countoscope eq. 2
             # N2_theory_lowtime = 4 / np.sqrt(np.pi) * N_mean[box_size_index] * np.sqrt(D0 * t_theory) * (L + L_2) / (L * L_2)
@@ -178,8 +191,16 @@ if __name__ == '__main__':
                 N2_theory = lambda t, D, N: common.N2_nointer_3D(t, D, N, L, L, depth_of_field)
                 type_of_fit = 'sDFT fit (no inter, 3D)'
             else:
-                N2_theory = lambda t, D : countoscope_theory.nmsd.inter_2d(t, D, N_mean[box_size_index], L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma))
-                type_of_fit = 'sDFT fit (w/ inter.)'
+                plateau_for_fit_mod = N_mean[box_size_index]
+
+                # plateau_for_fit_mod = get_plateau(N2_mean[box_size_index, :], file)[0] * 2
+                # print('aaa', get_plateau(N2_mean[box_size_index, :], file)[0], N2_mean[box_size_index, N2_mean.shape[1]//2])
+                if np.isfinite(phi) and np.isfinite(sigma):
+                    N2_theory = lambda t, D : countoscope_theory.nmsd.inter_2d(t, D, plateau_for_fit_mod, L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma))
+                    type_of_fit = 'sDFT fit (w/ inter.)'
+                else:
+                    N2_theory = lambda t, D : countoscope_theory.nmsd.nointer_2d(t, D, plateau_for_fit_mod, L)
+                    type_of_fit = 'sDFT fit (no inter.)'
             log_N2_theory = lambda t, *args : np.log(N2_theory(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
             
             fitting_points = common.exponential_integers(1, t.size//2)
@@ -243,19 +264,21 @@ if __name__ == '__main__':
 
             
             # linear fit to start
-            fit_end = 6
+            fit_end = 4
             fit_func_2 = lambda t, D : 8 / np.sqrt(np.pi) * N_mean[box_size_index] * np.sqrt(t * D / L**2)
             
             popt, pcov = scipy.optimize.curve_fit(fit_func_2, t[1:fit_end], delta_N_sq[1:fit_end])
             D_from_shorttime = popt[0]
             D_unc_from_shorttime = np.sqrt(pcov)[0, 0]
+            shorttime_fit_is_good = D_unc_from_shorttime/D_from_shorttime < 0.03
             # print(f'L={L}um, D_unc/D={D_unc_from_shorttime/D_from_shorttime:.3f}')
-            if D_unc_from_shorttime/D_from_shorttime > 0.03:
-                pass
-            else:
+            if shorttime_fit_is_good:
+                print(f'short good {L:.3f} {D_unc_from_shorttime/D_from_shorttime:.3f}')
                 Ds_shorttime_for_saving.append(D_from_shorttime)
                 D_uncs_shorttime_for_saving.append(D_unc_from_shorttime)
                 Ls_shorttime_for_saving.append(L)
+            else:
+                print(f'short bad {L:.3f} {D_unc_from_shorttime/D_from_shorttime:.3f}')
 
             
             # quadratic fit to start
@@ -277,21 +300,32 @@ if __name__ == '__main__':
             Ls_first_quad_for_saving.append(L)
             
 
-            if len(box_sizes) <= 10:
+            
+            if len(box_sizes) <= MAX_BOXES_ON_PLOT:
                 display = True
             else:
-                display = box_size_index % (len(box_sizes) // 10) == 0
+                display = box_size_index % (len(box_sizes) // MAX_BOXES_ON_PLOT) == 0
 
-            # display = box_size_index == 20
+            if SHOW_JUST_ONE_BOX:
+                # display = box_size_index == N_mean.size // 1.5
+                display = box_size_index == 20
 
             # display = True
             if display:
+                have_displayed_at_least_one = True
+
+                if SHOW_MEAN:
+                    ax.hlines(2*N_mean[box_size_index], t.min(), t.max(), color=color, linewidth=1, linestyle='dashdot', label=r'$2 \langle N \rangle$' if box_size_index==0 else None)
+                if SHOW_VARIANCE:
+                    ax.hlines(2*N_var [box_size_index], t.min(), t.max(), linestyles='dashed', color='grey', linewidth=1, label=r'$2\mathrm{Var}(N)$' if box_size_index==0 else None)
+                    ax.hlines(2*N_var_mod[box_size_index], t.min(), t.max(), linestyles='dotted', color='grey', linewidth=1, label=r'$2\mathrm{Var}(N)$' if box_size_index==0 else None)
+
 
                 if not RESCALE_Y and SHOW_THEORY_FIT:
-                    ax.plot(t_theory[1:], N2_theory_points[1:], color='black', linewidth=1, label=type_of_fit if box_size_index==0 else None)
+                    ax.plot(t_theory[1:], N2_theory_points[1:], color='white', linewidth=1, label=type_of_fit if box_size_index==0 else None)
                 # label += fr', $D_\mathrm{{fit}}={popt[0]:.3g}\pm {np.sqrt(pcov[0][0]):.3g} \mathrm{{\mu m^2/s}}$'
 
-                if RESCALE_X_L2 or RESCALE_Y:
+                if (RESCALE_X_L2 or RESCALE_Y) and False: # remove and False in future please
                     markersize = 2
                 else:
                     if PRESENT_SMALL:
@@ -301,14 +335,21 @@ if __name__ == '__main__':
 
                 # actual data
                 if LABELS_ON_PLOT:
-                    label = label='observations' if box_size_index==0 else None
+                    label = label='observations' if box_size_index==0 else ''
                 else:
                     label = f'L={L:.2f}'
                     label += f', s={sep:.2f}'
-                label += fr', $D_\mathrm{{short\:fit}}={common.format_val_and_unc(D_from_fit, D_from_fit_unc, 2)} \mathrm{{\mu m^2/s}}$'
+                if SHOW_D_IN_LEGEND:
+                    label += fr', $D_\mathrm{{short\:fit}}={common.format_val_and_unc(D_from_fit, D_from_fit_unc, 2)} \mathrm{{\mu m^2/s}}$'
                 # ±{np.sqrt(pcov[0][0]):.3f}$'
                 print(delta_N_sq.size, common.nanfrac(delta_N_sq))
-                exp_plot = ax.plot(t[1:], delta_N_sq[1:], label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1, color=color)
+
+                if DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE and delta_N_sq.size > 1000:
+                    points_to_plot = common.exponential_integers(1, delta_N_sq.size-1, 500)
+                else:
+                    points_to_plot = np.index_exp[1:] # this is basically a functional way of writing points_to_plot = [1:]
+                
+                exp_plot = ax.plot(t[points_to_plot], delta_N_sq[points_to_plot], label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1, color=color)
                 # exp_plot = ax.errorbar(t[1:], delta_N_sq[1:], yerr=delta_N_sq_err[1:]/np.sqrt(num_of_boxes[box_size_index]), label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
                 # exp_plot = ax.errorbar(t[1:], delta_N_sq[1:], yerr=delta_N_sq_err[1:], label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
             
@@ -316,39 +357,69 @@ if __name__ == '__main__':
                     t_index_for_text = int(t_theory.size // 1.6)
                     angle = np.tan(np.gradient(N2_theory_points, t_theory)[t_index_for_text]) * 180/np.pi
                     # plt.scatter(t_theory[t_index_for_text], N2_theory_points[t_index_for_text])
-                    L_label = rf'$L={L:.1f}\mathrm{{\mu m}}$'
-                    L_label = rf'$L={L/sigma:.1f}\sigma$'
-                    ax.text(t_theory[t_index_for_text+6], N2_theory_points[t_index_for_text+6]*1.4, L_label,
-                            horizontalalignment='center', color=color, fontsize=9,
-                            transform_rotates_text=True, rotation=angle, rotation_mode='anchor')
+                    # L_label = rf'$L={L:.1f}\mathrm{{\mu m}}$'
+                    if sigma and not np.isnan(sigma):
+                        L_label = rf'$L={L/sigma:.2g}\sigma$'
+                    else:
+                        L_label = rf'$L={L:.2g}$'
+                    if SHOW_JUST_ONE_BOX:
+                        ax.text(t_theory[t_index_for_text+6], N2_theory_points[t_index_for_text+6]/LABELS_ON_PLOT_Y_SHIFT, L_label,
+                                horizontalalignment='center', color=color, fontsize=9)
+                    else:
+                        print()
+                        ax.text(t_theory[t_index_for_text+6], N2_theory_points[t_index_for_text+6]*LABELS_ON_PLOT_Y_SHIFT, L_label,
+                                horizontalalignment='center', color=color, fontsize=9,
+                                transform_rotates_text=True, rotation=angle, rotation_mode='anchor')
                 
                 # linear fit to start
-                if D_unc_from_shorttime/D_from_shorttime > 0.03:
+                if not shorttime_fit_is_good: # was 0.03
                     print(f'skipping short time fit at L={L}um, D_unc/D={D_unc_from_shorttime/D_from_shorttime:.2f}')
                 else:
+                    print(f'short time fit: D={D_from_shorttime:.4f}')
                     D_ratio = D_from_shorttime/D_from_fit
                     # print(f'D_short / D_fit = {D_ratio:.2f}')
                     if D_ratio > 1.5 or 1/D_ratio > 1.5:
                         print(f'problem! D fit = {common.format_val_and_unc(D_from_fit, D_from_fit_unc, 2)} D shorttime = {common.format_val_and_unc(D_from_shorttime, D_unc_from_shorttime, 2)}')
                     if SHOW_SHORT_TIME_FIT:
-                        ax.plot(t[1:fit_end], fit_func_2(t[1:fit_end], *popt), linestyle=':', color='gray')
+                        ax.plot(t[1:fit_end], fit_func_2(t[1:fit_end], *popt), linestyle=':', color='white', linewidth=2)
 
-            if SHOW_PLATEAUS_THEORY:
-                ax.hlines(
-                    countoscope_theory.nmsd.plateau_inter_2d(N_mean[box_size_index], L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma)),
-                    t[0], t[-1], linestyle='dotted', color=color, label='sDFT plateau' if box_size_index==0 else None)
-            if SHOW_PLATEAUS_OBS:
+                print(f'from first point quad: D={D_from_first_quad:.4f}')
 
-                plat, plat_std = get_plateau(N2_mean[box_size_index, :], file)
-                ax.hlines(plat, t[0], t[-1], linestyle='dotted', color='white', label='obs plat' if box_size_index==0 else None)
+                if SHOW_T_SLOPE:
+                    t_half_scaling_line_offset = 5
+                    x1, y1 = t[1]*t_half_scaling_line_offset, delta_N_sq[1]
+                    t_half_scaling_line_size = 5
+                    x2, y2 = x1*t_half_scaling_line_size, y1*np.sqrt(t_half_scaling_line_size)
+                    ax.plot([x1, x2], [y1, y2], color='white')
+                    ax.text(x2, y1, '$t^{1/2}$', ha='right', color='white')
+
+                if SHOW_TIMESCALEINT_REPLACEMENT:
+                    th = get_plateau(N2_mean[box_size_index, :], file)[0] * (1 - countoscope_theory.nmsd.famous_f(4*Dc*t_theory/L**2)**2)
+                    ax.plot(t_theory, th, color='white', label='sDFT fit' if box_size_index==0 else '')
+
+
+                if SHOW_PLATEAUS_THEORY:
+                    ax.hlines(
+                        countoscope_theory.nmsd.plateau_inter_2d(N_mean[box_size_index], L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma)),
+                        t[0], t[-1], linestyle='dotted', color=color, label='sDFT plateau' if box_size_index==0 else None)
+
+                if SHOW_PLATEAUS_OBS:
+                    plat, plat_std = get_plateau(N2_mean[box_size_index, :], file)
+                    ax.hlines(plat, t[0], t[-1], linestyle='dotted', color='grey', label='obs plat' if box_size_index==0 else None)
         
+        assert have_displayed_at_least_one, 'display was false for all L'
 
-        if not RESCALE_X_L2:
-            ax.legend(fontsize=5 if not PRESENT_SMALL else 5, loc='lower center')
+        if not RESCALE_X_L2 and not FORCE_HIDE_LEGEND:
+            ax.legend(fontsize=7 if not PRESENT_SMALL else 7, loc='upper left')
         ax.semilogy()
         ax.semilogx()
-        xlabel = '$t/L^2$' if RESCALE_X_L2 else '$t$ ($\mathrm{s}$)'
-        ylabel = r'$\Delta N^2(t)/ Var(N)$' if RESCALE_Y else r'$\langle \Delta N^2(t) \rangle$ ($\mathrm{\mu m^2}$)'
+        xlabel = '$\Delta t/L^2$' if RESCALE_X_L2 else '$\Delta t$ ($\mathrm{s}$)'
+        if RESCALE_Y == False:
+            ylabel = r'$\langle \Delta N^2(\Delta t) \rangle$ ($\mathrm{\mu m^2}$)'
+        elif RESCALE_Y == RESCALE_Y_N:
+            ylabel = r'$\Delta N^2(\Delta t)/ \langle N\rangle$'
+        elif RESCALE_Y == RESCALE_Y_VAR_N:
+            ylabel = r'$\Delta N^2(\Delta t)/ Var(N)$'
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
 
@@ -364,8 +435,23 @@ if __name__ == '__main__':
         if not PRESENT_SMALL:
             ax.set_title(title)
 
-        # common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/nmsd_one_{file}.pdf', hide_metadata=True)
-        common.save_fig(fig, f'box_counting/figures_png/nmsd_{file}.png', dpi=200)
+        filename = f'nmsd_'
+        if SHOW_JUST_ONE_BOX:
+            filename += f'one_'
+        if RESCALE_X_L2 or RESCALE_Y:
+            filename += 'rescaled_'
+        if SHOW_T_SLOPE:
+            filename += f't_'
+        if SHOW_THEORY_FIT:
+            filename += f'theory_'
+        if SHOW_SHORT_TIME_FIT:
+            filename += f'shorttime_'
+        if SHOW_TIMESCALEINT_REPLACEMENT:
+            filename += f'timescaleintreplace_'
+        filename += f'{file}'
+
+        # common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/{filename}.pdf', hide_metadata=True)
+        common.save_fig(fig, f'box_counting/figures_png/{filename}.png', dpi=200)
 
         common.save_data(f'visualisation/data/Ds_from_boxcounting_{file}',
                 Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, Ls=Ls_for_saving,

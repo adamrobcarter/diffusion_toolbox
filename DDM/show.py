@@ -6,8 +6,9 @@ import scipy.special
 import math
 
 FIT_USE_FLOW = False
+D_ERROR_THRESH = 0.5 # D_unc/D must be smaller than this to save
 
-def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
+def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, NAME, channel, live=False):
 
     # target_ks = list(np.logspace(np.log10(0.4), np.log10(7), 7))
     # target_ks = (0.28, 0.38, 0.5, 1.3, 2, 4, 8)
@@ -42,8 +43,8 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
         ax = axs[graph_i]
 
         if (nanfrac := common.nanfrac(F_D_sq[1:, k_index])) > 0.5:
-            print(f'nanfrac = {nanfrac}')
-            print('SKIPPING')
+            print(f'  nanfrac = {nanfrac}')
+            print('  SKIPPING')
             continue
 
         to_plot = np.full_like(F_D_sq[:, k_index], True, dtype='bool')
@@ -55,12 +56,11 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
 
 
         if num_removed := (to_plot==False).sum()-1:
-            print(f'removed {num_removed}')
+            print(f'  removed {num_removed}')
         # print(to_plot)
 
         # ax.errorbar(t[1:], F_D_sq[1:, k_index], yerr=F_D_sq_unc[1:, k_index], marker='.', linestyle='none')
         ax.errorbar(t[to_plot], F_D_sq[to_plot, k_index], yerr=F_D_sq_unc[to_plot, k_index], marker='.', linestyle='none')
-
 
         if not live:
             # curve_fit needs the params to have similar scale (https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html)
@@ -70,7 +70,7 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
             F_D_sq_rescaled = F_D_sq[:, k_index] / rescale
             # F_D_sq_unc_rescaled = F_D_sq_unc[:, k_index] / rescale
             if np.isnan(F_D_sq_rescaled[1:]).sum()/F_D_sq_rescaled[1:].size == 1.0:
-                print('nan problem, skipping')
+                print('  nan problem, skipping')
                 continue
 
             weights = np.ones_like(F_D_sq_rescaled)
@@ -108,13 +108,8 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
                 D_unc = np.sqrt(pcov)[2][2]
 
                 # label = f'fit $D={common.format_val_and_unc(D, D_unc)}$'
-                label = f'fit $D={D:.5f}$'
-                
-            ax.plot(t_theory, func(t_theory, *popt)*rescale, color='black', label=label, zorder=-1)
-
-            Ds_for_saving.append(D)
-            D_uncs_for_saving.append(D_unc)
-            ks_for_saving.append(k[k_index])
+                label = f'fit $D={D:.2g}±{D_unc:.2g}$'
+            
 
             A = popt[0] * rescale
             B = popt[1] * rescale
@@ -124,20 +119,38 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
             B_of_q.append(B)
             q.append(k[k_index])
 
+            # print(f'  A(q)={A:.2g}, B(q)={B:.2g}')
 
-            DDM_f    [:, graph_i]
-            DDM_f    [:, graph_i] = 1 - (F_D_sq[:, k_index] - B)/A
-            DDM_f_unc[:, graph_i] = np.sqrt((1/A * dB)**2 + (1/A * F_D_sq_unc[:, k_index])**2 + ((F_D_sq[:, k_index] - B)/A**2 * dA)**2)
-            DDM_f_unc[:, graph_i] = np.sqrt(DDM_f[:, graph_i]**2) * np.sqrt( (F_D_sq_unc[:, k_index]/F_D_sq[:, k_index])**2 + (dB/B)**2 + (dA/A)**2 )
-            print('had to do weird error propagation')
-            D_of_t = -1/(k[k_index]**2 * t) * np.log(DDM_f[:, graph_i])
+            if A > 0:
 
-            D_max = max(D_max, np.nanmax(D_of_t[np.isfinite(D_of_t)]))
+                ax.plot(t_theory, func(t_theory, *popt)*rescale, color=common.FIT_COLOR, label=label, zorder=-1)
+
+                if D_unc/D < D_ERROR_THRESH:
+                    Ds_for_saving.append(D)
+                    D_uncs_for_saving.append(D_unc)
+                    ks_for_saving.append(k[k_index])
+                else:
+                    print(f'  not saving D, D_unc/D={D_unc/D:.2f}')
+
+            else:
+                print('  not saving, A(q) negative')
+
+            # DDM_f    [:, graph_i]
+            # DDM_f    [:, graph_i] = 1 - (F_D_sq[:, k_index] - B)/A
+            # DDM_f_unc[:, graph_i] = np.sqrt((1/A * dB)**2 + (1/A * F_D_sq_unc[:, k_index])**2 + ((F_D_sq[:, k_index] - B)/A**2 * dA)**2)
+            # DDM_f_unc[:, graph_i] = np.sqrt(DDM_f[:, graph_i]**2) * np.sqrt( (F_D_sq_unc[:, k_index]/F_D_sq[:, k_index])**2 + (dB/B)**2 + (dA/A)**2 )
+            # print('  had to do weird error propagation')
+            # D_of_t = -1/(k[k_index]**2 * t) * np.log(DDM_f[:, graph_i])
+
+            # D_max = max(D_max, np.nanmax(D_of_t[np.isfinite(D_of_t)]))
 
         ax.semilogx()
         # ax.semilogy()
         ax.set_title(fr'$k={k[k_index]:.2f}$ ($\approx{2*np.pi/k[k_index]:.2f}\mathrm{{\mu m}}$)')
-        ax.legend(fontsize=9)
+        
+        legend_handles, legend_labels = h, l = ax.get_legend_handles_labels()
+        if len(legend_handles):
+            ax.legend(fontsize=9)
 
         # print('DDM_f nan', common.nanfrac(DDM_f[:, graph_i]))
         
@@ -163,8 +176,9 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=False):
     
     filename = f'DDM/figures_png/ddm_{file}_live.png' if live else f'DDM/figures_png/ddm_{file}.png'
     common.save_fig(fig, filename)
-    # np.savez(f'visualisation/data/Ds_from_DDM_{file}',
-    #          Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, ks=ks_for_saving)
+    common.save_data(f'visualisation/data/Ds_from_DDM_{file}',
+             Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, ks=ks_for_saving,
+             NAME=NAME, channel=channel)
     # common.save_data(f'DDM/data/A_B_of_q_{file}.npz',
     #          A=A_of_q, B=B_of_q, q=q,
     #          pack_frac_given=data.get('pack_frac_given'), particle_diameter=data.get('particle_diameter'))
@@ -183,5 +197,7 @@ if __name__ == '__main__':
 
         sigma = data['particle_diameter']
         pixel = data['pixel_size']
+        NAME  = data['NAME']
+        channel = data.get('channel')
 
-        show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel)
+        show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, NAME, channel)

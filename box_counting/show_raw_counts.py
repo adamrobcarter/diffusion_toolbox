@@ -1,6 +1,7 @@
 import common
 import matplotlib.pyplot as plt
 import matplotlib.cm
+import numpy as np
 
 for file in common.files_from_argv('box_counting/data', 'raw_counts_'):
     data = common.load(f'box_counting/data/raw_counts_{file}.npz')
@@ -16,10 +17,10 @@ for file in common.files_from_argv('box_counting/data', 'raw_counts_'):
         for y in range(len(counts[x])):
             # ax.plot(counts[x][y])
             chosen = num_plotted == 3
-            color = matplotlib.cm.afmhot(0.3) if chosen else matplotlib.cm.Greys(num_plotted/MAX_TO_PLOT)
+            color = common.colormap(0.5) if chosen else matplotlib.cm.Greys(np.interp(num_plotted/MAX_TO_PLOT, (0, 1), (0, 0.5)))
             zorder = 2 if chosen else 0
             linewidth = 3 if chosen else 1
-            ax.stairs(counts[x][y], color=color, zorder=zorder, linewidth=linewidth, alpha=0.7)
+            ax.stairs(counts[x][y], color=color, zorder=zorder, linewidth=linewidth, alpha=1)
 
             num_plotted += 1
             if num_plotted > MAX_TO_PLOT:
@@ -29,5 +30,5 @@ for file in common.files_from_argv('box_counting/data', 'raw_counts_'):
     ax.set_xlabel('$t$ (s)')
     ax.set_ylabel('$N(t)$')
 
-    # common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/raw_counts_{file}.pdf', hide_metadata=True)
+    common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/raw_counts_{file}.pdf', hide_metadata=True)
     common.save_fig(fig, f'box_counting/figures_png/raw_counts_{file}.png')

@@ -8,14 +8,13 @@ import scipy.optimize
 
 subplot_i = 0
 
-PRESENT_SMALL = False
+PRESENT_SMALL = True
 
 figsize = (5, 4)
 if PRESENT_SMALL:
     figsize = (3.5, 3.2)
 
-for file in common.files_from_argv("scattering_functions/data/", "F_"):
-    
+def go(file, SHOW_FIT=False):
     d = common.load(f"scattering_functions/data/F_{file}.npz")
     t         = d["t"]
     F_all     = d["F"]
@@ -142,7 +141,7 @@ for file in common.files_from_argv("scattering_functions/data/", "F_"):
                 bad_for_plot = f_bad
                 F_unc_for_plot = f_unc
 
-            color = matplotlib.cm.afmhot( (graph_i+0.8)/(len(target_ks)+2) )
+            color = common.colormap_cool(graph_i, 0, len(target_ks))
             ax.errorbar(t_for_plot, F_for_plot, yerr=F_unc_for_plot, linestyle='', alpha=0.3, color=color)
             print(t.shape, f.shape)
 
@@ -155,7 +154,8 @@ for file in common.files_from_argv("scattering_functions/data/", "F_"):
             popt, pcov = scipy.optimize.curve_fit(log_func, t_for_plot[~bad_for_plot], np.log10(F_for_plot[~bad_for_plot]), sigma=np.log10(F_unc_for_plot[~bad_for_plot]))#,   absolute_sigma=True)
             t_th = np.logspace(np.log10(t[1]), np.log10(t[-1]))
             theory_curve = func(t_th, popt)
-            ax.plot(t_th, theory_curve, color='black', zorder=-1, label='fit' if graph_i==len(target_ks)-1 else None)
+            if SHOW_FIT:
+                ax.plot(t_th, theory_curve, color='white', zorder=-1, label='fit' if graph_i==len(target_ks)-1 else None)
 
             # ax.set_ylim(5e-4, 3)
             ax.set_ylim(1e-2, 1.3e0)
@@ -181,7 +181,15 @@ for file in common.files_from_argv("scattering_functions/data/", "F_"):
         ax.set_ylabel(ylabel)
 
         fileprefix = 'fkt' if type == 'f' else 'Fs'
+        filename = f'{fileprefix}_decay_overlayed_{file}'
+        if SHOW_FIT:
+            filename += '_fit'
 
         # common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/{fileprefix}_{file}.png', dpi=300, hide_metadata=True)
-        common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/{fileprefix}_decay_overlayed_{file}.pdf', hide_metadata=True)
-        common.save_fig(fig, f'scattering_functions/figures_png/{fileprefix}_decay_overlayed_{file}.png', dpi=300)
+        common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/{filename}.pdf', hide_metadata=True)
+        common.save_fig(fig, f'scattering_functions/figures_png/{filename}.png', dpi=300)
+
+        
+if __name__ == '__main__':
+    for file in common.files_from_argv("scattering_functions/data/", "F_"):
+        go()

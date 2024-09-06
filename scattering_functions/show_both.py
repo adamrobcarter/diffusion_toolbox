@@ -14,6 +14,16 @@ colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 # target_ks = list(np.logspace(np.log10(0.02), np.log10(8), 20))
 # target_ks = list(np.logspace(np.log10(0.02), np.log10(0.1), 25))
 
+SHOW_SEGRE_PUSEY_RESCALING_AXIS = False
+
+D_ERROR_THRESH = 0.1 # point ignored if D_unc/D > this
+
+EXP_FIT = 0
+T_MINUS_T0_FIT = 1
+EXP_TIMES_CONST_FIT = 2
+
+FIT = EXP_TIMES_CONST_FIT
+
 def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mult=False):
     lin_short_axes, lin_axes, log_axes, D_axes = axes
     # lin_short_axes, lin_axes, log_axes, D_axes, extra_axes = axes
@@ -30,7 +40,7 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
     D_uncs_for_saving_long = []
     ks_for_saving_long = []
 
-    if Ftype == 'f':
+    if Ftype == 'f' and SHOW_SEGRE_PUSEY_RESCALING_AXIS:
         sp_fig, sp_axs = plt.subplots(2, 1, figsize=(4, 6))
 
     load = 'F' if Ftype=='f' else Ftype
@@ -88,7 +98,13 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
 
             graph_i += 1
 
-        label = fr"$k={k:.3f}\mathrm{{\mu m}}$ ($L\approx{2*np.pi/k:.1f}\mathrm{{\mu m}}$, $k\sigma={k*particle_diameter:.2f}$)"
+        
+        if np.isfinite(particle_diameter):
+            k_label = fr'$k\sigma={k*particle_diameter:.2g}$'
+        else:
+            k_label = fr'$k={k:.2g}$'
+
+        label = fr"$k={k:.3f}\mathrm{{\mu m}}$ ($L\approx{2*np.pi/k:.1f}\mathrm{{\mu m}}$, {k_label})"
 
         if common.nanfrac(f) == 1:
             print(f'all nan at k={k:.1f} (i={graph_i})')
@@ -114,11 +130,16 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
         # new noise identification idea
         # first noise point is first point where the gradient is no longer getting more negative
         grad = np.gradient(np.log10(f), np.log10(t))
-        peaks, props = scipy.signal.find_peaks(-grad, prominence=0.01)
+        if file.startswith('marine'):
+            prominence = 1
+        else:
+            prominence = 0.01 # eleanor/alice
         # prominance filters out peaks that are just noise. A smoothing filter would probably be better though
+        # increase prominance to allow bigger noise
+        peaks, props = scipy.signal.find_peaks(-grad, prominence=prominence)
         f_bad = np.full(f.shape, False)
-        print(np.log10(t[np.array(peaks)]))
-        print(props)
+        # print(np.log10(t[np.array(peaks)]))
+        # print(props)
         if len(peaks):
             f_bad[peaks[0]:] = True
         else:
@@ -129,6 +150,9 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
         # extra_axes[graph_i].semilogx()
 
         f_bad[f<0] = True
+
+        # don't use the zero point to fit
+        f_bad[0] = True
 
         if display:
             ax.plot(t[~f_bad], f[~f_bad], color=colors[type_index], linestyle='', label=f'{Ftype} {file}', marker='.')
@@ -182,10 +206,21 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
         # fits
         # we fit to log(f(k, t)) because otherwise points near one make a much
         # larger impact to the fit than points near zero
-        func = lambda t, D : np.exp(-t * k**2 * D)
-        log_func = lambda t, D: np.log10( func(t, D) )
-        log_unc = lambda x, dx : 0.5 * np.log((x+dx)/(x-dx))
-        log_f_unc  = log_unc(f, f_unc )
+        if FIT == T_MINUS_T0_FIT:
+            func = lambda t, D, t0 : np.exp(-(t-t0) * k**2 * D)
+            log_func = lambda t, D, t0: np.log10( func(t, D, t0) )
+            log_unc = lambda x, dx : 0.5 * np.log((x+dx)/(x-dx)) # what is this?
+            log_f_unc  = log_unc(f, f_unc )
+        elif FIT == EXP_TIMES_CONST_FIT:
+            func = lambda t, D, c : c * np.exp(-t * k**2 * D)
+            log_func = lambda t, D, c: np.log10( func(t, D, c) )
+            log_unc = lambda x, dx : 0.5 * np.log((x+dx)/(x-dx)) # what is this?
+            log_f_unc  = log_unc(f, f_unc )
+        elif FIT == EXP_FIT:
+            func = lambda t, D : np.exp(-t * k**2 * D)
+            log_func = lambda t, D: np.log10( func(t, D) )
+            log_unc = lambda x, dx : 0.5 * np.log((x+dx)/(x-dx)) # what is this?
+            log_f_unc  = log_unc(f, f_unc )
             
         p0 = [0.05]
         p0 = None
@@ -198,26 +233,33 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
                 log_func, t[~f_bad], np.log10(f[~f_bad]),
                 # p0=p0, sigma=log_f_unc[~f_bad], absolute_sigma=True
             )
-        print('  total: disabled sigma fitting')
+        # print('  total: disabled sigma fitting')
             # Fs_popt, Fs_pcov = scipy.optimize.curve_fit(log_func, t2[~Fs_bad], np.log10(Fs[~Fs_bad]), sigma=log_Fs_unc[~Fs_bad], absolute_sigma=True)
         t_th = np.logspace(np.log10(t[1]), np.log10(t[-1]))
 
         if np.isfinite(np.sqrt(f_pcov)[0,0]):
-            print('  total:', common.format_val_and_unc(f_popt[0], np.sqrt(f_pcov)[0][0]))
-            
+            D = f_popt[0]
+            D_unc = np.sqrt(f_pcov)[0][0]
+
             if display:
-                ax.plot(t_th, func(t_th, *f_popt), color=colors[type_index], linestyle='dashdot', label='total')
+                ax      .plot(t_th, func(t_th, *f_popt), color=colors[type_index], linestyle='dashdot', label=f'total $D={D:.2g}$')
+                ax_short.plot(t_th, func(t_th, *f_popt), color=colors[type_index], linestyle='dashdot', label=f'total $D={D:.2g}$')
+                log_ax  .plot(t_th, func(t_th, *f_popt), color=colors[type_index], linestyle='dashdot', label=f'total $D={D:.2g}$')
                     # ax.plot(t_th, func(t_th, *Fs_popt), color='tab:orange',   linestyle='dotted')
-
-            Ds_for_saving.append(f_popt[0])
-            D_uncs_for_saving.append(np.sqrt(f_pcov)[0][0])
-            ks_for_saving.append(k)
-
-            if display:
                 D_ax.hlines(f_popt[0], t.min(), t.max(), color=colors[type_index], linestyle='dashdot', label='total')
 
+            if D_unc/D > D_ERROR_THRESH:
+                print(f'  total: stopping. D_unc/D = {D_unc/D:.2g}')
+            else:
+
+                print(f'  total:{common.format_val_and_unc(D, D_unc)}, (D_unc/D = {D_unc/D:.2g})')
+
+                Ds_for_saving.append(D)
+                D_uncs_for_saving.append(np.sqrt(f_pcov)[0][0])
+                ks_for_saving.append(k)
+
         else:
-            print(f'  total: covariance not estimated')
+            print(f'  total: stopping. covariance not estimated')
 
         # new fit
         # new_func = lambda t, a, b, c : a*t**2 + b*t + c
@@ -236,13 +278,18 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
 
 
         if display:
-            SHORT_PLOT_MAX_X = 20
+            SHORT_PLOT_MAX_X = 20 # for eleanor etc
+            SHORT_PLOT_MAX_X = 1 # for marine
+
+            SHORT_PLOT_Y0 = f[0:int(SHORT_PLOT_MAX_X+1)].min() # for eleanor
+            SHORT_PLOT_Y0 = 0 # for marine
+
             ax_short.errorbar(t, f, yerr=f_unc, color=colors[type_index], linestyle='', alpha=0.2)
             ax_short.errorbar(t, f, yerr=0, color=colors[type_index], linestyle='', marker='.')
             # ax_short.errorbar(t, f, yerr=0, color=colors[type_index], linestyle='', marker='.')
             # ax_short.semilogy()
             ax_short.set_xlim(0, SHORT_PLOT_MAX_X)
-            ax_short.set_ylim(f[0:SHORT_PLOT_MAX_X+1].min(), f[0:SHORT_PLOT_MAX_X+1].max())
+            ax_short.set_ylim(SHORT_PLOT_Y0, f[0:int(SHORT_PLOT_MAX_X+1)].max())
             
         if f_points_short.sum() > 2:
             f_popt_short, f_pcov_short = scipy.optimize.curve_fit(
@@ -251,21 +298,29 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
                 )
             # print('  short: we had to disable sigma fitting')
                 
-            if np.isfinite(np.sqrt(f_pcov_short)[0][0]):
+            D_short = f_popt_short[0]
+            D_unc_short = np.sqrt(f_pcov_short)[0][0]
+
+            if np.isfinite(D_unc_short):
                 
                 if display:
-                    ax.plot(t_th, func(t_th, *f_popt_short), color=colors[type_index], linestyle='dotted', label='short')
-                    ax_short.plot(t_th, func(t_th, *f_popt_short), color=colors[type_index], linestyle='dotted', label='short')
-        
-                print(f'  short: {common.format_val_and_unc(f_popt_short[0], np.sqrt(f_pcov_short)[0][0])}')
-                Ds_for_saving_short    .append(f_popt_short[0])
-                D_uncs_for_saving_short.append(np.sqrt(f_pcov_short)[0][0])
-                ks_for_saving_short    .append(k)
+                    ax      .plot(t_th, func(t_th, *f_popt_short), color=colors[type_index], linestyle='dotted', label=f'short fit $D={D_short:.2g}$')
+                    ax_short.plot(t_th, func(t_th, *f_popt_short), color=colors[type_index], linestyle='dotted', label=f'short fit $D={D_short:.2g}$')
+                    log_ax  .plot(t_th, func(t_th, *f_popt_short), color=colors[type_index], linestyle='dotted', label=f'short fit $D={D_short:.2g}$')
+                    D_ax.hlines(D_short,  t.min(), t.max(), color=colors[type_index], linestyle='dotted', label='short')
+
+                if D_unc_short/D_short > D_ERROR_THRESH:
+                    print(f'  short: stopping. D_unc/D = {D_unc_short/D_short:.2g}')
+                
+                else:
+                    print(f'  short: {common.format_val_and_unc(D_short, D_unc_short)}  (D_unc/D = {D_unc_short/D_short:.2g})')
+            
+                    Ds_for_saving_short    .append(D_short)
+                    D_uncs_for_saving_short.append(D_unc_short)
+                    ks_for_saving_short    .append(k)
                     
-                if display:
-                    D_ax.hlines(f_popt_short[0],  t.min(), t.max(), color=colors[type_index], linestyle='dotted', label='short')
             else:
-                print('  short: covariance not estimated')
+                print('  short: stopping. covariance not estimated')
 
                 
             linear_func = lambda t, D : 1 - D*k**2*t
@@ -273,22 +328,28 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
                     linear_func, t[f_points_short], f[f_points_short],
                     p0=p0#, sigma=log_f_unc[f_points_short], absolute_sigma=True
                 )
-                
-            if np.isfinite(np.sqrt(f_pcov_short_linear)[0][0]):
-                
+            D_short_linear = f_popt_short_linear[0]
+            D_unc_short_linear = np.sqrt(f_pcov_short_linear)[0][0]
+
+            if np.isfinite(D_unc_short_linear):
                 if display:
                     # ax.plot(t_th, linear_func(t_th, *f_popt_short_linear), color=colors[type_index], linestyle='dotted', label='short')
-                    ax_short.plot(t_th, linear_func(t_th, *f_popt_short_linear), color='tab:red', linestyle='dotted', label='short lin')
-        
-                print(f'  short linear: {common.format_val_and_unc(f_popt_short_linear[0], np.sqrt(f_pcov_short_linear)[0][0])}')
-                # Ds_for_saving_short    .append(f_popt_short_linear[0])
-                # D_uncs_for_saving_short.append(np.sqrt(f_pcov_short_linear)[0][0])
-                # ks_for_saving_short    .append(k)
-                    
-                if display:
+                    ax_short.plot(t_th, linear_func(t_th, *f_popt_short_linear), color='tab:red', linestyle='dotted', label=f'short lin $D={D_short_linear:.2g}$')
+                    ax      .plot(t_th, linear_func(t_th, *f_popt_short_linear), color='tab:red', linestyle='dotted', label=f'short lin $D={D_short_linear:.2g}$')
+                    log_ax  .plot(t_th, linear_func(t_th, *f_popt_short_linear), color='tab:red', linestyle='dotted', label=f'short lin $D={D_short_linear:.2g}$')
                     D_ax.hlines(f_popt_short_linear[0],  t.min(), t.max(), color='tab:red', linestyle='dotted', label='short lin')
+
+                if D_unc_short_linear/D_short_linear > D_ERROR_THRESH:
+                    print(f'  short linear: stopping. D_unc/D = {D_unc_short_linear/D_short_linear:.2g}')
+
+                else:
+                    print(f'  short linear: {common.format_val_and_unc(D_short_linear, D_unc_short_linear)} (D_unc/D = {D_unc_short_linear/D_short_linear:.2g})')
+                    # Ds_for_saving_short    .append(f_popt_short_linear[0])
+                    # D_uncs_for_saving_short.append(np.sqrt(f_pcov_short_linear)[0][0])
+                    # ks_for_saving_short    .append(k)
+                    
             else:
-                print('  short linear: covariance not estimated')
+                print('  short linear: stopping. covariance not estimated')
         else:
             print('  short: not attempting')
 
@@ -299,19 +360,27 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
                 )
             print('  long:  disabled sigma fitting')
                 
-            if np.isfinite(np.sqrt(f_pcov_long)[0][0]):
-                
-                if display:
-                    ax.plot(t_th, func(t_th, *f_popt_long), color=colors[type_index], linestyle='dashed', label='long')
-                
-                Ds_for_saving_long    .append(f_popt_long[0])
-                D_uncs_for_saving_long.append(np.sqrt(f_pcov_long)[0][0])
-                ks_for_saving_long    .append(k)
+            D_long = f_popt_long[0]
+            D_unc_long = np.sqrt(f_pcov_long)[0][0]
 
-                if display:
-                    D_ax.hlines(f_popt_long[0],  t.min(), t.max(), color=colors[type_index], linestyle='dashed', label='long')
+            if np.isfinite(D_unc_long):
+                
+                if D_unc_long/D_long > D_ERROR_THRESH:
+                    # print(f'  short linear: D_unc/D = {D_unc_long/D_long:.2g}')
+                    pass
+                else:
+                
+                    if display:
+                        ax.plot(t_th, func(t_th, *f_popt_long), color=colors[type_index], linestyle='dashed', label='long')
+                    
+                    Ds_for_saving_long    .append(D_long)
+                    D_uncs_for_saving_long.append(D_unc_long)
+                    ks_for_saving_long    .append(k)
+
+                    if display:
+                        D_ax.hlines(f_popt_long[0],  t.min(), t.max(), color=colors[type_index], linestyle='dashed', label='long')
             else:
-                print('  long:  covariance not estimated')
+                print('  long:  stopping. covariance not estimated')
         else:
             print('  long:  not attempting')
 
@@ -374,7 +443,15 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
             # D_ax.axhline(y=D_short[phi], color='black', linewidth=1, linestyle=':', label=r'D from MSD')
             # D_ax.axhline(y=D_long [phi], color='black', linewidth=1, linestyle=':')
             
-            D_ax.legend(fontsize=7 if not mult else 5)
+            D_ax    .legend(fontsize=7 if not mult else 5)
+            ax_short.legend(fontsize=7)
+            log_ax  .legend(fontsize=7)
+
+            ax_short.set_title('$f(k, t)$ lin, short time ' + label, fontsize=8)
+            D_ax    .set_title('$D$ ' + label,                       fontsize=8)
+            log_ax  .set_title('$f(k, t)$ loglog ' + label,          fontsize=8)
+            ax      .set_title('$f(k, t)$ lin ' + label,             fontsize=8)
+            
             D_ax.semilogy()
 
             D0 = 0.04
@@ -392,20 +469,22 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
             if low_k <= k*particle_diameter <= high_k or False:
                 color = matplotlib.cm.afmhot(np.interp(k*particle_diameter, (low_k, high_k), (0.2, 0.8)))
             
-                sp_ax = sp_axs[0]
-                sp_q = np.log(f) / (Ds * k**2)
-                
-                sp_ax.plot(t[~f_bad], sp_q[~f_bad], label=fr'$k\sigma={k*particle_diameter:.1f}$', color=color)
-                sp_ax.plot(t[ f_bad], sp_q[ f_bad],                     color=color, alpha=0.2)
+                if SHOW_SEGRE_PUSEY_RESCALING_AXIS:
+                    sp_ax = sp_axs[0]
+                    sp_q = np.log(f) / (Ds * k**2)
+                    
+                    sp_ax.plot(t[~f_bad], sp_q[~f_bad], label=k_label, color=color)
+                    sp_ax.plot(t[ f_bad], sp_q[ f_bad],                color=color, alpha=0.2)
     
-            Ds_ax = sp_axs[1]
+            if SHOW_SEGRE_PUSEY_RESCALING_AXIS:
+                Ds_ax = sp_axs[1]
 
-            # Ds_ax.errorbar(k*particle_diameter, Ds, yerr=Ds_unc, marker='o', color='tab:blue')#, label=fr'$k\sigma={k*particle_diameter:.1f}$', color=color)
-            Ds_ax.errorbar(k*particle_diameter, D0/Ds, yerr=D0*Ds_unc/Ds**2, marker='o', color='tab:blue')#, label=fr'$k\sigma={k*particle_diameter:.1f}$', color=color)
-                # sp_ax.plot(t[ f_bad], D2[ f_bad]/Ds,                     color=color, alpha=0.2)
+                # Ds_ax.errorbar(k*particle_diameter, Ds, yerr=Ds_unc, marker='o', color='tab:blue')#, label=fr'$k\sigma={k*particle_diameter:.1f}$', color=color)
+                Ds_ax.errorbar(k*particle_diameter, D0/Ds, yerr=D0*Ds_unc/Ds**2, marker='o', color='tab:blue')#, label=fr'$k\sigma={k*particle_diameter:.1f}$', color=color)
+                    # sp_ax.plot(t[ f_bad], D2[ f_bad]/Ds,                     color=color, alpha=0.2)
     
 
-    if Ftype == 'f':
+    if Ftype == 'f' and SHOW_SEGRE_PUSEY_RESCALING_AXIS:
         # sp_ax.semilogx()
         sp_ax.legend()
         sp_ax.set_ylim(-20, 0)
@@ -424,15 +503,18 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
     common.save_data(f'visualisation/data/Ds_from_{Ftype}_{file}',
                 Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, ks=ks_for_saving,
                 particle_diameter=particle_diameter,
-                pixel_size=d.get('pixel_size'))
+                pixel_size=d.get('pixel_size'),
+                channel=d.get('channel'), NAME=d.get('NAME'))
     common.save_data(f'visualisation/data/Ds_from_{Ftype}_short_{file}',
                 Ds=Ds_for_saving_short, D_uncs=D_uncs_for_saving_short, ks=ks_for_saving_short,
                 particle_diameter=particle_diameter,
-                pixel_size=d.get('pixel_size'))
+                pixel_size=d.get('pixel_size'),
+                channel=d.get('channel'), NAME=d.get('NAME'))
     common.save_data(f'visualisation/data/Ds_from_{Ftype}_long_{file}',
                 Ds=Ds_for_saving_long, D_uncs=D_uncs_for_saving_long, ks=ks_for_saving_long,
                 particle_diameter=particle_diameter,
-                pixel_size=d.get('pixel_size'))
+                pixel_size=d.get('pixel_size'),
+                channel=d.get('channel'), NAME=d.get('NAME'))
 
 if __name__ == '__main__':
     for file in sys.argv[1:]:

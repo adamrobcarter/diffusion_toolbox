@@ -12,7 +12,7 @@ if not log:
 num_k_bins = 50
 # computation time is proportional to this squared
 
-drift_removed = True
+drift_removed = False
 
 
 
@@ -37,12 +37,16 @@ def calc_for_f_type(F_type):
         particle_diameter = data.get('particle_diameter')
         pixel_size=data.get('pixel_size')
        
-        num_timesteps = particles[:, 2].max()
+        # num_timesteps = particles[:, 2].max()
+        num_timesteps = data['num_timesteps']
+
         # d_frames = np.concatenate([np.arange(0, 9.1), np.logspace(1, np.log10(num_timesteps-100), 50)]).round()
         d_frames = common.exponential_integers(1, num_timesteps-1) - 1 
 
         if drift_removed:
             particles = common.remove_drift(particles)
+        else:
+            print('not removing drift')
 
         if False:
             print('adding drift')
@@ -76,7 +80,8 @@ def calc_for_f_type(F_type):
         common.save_data(filename, F=Fs, F_unc=F_unc, k=ks, t=d_frames*time_step,
                 num_k_bins=num_k_bins, max_time_origins=max_time_origins, computation_time=t1-t0, log=log,
                 particle_diameter=particle_diameter, drift_removed=drift_removed,
-                pixel_size=pixel_size)
+                pixel_size=pixel_size,
+                NAME=data.get('NAME'), channel=data.get('channel'))
 
         print()
 

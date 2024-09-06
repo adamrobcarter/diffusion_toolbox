@@ -27,10 +27,10 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
     D = np.gradient(msd, t)/4
     D_unc = D * msd_unc/msd
     ax.plot(t[1:END], D[1:END], marker='.', markersize=3, linestyle=r'none', label=r'$1/4 \cdot \mathrm{d}\langle r^2 \rangle/\mathrm{d}t$')
-    ax.fill_between(t[1:END], D[1:END]-D_unc[1:END], D[1:END]+D_unc[1:END], alpha=0.2)
+    # ax.fill_between(t[1:END], D[1:END]-D_unc[1:END], D[1:END]+D_unc[1:END], alpha=0.2)
 
     D_smooth = moving_average(D, 100)
-    ax.plot(t[500+50:END-49], D_smooth[500:END], marker='.', markersize=3, linestyle=r'none')
+    # ax.plot(t[100+50:END-49], D_smooth[100:END], marker='.', markersize=3, linestyle=r'none')
     
 
     fitting_points = common.exponential_integers(1, t.size-1)
@@ -45,11 +45,11 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
     # ax.set_ylim(msd[1:].min()*0.6, msd.max()/0.8)
     # ax.set_xlim(t[1]*0.8, t[-1]/0.8)
 
-    ax.set_ylim(0, 0.06)
+    ax.set_ylim(0.01, 0.04)
 
     ax.set_ylabel(r'$D$')
     ax.set_xlabel('$\Delta t$ (s)')
     # ax.legend()
 
-    # common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/D_from_msd_{file}.pdf', hide_metadata=True)
+    common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/D_from_msd_{file}.pdf', hide_metadata=True)
     common.save_fig(fig, f'MSD/figures_png/D_from_msd_{file}.png')

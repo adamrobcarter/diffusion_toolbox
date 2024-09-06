@@ -66,6 +66,10 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
         separation = 2.8
         percentile = 20
 
+    elif file.startswith('marine2'):
+        diameter = 5
+        minmass = 0.01
+
     elif file.startswith('marine'):
         # for marine10 at least
         diameter = 5
@@ -158,7 +162,8 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
             computation_time=time.time()-t0, depth_of_field=depth_of_field,
             pixel_size=pixel_size, num_timesteps=num_timesteps, particle_diameter=particle_diameter,
             particle_diameter_calced=particle_diameter_calced,
-            window_size_x=pixel_size*stack.shape[1], window_size_y=pixel_size*stack.shape[2])
+            window_size_x=pixel_size*stack.shape[1], window_size_y=pixel_size*stack.shape[2],
+            channel=data.get('channel'), NAME=data.get('NAME'))
     
     # we also save the whole dataframe so we can use it for linking if we want
     features.to_pickle(f'particle_detection/data/particlesdf_{outfile}.pickle')

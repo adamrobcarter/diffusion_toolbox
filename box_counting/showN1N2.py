@@ -4,19 +4,18 @@ import common
 import matplotlib.cm
 import scipy.optimize
 
+# collapse_x = False
+# collapse_y = False
 collapse_x = False
-collapse_y = False
-collapse_x = True
 collapse_y = True
 
-for file in common.files_from_argv('box_counting/data', 'countedN1N2_'):
-
+def go(file):
     D0_from_fits     = [{}, {}]
     D0_unc_from_fits = [{}, {}]
 
     LOWTIME_FIT_END = 20
 
-    fig, ax = plt.subplots(1, 1, figsize=(6, 4.5))
+    fig, ax = plt.subplots(1, 1, figsize=(4, 3))
     # rescaled_fig, rescaled_axs = plt.subplots(2, 1, figsize=(5, 8), squeeze=False)
 
     data = common.load(f'box_counting/data/countedN1N2_{file}.npz')
@@ -71,9 +70,10 @@ for file in common.files_from_argv('box_counting/data', 'countedN1N2_'):
         N_theory_shorttime = N_mean[box_size_index]*drift_x*t_theory/L # Grace's presentation slide 7
 
         # fit
-        func = lambda drift, D: common.N1N2_square(t_theory, D, N_mean[box_size_index], L, drift)
+        func = lambda t, drift, D: common.N1N2_square(t, D, N_mean[box_size_index], L, drift)
         popt, pcov = scipy.optimize.curve_fit(func, t, N1N2)
         
+        print(popt)
 
         xlabel = '$t$'
         ylabel = '$N_2(t)N_1(0) - N_1(0)N_2(t)$'
@@ -96,27 +96,29 @@ for file in common.files_from_argv('box_counting/data', 'countedN1N2_'):
         label = rf'$L={L/sigma:.1f}\sigma$'
         # label += f', $D={D0:.3f}±{np.sqrt(pcov[0][0]):.3f}$'
 
-        color = matplotlib.cm.afmhot(np.interp(box_size_index, (0, len(box_sizes)), (0.2, 0.75)))    
+        color = common.colormap(box_size_index, 0, len(box_sizes))  
         ax.plot(t, N1N2, label=label, linestyle='none', marker='o', zorder=-1, markersize=5, color=color)
         
         n = np.arange(1, N1N2_std.shape[1]+1)
         n = n[::-1]
         err = N1N2_std[box_size_index, :] / np.sqrt(n)
-        ax.fill_between(t, N1N2-err, N1N2+err, color=color, alpha=0.2)
+        # ax.fill_between(t, N1N2-err, N1N2+err, color=color, alpha=0.2)
 
-        ax.plot(t_theory, N_theory, color='black', linewidth=1, label='sFDT (no inter.)' if box_size_index==0 else None)
+        ax.plot(t_theory, N_theory, color='white', linewidth=1, label='sFDT (no inter.)' if box_size_index==0 else None)
 
         # ax.plot(t_theory, N_theory_shorttime, linestyle='dotted', color='black')
 
-    ax.legend(fontsize=7, loc='upper left')
+    ax.legend(fontsize=7, loc='upper right')
     # ax.semilogy()
     # ax.semilogx()
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
 
     if drift_x != 0:
-        ax.set_xlim(0, 4)
+        # ax.set_xlim(0, 4)
+        pass
     ax.set_ylim(-0.0005, 0.0025)
+    ax.set_xlim(0, 500)
 
     title = f'{file}, $\phi_\mathrm{{calc}}={phi:.3f}$'
     if not np.isnan(sigma):
@@ -124,7 +126,13 @@ for file in common.files_from_argv('box_counting/data', 'countedN1N2_'):
     if sigma_calced := data.get('particle_diameter_calced'):
         title += f', $\sigma_\mathrm{{calc}}={sigma_calced:.3f}\mathrm{{\mu m}}$'
     title += fr', $\nu_x={drift_x}\mathrm{{\mu m/s}}$'
-    ax.set_title(title)
+    # ax.set_title(title)
 
     fig.tight_layout()
+    common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/N1N2_{file}.pdf', hide_metadata=True)
     common.save_fig(fig, f'box_counting/figures_png/N1N2_{file}.png', dpi=300)
+
+
+if __name__ == '__main__':
+    for file in common.files_from_argv('box_counting/data', 'countedN1N2_'):
+        go()

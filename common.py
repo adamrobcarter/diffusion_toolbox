@@ -4,13 +4,18 @@ import numpy as np
 import datetime, math
 import scipy.fft
 import tqdm
-import matplotlib.animation
+import matplotlib.animation, matplotlib.cm
 import numba
 import scipy.stats
 import warnings, time
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 import termplotlib
 import psutil
+import matplotlib.pyplot as plt
+
+
+plt.style.use('dark_background')
+FIT_COLOR = 'white'
 
 def get_directory_files(directory, extension, file_starts_with=''):
     filenames = []
@@ -61,13 +66,19 @@ def load(filename):
     if filename.endswith('.npz'):
         for key in data.keys():
             if data[key].shape: # array
-                print(f'  loaded {key}, dtype={data[key].dtype}, shape={data[key].shape}, size={arraysize(data[key])}')
+                print(f'  loaded {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} shape={data[key].shape}, size={arraysize(data[key])}')
             else: # single value
-                print(f'  loaded {key}, dtype={data[key].dtype}, value={data[key]}')
+                print(f'  loaded {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} value={format_value_for_save_load(data[key])}')
     else:
         print(f'  loaded, dtype={data.dtype}, shape={data.shape}, size={arraysize(data)}')
         
     return data
+
+def format_value_for_save_load(value):
+    if hasattr(value, 'dtype'):
+        if value.dtype.type is np.str_:
+            return f'"{value}"'
+    return value
 
 def save_data(filename, quiet=False, **data):
     if not quiet:
@@ -77,14 +88,14 @@ def save_data(filename, quiet=False, **data):
                 if data[key].shape: # array
                     if data[key].size * data[key].itemsize > 10e9:
                         warnings.warn(f'Saving array of size {arraysize(data[key])}')
-                    print(f'  saving {key}, dtype={data[key].dtype}, shape={data[key].shape}, size={arraysize(data[key])}')
+                    print(f'  saving {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} shape={data[key].shape}, size={arraysize(data[key])}')
                 else: # single value
-                    print(f'  saving {key}, dtype={data[key].dtype}, value={data[key]}')
+                    print(f'  saving {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} value={format_value_for_save_load(data[key])}')
             else:
                 if type(data[key]) in [list,tuple]:
-                    print(f'  saving {key}, type={type(data[key])}')
+                    print(f'  saving {key.ljust(20)} type={str(type(data[key])).ljust(12)}')
                 else:
-                    print(f'  saving {key}, type={type(data[key])}, value={data[key]}')
+                    print(f'  saving {key.ljust(20)} type={str(type(data[key])).ljust(12)} value={format_value_for_save_load(data[key])}')
     
     np.savez(filename, **data)
 
@@ -149,6 +160,9 @@ def add_watermark(fig, only_plot):
 
 def save_fig(fig, path, dpi=100, only_plot=False, hide_metadata=False):
     # only_plot gets rid of the axes labels and border leaving you with just the chart area (for pictures)
+
+    if '--noplot' in sys.argv:
+        return
 
     fig.tight_layout()
     args = {}
@@ -357,9 +371,9 @@ def numba_p_assert(condition, message):
     if not condition:
         print('Assertion failed: ', message)
 
-def exponential_integers(min, max):
-    assert min < max
-    return np.unique(np.round(10**np.linspace(np.log10(min), np.log10(max))).astype('int'))
+def exponential_integers(min, max, num=50):
+    assert min < max, f'I got min={min}, max={max}'
+    return np.unique(np.round(10**np.linspace(np.log10(min), np.log10(max), num)).astype('int'))
 
 def add_drift(particles, drift_x, drift_y):
     # drift should be per frame, particles should be rows of x,y,t
@@ -492,7 +506,7 @@ def files_from_argv(location, prefix):
             filename_wo_stem = filename_wo_ext.split(prefix)[1]
             files.append(filename_wo_stem)
 
-    assert len(files), 'no files found'
+    assert len(files), f'no files found. searching for {prefix}'
     return files
 
 def format_val_and_unc(val, unc, sigfigs=2):
@@ -530,6 +544,7 @@ def add_drift_intensity(stack, drift):
     return output
 
 def term_hist(data):
+    assert not np.any(np.isnan(data)), 'term_hist: nan found in data'
     counts, bin_edges = np.histogram(data, bins=20)
     term_fig = termplotlib.figure()
     term_fig.hist(counts, bin_edges, force_ascii=False, orientation="horizontal")
@@ -597,3 +612,9 @@ def name(file):
         except FileNotFoundError:
             pass
     return names.get(file, file)
+
+def colormap(value, min=0, max=1):
+    return matplotlib.cm.afmhot(np.interp(value, (min, max), (0.25, 0.85)))
+
+def colormap_cool(value, min=0, max=1):
+    return matplotlib.cm.summer(np.interp(value, (min, max), (0, 0.8)))

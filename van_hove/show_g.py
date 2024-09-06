@@ -5,7 +5,7 @@ import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
 
-for file in sys.argv[1:]:
+def go(file):
     data = common.load(f'van_hove/data/g_{file}.npz')
     g = data['g']
     r = data['r']
@@ -16,9 +16,13 @@ for file in sys.argv[1:]:
     ax.set_xlabel('$r/\sigma$')
     ax.set_ylim(0, 3)
 
-    ax.errorbar(r/particle_diameter, np.nanmean(g, axis=0), yerr=np.nanstd(g, axis=0)/np.sqrt(g.shape[0]), marker='.')#, linestyle='none')
+    ax.errorbar(r/particle_diameter, np.nanmean(g, axis=0), yerr=np.nanstd(g, axis=0)/np.sqrt(g.shape[0]), marker='o', color='tab:green')#, linestyle='none')
     # ax.semilogy()
-    common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/g_of_r_{file}.pdf', hide_metadata=True)
+    common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/g_of_r_{file}.pdf', hide_metadata=True)
     common.save_fig(fig, f'van_hove/figures_png/g_of_r_{file}.png')
 
     
+
+if __name__ == '__main__':
+    for file in sys.argv[1:]:
+        go(file)

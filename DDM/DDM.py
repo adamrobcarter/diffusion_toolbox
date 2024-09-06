@@ -123,14 +123,17 @@ def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D_sq,
         F_D_sq_avg = np.nanmean(F_D_sq, axis=0) # average over time origins
         # assert common.nanfrac(F_D_sq_avg) < 0.1, f'F_D_sq_avg was {common.nanfrac(F_D_sq_avg):.2f} nan'
         # print(f'F_D_sq_avg was {common.nanfrac(F_D_sq_avg):.2f} nan')
+        
+        num_points = np.count_nonzero(~np.isnan(F_D_sq), axis=0) # count num data points at each time origin
         F_D_sq_std = np.nanstd (F_D_sq, axis=0) # average over time origins
+        F_D_sq_unc = F_D_sq_std / num_points
 
         u_avg = ( u_bins[:-1] + u_bins[1:] ) / 2
         
         k_avg = 2 * np.pi * u_avg
 
-        callback(time_origin_index, k_avg, F_D_sq_avg, F_D_sq_std, used_times*time_step, F_D_sq, time_origins)
+        callback(time_origin_index, k_avg, F_D_sq_avg, F_D_sq_unc, used_times*time_step, F_D_sq, time_origins)
 
     print('final nanfrac', common.nanfrac(F_D_sq_avg))
         
-    return k_avg, used_times*time_step, F_D_sq_avg, F_D_sq_std, use_every_nth_frame, F_D_sq, time_origins
+    return k_avg, used_times*time_step, F_D_sq_avg, F_D_sq_unc, use_every_nth_frame, F_D_sq, time_origins

@@ -4,40 +4,10 @@ import matplotlib.cm
 import numpy as np
 import sys
 import warnings
+import preprocessing.stack_movie
 
-print('change this to use preprocessing.show!')
 
-def show_frame(fig, ax, stack, pixel_size, particles, radius, timestep, file):
-
-    # crop = 0.18
-    # crop = 1.0
-    # particles_inside = ( particles[:, 0] < crop*stack.shape[1]*pixel_size ) & ( particles[:, 1] < crop*stack.shape[2]*pixel_size )
-    # particles = particles[particles_inside, :]
-    # radius    = radius   [particles_inside]
-    # stack = stack[:, :int(stack.shape[1]*crop), :int(stack.shape[2]*crop)]
-
-    # im = ax.imshow(stack[timestep, :, :], vmin=0, vmax=stack.max()/100)#, cmap=matplotlib.cm.coolwarm)#, vmin=-2, vmax=2)
-    # there was a minus sign below for nice presentation
-    # print(stack[timestep, :, :].min(), stack[timestep, :, :].max(), stack[timestep, :, :].mean())
-    # print('mean', stack[timestep, :, :].mean())
-    # assert 0.4 < stack[timestep, :, :].mean() < 0.5
-    vmin = 0
-    vmax = 1
-    if file.startswith('marine'):
-        pass
-    elif file == 'pierre_exp':
-        vmin = 0.3
-        vmax = 0.6
-    im = ax.imshow(stack[timestep, :, :], cmap=matplotlib.cm.Greys, vmin=vmin, vmax=vmax, interpolation='none')#, vmin=-2, vmax=2)
-    # im = ax.imshow(stack[timestep, :, :], cmap=matplotlib.cm.Greys, vmin=0, vmax=1)#, vmin=-2, vmax=2)
-    # im = ax.imshow(stack[timestep, :, :], cmap=matplotlib.cm.Greys)#, vmin=-2, vmax=2)
-    # fig.colorbar(im)
-
-    return add_particle_outlines(ax, pixel_size, particles, radius, timestep)
-
-    common.add_scale_bar(ax, pixel_size)
-
-def add_particle_outlines(ax, pixel_size, particles, radius, timestep):
+def add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=None):
     # radius can be None
 
     particles_at_t = particles[:, 2] == timestep
@@ -49,7 +19,7 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep):
     #             facecolors='none', edgecolors='red', alpha=0.5, linewidth=0.8)
 
     x = particles[particles_at_t, 1]/pixel_size
-    common.term_hist(x)
+    # common.term_hist(x)
     y = particles[particles_at_t, 0]/pixel_size
     r = radius[particles_at_t] * np.sqrt(2) # TODO: should this be /pixel_size?
     r = np.full_like(r, r.mean())
@@ -61,6 +31,8 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep):
         if particles.shape[1] == 4:
             return matplotlib.cm.tab20(int(id[i]%20))
         else:
+            if channel:
+                return 'white'
             return 'red'
         
     alpha = 0.7
@@ -79,6 +51,33 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep):
 
     ax.add_collection(c)
 
+if __name__ == '__main__':
+    for file in sys.argv[1:]:
+        data_stack = common.load(f'preprocessing/data/stack_{file}.npz')
+        stack      = data_stack['stack']
+        pixel_size = data_stack['pixel_size']
+        time_step  = data_stack['time_step']
+        channel    = data_stack.get('channel')
+
+        data_particles = common.load(f'particle_detection/data/particles_{file}.npz')
+        particles = data_particles['particles']
+        radius    = data_particles['radius']
+
+        # crop
+        # stack = stack[:, :500, :500]
+
+        stack = stack - stack.mean(axis=0) # remove space background
+        
+        def add_outlines(timestep, ax):
+            add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=channel)
+
+        filename = f'movie_{file}'
+        preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"particle_detection/figures_png/{filename}.gif",
+                                                func=add_outlines, channel=channel)
+        # preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}.mp4",
+        #                                            func=add_outlines)
+
+"""
 if __name__ == '__main__':
     for file in common.files_from_argv('particle_detection/data', 'particles_'):
         data = common.load(f'preprocessing/data/stack_{file}.npz')
@@ -126,3 +125,5 @@ if __name__ == '__main__':
             show_frame(fig, ax, stack, pixel_size, particles, radius, timestep, file)
 
             common.save_fig(fig, f'particle_detection/figures_png/particles_{file}.png', dpi=300)
+
+            """

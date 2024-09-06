@@ -5,6 +5,9 @@ import sys
 import matplotlib.cm
 import warnings
 
+DISPLAY_SMALL = True
+INVERSE_COLORS = False
+
 # HIGHLIGHTS = True # displays 50 frames evenly throughout the stack instead of the first 50
 HIGHLIGHTS = False
 # BACKWARDS = True
@@ -15,6 +18,7 @@ REMOVE_BACKGROUND = 1
 DIFF_WITH_ZERO = 2 # frame - frame1
 DIFF_WITH_PREVIOUS = 3
 NONE = 4
+TWOCHANNEL = 5
 
 # select your method here
 # METHOD = DIFF_WITH_PREVIOUS
@@ -22,34 +26,51 @@ NONE = 4
 METHOD = NONE
 # METHOD = REMOVE_BACKGROUND
 
+ADD_DRIFT = True
+
 if METHOD == NONE:
     BACKWARDS = False
+
+def normalise_stack(stack, file):
+    max = np.quantile(stack, 0.99)
+    stack = stack / max
+    stack[stack > 1] = 1
+    print(file, max)
+    return stack
 
 def speed_string(time_mult, every_nth_frame):
     if time_mult*every_nth_frame == 1:
         return 'realtime'
     return f'{time_mult*every_nth_frame}x speed'
 
-def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=lambda timestep, ax : None, nth_frame=1):
-    print('arrived in save_array_movie')
-    dpi = 200
+def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
+                     func=lambda timestep, ax : None, nth_frame=1, max_num_frames=50,
+                     dpi=300,
+                     display_small=True, inverse_colors=False, highlights=False,
+                     backwards=False, method=NONE, stacks=None, stackcolors=None, channel=None):
+
+    if method == TWOCHANNEL:
+        assert stack is None
+        assert stacks is not None
+        stack = stacks[0] # this copy is so that we can use the same checks in twochannel mode as we do in one channnel mode
+    else:
+        assert stack is not None
+        assert stacks is None
+
+    
     figsize = np.array(stack.shape)[[2, 1]] / dpi
     while figsize.mean() < 3:
         figsize *= 2
+    # if display_small and not : # potentially remove this for marine
+    #     figsize = (2.3, 2.3)
     
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    fig.tight_layout()
-    fig.set_size_inches(*fig.get_size_inches()) # apparently this is needed to make subplots_adjust work
-    ax.set_axis_off() # hide axes, ticks, ...
-    fig.subplots_adjust(left=0, bottom=0, right=1, top=1)
-
-    print('set up figures')
 
     time_mult = 4
     if file.startswith('marine'):
         time_mult = 0.25
     
-    if HIGHLIGHTS:
+    if highlights:
         every_nth_frame = stack.shape[0] // 50
     else:
         every_nth_frame = 1
@@ -59,91 +80,138 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename, func=la
         time_mult = 0.1
 
     fps = 1/time_step * time_mult
-    print(fps, 'fps')
 
     # these are cause of the reduce operation
     if file.endswith('_25'):
         fps *= 25
     fps *= nth_frame#*every_nth_frame
 
-    print(fps, 'fps', nth_frame)
-
 
     if fps < 0.2:
         warnings.warn(f'fps = {fps}')
-    frames = range(0, min(stack.shape[0], 50*every_nth_frame), every_nth_frame)
+    frames = range(0, min(stack.shape[0], max_num_frames*every_nth_frame), every_nth_frame)
 
-
-    if BACKWARDS:
+    if backwards:
+        raise # remove me whenever you like
         stack = stack[::-1, :, :]
 
-    if METHOD == REMOVE_BACKGROUND:
+    if method == REMOVE_BACKGROUND:
         print('subtracting mean')
         usedstack = stack[frames, :, :] - stack[:, :, :].mean(axis=0) # remove space background
 
-    elif METHOD == DIFF_WITH_ZERO:
+    elif method == DIFF_WITH_ZERO:
         print('subtracting frame 0')
         usedstack = stack[frames, :, :] - stack[0, :, :]
 
-    elif METHOD == DIFF_WITH_PREVIOUS:
+    elif method == DIFF_WITH_PREVIOUS:
         print('subtracting previous frame')
         usedstack = stack[np.array(frames[:-1])+1, :, :] - stack[frames[:-1], :, :]
 
-    if METHOD == NONE:
+    elif method == NONE:
         usedstack = stack[frames, :, :]
 
-    print('finding quantiles')
-    vmin = np.quantile(usedstack, 0.01)
-    vmax = np.quantile(usedstack, 0.99)
+    elif method == TWOCHANNEL:
+        usedstack = np.zeros((len(frames), stacks[0].shape[1], stacks[0].shape[2], 3))
+        for i, this_stack in enumerate(stacks):
+            print(this_stack.shape)
+            if stackcolors[i] == 'red':
+                usedstack[:, :, :, 0] = normalise_stack(this_stack[frames, :, :], file+' red')
+
+            elif stackcolors[i] == 'green':
+                usedstack[:, :, :, 1] = normalise_stack(this_stack[frames, :, :], file+' green')
+            else:
+                assert False, 'colors other than red and green not yet implemented'
+
+
+    # common.term_hist(usedstack)
+
+    # print('min mean max', usedstack.min(), usedstack.mean(), usedstack.max())
+
+    def show(index):
+        if backwards:
+            timestep = frames[-index]
+        else:
+            timestep = frames[index]
+        ax.clear()
+
+        if len(usedstack.shape) == 4:
+            frame = usedstack[index, :, :, :]
+        else:
+            frame = usedstack[index, :, :]
+
+            
+        # cmap = matplotlib.cm.Greys
+        # if inverse_colors:
+        #     cmap = matplotlib.cm.Greys_r
+
+        show_single_frame(ax, frame, pixel_size, channel)
+
+        
+        color = 'white' if frame.mean()/(frame.max()-frame.min()) < 0.2 else 'black' # this used to be usedstack not frame
+        time_string = speed_string(time_mult, every_nth_frame*nth_frame)#+f'\ntime = {timestep*time_step*nth_frame:.1f}s'
+        ax.text(0.95, 0.05, time_string, color=color, transform=ax.transAxes, ha='right', fontsize=10)
+     
+        
+        # for hiding border
+        fig.set_size_inches(*fig.get_size_inches()) # apparently this is needed to make subplots_adjust work
+        fig.subplots_adjust(left=0, bottom=0, right=1, top=1)
+
+    
+        func(timestep, ax)
+
+    common.save_gif(show, range(usedstack.shape[0]), fig, outputfilename, fps=fps, dpi=dpi)
+
+def show_single_frame(ax, frame, pixel_size, channel=None):
+
+    
+    # vmin = np.quantile(usedstack, 0.01)
+    # vmax = np.quantile(usedstack, 0.99)
     # vmin = stack.min()
     # vmax = stack.max()
     # vmin = -5.5e-2
     # vmax = 6.2e-2
     # vmin = None
     # vmax = None
-    print('ready to render')
 
-    common.term_hist(usedstack)
+    if channel == 'red':
+        colors = [(0, 0, 0), (1, 0, 0)] # black > red
+        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("Custom", colors, N=20)
+    elif channel == 'green':
+        colors = [(0, 0, 0), (0, 1, 0)] # black > green
+        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("Custom", colors, N=20)
+    else:
+        cmap = matplotlib.cm.Greys
 
-    # print('min mean max', usedstack.min(), usedstack.mean(), usedstack.max())
+    ax.imshow(frame, cmap=cmap, interpolation='none')
 
-    def show(index):
-        if BACKWARDS:
-            timestep = frames[-index]
-        else:
-            timestep = frames[index]
-        ax.clear()
-        im = ax.imshow(usedstack[index, :, :], vmin=vmin, vmax=vmax, cmap=matplotlib.cm.Greys_r, interpolation='none')
-        # if timestep == 0:
-        #     fig.colorbar(im)
-        # plt.imshow(stack.min(axis=0))
-        ax.set_axis_off() # hide axes, ticks, ...
     
-    
-        color = 'white' if usedstack.mean()/(usedstack.max()-usedstack.min()) < 0.2 else 'black'
-        common.add_scale_bar(ax, pixel_size, color=color)
-        ax.text(0.95, 0.1, speed_string(time_mult, every_nth_frame*nth_frame)+f'\ntime = {timestep*time_step*nth_frame:.1f}s', color=color, transform=ax.transAxes, ha='right', fontsize=15)
-        
-        func(timestep, ax)
-        # print(stack[:, :, timestep].mean())
+    color = 'white' if frame.mean()/(frame.max()-frame.min()) < 0.2 else 'black'
+    common.add_scale_bar(ax, pixel_size, color=color)
+   
 
-    common.save_gif(show, range(usedstack.shape[0]), fig, outputfilename, fps=fps)
 
 if __name__ == '__main__':
     for file in common.files_from_argv('preprocessing/data/', 'stack_'):
         data = common.load(f'preprocessing/data/stack_{file}.npz')
         
-        stack = data['stack']
+        stack      = data['stack']
         pixel_size = data['pixel_size']
-        time_step = data['time_step']
+        time_step  = data['time_step']
+        channel    = data.get('channel')
 
-        # crop
-        # stack = stack[:, :500, :500]
+        if ADD_DRIFT:
+            stack = common.add_drift_intensity(stack, 1)
+            print('NAUGHTY')
+            stack = np.swapaxes(stack, 1, 2)
 
-        # stack = common.add_drift_intensity(stack, 1)
+        if DISPLAY_SMALL:
+            # crop
+            stack = stack[:, :500, :500]
 
-        print(stack.shape[1], 'x', stack.shape[2], 'px')
+
+        # print(stack.shape[1], 'x', stack.shape[2], 'px')
         # print(stack.min(), stack.max())
+
 
         filename = f'stack_movie_{file}'
         if METHOD == REMOVE_BACKGROUND:
@@ -156,6 +224,12 @@ if __name__ == '__main__':
             filename += '_highlights'
         if BACKWARDS:
             filename += '_backwards'
+        if ADD_DRIFT:
+            filename += '_drifted'
         save_array_movie(stack, pixel_size, time_step, file, f"preprocessing/figures_png/{filename}.gif",
-                         nth_frame=data.get('nth_frame', 1))
+                         nth_frame=data.get('nth_frame', 1),
+                         display_small=DISPLAY_SMALL, inverse_colors=INVERSE_COLORS, highlights=HIGHLIGHTS,
+                         backwards=BACKWARDS, method=METHOD, channel=channel)
+        # save_array_movie(stack, pixel_size, time_step, file, f"/home/acarter/presentations/cmd31/figures/{filename}.mp4",
+        #                  nth_frame=data.get('nth_frame', 1))
         # save_array_movie(stack_copy, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}.mp4")

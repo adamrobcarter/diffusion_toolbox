@@ -386,7 +386,7 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
             # print(f'L={L}, N_mean/N_var={N_mean[box_size_index]/N_var[box_size_index]}')
 
 
-            color =  matplotlib.cm.afmhot(np.interp(box_size_index, (0, len(box_sizes)), (0.2, 0.75)))
+            color = common.colormap(box_size_index, 0, len(box_sizes))
             
             sep = sep_sizes[box_size_index]
             label = f'L={L:.2f}, s={sep:.2f}'

@@ -2,7 +2,7 @@ import sys
 import matplotlib.pyplot as plt
 import common
 
-for file in sys.argv[1:]:
+for file in common.files_from_argv('scattering_functions/data/', 'F_'):
     from scattering_functions.show_both import show_single_F_type
     # ^^^ rn we do this hack cause the figure is created at import inside show_both
 

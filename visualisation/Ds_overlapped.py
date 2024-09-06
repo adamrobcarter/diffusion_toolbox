@@ -2,8 +2,9 @@ import common
 import numpy as np
 import matplotlib.pyplot as plt
 
-PLOT_AGAINST_K = False
-TWO_PI = False
+# PLOT_AGAINST_K = True
+TWO_PI = True
+SHOW_TWIN_K_AXIS = False
 
 for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
     x = 0
@@ -20,26 +21,26 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
         'Fs_long': '$F_s(k, \mathrm{long})$',
         'boxcounting': 'counting full fit',
         'MSD': 'MSD',
-        'MSD_short': 'MSD short time',
+        'MSD_short': 'MSD',
         'MSD_long': 'MSD long time',
         'MSD_first': 'MSD first',
-        'boxcounting_shorttime': 'counting short time fit',
-        'boxcounting_first_quad': 'Counting first point quadratic',
-        'boxcounting_collective': 'counting collective',
+        'boxcounting_shorttime': 'Countoscope short time fit',
+        'boxcounting_first_quad': 'Countoscope short time',
+        'boxcounting_collective': 'Countoscope full fit',
         'timescaleint': 'timescale integral'
     }
 
     colors = {
-        'DDM_short': 'tab:orange',
-        'f_short': 'tab:blue',
-        'f_long': 'tab:purple',
+        'DDM_short': 'tab:purple',
+        'f_short': 'tab:green',
+        'f_long': 'tab:green',
         'Fs_short': 'tab:green',
         # 'boxcounting': 'counting',
-        # 'MSD_short': 'MSD',
+        'MSD_short': 'tab:blue',
         'timescaleint': 'tab:green',
-        'boxcounting_collective': 'tab:red',
-        'boxcounting_shorttime': 'tab:blue',
-        'boxcounting_first_quad': 'tab:blue',
+        'boxcounting_collective': 'tab:orange',
+        'boxcounting_shorttime': 'tab:orange',
+        'boxcounting_first_quad': 'tab:orange',
     }
 
     markers = {
@@ -68,21 +69,33 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
 
     # for sources in [['f_short'], [f'f_short', 'DDM_short'], ['timescaleint']]:
     # for sources in [['f_short']]:
-    for sources in [
-        ['timescaleint', 'boxcounting_collective'],
-        ['boxcounting_first_quad', 'MSD_short']
+    
+    # this is the stuff that needs to go into cmd31:
+    """
+    (['boxcounting_collective'             ], False, True, True, True),
+    (['boxcounting_collective', 'MSD_short'], False, True, True, True),
+    (['f_short', 'MSD_short'], True, True, True, True),
+    (['f_short'             ], True, True, True, True),
+    (['boxcounting_collective', 'f_short'], False, True, True, False),
+    (['boxcounting_collective', 'f_short'], False, False, True, False),
+    (['boxcounting_shorttime', 'MSD_short'], False, True, False, False),
+    (['boxcounting_shorttime'             ], False, True, False, False),
+    """
+    
+    for (sources, PLOT_AGAINST_K, TWO_PI, logarithmic_y, fix_axes) in [
+        (['MSD_short', 'f_short', 'f', 'boxcounting_shorttime'], True, True, True, False),
     ]:
     # for sources in [[f'f_short', 'timescaleint', 'MSD_short', 'MSD_long', 'boxcounting', 'boxcounting_shorttime']]:
         print()
 
         all_Ds = []
         
-        name = '_'.join(sources)
+        used_sources = []
 
-        if name == 'timescaleint':
-            PLOT_AGAINST_K = False
-
-        figsize = (3.2, 3.2) if PLOT_AGAINST_K else (3.2, 2.8)
+        figsize = (3.2, 2.8)
+        if PLOT_AGAINST_K and SHOW_TWIN_K_AXIS:
+            figsize = (3.2, 3.2)
+            
         fig, ax = plt.subplots(1, 1, figsize=figsize)
         
 
@@ -100,6 +113,13 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
                 continue
             Ds     = data['Ds']
             D_uncs = data['D_uncs']
+
+            assert np.all(Ds > 0)
+            assert np.all(D_uncs > 0)
+
+            if Ds.size == 0:
+                print(f'skipping {source} {file}, no Ds found')
+                continue
 
             # pixel_size = None
             source_label = f'{source_names[source]}' if not source.startswith('MSD') else None
@@ -124,13 +144,27 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
                 # pixel_size = data['pixel_size']
                 # print('HACK')
                 # pixel_size = 0.288
-                # assert file == 'eleanorlong'
+                if file == 'eleanorlong':
+                    print('REMOVING POINTS!')
+                    start = 9
+                    xs = xs[start:]
+                    Ds = Ds[start:]
+                    D_uncs = D_uncs[start:]
+                else:
+                    print('not')
+
 
                 # xs = data['ks'] / (2 * np.pi / diameter)
             elif source.startswith('boxcounting'):
                 xs = data['Ls']
                 if PLOT_AGAINST_K:
                     raise
+
+                # print('THIS IS SO NAUGHTY REMOVE ME')
+                # thresh = 0.576
+                # Ds = Ds[xs > thresh]
+                # D_uncs = D_uncs[xs > thresh]
+                # xs = xs[xs > thresh]
 
             elif source.startswith('timescaleint'):
                 if PLOT_AGAINST_K:
@@ -143,7 +177,7 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
                 # xs = ax.get_xlim()[0]+0.1
                 pixel_size = []
                 # print(10/(Ds/0.0455840), 'D')
-                ax.hlines(Ds, *ax.get_xlim(), color='tab:orange', linestyle='dotted', label=f'{source_names[source]}')
+                ax.hlines(Ds, *ax.get_xlim(), color=colors['MSD_short'], linestyle='dotted', label=f'{source_names[source]}')
                 # ax.hlines(Ds/0.0455840 / common.structure_factor_2d_hard_spheres(0.001, 0.34, diameter), 0.04, 25, color='grey', linestyle='dotted')
                 # ax.hlines(Ds/0.0455840 / common.structure_factor_2d_hard_spheres(0.01, 0.34, diameter), 0.04, 25, color='grey', linestyle='dotted')
                 # ax.hlines(Ds/0.0455840 / common.structure_factor_2d_hard_spheres(0.1, 0.34, diameter), 0.04, 25, color='grey', linestyle='dotted')
@@ -152,7 +186,7 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
                 # print(common.structure_factor_2d_hard_spheres(0.001, 0.34, diameter))
                 # continue
                 print('MSD errors hacked')
-                ax.fill_between(ax.get_xlim(), Ds[0]*0.97, Ds[0]*1.03, facecolor='tab:orange', alpha=0.3)
+                ax.fill_between(ax.get_xlim(), Ds[0]*0.97, Ds[0]*1.03, facecolor=colors['MSD_short'], alpha=0.5)
                 print('msd unc', D_uncs)
                 all_Ds.append(Ds[0])
                 xs = np.array([])
@@ -163,62 +197,92 @@ for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
 
 
             diameter = data.get('particle_diameter')
-            if diameter == None: diameter = 2.82
             print('must change above line!')
             ten = 10
             if PLOT_AGAINST_K:
-                xs *= diameter
+                if not np.isnan(diameter):
+                    xs *= diameter
                 # ten *= diameter
                 # if pixel_size:
                 #     pixel_size *= diameter
             else:
-                xs /= diameter
+                if not np.isnan(diameter):
+                    xs /= diameter
                 # ten /= diameter
                 # if pixel_size:
                 #     pixel_size /= diameter
 
-            # print(xs)
+            print(xs)
+
+            assert not np.any(np.isnan(xs)), f'nan found in xs from {source}'
 
             # if not source.startswith('MSD'):
             color = colors.get(source)
             lines = ax.plot(xs, Ds, linestyle='none', marker=markers[source], markersize=4, color=color, label=source_label)
             print(color)
-            ax.errorbar(xs, Ds, yerr=D_uncs, linestyle='none', marker='none', alpha=0.5, color=color)
+            ax.errorbar(xs, Ds, yerr=D_uncs, linestyle='none', marker='none', alpha=0.6, color=color)
+
+            print('plotting', xs, Ds)
 
             # if pixel_size:
             #     ax.vlines(pixel_size, Ds.min(), Ds.max(), linestyle='dotted', color='black', label='pixel')
             #     ax.vlines(ten, Ds.min(), Ds.max(), linestyle='dotted', color='grey', label='pixel')
 
+            # assert not np.any(np.isnan(Ds)), 'nan was found in Ds'
             [all_Ds.append(D) for D in Ds]
 
+            used_sources.append(source)
+
+
+        assert len(all_Ds) > 0, 'no Ds were found at all'
+        print('all Ds', all_Ds)
 
         phi = 0.34
         D_th_self = ( 1 - 1.73*phi )
         D_th_coll = ( 1 + 1.45*phi )
         # ax.hlines([D_th_coll, D_th_self], xs.min(), xs.max(), color='black')
 
-        ax.semilogy()
+        if logarithmic_y:
+            ax.semilogy()
 
-        
-        ax.set_ylim(np.min(all_Ds)/1.2, np.max(all_Ds)*1.2)
-        ax.set_ylabel('$D$')
+        ylim_expand = 1.2
+        if np.nanmax(all_Ds) - np.nanmax(all_Ds) < 0.4:
+            ylim_expand = 1.5
+        ax.set_ylim(np.nanmin(all_Ds)/ylim_expand, np.nanmax(all_Ds)*ylim_expand)
+        if fix_axes:
+            ax.set_ylim(0.018, 1)
+        ax.set_ylabel('$D$ ($\mathrm{\mu m^2/s}$)')
         # ax.set_ylabel('$D/D_0$')
-        ax.set_xticks([])
+        # ax.set_xticks([])
         ax.semilogx()
         if PLOT_AGAINST_K:
-            ax.set_xlabel(r'$k \sigma$')
-            ax.set_xlim(0.3, 20)
-
             
-            realspace_ax = ax.secondary_xaxis('top', functions=(lambda k: 2*np.pi/k, lambda r: 2*np.pi/r))
-            # realspace_ax.set_xticks([1e2, 1e1, 1e0, 1e-1, 1e-2, 1e-3])
-            realspace_ax.set_xlabel(r'$2\pi/k / \sigma$')
+            if not np.isnan(diameter):
+                ax.set_xlabel(r'$k \sigma$')
+            else:
+                ax.set_xlabel(r'$k$')
+            # ax.set_xlim(0.3, 20)
+
+            if SHOW_TWIN_K_AXIS:
+                realspace_ax = ax.secondary_xaxis('top', functions=(lambda k: 2*np.pi/k, lambda r: 2*np.pi/r))
+                # realspace_ax.set_xticks([1e2, 1e1, 1e0, 1e-1, 1e-2, 1e-3])
+                realspace_ax.set_xlabel(r'$2\pi/k / \sigma$')
         else:
             ax.set_xlabel(r'$L / \sigma$')
         # ax.set_xlabel(r'$k / (2\pi / \sigma)$')
         # ax.semilogy()
         # ax.legend(fontsize=5, loc='upper left')
-        ax.legend(fontsize=7, loc='lower right')
+
+
+        # ax.set_ylim(0.3, 2)
+        # print('NORTY YLIM')
+
+        # ax.legend(fontsize=7, loc='lower right')
+        ax.legend(fontsize=7)
         # ax.set_title(f'{file}, errorbars not yet all correct')
-        common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/Ds_overlapped_{file}_{name}.pdf', hide_metadata=True)
-        common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_{file}_{name}.png', dpi=200)
+        name = '_'.join(used_sources)
+        filename = f'{file}_{name}'
+        if not TWO_PI:
+            filename += '_oneoverk'
+        # common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/Ds_overlapped_{filename}.pdf', hide_metadata=True)
+        common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_{filename}.png', dpi=200)

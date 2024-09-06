@@ -4,6 +4,8 @@ import common
 import sys
 import matplotlib.cm
 
+"""
+
 def speed_string(time_mult, every_nth_frame):
     if time_mult*every_nth_frame == 1:
         return 'realtime'
@@ -89,3 +91,5 @@ if __name__ == '__main__':
         filename = f'stack_movie_{file}_diff'
         save_array_movie(stack, pixel_size, time_step, file, f"preprocessing/figures_png/{filename}.gif")
         # save_array_movie(stack_copy, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}.mp4")
+
+        """

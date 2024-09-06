@@ -10,6 +10,7 @@ for file in common.files_from_argv('preprocessing/data', 'stack_'):
     stack      = data['stack']
     pixel_size = data['pixel_size']
     time_step  = data['time_step']
+    NAME       = data['NAME']
 
     if background_removed:
         stack = stack - stack.mean(axis=0)
@@ -23,4 +24,5 @@ for file in common.files_from_argv('preprocessing/data', 'stack_'):
         background_removed=background_removed, use_every_nth_frame=use_every_nth_frame,
         computation_time_ddm=t1-t0, num_k_bins=num_k_bins,
         pixel_size=pixel_size, particle_diameter=data.get('particle_diameter'),
-        pack_frac_given=data.get('pack_frac_given'))
+        pack_frac_given=data.get('pack_frac_given'),
+        NAME=NAME, channel=data.get('channel'))

@@ -1,4 +1,4 @@
-import countoscope
+import countoscope_new
 import numpy as np
 import time
 import sys
@@ -80,6 +80,11 @@ if __name__ == '__main__':
         # # ^^ there's no reason for the boxes to be integer pixel multiples, but it helps comparisons with the intensity method
         # sep_sizes_px = np.array([50, 50, 50, 50, 50, 50, 50,  50])
 
+        # box_sizes_px = np.array([ 2,  4,  8, 16, 32])
+        # sep_sizes_px = np.array([20, 20, 20, 20, 20])
+        # box_sizes_px = np.array([128, 128])
+        # sep_sizes_px = np.array([10,  -10])
+        # sep_sizes_px = np.array([10,  -10])
 
         # for doing timescale integral:
         box_sizes_px = np.array([1,  2,  4,  8,  16,  32,  64, 128, 256])
@@ -88,31 +93,59 @@ if __name__ == '__main__':
         box_sizes_px = np.array([1,  2,  4,  8,  16,  32,  64, 128, 256])
         sep_sizes_px = np.array([49,  48,  46,  42,  24,  8,  8, 8, 8])
 
+        # box_sizes_px = np.array([128, 128, 128, 128, 128, 128, 128])
+        # sep_sizes_px = np.array([ 10, -10, -30, -50, -70, -90,-110])
 
+        # box_sizes_px = np.array([128, 128, 128, 128, 128, 128, 128])
+        # sep_sizes_px = np.array([ 10, -10, -30, -50, -70, -90,-110])
+
+        # box_sizes_px -= 60
+        # sep_sizes_px += 60
+
+        # sep_sizes_px = np.linspace(50, -50, 41) # 41
+        # sep_sizes_px = np.linspace(-120, -100, 11)
+        # sep_sizes_px = np.linspace(10, -110, 7) # 41
+        # box_sizes_px = np.full_like(sep_sizes_px, 128)
 
         sep_sizes_px = np.linspace(5, -5, 2) # 23
         sep_sizes_px = [-13]
         # sep_sizes_px = [20, -20]
         box_sizes_px = np.full_like(sep_sizes_px, 32)
 
-        if file.startswith('marine2'):
-            box_sizes_px = np.array([1,  2,  4,  8,  16,  32])
-            # sep_sizes_px = np.array([49,  48,  46,  42,  24,  8,  8, 8, 8])
-            sep_sizes_px = 7 - box_sizes_px
 
-        elif file.startswith('marine'):
-            # box_sizes_px = box_sizes_px[1:]
-            # sep_sizes_px = sep_sizes_px[1:]
-            assert False
+        if file.startswith('marine'):
+            box_sizes_px = box_sizes_px[1:]
+            sep_sizes_px = sep_sizes_px[1:]
 
         data = common.load(f'particle_detection/data/particles_{file}.npz')
         particles = data['particles']
+        # output_filename = f'box_counting/data/counted_{file}_sep0.npz'
+        
+        # for use_old_overlap in [True, False]:
+        # # for use_old_overlap in [True, False]:
+        #     ov_str = 'oldov' if use_old_overlap else 'newov'
+        #     output_filename = f'box_counting/data/counted_{file}_plateaus_{ov_str}.npz'
+        #     calc_and_save(box_sizes_px, sep_sizes_px, data, particles,
+        #         output_filename, save_counts=False, use_old_overlap=use_old_overlap)
+
+        # for spacing in [9, 13, 17, 23, 31, 51]:
+        # box_sizes_px = np.array([1, 2, 4, 8, 16, 32, 64])
+        # sep_sizes_px = spacings_px - box_sizes_px
+        # # spacing = 9
+        # # sep_sizes_px = np.array([8, 7, 5, 1, -7, -23, -55])
+        # spacings_px  = np.array([9, 9, 9, 9, 9, 4.5, 3.5])
+        # sep_sizes_px = spacings_px - box_sizes_px
+        # sep_sizes_px = np.array([8, 7, 5, 1, -7, -26, -59])
+
+        # box_sizes_px = box_sizes_px[::-1]
+        # sep_sizes_px = sep_sizes_px[::-1]
+        # sep_sizes_px = np.full_like(box_sizes_px, 20)
 
 
         # for eleanorlong timescaleint
         # getting rid of 160 to make the presentation nicer
-        # box_sizes_px = np.logspace(np.log10(0.5), np.log10(500), 35)
-        # sep_sizes_px = 69 - box_sizes_px
+        box_sizes_px = np.logspace(np.log10(0.5), np.log10(500), 35)
+        sep_sizes_px = 69 - box_sizes_px
 
         # for alice0.66 timescaleint        
         # box_sizes_px = np.array([1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64])
@@ -122,7 +155,7 @@ if __name__ == '__main__':
         # sep_sizes_px = 69 - box_sizes_px
         # sep_sizes_px[sep_sizes_px < 2] = 2
 
-        output_filename = f'box_counting/data/counted_{file}.npz'
+        output_filename = f'box_counting/data/counted_{file}_new.npz'
 
 
         t0 = time.time()
