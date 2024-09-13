@@ -199,7 +199,7 @@ def intermediate_scattering_for_dframe(dframe_i, log, F_type, num_k_bins, use_ev
                 assert np.array_equal(k, k_)
 
     else:   
-        cores = 54
+        cores = 32
         if cores > 16:
             warnings.warn(f'using {cores} cores')
 

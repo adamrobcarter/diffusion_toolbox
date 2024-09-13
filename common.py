@@ -13,8 +13,9 @@ import termplotlib
 import psutil
 import matplotlib.pyplot as plt
 
-
+old_colors = plt.rcParams['axes.prop_cycle']
 plt.style.use('dark_background')
+plt.rcParams['axes.prop_cycle'] = old_colors
 FIT_COLOR = 'white'
 
 def get_directory_files(directory, extension, file_starts_with=''):
@@ -93,7 +94,8 @@ def save_data(filename, quiet=False, **data):
                     print(f'  saving {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} value={format_value_for_save_load(data[key])}')
             else:
                 if type(data[key]) in [list,tuple]:
-                    print(f'  saving {key.ljust(20)} type={str(type(data[key])).ljust(12)}')
+                    nparray = np.array(data[key])
+                    print(f'  saving {key.ljust(20)} dtype={str(nparray.dtype).ljust(12)} shape={nparray.shape}, size={arraysize(nparray)}')
                 else:
                     print(f'  saving {key.ljust(20)} type={str(type(data[key])).ljust(12)} value={format_value_for_save_load(data[key])}')
     
@@ -360,6 +362,13 @@ def numba_nanmean_2d_axis0(array):
     return nanmeans
 
 @numba.njit
+def numba_mean_2d_axis0(array):
+    means = np.zeros(array.shape[1])
+    for i in range(array.shape[1]):
+        means[i] = np.mean(array[:, i])
+    return means
+
+@numba.njit
 def numba_nanstd_2d_axis0(array):
     nanstds = np.zeros(array.shape[1])
     for i in range(array.shape[1]):
@@ -509,13 +518,16 @@ def files_from_argv(location, prefix):
     assert len(files), f'no files found. searching for {prefix}'
     return files
 
-def format_val_and_unc(val, unc, sigfigs=2):
+def format_val_and_unc(val, unc, sigfigs=2, latex=True):
     digits_after_decimal = -math.floor(math.log10(abs(val))) + sigfigs-1
     # print(f'.{digits_after_decimal}f digi')
     if digits_after_decimal < 0:
         digits_after_decimal = 0
     # assert digits_after_decimal
-    return f'{val:.{digits_after_decimal}f} \pm {unc:.{digits_after_decimal}f}'
+    if latex:
+        return f'{val:.{digits_after_decimal}f} \pm {unc:.{digits_after_decimal}f}'
+    else:
+        return f'{val:.{digits_after_decimal}f}±{unc:.{digits_after_decimal}f}'
 
 def nanfrac(arr):
     return np.isnan(arr).sum() / arr.size

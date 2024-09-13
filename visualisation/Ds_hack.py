@@ -18,7 +18,7 @@ ax.set_ylabel('$D$ ($\mathrm{\mu m^2/s}$)')
 ax.set_xlabel('packing fraction')
 ax.legend()
 
-common.save_fig(fig, '/home/acarter/presentations/cmd31/figures/Ds_hack.pdf', hide_metadata=True)
+# common.save_fig(fig, '/home/acarter/presentations/cmd31/figures/Ds_hack.pdf', hide_metadata=True)
 common.save_fig(fig, 'visualisation/figures_png/Ds_hack.png')
 
 """

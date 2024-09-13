@@ -4,7 +4,7 @@ import numpy as np
 import scipy.optimize
 import matplotlib.cm
 
-def go(file, SHOW_ERRORBARS=False, SHOW_FIT=True, SHOW_SHORT_FIT=False, SHOW_LONG_FIT=False):
+def go(file, SHOW_ERRORBARS=False, SHOW_FIT=True, SHOW_SHORT_FIT=False, SHOW_LONG_FIT=False, export_destination=None):
     data = common.load(f'MSD/data/msd_{file}.npz')
     msd = data['msd']
     msd_unc = data['msd_unc']
@@ -67,15 +67,16 @@ def go(file, SHOW_ERRORBARS=False, SHOW_FIT=True, SHOW_SHORT_FIT=False, SHOW_LON
     filename = f'msd_{file}'
     if SHOW_FIT:
         filename += '_fit'
-    common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/{filename}.pdf', hide_metadata=True)
+    if export_destination:
+        common.save_fig(fig, f'{export_destination}/{filename}.pdf', hide_metadata=True)
     common.save_fig(fig, f'MSD/figures_png/{filename}.png')
-    np.savez(f'visualisation/data/Ds_from_MSD_{file}',
+    common.save_data(f'visualisation/data/Ds_from_MSD_{file}',
              Ds=[popt[0]], D_uncs=[np.sqrt(pcov)[0][0]], labels=[''])
-    np.savez(f'visualisation/data/Ds_from_MSD_short_{file}',
+    common.save_data(f'visualisation/data/Ds_from_MSD_short_{file}',
              Ds=[popt_short[0]], D_uncs=[np.sqrt(pcov_short)[0][0]], labels=[''])
-    np.savez(f'visualisation/data/Ds_from_MSD_long_{file}',
+    common.save_data(f'visualisation/data/Ds_from_MSD_long_{file}',
              Ds=[popt_long[0]], D_uncs=[np.sqrt(pcov_long)[0][0]], labels=[''])
-    np.savez(f'visualisation/data/Ds_from_MSD_first_{file}',
+    common.save_data(f'visualisation/data/Ds_from_MSD_first_{file}',
              Ds=[first_point_D], D_uncs=[first_point_D_unc], labels=[''])
 
 if __name__ == '__main__':

@@ -5,6 +5,8 @@ import sys
 import DDM.show
 import matplotlib.cm
 
+# INDEX = 5
+
 source_names = {
     'DDM': 'DDM',
     'DDM_short': 'DDM short',
@@ -44,7 +46,7 @@ markers = {
     'f_short': 'x',
     'DDM_long': '*',
     'f_long': 'x',
-    'DDM': '*',
+    'DDM': '_',
     'f': 'x',
     'MSD': '_',
     'MSD_short': '_',
@@ -156,21 +158,30 @@ for (sources,) in [
             # plot_color = colors.get(source)
             xs = np.full_like(Ds, x)
 
+            # xs = xs[[INDEX]]
+            # Ds = Ds[[INDEX]]
+            # D_uncs = D_uncs[[INDEX]]
+
             # make transparency proportional to error
             rel_error = D_uncs/Ds # in (0, DDM.show.D_ERROR_THRES)
-            alphas = np.interp(rel_error, (0, DDM.show.D_ERROR_THRESH), (1, 0))
+            error0to1 = np.interp(rel_error, (0, DDM.show.D_ERROR_THRESH), (1, 0))
             
             if channel := data.get('channel'):
                 if channel == 'red':
                     cmap = matplotlib.cm.Reds
+                    color2 = 'red'
                 elif channel == 'green':
                     cmap = matplotlib.cm.Greens
+                    color2 = 'green'
             else:
                 cmap = None
 
             assert not np.any(np.isnan(xs))
 
-            scatter = ax.scatter(xs, Ds, c=color, alpha=alphas, cmap=cmap, vmin=-0.5, marker=markers[source], label=source_label)
+            print(cmap(color))
+
+            for i in range(xs.size):
+                ax.errorbar(xs[i], Ds[i], yerr=D_uncs[i], color=cmap(np.interp(color[i], (color.min(), color.max()), (0.2, 1))), marker=markers[source], label=source_label)
             
             
             files.append(NAME)
@@ -180,7 +191,10 @@ for (sources,) in [
             # assert not np.any(np.isnan(Ds)), 'nan was found in Ds'
             [all_Ds.append(D) for D in Ds]
 
-    fig.colorbar(scatter)
+    # fig.colorbar(scatter)
+
+    
+    plt.colorbar.ColorbarBase(ax, cmap=cmap)#, orientation='vertical')   
 
     assert len(all_Ds) > 0, 'no Ds were found at all'
 
@@ -201,5 +215,4 @@ for (sources,) in [
     sources_name = '_'.join(sources)
     filename = 'Ds_mult_' + sources_name + '_' + '_'.join(sys.argv[1:])
     
-    # common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/{filename}.pdf', hide_metadata=True)
     common.save_fig(fig, f'visualisation/figures_png/{filename}.png', dpi=200)

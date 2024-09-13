@@ -18,7 +18,6 @@ def go(file):
 
     ax.errorbar(r/particle_diameter, np.nanmean(g, axis=0), yerr=np.nanstd(g, axis=0)/np.sqrt(g.shape[0]), marker='o', color='tab:green')#, linestyle='none')
     # ax.semilogy()
-    common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/g_of_r_{file}.pdf', hide_metadata=True)
     common.save_fig(fig, f'van_hove/figures_png/g_of_r_{file}.png')
 
     

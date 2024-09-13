@@ -2,7 +2,9 @@ import numpy as np
 import numba
 import common
 import tqdm
-import time
+import time, functools
+import multiprocessing
+import warnings
 
 # @numba.njit
 def autocorrFFT(x):
@@ -103,15 +105,526 @@ def calc_individuals(particles):
 
     return MSDs
 
-def calc_centre_of_mass(data, groupsize):
+# def calc_centre_of_mass(data, groupsize):
 
-    np.random.shuffle(data) # shuffles along first axes (num particles)
+#     np.random.shuffle(data) # shuffles along first axes (num particles)
 
-    groups = np.array_split(data, np.ceil(data.shape[0]/groupsize), axis=0) # ceil needed otherwise the groups will be 1 too big because of roundind down
+#     groups = np.array_split(data, np.ceil(data.shape[0]/groupsize), axis=0) # ceil needed otherwise the groups will be 1 too big because of roundind down
     
-    centre_of_masses = np.array([np.nanmean(group, axis=0) for group in groups])
-    print('need to consider that many of your group might be nan')
-    return calc_internal(centre_of_masses)
+#     centre_of_masses = np.array([np.nanmean(group, axis=0) for group in groups])
+#     print('need to consider that many of your group might be nan')
+#     return calc_internal(centre_of_masses)
+
+
+@numba.njit(parallel=True)
+def numba_isin(needles, haystack):
+    ans = np.full(needles.shape, False)
+    for i in range(len(needles)):
+        for j in range(len(haystack)):
+            if needles[i] == haystack[j]:
+                ans[i] = True
+                # break # "prange or pndindex loop will not be executed in parallel due to there being more than one entry to or exit from the loop (e.g., an assertion)."
+    return ans
+
+@numba.njit(parallel=True)
+def calc_centre_of_mass_onepoint_incremental_numba(particles, groupsize, num_time_origins):
+    num_timesteps = particles[:, 2].max()
+    
+    num_time_origins = int(min(num_time_origins, num_timesteps))
+    time_origins = [int(i) for i in np.linspace(0, num_timesteps-2, num_time_origins)]
+    
+    displacements = np.full(num_time_origins, np.nan)
+
+    for time_origin_index in range(num_time_origins):
+        t0 = time_origins[time_origin_index]
+        t1 = t0 + 1
+
+        # find the rows at the relevent time steps
+        particles_t0 = particles[particles[:, 2] == t0]
+        particles_t1 = particles[particles[:, 2] == t1]
+
+        all_particle_ids_at_t0 = particles_t0[:, 3]
+        all_particle_ids_at_t1 = particles_t1[:, 3]
+        # find the particles who exist at both of these time steps
+        particle_ids_at_these_timesteps = np.intersect1d(all_particle_ids_at_t0, all_particle_ids_at_t1)
+
+        # find the rows containing these particles at the relevent time step
+        particles_t0 = particles_t0[np.isin(particles_t0[:, 3], particle_ids_at_these_timesteps), :]
+        particles_t1 = particles_t1[np.isin(particles_t1[:, 3], particle_ids_at_these_timesteps), :]
+
+        # sort by particle ID
+        particles_t0 = particles_t0[particles_t0[:, 3].argsort(), :]
+        particles_t1 = particles_t1[particles_t1[:, 3].argsort(), :]
+
+        # assert np.all(np.isin(particles_t0[:, 3], all_particle_ids_at_t0)) # assertions commented after development for performance
+        # assert np.all(np.isin(particles_t1[:, 3], all_particle_ids_at_t1))
+        # assert np.all(particles_t0[:, 3] == particles_t1[:, 3])
+        data_t0 = particles_t0[:, 0:2]
+        data_t1 = particles_t1[:, 0:2]
+        
+        shuffle = np.random.permutation(data_t0.shape[0])
+        data_t0 = data_t0[shuffle, :]
+        data_t1 = data_t1[shuffle, :]
+
+        num_groups = particle_ids_at_these_timesteps.size // groupsize
+        displacements_at_time = np.full(num_groups, np.nan)
+            
+        for group_i in numba.prange(num_groups):
+            data_this_group_t0 = data_t0[group_i*groupsize:(group_i+1)*groupsize, :]
+            data_this_group_t1 = data_t1[group_i*groupsize:(group_i+1)*groupsize, :]
+
+            # assert data_this_group_t0.shape[0] == groupsize
+
+            # COM_start = data_this_group_t0[:, :].mean(axis=0)
+            # COM_end   = data_this_group_t1[:, :].mean(axis=0)
+            COM_start = common.numba_mean_2d_axis0(data_this_group_t0)
+            COM_end   = common.numba_mean_2d_axis0(data_this_group_t1)
+
+
+            displacement = np.sum((COM_end - COM_start)**2)
+            displacements_at_time[group_i] = displacement
+        
+        displacements[time_origin_index] = displacements_at_time.mean()
+
+    return displacements.mean(), displacements.std()/np.sqrt(displacements.size)
+
+def calc_centre_of_mass_onepoint_incremental(particles, groupsizes, num_time_origins):
+    num_timesteps = particles[:, 2].max()
+    
+    num_time_origins = int(min(num_time_origins, num_timesteps))
+    time_origins = [int(i) for i in np.linspace(0, num_timesteps-2, num_time_origins)]
+    
+    displacements = np.full((len(groupsizes), num_time_origins), np.nan)
+
+    for time_origin_index in tqdm.trange(num_time_origins):
+        t0 = time_origins[time_origin_index]
+        t1 = t0 + 1
+        
+        # find the rows at the relevent time steps
+        particles_t0 = particles[particles[:, 2] == t0]
+        particles_t1 = particles[particles[:, 2] == t1]
+
+        all_particle_ids_at_t0 = particles_t0[:, 3]
+        all_particle_ids_at_t1 = particles_t1[:, 3]
+        # find the particles who exist at both of these time steps
+        particle_ids_at_these_timesteps = np.intersect1d(all_particle_ids_at_t0, all_particle_ids_at_t1)
+
+        # find the rows containing these particles at the relevent time step
+        particles_t0 = particles_t0[np.isin(particles_t0[:, 3], particle_ids_at_these_timesteps), :]
+        particles_t1 = particles_t1[np.isin(particles_t1[:, 3], particle_ids_at_these_timesteps), :]
+
+        # sort by particle ID
+        particles_t0 = particles_t0[particles_t0[:, 3].argsort(), :]
+        particles_t1 = particles_t1[particles_t1[:, 3].argsort(), :]
+
+        # assert np.all(np.isin(particles_t0[:, 3], all_particle_ids_at_t0)) # assertions commented after development for performance
+        # assert np.all(np.isin(particles_t1[:, 3], all_particle_ids_at_t1))
+        # assert np.all(particles_t0[:, 3] == particles_t1[:, 3])
+        data_t0 = particles_t0[:, 0:2]
+        data_t1 = particles_t1[:, 0:2]
+        
+        shuffle = np.random.permutation(data_t0.shape[0])
+        data_t0 = data_t0[shuffle, :]
+        data_t1 = data_t1[shuffle, :]
+
+        for groupsize_index in range(len(groupsizes)):
+            groupsize = groupsizes[groupsize_index]
+            num_groups = particle_ids_at_these_timesteps.size // groupsize
+            displacements_at_time = np.full(num_groups, np.nan)
+                
+            for group_i in range(num_groups):
+                data_this_group_t0 = data_t0[group_i*groupsize:(group_i+1)*groupsize, :]
+                data_this_group_t1 = data_t1[group_i*groupsize:(group_i+1)*groupsize, :]
+
+                # assert data_this_group_t0.shape[0] == groupsize
+
+                COM_start = data_this_group_t0[:, :].mean(axis=0)
+                COM_end   = data_this_group_t1[:, :].mean(axis=0)
+                # COM_start = common.numba_mean_2d_axis0(data_this_group_t0)
+                # COM_end   = common.numba_mean_2d_axis0(data_this_group_t1)
+
+
+                displacement = np.sum((COM_end - COM_start)**2)
+                displacements_at_time[group_i] = displacement
+            
+            displacements[groupsize_index, time_origin_index] = displacements_at_time.mean()
+
+    return displacements.mean(axis=1), displacements.std(axis=1)/np.sqrt(displacements.shape[1])
+    
+# def calc_centre_of_mass_incremental(particles, groupsizes, d_frames, num_time_origins):
+#     num_timesteps = particles[:, 2].max()
+    
+#     # num_time_origins = int(min(num_time_origins, num_timesteps))
+    
+#     displacements     = np.full((len(groupsizes), len(d_frames), num_time_origins), np.nan)
+#     num_displacements = np.full((len(groupsizes), len(d_frames)), 0)
+
+#     progress = tqdm.tqdm(total=len(d_frames) * num_time_origins * len(groupsizes))
+#     for dframe_index, d_frame in enumerate(d_frames):
+#         time_origins = [int(i) for i in np.linspace(0, num_timesteps-d_frame-1, num_time_origins)]
+    
+#         for time_origin_index in range(num_time_origins):
+#             t0 = time_origins[time_origin_index]
+#             t1 = t0 + d_frame
+            
+#             # find the rows at the relevent time steps
+#             particles_t0 = particles[particles[:, 2] == t0]
+#             particles_t1 = particles[particles[:, 2] == t1]
+
+#             all_particle_ids_at_t0 = particles_t0[:, 3]
+#             all_particle_ids_at_t1 = particles_t1[:, 3]
+#             # find the particles who exist at both of these time steps
+#             particle_ids_at_these_timesteps = np.intersect1d(all_particle_ids_at_t0, all_particle_ids_at_t1)
+#             if particle_ids_at_these_timesteps.size == 0:
+#                 continue
+
+#             # find the rows containing these particles at the relevent time step
+#             particles_t0 = particles_t0[np.isin(particles_t0[:, 3], particle_ids_at_these_timesteps), :]
+#             particles_t1 = particles_t1[np.isin(particles_t1[:, 3], particle_ids_at_these_timesteps), :]
+
+#             # sort by particle ID
+#             particles_t0 = particles_t0[particles_t0[:, 3].argsort(), :]
+#             particles_t1 = particles_t1[particles_t1[:, 3].argsort(), :]
+
+#             # assert np.all(np.isin(particles_t0[:, 3], all_particle_ids_at_t0)) # assertions commented after development for performance
+#             # assert np.all(np.isin(particles_t1[:, 3], all_particle_ids_at_t1))
+#             # assert np.all(particles_t0[:, 3] == particles_t1[:, 3])
+#             data_t0 = particles_t0[:, 0:2]
+#             data_t1 = particles_t1[:, 0:2]
+            
+#             shuffle = np.random.permutation(data_t0.shape[0])
+#             data_t0 = data_t0[shuffle, :]
+#             data_t1 = data_t1[shuffle, :]
+
+#             for groupsize_index in range(len(groupsizes)):
+#                 groupsize = groupsizes[groupsize_index]
+#                 if particle_ids_at_these_timesteps.size < groupsize:
+#                     continue
+
+#                 num_groups = particle_ids_at_these_timesteps.size // groupsize
+#                 assert num_groups > 0
+#                 displacements_at_time = np.full(num_groups, np.nan)
+                    
+#                 for group_i in range(num_groups):
+#                     data_this_group_t0 = data_t0[group_i*groupsize:(group_i+1)*groupsize, :]
+#                     data_this_group_t1 = data_t1[group_i*groupsize:(group_i+1)*groupsize, :]
+
+#                     # assert data_this_group_t0.shape[0] == groupsize
+
+#                     COM_start = data_this_group_t0[:, :].mean(axis=0)
+#                     COM_end   = data_this_group_t1[:, :].mean(axis=0)
+#                     # COM_start = common.numba_mean_2d_axis0(data_this_group_t0)
+#                     # COM_end   = common.numba_mean_2d_axis0(data_this_group_t1)
+
+
+#                     displacement = np.sum((COM_end - COM_start)**2)
+#                     assert not np.isnan(displacement)
+#                     displacements_at_time[group_i] = displacement
+
+#                 progress.update()
+                
+#                 displacements[groupsize_index, dframe_index, time_origin_index] = displacements_at_time.mean()
+#                 num_displacements[groupsize_index, dframe_index] += 1
+#     progress.close()
+#     print(num_displacements)
+
+#     # we currently overestimate num_displacements, because they're not all independent if the time origins overlap
+
+#     return np.nanmean(displacements, axis=2), np.nanstd(displacements, axis=2)/np.sqrt(num_displacements)
+
+def calc_centre_of_mass_proximity(particles, num_timesteps, window_size_x, window_size_y):
+    num_timesteps = int(particles[:, 2].max()) + 1
+
+    num_time_origins = 10
+    box_sizes = [10, 100]
+
+    time_origins = [int(t) for t in np.linspace(0, num_timesteps, num_time_origins+1)[:-1]]
+
+    particles_divided_by_frame = divide_particles_by_frame(particles, num_timesteps)
+    particle_ids_at_frame = find_particles_at_frame(particles, num_timesteps)
+
+    for time_origin in time_origins:
+        for box_size_index, box_size in enumerate(box_sizes):
+            num_boxes_x = window_size_x // box_size
+            num_boxes_y = window_size_y // box_size
+            for box_x_index in range(num_boxes_x):
+                for box_y_index in range(num_boxes_y):
+                    # find particles in box
+                    for 
+
+                    # now need the coords of these particles
+                    pass
+
+def find_particles_at_frame(particles, num_timesteps):
+    # first we divide up the data into frames, which allows later code to be more efficient
+    num_particles_at_frame = np.bincount(particles[:, 2].astype('int'))
+    max_particles_at_frame = num_particles_at_frame.max()
+    particles_at_frame = np.full((num_timesteps, max_particles_at_frame, 4), np.nan)
+    used_slots         = np.full((num_timesteps), 0)
+
+    for row_index in tqdm.trange(particles.shape[0], desc='finding particles at frame'):
+        row = particles[row_index, :]
+        row_timestep = int(row[2])
+        if not np.isin(row[3], particles_at_frame[row_timestep]):
+            particles_at_frame[row_timestep, used_slots[row_timestep]] = row[3]
+            used_slots[row_timestep] += 1
+
+    return particles_at_frame
+
+def divide_particles_by_frame(particles, num_timesteps):
+    # first we divide up the data into frames, which allows later code to be more efficient
+    num_particles_at_frame = np.bincount(particles[:, 2].astype('int'))
+    max_particles_at_frame = num_particles_at_frame.max()
+    particles_divided = np.full((num_timesteps, max_particles_at_frame, 4), np.nan)
+
+    # slow but easy version:
+    # for timestep in tqdm.trange(num_timesteps, desc='dividing'):
+    #     particles_at_timestep = particles[particles[:, 2] == timestep]
+    #     particles_divided[timestep, 0:particles_at_timestep.shape[0], :] = particles_at_timestep
+    
+    # fast version:
+    # need the data sorted by time
+    print('sorting')
+    particles = particles[particles[:, 2].argsort()]
+    print('sorted')
+
+    start_index = 0
+    current_time = 0
+    progress = tqdm.tqdm(total=num_timesteps, desc='dividing')
+    while start_index < particles.shape[0]:
+        current_time = particles[start_index, 2]
+        end_index = start_index
+
+        # find the index of the last row that has this particle ID
+        while end_index < particles.shape[0] and particles[end_index, 2] == current_time:
+            end_index += 1
+        
+        particles_divided[int(current_time), 0:end_index-start_index, :] = particles[start_index:end_index, :]
+
+        start_index = end_index
+        progress.update()
+    progress.close()
+    return particles_divided
+
+def calc_centre_of_mass_incremental_numba(particles, groupsizes, d_frames, num_time_origins):
+    num_timesteps = int(particles[:, 2].max()) + 1
+    
+    # num_time_origins = int(min(num_time_origins, num_timesteps))
+
+    # particles = np.array([
+    #     [1, 1, 0, 0],
+    #     [2, 2, 0, 1],
+    #     [3, 3, 1, 0],
+    #     [4, 4, 1, 1],
+    #     [5, 5, 1, 1],
+    #     [6, 6, 2, 0],
+    #     [7, 7, 2, 1],
+    # ])
+    # print('p12', particles[1, 2])
+    # print(divide_particles(particles, 3))
+    # sys.exit()
+    
+    displacements     = np.full((len(groupsizes), len(d_frames), num_time_origins), np.nan)
+    num_displacements = np.full((len(groupsizes), len(d_frames)), 0)
+
+
+    particles_divided = divide_particles_by_frame(particles, num_timesteps)
+
+    # now we do the computation
+    progress = tqdm.tqdm(total=len(d_frames) * num_time_origins, desc='computing')
+    for dframe_index, d_frame in enumerate(d_frames):
+        time_origins = [int(i) for i in np.linspace(0, num_timesteps-d_frame-1, num_time_origins)]
+    
+        for time_origin_index in range(num_time_origins):
+            t0 = time_origins[time_origin_index]
+            t1 = t0 + d_frame
+            
+            # find the rows at the relevent time steps
+            particles_t0 = particles_divided[t0]
+            particles_t1 = particles_divided[t1]
+
+            all_particle_ids_at_t0 = particles_t0[:, 3]
+            all_particle_ids_at_t1 = particles_t1[:, 3]
+            # find the particles who exist at both of these time steps
+            particle_ids_at_these_timesteps = np.intersect1d(all_particle_ids_at_t0, all_particle_ids_at_t1, assume_unique=True) # assume_unique tells numpy that each array has no duplicate values
+            
+            if particle_ids_at_these_timesteps.size == 0:
+                continue
+
+            # find the rows containing these particles at the relevent time step
+            particles_t0 = particles_t0[np.isin(particles_t0[:, 3], particle_ids_at_these_timesteps), :]
+            particles_t1 = particles_t1[np.isin(particles_t1[:, 3], particle_ids_at_these_timesteps), :]
+
+            displacements_at_time_origin, num_displacements_at_time_origin = calc_centre_of_mass_incremental_numba_internal(
+                particles_t0, particles_t1, groupsizes, particle_ids_at_these_timesteps.size
+            )
+            displacements[:, dframe_index, time_origin_index] = displacements_at_time_origin
+            num_displacements[:, dframe_index] += num_displacements_at_time_origin
+            
+            progress.update()
+
+    progress.close()
+
+    return np.nanmean(displacements, axis=2), np.nanstd(displacements, axis=2)/np.sqrt(num_displacements)
+
+@numba.njit(parallel=True)
+# @numba.njit()
+def calc_centre_of_mass_incremental_numba_internal(particles_t0, particles_t1, groupsizes, particle_ids_at_these_timesteps_size):
+    # sort by particle ID
+    particles_t0 = particles_t0[particles_t0[:, 3].argsort(), :]
+    particles_t1 = particles_t1[particles_t1[:, 3].argsort(), :]
+
+    # assert np.all(np.isin(particles_t0[:, 3], all_particle_ids_at_t0)) # assertions commented after development for performance
+    # assert np.all(np.isin(particles_t1[:, 3], all_particle_ids_at_t1))
+    # assert np.all(particles_t0[:, 3] == particles_t1[:, 3])
+    data_t0 = particles_t0[:, 0:2]
+    data_t1 = particles_t1[:, 0:2]
+    
+    shuffle = np.random.permutation(data_t0.shape[0])
+    data_t0 = data_t0[shuffle, :]
+    data_t1 = data_t1[shuffle, :]
+
+    displacements     = np.full((len(groupsizes)), np.nan)
+    num_displacements = np.full((len(groupsizes)), 0)
+
+    for groupsize_index in numba.prange(len(groupsizes)):
+        groupsize = groupsizes[groupsize_index]
+        if particle_ids_at_these_timesteps_size < groupsize:
+            continue
+
+        num_groups = particle_ids_at_these_timesteps_size // groupsize
+        # assert num_groups > 0 # commented for numba
+        displacements_at_time = np.full(num_groups, np.nan)
+            
+        for group_i in range(num_groups):
+            data_this_group_t0 = data_t0[group_i*groupsize:(group_i+1)*groupsize, :]
+            data_this_group_t1 = data_t1[group_i*groupsize:(group_i+1)*groupsize, :]
+
+            # assert data_this_group_t0.shape[0] == groupsize
+
+            # COM_start = data_this_group_t0[:, :].mean(axis=0)
+            # COM_end   = data_this_group_t1[:, :].mean(axis=0)
+            COM_start = common.numba_mean_2d_axis0(data_this_group_t0)
+            COM_end   = common.numba_mean_2d_axis0(data_this_group_t1)
+
+
+            displacement = np.sum((COM_end - COM_start)**2)
+            # assert not np.isnan(displacement) # commented for numba
+            displacements_at_time[group_i] = displacement
+
+        
+        displacements[groupsize_index] = displacements_at_time.mean()
+        num_displacements[groupsize_index] += 1
+    
+    return displacements, num_displacements
+
+def calc_centre_of_mass_onepoint(data, groupsize, num_time_origins):
+    # data should be of shape (num particles) x (num timesteps) x (2)
+    num_timesteps = data.shape[1]
+
+    cores = 48
+    if cores > 16:
+        warnings.warn(f'using {cores} cores')
+
+    num_time_origins = min(num_time_origins, num_timesteps)
+    time_origins = [int(i) for i in np.linspace(0, num_timesteps-2, num_time_origins)]
+    
+    displacements = np.full(num_time_origins, np.nan)
+
+    def get_data_at_timesteps():
+        for time_origin_index in range(num_time_origins):
+            time_origin = time_origins[time_origin_index]
+            particles_these_timesteps = (~np.isnan(data[:, time_origin, 0])) & (~np.isnan(data[:, time_origin+1, 0]))
+            data_these_timesteps = data[particles_these_timesteps, :, :][:, time_origin:time_origin+2, :]
+            yield data_these_timesteps
+
+    with multiprocessing.Pool(cores) as pool:
+        task = functools.partial(calc_centre_of_mass_onepoint_for_single_timeorigin, groupsize)
+
+        # all_data = []
+
+        # for time_origin in tqdm.trange(num_timesteps-1, desc='preparing data'):
+        #     data_these_timesteps = get_data_at_timestep(data, time_origin)
+        #     all_data.append(data_these_timesteps)
+        #     print('size', common.arraysize(data_these_timesteps, mult=len(all_data)))
+
+        results = list(tqdm.tqdm(pool.imap(task, get_data_at_timesteps()), total=num_time_origins, desc=f'N={str(groupsize).ljust(3)}'))
+
+        for i in range(len(results)):
+            displacements[i] = np.mean(results[i])
+            # common.term_hist(displacements_at_time)
+        # break
+
+
+    # print('data_this_group.shape', data_this_group.shape)
+    return displacements.mean(), displacements.std()/np.sqrt(displacements.size)
+
+def calc_centre_of_mass_onepoint_for_single_timeorigin(groupsize, data_these_timesteps):
+    np.random.shuffle(data_these_timesteps) # shuffles along first axes (num particles)
+        # groups = np.array_split(data_these_timetsteps, groupsize, axis=0)
+
+    num_groups = data_these_timesteps.shape[0]//groupsize
+    displacements_at_time = np.full(num_groups, np.nan)
+        
+    for group_i in range(num_groups):
+        data_this_group = data_these_timesteps[group_i*groupsize:(group_i+1)*groupsize, :, :]
+
+        assert data_this_group.shape[0] == groupsize
+
+        COM_start = data_this_group[:, 0, :].mean(axis=0)
+        COM_end   = data_this_group[:, 1, :].mean(axis=0)
+            # COM_start = common.numba_mean_2d_axis0(data_this_group[:, 0, :])
+            # COM_end   = common.numba_mean_2d_axis0(data_this_group[:, 1, :])
+
+
+        displacement = np.sum((COM_end - COM_start)**2)
+        displacements_at_time[group_i] = displacement
+    return displacements_at_time
+
+
+
+
+# @numba.njit(parallel=True)
+# def calc_centre_of_mass_onepoint_numba(data, groupsize):
+#     print(numba.config.THREADING_LAYER)
+#     # data should be of shape (num particles) x (num timesteps) x (2)
+#     num_timesteps = data.shape[1]
+
+#     displacements = np.full(num_timesteps-1, np.nan)
+
+#     for time_origin in numba.prange(num_timesteps-1):
+#         particles_these_timesteps = (~np.isnan(data[:, time_origin, 0])) & (~np.isnan(data[:, time_origin+1, 0]))
+#         data_these_timesteps = data[particles_these_timesteps, :, :][:, time_origin:time_origin+2, :]
+
+#         np.random.shuffle(data_these_timesteps) # shuffles along first axes (num particles)
+#         # groups = np.array_split(data_these_timetsteps, groupsize, axis=0)
+
+#         num_groups = data_these_timesteps.shape[0]//groupsize
+#         displacements_at_time = np.full(num_groups, np.nan)
+        
+#         for group_i in range(num_groups):
+#             data_this_group = data_these_timesteps[group_i*groupsize:(group_i+1)*groupsize, :, :]
+
+#             # assert data_this_group.shape[0] == groupsize
+
+#             # COM_start = data_this_group[:, 0, :].mean(axis=0)
+#             # COM_end   = data_this_group[:, 1, :].mean(axis=0)
+#             COM_start = common.numba_mean_2d_axis0(data_this_group[:, 0, :])
+#             COM_end   = common.numba_mean_2d_axis0(data_this_group[:, 1, :])
+
+
+#             displacement = np.sum((COM_end - COM_start)**2)
+#             displacements_at_time[group_i] = displacement
+
+#         displacements[time_origin] = np.mean(displacements_at_time)
+#         # common.term_hist(displacements_at_time)
+#         # break
+
+
+#     # print('data_this_group.shape', data_this_group.shape)
+#     return displacements.mean(), displacements.std()
+
+
 
 def calc_incremental(particles):
     # version that doesn't need reshaping - probably slower but a lot less memory

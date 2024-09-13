@@ -14,7 +14,7 @@ figsize = (5, 4)
 if PRESENT_SMALL:
     figsize = (3.5, 3.2)
 
-def go(file, SHOW_FIT=False):
+def go(file, SHOW_FIT=False, export_destination=None):
     d = common.load(f"scattering_functions/data/F_{file}.npz")
     t         = d["t"]
     F_all     = d["F"]
@@ -186,7 +186,8 @@ def go(file, SHOW_FIT=False):
             filename += '_fit'
 
         # common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/{fileprefix}_{file}.png', dpi=300, hide_metadata=True)
-        common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/{filename}.pdf', hide_metadata=True)
+        if export_destination:
+            common.save_fig(fig, f'{export_destination}/{filename}.pdf', hide_metadata=True)
         common.save_fig(fig, f'scattering_functions/figures_png/{filename}.png', dpi=300)
 
         

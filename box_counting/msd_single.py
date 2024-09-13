@@ -8,13 +8,12 @@ import scipy.integrate
 # import sDFT_interactions
 import matplotlib.cm
 
-import countoscope_theory
 
 # enums
 RESCALE_Y_VAR_N = 1
 RESCALE_Y_N = 2
 
-PRESENT_SMALL = True
+PRESENT_SMALL = False
 SHOW_JUST_ONE_BOX = False
 
 LABELS_ON_PLOT = True
@@ -27,14 +26,14 @@ SHOW_THEORY_FIT = False
 SHOW_PLATEAUS_THEORY = False
 SHOW_VARIANCE = False
 SHOW_MEAN = False
-SHOW_PLATEAUS_OBS = False
+SHOW_PLATEAUS_OBS = True
 SHOW_PLATEAU_OBS_AREA = False
 SHOW_SHORT_TIME_FIT = False
 SHOW_TIMESCALEINT_REPLACEMENT = False
 SHOW_T_SLOPE = False
 
 MAX_BOXES_ON_PLOT = 6
-DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE = True
+DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE = False
 
 # if SHOW_JUST_ONE_BOX:
     # LABELS_ON_PLOT = False
@@ -57,7 +56,7 @@ have_displayed_at_least_one = False
 
 def get_plateau(nmsd, file):
                 
-    if file == 'eleanorlong': # hacky, pls don't do this
+    if 'eleanorlong' in file: # hacky, pls don't do this
         start_index = -70000
         end_index   = -20000
     else: # used to be -300, -100
@@ -102,6 +101,8 @@ if __name__ == '__main__':
         num_of_boxes = data['num_boxes']
         sep_sizes    = data['sep_sizes']
 
+        print('L/sigma', box_sizes/sigma)
+
         num_timesteps = N2_mean.shape[1]
         num_boxes     = N2_mean.shape[0]
         t_all = np.arange(0, num_timesteps) * time_step
@@ -133,6 +134,8 @@ if __name__ == '__main__':
         # for box_size_index, L in enumerate(box_sizes):
         for box_size_index, L in list(enumerate(box_sizes)):
         # for L in [2**e for e in range(-2, 7)]:
+            L_over_sigma_str = f' ={L/sigma:.2f}σ' if sigma else ''
+            print(f'L={L:.2g}{L_over_sigma_str} ({box_size_index}/{len(box_sizes)})')
 
             L   = box_sizes[box_size_index]
             sep = sep_sizes[box_size_index]
@@ -230,6 +233,7 @@ if __name__ == '__main__':
                 return D_from_fit2, D_from_fit_unc2
 
             Dc, Dc_unc = timescaleint_replacement(N2_mean[box_size_index, :])
+            print(f'  timescaleint replacement D={common.format_val_and_unc(Dc, Dc_unc, latex=False)}')
             Dc_lower, Dc_unc_lower = timescaleint_replacement(N2_mean[box_size_index, :]-N2_std[box_size_index])
             Dc_upper, Dc_unc_upper = timescaleint_replacement(N2_mean[box_size_index, :]+N2_std[box_size_index])
             Dc_unc_final = max(Dc_unc, abs(Dc-Dc_lower), abs(Dc-Dc_upper))
@@ -273,12 +277,12 @@ if __name__ == '__main__':
             shorttime_fit_is_good = D_unc_from_shorttime/D_from_shorttime < 0.03
             # print(f'L={L}um, D_unc/D={D_unc_from_shorttime/D_from_shorttime:.3f}')
             if shorttime_fit_is_good:
-                print(f'short good {L:.3f} {D_unc_from_shorttime/D_from_shorttime:.3f}')
+                print(f'  short good D_unc/D={D_unc_from_shorttime/D_from_shorttime:.3f}')
                 Ds_shorttime_for_saving.append(D_from_shorttime)
                 D_uncs_shorttime_for_saving.append(D_unc_from_shorttime)
                 Ls_shorttime_for_saving.append(L)
             else:
-                print(f'short bad {L:.3f} {D_unc_from_shorttime/D_from_shorttime:.3f}')
+                print(f'  short bad D_unc/D={D_unc_from_shorttime/D_from_shorttime:.3f}')
 
             
             # quadratic fit to start
@@ -342,7 +346,7 @@ if __name__ == '__main__':
                 if SHOW_D_IN_LEGEND:
                     label += fr', $D_\mathrm{{short\:fit}}={common.format_val_and_unc(D_from_fit, D_from_fit_unc, 2)} \mathrm{{\mu m^2/s}}$'
                 # ±{np.sqrt(pcov[0][0]):.3f}$'
-                print(delta_N_sq.size, common.nanfrac(delta_N_sq))
+                print('  ', delta_N_sq.size, common.nanfrac(delta_N_sq))
 
                 if DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE and delta_N_sq.size > 1000:
                     points_to_plot = common.exponential_integers(1, delta_N_sq.size-1, 500)
@@ -366,16 +370,15 @@ if __name__ == '__main__':
                         ax.text(t_theory[t_index_for_text+6], N2_theory_points[t_index_for_text+6]/LABELS_ON_PLOT_Y_SHIFT, L_label,
                                 horizontalalignment='center', color=color, fontsize=9)
                     else:
-                        print()
                         ax.text(t_theory[t_index_for_text+6], N2_theory_points[t_index_for_text+6]*LABELS_ON_PLOT_Y_SHIFT, L_label,
                                 horizontalalignment='center', color=color, fontsize=9,
                                 transform_rotates_text=True, rotation=angle, rotation_mode='anchor')
                 
                 # linear fit to start
                 if not shorttime_fit_is_good: # was 0.03
-                    print(f'skipping short time fit at L={L}um, D_unc/D={D_unc_from_shorttime/D_from_shorttime:.2f}')
+                    print(f'  skipping short time fit at L={L}um, D_unc/D={D_unc_from_shorttime/D_from_shorttime:.2f}')
                 else:
-                    print(f'short time fit: D={D_from_shorttime:.4f}')
+                    print(f'  short time fit: D={D_from_shorttime:.4f}')
                     D_ratio = D_from_shorttime/D_from_fit
                     # print(f'D_short / D_fit = {D_ratio:.2f}')
                     if D_ratio > 1.5 or 1/D_ratio > 1.5:
@@ -383,7 +386,7 @@ if __name__ == '__main__':
                     if SHOW_SHORT_TIME_FIT:
                         ax.plot(t[1:fit_end], fit_func_2(t[1:fit_end], *popt), linestyle=':', color='white', linewidth=2)
 
-                print(f'from first point quad: D={D_from_first_quad:.4f}')
+                print(f'  from first point quad: D={D_from_first_quad:.4f}')
 
                 if SHOW_T_SLOPE:
                     t_half_scaling_line_offset = 5
@@ -455,14 +458,18 @@ if __name__ == '__main__':
 
         common.save_data(f'visualisation/data/Ds_from_boxcounting_{file}',
                 Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, Ls=Ls_for_saving,
-                particle_diameter=sigma)
+                particle_diameter=sigma,
+                pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'))
         common.save_data(f'visualisation/data/Ds_from_boxcounting_shorttime_{file}',
                 Ds=Ds_shorttime_for_saving, D_uncs=D_uncs_shorttime_for_saving, Ls=Ls_shorttime_for_saving,
-                particle_diameter=sigma)
+                particle_diameter=sigma,
+                pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'))
         common.save_data(f'visualisation/data/Ds_from_boxcounting_first_quad_{file}',
                 Ds=Ds_first_quad_for_saving, D_uncs=D_uncs_first_quad_for_saving, Ls=Ls_first_quad_for_saving,
-                particle_diameter=sigma)
+                particle_diameter=sigma,
+                pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'))
         common.save_data(f'visualisation/data/Ds_from_boxcounting_collective_{file}',
                 Ds=Ds_for_saving_collective, D_uncs=D_uncs_for_saving_collective, Ls=Ls_for_saving_collective,
-                particle_diameter=sigma)
+                particle_diameter=sigma,
+                pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'))
         

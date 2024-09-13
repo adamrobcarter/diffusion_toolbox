@@ -3,6 +3,8 @@ import MSD.MSD
 import numpy as np
 import time
 
+# no parrelelisation currently
+
 for file in common.files_from_argv('particle_linking/data/', 'trajs_'):
     data = common.load(f'particle_linking/data/trajs_{file}.npz')
     particles = data['particles']
@@ -16,6 +18,9 @@ for file in common.files_from_argv('particle_linking/data/', 'trajs_'):
     else:
         msd, msd_unc = MSD.MSD.calc(particles)
     t1 = time.time()
+
+    print('msd', msd[0], msd[1])
+    print(msd[1]/(4*data['time_step']))
 
     common.save_data(f'MSD/data/msd_{file}', msd=msd, msd_unc=msd_unc, time_step=data['time_step'],
                      computation_time=t1-t0)

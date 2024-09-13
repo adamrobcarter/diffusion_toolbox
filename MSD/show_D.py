@@ -45,11 +45,12 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
     # ax.set_ylim(msd[1:].min()*0.6, msd.max()/0.8)
     # ax.set_xlim(t[1]*0.8, t[-1]/0.8)
 
-    ax.set_ylim(0.01, 0.04)
+    # ax.set_ylim(0.01, 0.04)
+    ax.set_ylim(np.quantile(D, 0.02), np.quantile(D, 0.98))
 
     ax.set_ylabel(r'$D$')
     ax.set_xlabel('$\Delta t$ (s)')
     # ax.legend()
 
-    common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/D_from_msd_{file}.pdf', hide_metadata=True)
+    # common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/D_from_msd_{file}.pdf', hide_metadata=True)
     common.save_fig(fig, f'MSD/figures_png/D_from_msd_{file}.png')

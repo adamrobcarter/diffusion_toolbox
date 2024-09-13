@@ -16,13 +16,16 @@ colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
 SHOW_SEGRE_PUSEY_RESCALING_AXIS = False
 
-D_ERROR_THRESH = 0.1 # point ignored if D_unc/D > this
+D_ERROR_THRESH = 10 # point ignored if D_unc/D > this. was 0.1
 
 EXP_FIT = 0
 T_MINUS_T0_FIT = 1
 EXP_TIMES_CONST_FIT = 2
 
 FIT = EXP_TIMES_CONST_FIT
+
+DO_SHORT_LINEAR_FIT = False
+FIT_WITH_ZERO_POINT = True
 
 def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mult=False):
     lin_short_axes, lin_axes, log_axes, D_axes = axes
@@ -70,7 +73,10 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
 
 
         # print(f'k: target {target_k:.3f}, real {k:.3f}, index {k_index}, 2pi/k={2*np.pi/k:.1f}um')
-        print(f'k {k:.3f}, index {k_index}, 2pi/k={2*np.pi/k:.1f}um')
+        k_str = f'k {k:.3f}, index {k_index}, 2pi/k={2*np.pi/k:.1f}um'
+        if particle_diameter:
+            k_str += f'={2*np.pi/k/particle_diameter:.2g}σ'
+        print(k_str)
 
         f     = F_all    [:, k_index]
         f_unc = F_unc_all[:, k_index]
@@ -101,31 +107,32 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
         
         if np.isfinite(particle_diameter):
             k_label = fr'$k\sigma={k*particle_diameter:.2g}$'
+            L_label = fr'$L\approx{2*np.pi/k:.3g}\mathrm{{\mu m}}={2*np.pi/k/particle_diameter:.2g}\sigma$'
         else:
             k_label = fr'$k={k:.2g}$'
+            L_label = fr'$L\approx{2*np.pi/k:.3g}\mathrm{{\mu m}}$'
 
-        label = fr"$k={k:.3f}\mathrm{{\mu m}}$ ($L\approx{2*np.pi/k:.1f}\mathrm{{\mu m}}$, {k_label})"
+        label = fr"$k={k:.3f}\mathrm{{\mu m}}$ ({L_label})"
 
         if common.nanfrac(f) == 1:
-            print(f'all nan at k={k:.1f} (i={graph_i})')
+            print(f'all nan at k={k:.2g} (i={graph_i})')
             continue
 
 
-        if Ftype == 'f':
-            noise_thresh = 1e-2 # for eleanorlong!!
-            time_thresh = 200
-        elif Ftype == 'Fs':
-            noise_thresh = 1.7e-2
-            time_thresh = 400
-        elif Ftype == 'DDM':
-            noise_thresh = 1e-3
-            time_thresh = 400
-
-        f_noise   = f < noise_thresh
-        f_toolong = t > time_thresh
-            # f_bad   = f_noise | f_toolong # f_toolong should depend on k!!!!
-        f_bad   = f_noise
-        f_bad[0] = True
+        # if Ftype == 'f':
+        #     noise_thresh = 1e-2 # for eleanorlong!!
+        #     time_thresh = 200
+        # elif Ftype == 'Fs':
+        #     noise_thresh = 1.7e-2
+        #     time_thresh = 400
+        # elif Ftype == 'DDM':
+        #     noise_thresh = 1e-3
+        #     time_thresh = 400
+        # f_noise   = f < noise_thresh
+        # f_toolong = t > time_thresh
+        #     # f_bad   = f_noise | f_toolong # f_toolong should depend on k!!!!
+        # f_bad   = f_noise
+        # f_bad[0] = True
 
         # new noise identification idea
         # first noise point is first point where the gradient is no longer getting more negative
@@ -144,15 +151,14 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
             f_bad[peaks[0]:] = True
         else:
             print('  no peaks in -grad found?!')
-        # print(f_bad, f_bad.dtype)
-        # if display:
-        #     extra_ax.scatter(np.log10(t), grad, s=3)
-        # extra_axes[graph_i].semilogx()
 
         f_bad[f<0] = True
 
         # don't use the zero point to fit
-        f_bad[0] = True
+        if not FIT_WITH_ZERO_POINT:
+            f_bad[0] = True
+        else:
+            assert f_bad[0] == False
 
         if display:
             ax.plot(t[~f_bad], f[~f_bad], color=colors[type_index], linestyle='', label=f'{Ftype} {file}', marker='.')
@@ -186,7 +192,7 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
                 # ax.set_ylim(9.9e-1, 1.01)
                 # ax.set_xlim(0, 1000)
                 # ax.set_ylim(1e-3 * (1/k) , 1.1)
-            end_plot_time = 1/(k+0.1) * 500
+            end_plot_time = 1/(k+0.005) * 200
             end_plot_y = f[np.argmax(t > end_plot_time)] * 0.8
             if end_plot_y > 1: end_plot_y = 0.9
             if end_plot_y < 1e-4: end_plot_y = 1e-4
@@ -235,7 +241,11 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
             )
         # print('  total: disabled sigma fitting')
             # Fs_popt, Fs_pcov = scipy.optimize.curve_fit(log_func, t2[~Fs_bad], np.log10(Fs[~Fs_bad]), sigma=log_Fs_unc[~Fs_bad], absolute_sigma=True)
-        t_th = np.logspace(np.log10(t[1]), np.log10(t[-1]))
+        if FIT_WITH_ZERO_POINT:
+            theory_start = 0.1
+        else:
+            theory_start = t[1]
+        t_th = np.logspace(np.log10(theory_start), np.log10(t[-1]))
 
         if np.isfinite(np.sqrt(f_pcov)[0,0]):
             D = f_popt[0]
@@ -255,7 +265,7 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
                 print(f'  total:{common.format_val_and_unc(D, D_unc)}, (D_unc/D = {D_unc/D:.2g})')
 
                 Ds_for_saving.append(D)
-                D_uncs_for_saving.append(np.sqrt(f_pcov)[0][0])
+                D_uncs_for_saving.append(D_unc)
                 ks_for_saving.append(k)
 
         else:
@@ -278,11 +288,12 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
 
 
         if display:
-            SHORT_PLOT_MAX_X = 20 # for eleanor etc
-            SHORT_PLOT_MAX_X = 1 # for marine
-
+            SHORT_PLOT_MAX_X = 10 # for eleanor etc
             SHORT_PLOT_Y0 = f[0:int(SHORT_PLOT_MAX_X+1)].min() # for eleanor
-            SHORT_PLOT_Y0 = 0 # for marine
+
+            if file.startswith('marine'):
+                SHORT_PLOT_MAX_X = 1 # for marine
+                SHORT_PLOT_Y0 = 0 # for marine
 
             ax_short.errorbar(t, f, yerr=f_unc, color=colors[type_index], linestyle='', alpha=0.2)
             ax_short.errorbar(t, f, yerr=0, color=colors[type_index], linestyle='', marker='.')
@@ -294,7 +305,7 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
         if f_points_short.sum() > 2:
             f_popt_short, f_pcov_short = scipy.optimize.curve_fit(
                     log_func, t[f_points_short], np.log10(f[f_points_short]),
-                    p0=p0, sigma=log_f_unc[f_points_short], absolute_sigma=True
+                    p0=p0#, sigma=log_f_unc[f_points_short], absolute_sigma=True
                 )
             # print('  short: we had to disable sigma fitting')
                 
@@ -322,34 +333,34 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
             else:
                 print('  short: stopping. covariance not estimated')
 
-                
-            linear_func = lambda t, D : 1 - D*k**2*t
-            f_popt_short_linear, f_pcov_short_linear = scipy.optimize.curve_fit(
-                    linear_func, t[f_points_short], f[f_points_short],
-                    p0=p0#, sigma=log_f_unc[f_points_short], absolute_sigma=True
-                )
-            D_short_linear = f_popt_short_linear[0]
-            D_unc_short_linear = np.sqrt(f_pcov_short_linear)[0][0]
+            if DO_SHORT_LINEAR_FIT:
+                linear_func = lambda t, D : 1 - D*k**2*t
+                f_popt_short_linear, f_pcov_short_linear = scipy.optimize.curve_fit(
+                        linear_func, t[f_points_short], f[f_points_short],
+                        p0=p0#, sigma=log_f_unc[f_points_short], absolute_sigma=True
+                    )
+                D_short_linear = f_popt_short_linear[0]
+                D_unc_short_linear = np.sqrt(f_pcov_short_linear)[0][0]
 
-            if np.isfinite(D_unc_short_linear):
-                if display:
-                    # ax.plot(t_th, linear_func(t_th, *f_popt_short_linear), color=colors[type_index], linestyle='dotted', label='short')
-                    ax_short.plot(t_th, linear_func(t_th, *f_popt_short_linear), color='tab:red', linestyle='dotted', label=f'short lin $D={D_short_linear:.2g}$')
-                    ax      .plot(t_th, linear_func(t_th, *f_popt_short_linear), color='tab:red', linestyle='dotted', label=f'short lin $D={D_short_linear:.2g}$')
-                    log_ax  .plot(t_th, linear_func(t_th, *f_popt_short_linear), color='tab:red', linestyle='dotted', label=f'short lin $D={D_short_linear:.2g}$')
-                    D_ax.hlines(f_popt_short_linear[0],  t.min(), t.max(), color='tab:red', linestyle='dotted', label='short lin')
+                if np.isfinite(D_unc_short_linear):
+                    if display:
+                        # ax.plot(t_th, linear_func(t_th, *f_popt_short_linear), color=colors[type_index], linestyle='dotted', label='short')
+                        ax_short.plot(t_th, linear_func(t_th, *f_popt_short_linear), color='tab:red', linestyle='dotted', label=f'short lin $D={D_short_linear:.2g}$')
+                        ax      .plot(t_th, linear_func(t_th, *f_popt_short_linear), color='tab:red', linestyle='dotted', label=f'short lin $D={D_short_linear:.2g}$')
+                        log_ax  .plot(t_th, linear_func(t_th, *f_popt_short_linear), color='tab:red', linestyle='dotted', label=f'short lin $D={D_short_linear:.2g}$')
+                        D_ax.hlines(f_popt_short_linear[0],  t.min(), t.max(), color='tab:red', linestyle='dotted', label='short lin')
 
-                if D_unc_short_linear/D_short_linear > D_ERROR_THRESH:
-                    print(f'  short linear: stopping. D_unc/D = {D_unc_short_linear/D_short_linear:.2g}')
+                    if D_unc_short_linear/D_short_linear > D_ERROR_THRESH:
+                        print(f'  short linear: stopping. D_unc/D = {D_unc_short_linear/D_short_linear:.2g}')
 
+                    else:
+                        print(f'  short linear: {common.format_val_and_unc(D_short_linear, D_unc_short_linear)} (D_unc/D = {D_unc_short_linear/D_short_linear:.2g})')
+                        # Ds_for_saving_short    .append(f_popt_short_linear[0])
+                        # D_uncs_for_saving_short.append(np.sqrt(f_pcov_short_linear)[0][0])
+                        # ks_for_saving_short    .append(k)
+                        
                 else:
-                    print(f'  short linear: {common.format_val_and_unc(D_short_linear, D_unc_short_linear)} (D_unc/D = {D_unc_short_linear/D_short_linear:.2g})')
-                    # Ds_for_saving_short    .append(f_popt_short_linear[0])
-                    # D_uncs_for_saving_short.append(np.sqrt(f_pcov_short_linear)[0][0])
-                    # ks_for_saving_short    .append(k)
-                    
-            else:
-                print('  short linear: stopping. covariance not estimated')
+                    print('  short linear: stopping. covariance not estimated')
         else:
             print('  short: not attempting')
 
@@ -457,7 +468,7 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
             D0 = 0.04
             D_ax.hlines(D0, t.min(), t.max(), color='tab:green', linestyle='dotted')
 
-        if Ftype == 'f' and display:
+        if Ftype == 'f' and display and DO_SHORT_LINEAR_FIT:
             # Segre-Pusey rescaling (Segre & Pusey 1996, p772)
             # D2 is D(Q, t) in the paper
             Ds = f_popt_short_linear[0] # Ds(Q) in the paper

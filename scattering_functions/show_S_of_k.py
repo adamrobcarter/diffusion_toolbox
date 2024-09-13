@@ -2,10 +2,10 @@ import common
 import matplotlib.pyplot as plt
 import numpy as np
 
-SMALL = True
+SMALL = False
 SHOW_R_AXIS = False
 
-def go(file):
+def go(file, export_destination=None):
     data = common.load(f"scattering_functions/data/F_{file}.npz")
     t                 = data["t"]
     F                 = data["F"] # (num timesteps) x (num k bins)
@@ -18,13 +18,15 @@ def go(file):
     fig, ax = plt.subplots(1, 1, figsize=(3.2, 3) if SMALL else (4, 4))
     
     start_index = 40 # crops off k=0 delta fn
+    start_index = 0
     end_index = 1000
     ax.errorbar(particle_diameter*k[0, start_index:end_index], S[start_index:end_index], yerr=F_unc[0, start_index:end_index], linestyle='none', marker='o', color='tab:green')
     # ax.loglog()
     # ax.semilogy()
     ax.set_ylim(0, 2)
+    ax.semilogx()
 
-    ax.set_xlim(0.01, min(20, particle_diameter*k.max()))
+    # ax.set_xlim(0.01, min(20, particle_diameter*k.max()))
 
     ax.set_ylabel('$S(k)$')
     ax.set_xlabel('$k\sigma$')
@@ -37,7 +39,8 @@ def go(file):
 
     ax.text(0.7, 0.1, f'$\phi={file[-4:]}$', transform=ax.transAxes)
 
-    common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/S_of_k_{file}.pdf', hide_metadata=True)
+    if export_destination:
+        common.save_fig(fig, f'{export_destination}/S_of_k_{file}.pdf', hide_metadata=True)
     common.save_fig(fig, f'scattering_functions/figures_png/S_of_k_{file}.png')
 
 

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import common
-import countoscope_theory.nmsd, countoscope_theory.structure_factor
+import countoscope_old as countoscope_theory.nmsd, countoscope_theory.structure_factor
 
 for file in common.files_from_argv('box_counting/data/', 'counted_'):
     fig, ax = plt.subplots(1, 1)

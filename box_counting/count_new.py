@@ -1,4 +1,4 @@
-import countoscope_new
+import countoscope_old as countoscope_new
 import numpy as np
 import time
 import sys

@@ -11,7 +11,7 @@ for file in common.files_from_argv('particle_linking/data/', 'trajs_'):
     use_incremental = particles.size > 1e8
     use_incremental = True
 
-    num_timesteps = int(particles[:, 2].max())
+    num_timesteps = int(particles[:, 2].max()) + 1
     av_particles_per_frame = particles.shape[0]/num_timesteps
     print('av particles per frame =', av_particles_per_frame)
 
@@ -36,15 +36,14 @@ for file in common.files_from_argv('particle_linking/data/', 'trajs_'):
 
     dframes = common.exponential_integers(1, num_timesteps-1, 100)
 
-    if not use_incremental:
-        data_ = MSD.MSD.reshape(particles)
+    MSD.MSD.find_particles_at_frame(particles, num_timesteps)
 
-    msds, msd_uncs = MSD.MSD.calc_centre_of_mass_incremental_numba(particles, groupsizes, dframes, num_time_origins)
+    # msds, msd_uncs = MSD.MSD.calc_centre_of_mass_incremental_numba(particles, groupsizes, dframes, num_time_origins)
 
-    common.save_data(f'MSD/data/msd_centre_of_mass_{file}',
-                     msds=msds, msd_uncs=msd_uncs, groupsizes=groupsizes,
-                     t = dframes * data['time_step'],
-                     density=density, num_time_origins=num_time_origins,
-                     particle_diameter=data.get('particle_diameter'),
-                     pixel_size=data['pixel_size'], window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y')
-    )
+    # common.save_data(f'MSD/data/msd_centre_of_mass_{file}',
+    #                  msds=msds, msd_uncs=msd_uncs, groupsizes=groupsizes,
+    #                  t = dframes * data['time_step'],
+    #                  density=density, num_time_origins=num_time_origins,
+    #                  particle_diameter=data.get('particle_diameter'),
+    #                  pixel_size=data['pixel_size'], window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y')
+    # )
