@@ -78,10 +78,12 @@ def calc_for_f_type(F_type):
         if not log:
             filename += '_nolog'
         common.save_data(filename, F=Fs, F_unc=F_unc, k=ks, t=d_frames*time_step,
-                num_k_bins=num_k_bins, max_time_origins=max_time_origins, computation_time=t1-t0, log=log,
-                particle_diameter=particle_diameter, drift_removed=drift_removed,
-                pixel_size=pixel_size,
-                NAME=data.get('NAME'), channel=data.get('channel'))
+            num_k_bins=num_k_bins, max_time_origins=max_time_origins, computation_time=t1-t0, log=log,
+            particle_diameter=particle_diameter, drift_removed=drift_removed,
+            pixel_size=pixel_size, pack_frac_given=data.get('pack_frac_given'),
+            window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
+            NAME=data.get('NAME'), channel=data.get('channel'),
+        )
 
         print()
 

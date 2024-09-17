@@ -18,9 +18,11 @@ window_size_y = particles[:, 1].max()
 common.save_data(f'particle_detection/data/particles_eleanorlong010.npz', particles=particles,
         time_step=0.5, particle_diameter=2.82, pixel_size=pixel_size,
         window_size_x=window_size_x, window_size_y=window_size_y,
+        pack_frac_given=0.105,
         num_timesteps=num_timesteps)
 # np.save(f'particle_detection/data/particles_eleanorlong.npy', data_param)
 common.save_data(f'particle_linking/data/trajs_eleanorlong010.npz', particles=particles,
         time_step=0.5, particle_diameter=2.82, pixel_size=pixel_size,
         window_size_x=window_size_x, window_size_y=window_size_y,
+        pack_frac_given=0.105,
         num_timesteps=num_timesteps)

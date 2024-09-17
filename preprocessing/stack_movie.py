@@ -47,22 +47,24 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
                      func=lambda timestep, ax : None, nth_frame=1, max_num_frames=50,
                      dpi=300,
                      display_small=True, inverse_colors=False, highlights=False,
-                     backwards=False, method=NONE, stacks=None, stackcolors=None, channel=None):
+                     backwards=False, method=NONE, stacks=None, stackcolors=None, channel=None,
+                     no_stack=False, num_frames=None):
 
-    if method == TWOCHANNEL:
-        assert stack is None
-        assert stacks is not None
-        stack = stacks[0] # this copy is so that we can use the same checks in twochannel mode as we do in one channnel mode
-    else:
-        assert stack is not None
-        assert stacks is None
+    if not no_stack:
+        if method == TWOCHANNEL:
+            assert stack is None
+            assert stacks is not None
+            stack = stacks[0] # this copy is so that we can use the same checks in twochannel mode as we do in one channnel mode
+        else:
+            assert stack is not None
+            assert stacks is None
 
     
-    figsize = np.array(stack.shape)[[2, 1]] / dpi
-    while figsize.mean() < 3:
-        figsize *= 2
-    # if display_small and not : # potentially remove this for marine
-    #     figsize = (2.3, 2.3)
+        figsize = np.array(stack.shape)[[2, 1]] / dpi
+        while figsize.mean() < 3:
+            figsize *= 2
+        # if display_small and not : # potentially remove this for marine
+        #     figsize = (2.3, 2.3)
     
     fig, ax = plt.subplots(1, 1, figsize=figsize)
 
@@ -91,36 +93,37 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
         warnings.warn(f'fps = {fps}')
     frames = range(0, min(stack.shape[0], max_num_frames*every_nth_frame), every_nth_frame)
 
-    if backwards:
-        raise # remove me whenever you like
-        stack = stack[::-1, :, :]
+    if not no_stack:
+        if backwards:
+            raise # remove me whenever you like
+            stack = stack[::-1, :, :]
 
-    if method == REMOVE_BACKGROUND:
-        print('subtracting mean')
-        usedstack = stack[frames, :, :] - stack[:, :, :].mean(axis=0) # remove space background
+        if method == REMOVE_BACKGROUND:
+            print('subtracting mean')
+            usedstack = stack[frames, :, :] - stack[:, :, :].mean(axis=0) # remove space background
 
-    elif method == DIFF_WITH_ZERO:
-        print('subtracting frame 0')
-        usedstack = stack[frames, :, :] - stack[0, :, :]
+        elif method == DIFF_WITH_ZERO:
+            print('subtracting frame 0')
+            usedstack = stack[frames, :, :] - stack[0, :, :]
 
-    elif method == DIFF_WITH_PREVIOUS:
-        print('subtracting previous frame')
-        usedstack = stack[np.array(frames[:-1])+1, :, :] - stack[frames[:-1], :, :]
+        elif method == DIFF_WITH_PREVIOUS:
+            print('subtracting previous frame')
+            usedstack = stack[np.array(frames[:-1])+1, :, :] - stack[frames[:-1], :, :]
 
-    elif method == NONE:
-        usedstack = stack[frames, :, :]
+        elif method == NONE:
+            usedstack = stack[frames, :, :]
 
-    elif method == TWOCHANNEL:
-        usedstack = np.zeros((len(frames), stacks[0].shape[1], stacks[0].shape[2], 3))
-        for i, this_stack in enumerate(stacks):
-            print(this_stack.shape)
-            if stackcolors[i] == 'red':
-                usedstack[:, :, :, 0] = normalise_stack(this_stack[frames, :, :], file+' red')
+        elif method == TWOCHANNEL:
+            usedstack = np.zeros((len(frames), stacks[0].shape[1], stacks[0].shape[2], 3))
+            for i, this_stack in enumerate(stacks):
+                print(this_stack.shape)
+                if stackcolors[i] == 'red':
+                    usedstack[:, :, :, 0] = normalise_stack(this_stack[frames, :, :], file+' red')
 
-            elif stackcolors[i] == 'green':
-                usedstack[:, :, :, 1] = normalise_stack(this_stack[frames, :, :], file+' green')
-            else:
-                assert False, 'colors other than red and green not yet implemented'
+                elif stackcolors[i] == 'green':
+                    usedstack[:, :, :, 1] = normalise_stack(this_stack[frames, :, :], file+' green')
+                else:
+                    assert False, 'colors other than red and green not yet implemented'
 
 
     # common.term_hist(usedstack)
@@ -128,26 +131,26 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
     # print('min mean max', usedstack.min(), usedstack.mean(), usedstack.max())
 
     def show(index):
-        if backwards:
-            timestep = frames[-index]
-        else:
-            timestep = frames[index]
-        ax.clear()
+        if not no_stack:
+            if backwards:
+                timestep = frames[-index]
+            else:
+                timestep = frames[index]
+            ax.clear()
 
-        if len(usedstack.shape) == 4:
-            frame = usedstack[index, :, :, :]
-        else:
-            frame = usedstack[index, :, :]
+            if len(usedstack.shape) == 4:
+                frame = usedstack[index, :, :, :]
+            else:
+                frame = usedstack[index, :, :]
 
-            
-        # cmap = matplotlib.cm.Greys
-        # if inverse_colors:
-        #     cmap = matplotlib.cm.Greys_r
-
-        show_single_frame(ax, frame, pixel_size, channel)
+            show_single_frame(ax, frame, pixel_size, channel)
 
         
-        color = 'white' if frame.mean()/(frame.max()-frame.min()) < 0.2 else 'black' # this used to be usedstack not frame
+            color = 'white' if frame.mean()/(frame.max()-frame.min()) < 0.2 else 'black' # this used to be usedstack not frame
+        
+        else:
+            color = 'black'
+        
         time_string = speed_string(time_mult, every_nth_frame*nth_frame)#+f'\ntime = {timestep*time_step*nth_frame:.1f}s'
         ax.text(0.95, 0.05, time_string, color=color, transform=ax.transAxes, ha='right', fontsize=10)
      
@@ -159,7 +162,13 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
     
         func(timestep, ax)
 
-    common.save_gif(show, range(usedstack.shape[0]), fig, outputfilename, fps=fps, dpi=dpi)
+    if no_stack:
+        num_timesteps = num_frames
+        assert num_timesteps > 0
+    else:
+        num_timesteps = usedstack.shape[0]
+
+    common.save_gif(show, range(num_timesteps), fig, outputfilename, fps=fps, dpi=dpi)
 
 def show_single_frame(ax, frame, pixel_size, channel=None):
 

@@ -13,7 +13,8 @@ SHOW_THEORY = False
 
 METHOD_FULL = 0
 METHOD_NOFIT = 1
-METHOD = METHOD_NOFIT
+# METHOD = METHOD_NOFIT
+METHOD = METHOD_FULL
 
 """
 Countoscope appendix:
@@ -33,6 +34,105 @@ f = lambda tau: np.sqrt(tau / np.pi) * ( np.exp(-1/tau) - 1) + scipy.special.erf
 import warnings
 warnings.filterwarnings('ignore')
 
+def do_early_integral(f, t, T_integrand, T_integrand_min, T_integrand_max):
+    interval_end_index = 4
+    early_fit_func = lambda t, a: f(t/a)**4
+    early_fit_xdata = [0, t[1]]
+    early_fit_ydata = [1, T_integrand[1]]
+
+    early_popt, early_pcov = scipy.optimize.curve_fit(early_fit_func, early_fit_xdata, early_fit_ydata)
+    early_integral = scipy.integrate.quad(early_fit_func, 0, t[1], args=early_popt[0])[0]
+        
+    early_fit_ydata_min = [1, T_integrand_min[1]]
+    early_popt_min, early_pcov_min = scipy.optimize.curve_fit(early_fit_func, early_fit_xdata, early_fit_ydata_min)
+    early_integral_oneway = scipy.integrate.quad(early_fit_func, 0, t[1], args=early_popt_min[0])[0]
+        
+    early_fit_ydata_max = [1, T_integrand_max[1]]
+    early_popt_max, early_pcov_max = scipy.optimize.curve_fit(early_fit_func, early_fit_xdata, early_fit_ydata_max)
+    early_integral_otherway = scipy.integrate.quad(early_fit_func, 0, t[1], args=early_popt_max[0])[0]
+        
+    early_integral_min = min(early_integral, early_integral_oneway, early_integral_otherway)
+    early_integral_max = max(early_integral, early_integral_oneway, early_integral_otherway)
+
+    assert early_integral_min <= early_integral
+    assert early_integral <= early_integral_max
+    
+    return early_fit_func,early_popt,early_integral,early_integral_min,early_integral_max
+
+def do_late_integral(t, L, T_integrand, M2_index, M1_index):
+    late_fit_func = lambda t, a, b: (a - b*t) - np.log(1 + np.exp(a - b*t))
+    late_fit_xdata =     np.log(t          [M1_index:M2_index])
+    late_fit_ydata = 2 * np.log(T_integrand[M1_index:M2_index])
+    assert late_fit_xdata.size > 3
+    late_popt, late_pcov = scipy.optimize.curve_fit(late_fit_func, late_fit_xdata, late_fit_ydata)
+    a, b = late_popt
+    a_unc = np.sqrt(late_pcov)[0, 0]
+    b_unc = np.sqrt(late_pcov)[1, 1]
+    late_fit_func_real = lambda t, a, b: np.exp(0.5 * late_fit_func(np.log(t), a, b))
+    t_fit_late = np.logspace(np.log10(t[M1_index]), np.log10(t.max()))
+    assert np.all(late_fit_func_real(t_fit_late, *late_popt) > 0), f'some of late_fit_func_real were negative for L={L}'
+    late_integral = scipy.integrate.quad(late_fit_func_real, t[M2_index], t.max(), args=(a, b))[0]
+            # late_integral_00 = scipy.integrate.quad(late_fit_func_real, t[M2_index], t.max(), args=(a+a_unc))[0]
+            # late_integral_01 = scipy.integrate.quad(late_fit_func_real, t[M2_index], t.max(), args=tuple(late_popt))[0]
+            # late_integral_10 = scipy.integrate.quad(late_fit_func_real, t[M2_index], t.max(), args=tuple(late_popt))[0]
+            # late_integral_11 = scipy.integrate.quad(late_fit_func_real, t[M2_index], t.max(), args=tuple(late_popt))[0]
+            # print('isneg', late_fit_func_real(np.inf, *late_popt))
+            # print('isneg', late_fit_func_real(1e10, *late_popt))
+    t_to_inf = np.logspace(np.log10(t[M1_index]), 15, 1000)
+    lf = late_fit_func_real(t_to_inf, *late_popt)
+    assert np.all(lf >= 0)
+    return late_integral, late_popt, late_fit_func_real, t_fit_late
+
+def do_data_integral(t, T_integrand, T_integrand_min, T_integrand_max, M2_index):
+    data_integral = scipy.integrate.trapezoid(T_integrand    [1:M2_index], t[1:M2_index])
+    min_and_max = [
+            scipy.integrate.trapezoid(T_integrand    [1:M2_index], t[1:M2_index]),
+            scipy.integrate.trapezoid(T_integrand_max[1:M2_index], t[1:M2_index]),
+            scipy.integrate.trapezoid(T_integrand_min[1:M2_index], t[1:M2_index])
+        ]
+    data_integral_min = min(min_and_max)
+    data_integral_max = max(min_and_max)
+    assert data_integral_min <= data_integral
+    assert data_integral_max >= data_integral
+    if data_integral_min == data_integral:
+        warnings.warn('slightly strange uncertainty behavoir')
+    return data_integral,data_integral_min,data_integral_max
+
+def get_D_from_integral_contributions(L, early_integral, early_integral_min, early_integral_max, data_integral, data_integral_min, data_integral_max, late_integral):
+    total_integral     = early_integral     + data_integral     + late_integral
+    total_integral_min = early_integral_min + data_integral_min + late_integral
+    total_integral_max = early_integral_max + data_integral_max + late_integral
+    assert total_integral_min <= total_integral
+    assert total_integral_max >= total_integral
+
+    T_of_L     = 2 * (total_integral) # countoscope eq. 8
+    T_of_L_min = 2 * total_integral_min
+    T_of_L_max = 2 * total_integral_max
+    assert T_of_L_min <= T_of_L
+    assert T_of_L_max >= T_of_L
+
+    alpha_T = 0.561244
+    D_of_L     = alpha_T * L**2 / (4 * T_of_L) # countoscope eq. 9
+    D_of_L_min = alpha_T * L**2 / (4 * T_of_L_max)
+    D_of_L_max = alpha_T * L**2 / (4 * T_of_L_min)
+
+    assert D_of_L_min <= D_of_L
+    assert D_of_L_max >= D_of_L
+    return D_of_L, D_of_L_min, D_of_L_max
+
+
+def C_N_simplefit(t, C_N_over_VarN, C_N_over_VarN_unc, L):
+    
+    func = lambda t, D : countoscope_theory.nmsd.famous_f(4*D*t/L**2)**2
+
+    fitting_points = common.exponential_integers(1, t.size//2)
+    p0 = [0.05]
+    popt, pcov = scipy.optimize.curve_fit(func, t[fitting_points], C_N_over_VarN[fitting_points], sigma=C_N_over_VarN_unc[fitting_points], p0=p0, maxfev=2000)
+    
+    D_from_fit = popt[0]
+    D_from_fit_unc = np.sqrt(pcov[0][0])
+    return D_from_fit, D_from_fit_unc, func
+
 for file in common.files_from_argv('box_counting/data', 'counted_'):
 
     D_fig = plt.figure()
@@ -48,24 +148,15 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
     integrand_rescaled_fig = plt.figure()
     integrand_rescaled_ax = integrand_rescaled_fig.gca()
 
-    # D0 = { # countoscope paper, table 1
-    #     0.02: 0.0416,
-    #     0.34: 0.0310,
-    #     0.66: 0.0175
-    # }[phi]
+    C_N_fig, C_N_ax = plt.subplots(1, 1)
 
-    # data = common.load(f'box_counting/data/counted_dense_{file}.npz')
     data = common.load(f'box_counting/data/counted_{file}.npz')
-    N2_mean = data['N2_mean']
-    N2_std  = data['N2_std']
-    # N_stats = data['N_stats']
-    sigma = data['particle_diameter']
-    phi = data['pack_frac']
-    time_step    = data['time_step']
+    N2_mean   = data['N2_mean']
+    N2_std    = data['N2_std']
+    sigma     = data['particle_diameter']
+    phi       = data['pack_frac']
+    time_step = data['time_step']
 
-    # box_sizes = N_stats[:, 0]
-    # N_mean    = N_stats[:, 1]
-    # N_var     = N_stats[:, 2]
     box_sizes = data['box_sizes']
     N_mean    = data['N_mean']
     N_var     = data['N_var']
@@ -79,18 +170,19 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
     D_of_Ls     = np.full((num_boxes), np.nan)
     D_of_L_uncs = np.full((2, num_boxes), np.nan)
     T_of_Ls     = np.full((num_boxes), np.nan)
+    
+    D_of_Ls_nofit     = np.full((num_boxes), np.nan)
+    D_of_L_uncs_nofit = np.full((2, num_boxes), np.nan)
+    
+    D_of_Ls_simplefit     = np.full((num_boxes), np.nan)
+    D_of_L_uncs_simplefit = np.full((2, num_boxes), np.nan)
 
-    # sDFT_data = common.load(f'data/sDFT_{phi}.npz')
-    # late_integrals    = sDFT_data['late_integrals']
-    # integrand_theorys = sDFT_data['integrand_theorys']
-    # assert np.all(sDFT_data['box_sizes'] == box_sizes)
 
     for box_size_index in tqdm.trange(num_boxes, desc='timescale integral'):
         # T_of_Ls[box_size_index] = common.T_of_L(N2_mean[box_size_index, :], N_var[box_size_index], t)
         L = box_sizes[box_size_index]
         # D_of_Ls[box_size_index] = common.D_of_L(N2_mean[box_size_index, :], N_var[box_size_index], t, L) / D0
 
-        # print('inffrac', np.isinf(N2_mean[box_size_index, :]).sum())
 
         print(f'L={L:.1f} N_var={N_var[box_size_index]:.4f}, N_var/L^2={N_var[box_size_index]/L**2:.4f}')
 
@@ -99,8 +191,6 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
 
         # var_label = 'original'
         # var = N_var[box_size_index]
-
-        # print('plat', plateau, N_var[box_size_index])
         var_label = 'plateau'
         var = plateau / 2
 
@@ -108,40 +198,12 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
         T_integrand     = T_integrand_func(N2_mean[box_size_index, :])
         T_integrand_min = T_integrand_func(N2_mean[box_size_index, :] + N2_std[box_size_index, :])
         T_integrand_max = T_integrand_func(N2_mean[box_size_index, :] - N2_std[box_size_index, :])
-        # print(T_integrand_min.m
 
-        C_N = N_var[box_size_index] - 0.5 * N2_mean[box_size_index, :] # countoscope paper eq. 1
-        interval_end = (C_N[1] / N_var[box_size_index])**2
-        interval_end_2 = T_integrand[1]
-        # print(t[1], interval_end, interval_end_2)
-        
-        # early time integral
-        interval_end_index = 4
-        early_fit_func = lambda t, a: f(t/a)**4
-        early_fit_xdata = [0, t[1]]
-        early_fit_ydata = [1, T_integrand[1]]
+        C_N_over_VarN = 1 - N2_mean[box_size_index, :] / (plateau) # countoscope paper eq. 1
+        C_N_over_VarN_unc_sq = (N2_std[box_size_index, :] / (plateau))**2 + (N2_mean[box_size_index, :] * plateau_std / (2*plateau))**2
+        C_N_over_VarN_unc = np.sqrt(C_N_over_VarN_unc_sq)
 
-        # print(f'T_integrand[1]: {T_integrand_min[1]:.3g} {T_integrand[1]:.3g} {T_integrand_max[1]:.3g}')
-        # print(early_fit_xdata, early_fit_ydata)
-        early_popt, early_pcov = scipy.optimize.curve_fit(early_fit_func, early_fit_xdata, early_fit_ydata)
-        early_integral = scipy.integrate.quad(early_fit_func, 0, t[1], args=early_popt[0])[0]
-        
-        early_fit_ydata_min = [1, T_integrand_min[1]]
-        early_popt_min, early_pcov_min = scipy.optimize.curve_fit(early_fit_func, early_fit_xdata, early_fit_ydata_min)
-        early_integral_oneway = scipy.integrate.quad(early_fit_func, 0, t[1], args=early_popt_min[0])[0]
-        
-        early_fit_ydata_max = [1, T_integrand_max[1]]
-        early_popt_max, early_pcov_max = scipy.optimize.curve_fit(early_fit_func, early_fit_xdata, early_fit_ydata_max)
-        early_integral_otherway = scipy.integrate.quad(early_fit_func, 0, t[1], args=early_popt_max[0])[0]
-        
-        early_integral_min = min(early_integral, early_integral_oneway, early_integral_otherway)
-        early_integral_max = max(early_integral, early_integral_oneway, early_integral_otherway)
-
-        # print(f'early integrals: {early_integral_min:.3g} {early_integral:.3g} {early_integral_max:.3g}')
-        assert early_integral_min <= early_integral
-        assert early_integral <= early_integral_max
-
-        # data integral
+        # data integral setup
         if METHOD == METHOD_FULL:
             MIN_M2_INDEX = 8
         
@@ -188,170 +250,27 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
             M2_index = -1 # bit hacky
 
 
-        data_integral     = scipy.integrate.trapezoid(T_integrand    [1:M2_index], t[1:M2_index])
-        min_and_max = [
-            scipy.integrate.trapezoid(T_integrand    [1:M2_index], t[1:M2_index]),
-            scipy.integrate.trapezoid(T_integrand_max[1:M2_index], t[1:M2_index]),
-            scipy.integrate.trapezoid(T_integrand_min[1:M2_index], t[1:M2_index])
-        ]
-        data_integral_min = min(min_and_max)
-        data_integral_max = max(min_and_max)
-        assert data_integral_min <= data_integral
-        assert data_integral_max >= data_integral
-        if data_integral_min == data_integral:
-            warnings.warn('slightly strange uncertainty behavoir')
-
-        # scipy.integrate.quad(early_func, 0, t[1])
-        # T_of_Ls[box_size_index] = 2 * (scipy.integrate.quad(fit_func, 0, t[1])[0] + scipy.integrate.trapezoid(T_int[1:], t[1:])) # countoscope eq. 8
+        # full method
+        early_fit_func, early_popt, early_integral, early_integral_min, early_integral_max = do_early_integral(f, t, T_integrand, T_integrand_min, T_integrand_max)
+        data_integral, data_integral_min, data_integral_max = do_data_integral(t, T_integrand, T_integrand_min, T_integrand_max, M2_index)
+        late_integral, late_popt, late_fit_func_real, t_fit_late = do_late_integral(t, L, T_integrand, M2_index, M1_index)
         
-    
-        L_2 = L
-        # N2_func_full = lambda t, D0: 2 * N_mean[box_size_index] * (1 - f(4*D0*t/L**2) * f(4*D0*t/L_2**2)) # countoscope eq. 2, countoscope overleaf doc
-        # integrand_theory = lambda t: (1 - 0.5 * N2_func_full(t, D0) / N_mean[box_size_index])**2
-        # #                                                             ^^^^^^ this should be N_var
-        # integrand_offset = integrand_theory(t[M2_index]) - T_integrand[M2_index]
-        # integrand_offset = 0
-
-
-        # N2_theory_inter = lambda t: 2 * N_mean[box_size_index] * sDFT_interactions.sDFT_interactions(L, t, phi, D0, sigma)
-        # integrand_theory_inter = lambda t: (1 - 0.5 * N2_theory_inter(t) / (N2_theory_inter([np.inf])/2))**2
-        #                                                                   ^^^^^^ this should be N_var
-        # late_integral = scipy.integrate.quad(integrand_theory_inter, t[M2_index], np.inf)[0]
-        # late_integral = late_integrals[box_size_index]
-        # assert late_integral >= 0, f'late_integral = {late_integral} for L={L}'
-
-
-
-        # late time integral
-        
-        # log_derivative = np.gradient(T_integrand) / T_integrand
-        # log_derivative = scipy.signal.medfilt(log_derivative, 499)
-        # minima_indices, props = scipy.signal.find_peaks(-log_derivative)
-        
-        # late_fit_func = lambda t, a, b: (a - b*t) - np.log(1 + np.exp(a - b*t))
-        # late_fit_func = lambda t, a, b: (a - 3.35*t) - np.log(1 + np.exp(a - 3.35*t))
-        # ^^^^ this is not okay!!!!!!!!
-
-
-        if METHOD == METHOD_FULL:
-            # late_fit_xdata =     np.log(t          [M1_index:M2_index])
-            # late_fit_ydata = 2 * np.log(T_integrand[M1_index:M2_index])
-            # late_popt, late_pcov = scipy.optimize.curve_fit(late_fit_func, late_fit_xdata, late_fit_ydata)
-            # late_fit_func_real = lambda t, a, b: np.exp(0.5 * late_fit_func(np.log(t), a, b))
-            # t_fit_late = np.logspace(np.log10(t[M1_index]), np.log10(t.max()))
-            # # t_fit_late = np.logspace(-2, np.log10(t.max()))
-            # assert np.all(late_fit_func_real(t_fit_late, *late_popt) > 0), f'some of late_fit_func_real were negative for L={L}'
-            # # late_integral = scipy.integrate.quad(late_fit_func_real, t[M2_index], t.max(), args=tuple(late_popt))[0]
-            # # print('isneg', late_fit_func_real(np.inf, *late_popt))
-            # # print('isneg', late_fit_func_real(1e10, *late_popt))
-            # t_to_inf = np.logspace(np.log10(t[M1_index]), 15, 1000)
-            # lf = late_fit_func_real(t_to_inf, *late_popt)
-            # assert np.all(lf >= 0)
-
-            # def diy_quad(x, y):
-            #     assert x.shape == y.shape
-            #     I = 0
-            #     for i in range(len(x)-1):
-            #         I += (x[i+1] - x[i]) * (y[i+1] + y[i]) / 2
-            #     return I
-
-            # late_integral_res = scipy.integrate.quad(late_fit_func_real, t[M2_index], 1e7, full_output=True, args=tuple(late_popt))
-            # late_integral1 = late_integral_res[0]
-
-            # TODO: CAN WE NOT JUST TAKE THE INTEGRAL ANALYTICALLY!!!!
-
-
-            # late_integral = diy_quad(t_to_inf, lf)
-            # extra_decade_t = np.logspace(np.log10(t_to_inf.max()), np.log10(t_to_inf.max())*10)
-            # extra_decade_lf = late_fit_func_real(extra_decade_t, *late_popt)
-            # extra_decade_int = diy_quad(extra_decade_t, extra_decade_lf)
-            # assert extra_decade_int / late_integral < 0.01, f'extra {extra_decade_int}, int {late_integral}'
-
-            # print(late_integral_res[2])
-            # print(late_integral_res[1])
-
-            # print(diy_quad(t_to_inf, lf))
-            # print()
-
-            
-            # late_integral_res = scipy.integrate.quad(late_fit_func, np.log(t[M2_index]), np.log(1e7), full_output=True, args=tuple(late_popt))
-            # late_integral = late_integral_res[0]
-            # late_integral = np.exp(0.5 * late_integral)
-
-            # print('ratio', late_integral/late_integral1)
-
-            # assert late_integral >= 0, f'late_integral = {late_integral} for L={L}'
-
-
-
-            # late integral: countoscope SI fit
-            late_fit_func = lambda t, a, b: (a - b*t) - np.log(1 + np.exp(a - b*t))
-            late_fit_xdata =     np.log(t          [M1_index:M2_index])
-            late_fit_ydata = 2 * np.log(T_integrand[M1_index:M2_index])
-            assert late_fit_xdata.size > 3
-            late_popt, late_pcov = scipy.optimize.curve_fit(late_fit_func, late_fit_xdata, late_fit_ydata)
-            a, b = late_popt
-            a_unc = np.sqrt(late_pcov)[0, 0]
-            b_unc = np.sqrt(late_pcov)[1, 1]
-            late_fit_func_real = lambda t, a, b: np.exp(0.5 * late_fit_func(np.log(t), a, b))
-            t_fit_late = np.logspace(np.log10(t[M1_index]), np.log10(t.max()))
-            assert np.all(late_fit_func_real(t_fit_late, *late_popt) > 0), f'some of late_fit_func_real were negative for L={L}'
-            late_integral = scipy.integrate.quad(late_fit_func_real, t[M2_index], t.max(), args=(a, b))[0]
-            # late_integral_00 = scipy.integrate.quad(late_fit_func_real, t[M2_index], t.max(), args=(a+a_unc))[0]
-            # late_integral_01 = scipy.integrate.quad(late_fit_func_real, t[M2_index], t.max(), args=tuple(late_popt))[0]
-            # late_integral_10 = scipy.integrate.quad(late_fit_func_real, t[M2_index], t.max(), args=tuple(late_popt))[0]
-            # late_integral_11 = scipy.integrate.quad(late_fit_func_real, t[M2_index], t.max(), args=tuple(late_popt))[0]
-            # print('isneg', late_fit_func_real(np.inf, *late_popt))
-            # print('isneg', late_fit_func_real(1e10, *late_popt))
-            t_to_inf = np.logspace(np.log10(t[M1_index]), 15, 1000)
-            lf = late_fit_func_real(t_to_inf, *late_popt)
-            assert np.all(lf >= 0)
-        
-        elif METHOD == METHOD_NOFIT:
-            late_integral = 0
-
-        print(early_integral_min, early_integral, early_integral_max)
-        print(data_integral_min, data_integral, data_integral_max)
-
-        print(f'data integral is {data_integral/(early_integral + data_integral + late_integral):.2f}')
-
-        
-        total_integral     = early_integral     + data_integral     + late_integral
-        total_integral_min = early_integral_min + data_integral_min + late_integral
-        total_integral_max = early_integral_max + data_integral_max + late_integral
-        assert total_integral_min <= total_integral
-        assert total_integral_max >= total_integral
-
-        mindiff = total_integral - total_integral_min
-        maxdiff = total_integral_max - total_integral
-        # integral_unc = max(mindiff, maxdiff)
-
-        T_of_L = 2 * (total_integral) # countoscope eq. 8
-        # T_of_Ls[box_size_index] = 
-        # T_of_L_uncs[box_size_index] = 2 * integral_unc
-
-        T_of_L_min = 2 * total_integral_min
-        T_of_L_max = 2 * total_integral_max
-        assert T_of_L_min <= T_of_L
-        assert T_of_L_max >= T_of_L
-
-        # T_of_Ls[box_size_index] = 2 * (early_integral + data_integral) # countoscope eq. 8
-        alpha_T = 0.561244
-        D_of_L = alpha_T * L**2 / (4 * T_of_L) # countoscope eq. 9
+        D_of_L, D_of_L_min, D_of_L_max = get_D_from_integral_contributions(L, early_integral, early_integral_min, early_integral_max, data_integral, data_integral_min, data_integral_max, late_integral)
         D_of_Ls[box_size_index] = D_of_L
-        # D_of_L_uncs[box_size_index] = alpha_T * L**2 / (4 * T_of_L_uncs[box_size_index]**2)
-
-        D_of_L_min = alpha_T * L**2 / (4 * T_of_L_max)
-        D_of_L_max = alpha_T * L**2 / (4 * T_of_L_min)
-
-        assert D_of_L_min <= D_of_L
-        assert D_of_L_max >= D_of_L
-
         D_of_L_uncs[:, box_size_index] = [D_of_L - D_of_L_min, D_of_L_max - D_of_L]
+        
+        # nofit method
+        data_integral_full, data_integral_full_min, data_integral_full_max = do_data_integral(t, T_integrand, T_integrand_min, T_integrand_max, -1)
 
-        # popt_full, pcov_full = scipy.optimize.curve_fit(integrand_full, t[:M2_index], T_integrand[:M2_index], maxfev=2000)
+        D_of_L_nofit, D_of_L_min_nofit, D_of_L_max_nofit = get_D_from_integral_contributions(L, early_integral, early_integral_min, early_integral_max, data_integral_full, data_integral_full_min, data_integral_full_max, 0)
+        D_of_Ls_nofit[box_size_index] = D_of_L_nofit
+        D_of_L_uncs_nofit[:, box_size_index] = [D_of_L_nofit - D_of_L_min_nofit, D_of_L_max_nofit - D_of_L_nofit]
 
-    
+        # simple fit
+        D_simplefit, D_simplefit_unc, simplefit_func = C_N_simplefit(t, C_N_over_VarN, C_N_over_VarN_unc, L)
+        D_of_Ls_simplefit[box_size_index] = D_simplefit
+        D_of_L_uncs_simplefit[:, box_size_index] = D_simplefit_unc
+
         # if box_size_index%1 == 0:
         max_num_boxes = 12
 
@@ -366,46 +285,12 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
 
             integrand_ax = integ_axs
 
-            # integrand_ax.set_title(rf'$\phi={phi}$')
-
-            # N_var_theory = N_mean[box_size_index] * sDFT_interactions.sDFT_interactions(L=L, t=np.array([np.inf]), phi=phi, D0=D0, sigma=sigma)[0]
-            # print('var', N_var_theory, N_var[box_size_index], N_var_theory / N_var[box_size_index])
-            #              ^^^^ should be density * box volume?
-
             # print(f'early data late {early_integral:.1f}, {data_integral:.1f}, {late_integral:.1f}')
             # print('ratio', late_integral/late_integral1)
             N2_func_full = lambda t, D0: 2 * N_mean[box_size_index] * (1 - f(4*D0*t/L**2) * f(4*D0*t/L**2)) # countoscope eq. 2, countoscope overleaf doc
             t_C_N_theory = np.logspace(-2, 5, 200)
-            # N2_theory = N2_func_full(t_C_N_theory, D0)
-            # integrand_theory = (1 - 0.5 * N2_theory / N_var_theory)**2
-            # integrand_theory2 = (1 - 0.5 * N2_theory / N_mean[box_size_index])**2
-            # integrand_ax.plot(t_C_N_theory, integrand_theory, color='grey', linewidth=0.8, zorder=5)
-            # integrand_ax.plot(t_C_N_theory, integrand_theory2, color='black', linewidth=0.5, zorder=5)
-            # integrand_rescaled_ax.plot(t_C_N_theory/L**2, integrand_theory, color='black', linewidth=0.5, zorder=5, alpha=1)
+            
             integrand_ax.set_xlim(0.1, 1e5)
-
-            # integrand_ax.plot(t_C_N_theory, integrand_theory_inter(t_C_N_theory), color='black', linewidth=0.5, zorder=5, alpha=1)
-            # integrand_ax.plot(t_C_N_theory, integrand_full(t_C_N_theory, D0, N_mean), color='black', linewidth=0.5, zorder=5, alpha=1.0)
-            # print('nvar', popt_full[0]/N_var[box_size_index])
-
-            # integrand_ax.plot(t_C_N_theory, f(4*D0*t_C_N_theory/L**2)**4, color='black', linewidth=0.5, zorder=5, alpha=1.0, linestyle='dotted')
-            
-            
-
-            #T_integrand = (1 - 0.5 * N2_mean[box_size_index, :] / N_var[box_size_index] )**2 # countoscope paper eq. 8
-            # mid_ax.plot(t[1:], (N2_mean[box_size_index, :] / N_var[box_size_index])[1:], label=f'L={L:.1f}')
-           
-            # mid_ax.plot(t[1:],            1/2 * (N2_mean[box_size_index, 1:] / N_var[box_size_index]), label=f'L={L:.2f}')
-            # mid_ax.plot(t_C_N_theory[1:], 1/2 * (N2_theory[1:]               / N_var[box_size_index]), color='black', linewidth=0.5)
-            
-            # mid_ax.plot(t[1:],            1 - 1/2 * (N2_mean[box_size_index, 1:] / N_mean[box_size_index]), label=f'L={L:.1f}')
-            # mid_ax.plot(t_C_N_theory[1:], 1 - 1/2 * (N2_theory[1:]               / N_mean[box_size_index]), color='black', linewidth=0.5)
-            
-            # mid_ax.plot(t[1:],            ( 1 - 1/2 * (N2_mean[box_size_index, 1:] / N_mean[box_size_index]) )**2, label=f'L={L:.1f}')
-            # mid_ax.plot(t_C_N_theory[1:], ( 1 - 1/2 * (N2_theory[1:]               / N_mean[box_size_index]) )**2, color='black', linewidth=0.5)
-            
-            # mid_ax.loglog()
-            # print(f'L={L}, N_mean/N_var={N_mean[box_size_index]/N_var[box_size_index]}')
 
 
             color = common.colormap(box_size_index, 0, len(box_sizes))
@@ -423,25 +308,11 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
             if METHOD == METHOD_FULL:
                 integrand_ax.plot(t_fit_late, late_fit_func_real(t_fit_late, *late_popt), color=line[0].get_color(), linestyle=':', linewidth=4)
             
-                # t_to_inf = np.logspace(np.log10(t[M1_index]), 5)
-            # integrand_ax.plot(t_to_inf, integrand_theorys[box_size_index, :], color=line[0].get_color(), linestyle=':', linewidth=3)
-
-            # integrand_ax.plot(t_C_N_theory, integrand_theory(t_C_N_theory), color=line[0].get_color(), linewidth=0.8, zorder=5, alpha=1)
-            
             
             integrand_ax.legend(fontsize=8)
             integrand_ax.loglog()
             integrand_ax.set_xlabel('$t$')
-            # print(L, *late_popt)
             
-            # log_derivative = np.gradient(T_integrand) / T_integrand
-            # log_derivative = scipy.signal.medfilt(log_derivative, 499)
-            # minima_indices, props = scipy.signal.find_peaks(-log_derivative)
-            # # integrand_ax.vlines(t[minima_indices[0]], -0.02, 1,    color=line[0].get_color(), linestyle=':')
-            # extra_ax    .vlines(t[minima_indices[0]], -0.02, 0.01, color=line[0].get_color(), linestyle=':')
-
-            # extra_ax.plot(t[1:], log_derivative[1:])
-            # extra_ax.semilogx()
 
             # full sDFT (provided D0)
             if SHOW_THEORY:
@@ -463,55 +334,47 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
 
 
 
-            # integrand_ax.plot(t_fit_late, late_fit_func_real(t_fit_late, a, b), color='grey', linewidth=1, label='counto. SI fit' if box_size_index==0 else None, zorder=6)
-            # integrand_ax.plot(t_fit_late, late_fit_func_real(t_fit_late, a+a_unc, b+b_unc), color='grey', linewidth=1.5, zorder=6)
-            # integrand_ax.plot(t_fit_late, late_fit_func_real(t_fit_late, a+a_unc, b-b_unc), color='grey', linewidth=2, zorder=6)
-            # integrand_ax.plot(t_fit_late, late_fit_func_real(t_fit_late, a-a_unc, b+b_unc), color='grey', linewidth=2.5, zorder=6)
-            # integrand_ax.plot(t_fit_late, late_fit_func_real(t_fit_late, a-a_unc, b-b_unc), color='grey', linewidth=3, zorder=6)
-            
-
-
             integrand_ax.set_ylim(1e-6, 1.2e0)
             # integrand_ax.set_ylim(1e-7, 1.2e0)
+
+            C_N_ax.scatter(t, C_N_over_VarN, s=2)
+            C_N_ax.plot(t, simplefit_func(t, D_simplefit), color='grey')
 
 
     D_ax.plot(box_sizes/sigma, D_of_Ls,  label=f'')
     T_ax.plot(box_sizes/sigma, T_of_Ls, label=f'')
-    filename = 'Ds_from_timescaleint'
-    if METHOD == METHOD_NOFIT:
-        filename += '_nofit'
-    filename += f'_{file}'
-    common.save_data(f'visualisation/data/{filename}',
+    
+    common.save_data(f'visualisation/data/Ds_from_timescaleint_{file}',
              Ds=D_of_Ls, D_uncs=np.zeros_like(D_of_L_uncs), Ls=box_sizes,
              particle_diameter=sigma)
+    common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_{file}',
+             Ds=D_of_Ls_nofit, D_uncs=np.zeros_like(D_of_L_uncs_nofit), Ls=box_sizes,
+             particle_diameter=sigma)
+    common.save_data(f'visualisation/data/Ds_from_C_N_simplefit_{file}',
+             Ds=D_of_Ls_nofit, D_uncs=np.zeros_like(D_of_L_uncs_nofit), Ls=box_sizes,
+             particle_diameter=sigma)
+    common.save_data(f'visualisation/data/Ds_from_C_N_simplefit_{file}',
+             Ds=D_of_Ls_simplefit, D_uncs=np.zeros_like(D_of_L_uncs_simplefit), Ls=box_sizes,
+             particle_diameter=sigma)
     
-
-
-    # D_ax.legend()
-    # D_ax.loglog()
-    # D_ax.set_xlabel('$L/\sigma$')
-    # D_ax.set_ylabel(r'$D(L) / D_0$')
-    # common.save_fig(D_fig, f'box_counting/figures_png/D_of_L_{file}.png')
-
-    # T_ax.legend()
-    # T_ax.loglog()
-    # T_ax.set_xlabel('$L/\sigma$')
-    # T_ax.set_ylabel(r'$T(L)$')
-    # common.save_fig(T_fig, f'box_counting/figures_png/T_of_L_{file}.png')
 
     integrand_rescaled_ax.legend()
     integrand_rescaled_ax.loglog()
     integrand_rescaled_ax.set_xlabel('$t/L^2$')
     integrand_rescaled_ax.set_ylabel(r'integrand')
     integrand_rescaled_ax.set_ylim(1e-6, 1.1e0)
+
     # common.save_fig(integrand_rescaled_fig, f'box_counting/figures_png/integrand_rescaled_{file}.png', dpi=300)
     # integrand
     # integrand_ax.seintegrand_xlabel('$L/\sigma$')
     # integrand_ax.seintegrand_ylabel(r'$integrand(L)$')
     # integrand_ax.set_ylim(1e-4, 1.1e0)
     # integrand_fig.savefig('figures_png/integrand.png', dpi=300)
+
     integrand_ax.set_title(fr'{file} timescale integrand, $\phi={phi:.3f}$, $\sigma={sigma}$, var:{var_label}')
     common.save_fig(integ_fig, f'box_counting/figures_png/integrand_{file}.png', dpi=300)
-    # common.save_fig(integ_fig, f'/home/acarter/presentations/wiggly_august/figures/integrand_{file}.pdf', dpi=300)
-
-    # common.save_fig(integ_fig,  f'box_counting/figures_png/integrand_{file}.png', dpi=300)
+    
+    C_N_ax.semilogx()
+    C_N_ax.semilogy()
+    C_N_ax.set_ylim(1e-4, 1.1)
+    common.save_fig(C_N_fig, f'box_counting/figures_png/C_N_{file}.png', dpi=300)

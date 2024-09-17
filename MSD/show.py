@@ -32,35 +32,16 @@ def go(file, SHOW_ERRORBARS=False, SHOW_FIT=True, SHOW_SHORT_FIT=False, SHOW_LON
     ax.set_xlabel('$\Delta t$ (s)')
     
     # common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/msd_nofit_{file}.pdf', hide_metadata=True)
+    fits = fit_msd(t, msd, msd_unc)
 
-    fitting_points = common.exponential_integers(1, t.size-1)
-    func = lambda t, D: 4*D*t
-    popt, pcov = scipy.optimize.curve_fit(func, t[fitting_points], msd[fitting_points])
-    t_th = np.logspace(np.log10(t[fitting_points[0]]), np.log10(t[fitting_points[-1]]))
     if SHOW_FIT:
-        ax.plot(t_th, func(t_th, *popt), color='white', linewidth=1, label='fit')
-
-    fitting_points_short = common.exponential_integers(1, 10)
-    func_short = lambda t, D: 4*D*t
-    popt_short, pcov_short = scipy.optimize.curve_fit(func_short, t[fitting_points_short], msd[fitting_points_short])
-    t_th_short = np.logspace(np.log10(t[fitting_points_short[0]]), np.log10(t[fitting_points_short[-1]]))
+        ax.plot(fits['full']['t'], fits['full']['MSD'], color='white', linewidth=1, label='fit')
+        
     if SHOW_SHORT_FIT:
-        ax.plot(t_th_short, func_short(t_th_short, *popt_short), color='white', linewidth=1)
+        ax.plot(fits['short']['t'], fits['short']['MSD'], color='white', linewidth=1)
 
-    fitting_points_long = common.exponential_integers(t.size//10, t.size-1)
-    func_long = lambda t, D, a: 4*D*t + a
-    popt_long, pcov_long = scipy.optimize.curve_fit(func_long, t[fitting_points_long], msd[fitting_points_long])
-    t_th_long = np.logspace(np.log10(t[fitting_points_long[1]]), np.log10(t[fitting_points_long[-1]]))
     if SHOW_LONG_FIT:
-        ax.plot(t_th_long, func_long(t_th_long, *popt_long), color='white', linewidth=1)
-    
-    first_point_D = msd[1] / (2 * 2 * t[1])
-    first_point_D_unc = msd_unc[1] / (2 * 2 * t[1])
-
-    print(f'full  fit: D={popt[0]:.4f}')
-    print(f'short fit: D={popt_short[0]:.4f}')
-    print(f'long  fit: D={popt_long[0]:.4f}')
-    print(f'first p  : D={first_point_D:.4f}')
+        ax.plot(fits['long']['t'], fits['long']['MSD'], color='white', linewidth=1)
 
     ax.legend()
 
@@ -71,13 +52,82 @@ def go(file, SHOW_ERRORBARS=False, SHOW_FIT=True, SHOW_SHORT_FIT=False, SHOW_LON
         common.save_fig(fig, f'{export_destination}/{filename}.pdf', hide_metadata=True)
     common.save_fig(fig, f'MSD/figures_png/{filename}.png')
     common.save_data(f'visualisation/data/Ds_from_MSD_{file}',
-             Ds=[popt[0]], D_uncs=[np.sqrt(pcov)[0][0]], labels=[''])
+        Ds=[fits['full']['D']], D_uncs=[fits['full']['D_unc']], labels=[''],
+        particle_diameter=data.get('particle_diameter'), pack_frac_given=data.get('pack_frac_given'),
+        pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
+    )
     common.save_data(f'visualisation/data/Ds_from_MSD_short_{file}',
-             Ds=[popt_short[0]], D_uncs=[np.sqrt(pcov_short)[0][0]], labels=[''])
+        Ds=[fits['short']['D']], D_uncs=[fits['short']['D_unc']], labels=[''],
+        particle_diameter=data.get('particle_diameter'), pack_frac_given=data.get('pack_frac_given'),
+        pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
+    )
     common.save_data(f'visualisation/data/Ds_from_MSD_long_{file}',
-             Ds=[popt_long[0]], D_uncs=[np.sqrt(pcov_long)[0][0]], labels=[''])
+        Ds=[fits['long']['D']], D_uncs=[fits['long']['D_unc']], labels=[''],
+        particle_diameter=data.get('particle_diameter'), pack_frac_given=data.get('pack_frac_given'),
+        pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
+    )
     common.save_data(f'visualisation/data/Ds_from_MSD_first_{file}',
-             Ds=[first_point_D], D_uncs=[first_point_D_unc], labels=[''])
+        Ds=[fits['first']['D']], D_uncs=[fits['first']['D_unc']], labels=[''],
+        particle_diameter=data.get('particle_diameter'), pack_frac_given=data.get('pack_frac_given'),
+        pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
+    )
+
+def fit_msd(t, msd, msd_unc):
+    ret = {}
+
+    fitting_points = common.exponential_integers(1, t.size-1)
+    func = lambda t, D: 4*D*t
+    popt, pcov = scipy.optimize.curve_fit(func, t[fitting_points], msd[fitting_points])
+
+    t_th = np.logspace(np.log10(t[fitting_points[0]]), np.log10(t[fitting_points[-1]]))
+    fit = func(t_th, *popt)
+    ret['full'] = {
+        'D': popt[0],
+        'D_unc': np.sqrt(pcov[0, 0]),
+        't': t_th,
+        'MSD': fit,
+    }
+    # print(f'full  fit: D={popt[0]:.4f}')
+
+    fitting_points_short = common.exponential_integers(1, min(10, t.size-1))
+    func_short = lambda t, D: 4*D*t
+    popt_short, pcov_short = scipy.optimize.curve_fit(func_short, t[fitting_points_short], msd[fitting_points_short])
+    
+    t_th_short = np.logspace(np.log10(t[fitting_points_short[0]]), np.log10(t[fitting_points_short[-1]]))
+    fit_short = func_short(t_th_short, *popt_short)
+    ret['short'] = {
+        'D': popt_short[0],
+        'D_unc': np.sqrt(pcov_short[0, 0]),
+        't': t_th_short,
+        'MSD': fit_short,
+    }
+    # print(f'short fit: D={popt_short[0]:.4f}')
+
+    if t.size > 100:
+        fitting_points_long = common.exponential_integers(t.size//10, t.size-1)
+        func_long = lambda t, D, a: 4*D*t + a
+        popt_long, pcov_long = scipy.optimize.curve_fit(func_long, t[fitting_points_long], msd[fitting_points_long])
+        
+        t_th_long = np.logspace(np.log10(t[fitting_points_long[1]]), np.log10(t[fitting_points_long[-1]]))
+        fit_long = func_long(t_th_long, *popt_long)
+        ret['long'] = {
+            'D': popt_long[0],
+            'D_unc': np.sqrt(pcov_long[0, 0]),
+            't': t_th_long,
+            'MSD': fit_long,
+        }
+        # print(f'long  fit: D={popt_long[0]:.4f}')
+
+
+    first_point_D = msd[1] / (2 * 2 * t[1])
+    first_point_D_unc = msd_unc[1] / (2 * 2 * t[1])
+    ret['first'] = {
+        'D': first_point_D,
+        'D_unc': first_point_D_unc
+    }
+    # print(f'first p  : D={first_point_D:.4f}')
+
+    return ret
 
 if __name__ == '__main__':
     for file in common.files_from_argv('MSD/data', 'msd_'):

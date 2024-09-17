@@ -21,12 +21,9 @@ def go(file, export_destination=None):
     start_index = 0
     end_index = 1000
     ax.errorbar(particle_diameter*k[0, start_index:end_index], S[start_index:end_index], yerr=F_unc[0, start_index:end_index], linestyle='none', marker='o', color='tab:green')
-    # ax.loglog()
-    # ax.semilogy()
-    ax.set_ylim(0, 2)
-    ax.semilogx()
 
-    # ax.set_xlim(0.01, min(20, particle_diameter*k.max()))
+
+    ax.set_ylim(0, 2)
 
     ax.set_ylabel('$S(k)$')
     ax.set_xlabel('$k\sigma$')

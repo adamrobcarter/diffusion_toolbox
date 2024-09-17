@@ -23,4 +23,7 @@ for file in common.files_from_argv('particle_linking/data/', 'trajs_'):
     print(msd[1]/(4*data['time_step']))
 
     common.save_data(f'MSD/data/msd_{file}', msd=msd, msd_unc=msd_unc, time_step=data['time_step'],
-                     computation_time=t1-t0)
+        particle_diameter=data.get('particle_diameter'), pack_frac_given=data.get('pack_frac_given'),
+        pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
+        computation_time=t1-t0
+    )

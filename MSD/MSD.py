@@ -332,30 +332,99 @@ def calc_centre_of_mass_onepoint_incremental(particles, groupsizes, num_time_ori
 
 #     return np.nanmean(displacements, axis=2), np.nanstd(displacements, axis=2)/np.sqrt(num_displacements)
 
-def calc_centre_of_mass_proximity(particles, num_timesteps, window_size_x, window_size_y):
+def calc_centre_of_mass_proximity(particles, num_timesteps, window_size_x, window_size_y, num_time_origins, box_sizes):
     num_timesteps = int(particles[:, 2].max()) + 1
-
-    num_time_origins = 10
-    box_sizes = [10, 100]
 
     time_origins = [int(t) for t in np.linspace(0, num_timesteps, num_time_origins+1)[:-1]]
 
-    particles_divided_by_frame = divide_particles_by_frame(particles, num_timesteps)
-    particle_ids_at_frame = find_particles_at_frame(particles, num_timesteps)
+    particles_divided_by_id = divide_particles_by_id(particles, num_timesteps)
 
-    for time_origin in time_origins:
+    # print('sorting')
+    # particles = particles[particles[:, 2].argsort()]
+    # print('sorted')
+
+    msds = np.full((len(box_sizes), len(time_origins), num_timesteps), np.nan)
+    num_used_particles = np.full((len(box_sizes), len(time_origins)), np.nan)
+
+    progress = tqdm.tqdm(total=len(time_origins)*len(box_sizes))
+
+    for time_origin_index, time_origin in enumerate(time_origins):
+        particles_at_frame = particles[particles[:, 2] == time_origin]
+
         for box_size_index, box_size in enumerate(box_sizes):
-            num_boxes_x = window_size_x // box_size
-            num_boxes_y = window_size_y // box_size
+            max_num_boxes_x = int(window_size_x // box_size)
+            max_num_boxes_y = int(window_size_y // box_size)
+            box_x_positions = np.array(range(0, max_num_boxes_x)) * box_size
+            box_y_positions = np.array(range(0, max_num_boxes_y)) * box_size
+            while box_x_positions.size > 10:
+                box_x_positions = box_x_positions[::2]
+            while box_y_positions.size > 10:
+                box_y_positions = box_y_positions[::2]
+            num_boxes_x = box_x_positions.size
+            num_boxes_y = box_y_positions.size
+
+            msds_this_boxsize = np.full((num_boxes_x, num_boxes_y, num_timesteps), np.nan)
+            num_this_boxsize  = np.full((num_boxes_x, num_boxes_y), np.nan)
+
             for box_x_index in range(num_boxes_x):
+                box_x_min = box_x_positions[box_x_index]
+                box_x_max = box_x_min + box_size
                 for box_y_index in range(num_boxes_y):
+                    # print('a box')
+                    box_y_min = box_y_positions[box_y_index]
+                    box_y_max = box_y_min + box_size
+
                     # find particles in box
-                    for 
+                    in_x = (box_x_min <= particles_at_frame[:, 0]) & (particles_at_frame[:, 0] < box_x_max)
+                    in_y = (box_y_min <= particles_at_frame[:, 1]) & (particles_at_frame[:, 1] < box_y_max)
+                    particle_ids_in_box = particles_at_frame[in_x & in_y, 3]
+                    # particles_in_box = particles_at_frame[
+                    # print(particle_ids_in_box.size)
+                    if particle_ids_in_box.size == 0:
+                        continue # no! probably we should add zeros!!
 
-                    # now need the coords of these particles
-                    pass
+                    particles_reshaped = np.full((particle_ids_in_box.size, num_timesteps-time_origin, 4), np.nan)
 
-def find_particles_at_frame(particles, num_timesteps):
+                    for particle_index, particle_id in enumerate(particle_ids_in_box):
+                        rows_this_particle = particles_divided_by_id[int(particle_id)]
+                        start_row = np.nonzero(rows_this_particle[:, 2] == time_origin)[0][0]
+                        particles_reshaped[particle_index, :rows_this_particle.shape[0]-start_row, :] = rows_this_particle[start_row:, :]
+
+                    # find time when one of the particles dissapears
+                    for end_time in range(particles_reshaped.shape[1]):
+                        timesteps = particles_reshaped[:, end_time, 2]
+
+                        if np.any(np.isnan(timesteps)):
+                            break
+                        
+                        if np.any(timesteps != timesteps[0]):
+                            break
+
+                        if end_time > 0:
+                            if timesteps[0] != last_timestep + 1:
+                                break
+
+                        last_timestep = timesteps[0]
+
+                    # get the centre of mass
+                    centre_of_mass = particles_reshaped[:, :end_time, [0, 1]].mean(axis=0)
+                    msd = msd_fft1d(centre_of_mass[:, 0]) + msd_fft1d(centre_of_mass[:, 1])
+                    
+                    msds_this_boxsize[box_x_index, box_y_index, :msd.size] = msd
+                    num_this_boxsize [box_x_index, box_y_index]            = particle_ids_in_box.size
+
+            msds[box_size_index, time_origin_index, :] = np.nanmean(msds_this_boxsize, axis=(0, 1)) # mean across boxes in x and y
+            num_used_particles[box_size_index, time_origin_index] = np.nanmean(num_this_boxsize)
+
+            progress.update()
+
+    progress.close()
+    return np.nanmean(msds, axis=1), np.nanmean(num_used_particles, axis=1)
+
+def find_particle_ids_at_frame(target_frame, particles):
+    return np.unique(particles[particles[:, 2] == target_frame, 3])
+
+def find_particles_at_all_frames(particles, num_timesteps):
     # first we divide up the data into frames, which allows later code to be more efficient
     num_particles_at_frame = np.bincount(particles[:, 2].astype('int'))
     max_particles_at_frame = num_particles_at_frame.max()
@@ -370,6 +439,39 @@ def find_particles_at_frame(particles, num_timesteps):
             used_slots[row_timestep] += 1
 
     return particles_at_frame
+
+def divide_particles_by_id(particles, num_timesteps):
+    # first we divide up the data by particle id, which allows later code to be more efficient
+    particles_divided = [] # if we used a numpy array this would be reshaping as in the past, which is a no-go
+    num_particles = particles[:, 3].max() + 1
+    
+    # need the data sorted by ID
+    print('sorting')
+    particles = particles[particles[:, 3].argsort()]
+    print('sorted')
+
+    start_index = 0
+    current_id = 0
+    progress = tqdm.tqdm(total=num_particles, desc='dividing')
+    while start_index < particles.shape[0]:
+        current_id = particles[start_index, 3]
+        end_index = start_index
+        
+        assert len(particles_divided) == current_id
+
+        # find the index of the last row that has this particle ID
+        while end_index < particles.shape[0] and particles[end_index, 3] == current_id:
+            end_index += 1
+
+        particles_to_append = particles[start_index:end_index, :]
+        particles_to_append = particles_to_append[particles_to_append[:, 2].argsort()]
+        
+        particles_divided.append(particles_to_append)
+
+        start_index = end_index
+        progress.update()
+    progress.close()
+    return particles_divided
 
 def divide_particles_by_frame(particles, num_timesteps):
     # first we divide up the data into frames, which allows later code to be more efficient
@@ -642,7 +744,7 @@ def calc_incremental(particles):
     msd_count = np.zeros(num_timesteps)
 
     # for particle in tqdm.trange(num_particles):
-    progress = tqdm.tqdm(total=num_particles)
+    progress = tqdm.tqdm(total=particles.shape[0])
 
     start_index = 0
     current_id = 0
@@ -655,7 +757,6 @@ def calc_incremental(particles):
         while end_index < particles.shape[0] and particles[end_index, 3] == current_id:
             end_index += 1
 
-        t0 = time.time()
         data_this_particle = particles[start_index:end_index, :]
         assert np.all(data_this_particle[:, 3] == current_id)
         
@@ -693,7 +794,8 @@ def calc_incremental(particles):
                 # t_c = t3-t2
                 # t = t3-t0
                 # print(f'{t_a/t:.2f} {t_b/t:.2f} {t_c/t:.2f}')
-        progress.update()
+        progress.n = end_index # https://github.com/tqdm/tqdm/issues/1264
+        progress.refresh()
         start_index = end_index
     progress.close()
 

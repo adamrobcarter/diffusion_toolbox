@@ -4,7 +4,7 @@ import time
 import sys
 import common
 
-def calc_and_save(box_sizes_px, sep_sizes_px, data, particles, output_file_name,
+def calc_and_save(box_sizes, sep_sizes, data, particles, output_file_name,
                   extra_to_save={}, save_counts=False, use_old_overlap=False,
                   save_data=True):
     t0 = time.time()
@@ -28,9 +28,9 @@ def calc_and_save(box_sizes_px, sep_sizes_px, data, particles, output_file_name,
     # if file == 'eleanorlong':
     #     pixel_size = 0.17 # so the boxes are the same size as aliceXXX
     
-    box_sizes = box_sizes_px * pixel_size 
+    # box_sizes = box_sizes_px * pixel_size 
     # ^^ there's no reason for the boxes to be integer pixel multiples, but it helps comparisons with the intensity method
-    sep_sizes = sep_sizes_px * pixel_size 
+    # sep_sizes = sep_sizes_px * pixel_size 
     # bigger sep at low box sizes to reduce the number of boxes, as we already have loads of stats for small boxes
     # sep[0] = -60
 
@@ -72,7 +72,8 @@ def calc_and_save(box_sizes_px, sep_sizes_px, data, particles, output_file_name,
                 particle_diameter_calced=particle_diameter_calced, computation_time=time.time()-t0,
                 depth_of_field=depth_of_field, old_overlap=use_old_overlap,
                 box_coords=results.box_coords,
-                window_size_x=window_size_x, window_size_y=window_size_y, pixel_size=data['pixel_size'],
+                pack_frac_given=data.get('pack_frac_given'),
+                window_size_x=window_size_x, window_size_y=window_size_y, pixel_size=data.get('pixel_size'),
                 **extra_to_save)
     else:
         print('not saving data')
@@ -110,7 +111,6 @@ if __name__ == '__main__':
 
         data = common.load(f'particle_detection/data/particles_{file}.npz')
         particles     = data['particles']
-        pixel_size    = data['pixel_size']
         window_size_x = data['window_size_x']
         window_size_y = data['window_size_x']
         
@@ -118,10 +118,16 @@ if __name__ == '__main__':
 
 
         # for eleanorlong timescaleint
-        box_sizes_px = np.logspace(np.log10(1), np.log10(0.9*window_size/pixel_size), 35)
-        # print('aaaa', 0.8*window_size/pixel_size)
-        # box_sizes_px = np.array([0.9*window_size/pixel_size])
-        sep_sizes_px = 59 - box_sizes_px
+        if file.startswith('eleanorlong'):
+            pixel_size    = data['pixel_size']
+            box_sizes = np.logspace(np.log10(pixel_size), np.log10(0.9*window_size), 35)
+            # print('aaaa', 0.8*window_size/pixel_size)
+            # box_sizes_px = np.array([0.9*window_size/pixel_size])
+            sep_sizes = 17 - box_sizes
+
+        elif file.startswith('brennan'):
+            box_sizes = np.logspace(np.log10(0.2), np.log10(0.9*window_size), 35)
+            sep_sizes = 17 - box_sizes
 
         # IS THIS THE TWO PI PROBLEM
         # SMALLES BOX IS 1PX
@@ -138,7 +144,7 @@ if __name__ == '__main__':
 
 
         t0 = time.time()
-        calc_and_save(box_sizes_px, sep_sizes_px, data, particles,
+        calc_and_save(box_sizes, sep_sizes, data, particles,
             output_filename, save_counts=False, use_old_overlap=False,
             save_data=True)
         print(f'took {time.time()-t0:.0f}s')

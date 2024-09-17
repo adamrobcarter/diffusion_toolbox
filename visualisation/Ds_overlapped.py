@@ -1,6 +1,7 @@
 import common
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 
 SHOW_TWIN_K_AXIS = False
 PRESENT_SMALL = False
@@ -21,12 +22,14 @@ source_names = {
     'MSD_long': 'MSD long time',
     'MSD_first': 'MSD first',
     'MSD_centre_of_mass_onepoint': 'MSD CoM',
+    'MSD_centre_of_mass_proximity': 'MSD CoM prox',
     'boxcounting_shorttime': 'Countoscope short time fit',
     'boxcounting_first_quad': 'Countoscope short time',
     'boxcounting_collective': 'Countoscope full fit',
     'timescaleint': 'timescale integral',
     'timescaleint_nofit': 'timescale integral (no fit)',
-    'D0Sk': '$D_0/S(k)$'
+    'D0Sk': r'$D_{MSD}/S(k)$',
+    'C_N_simplefit': '$C_N$ fit',
 }
 
 colors = {
@@ -38,11 +41,13 @@ colors = {
     # 'boxcounting': 'counting',
     'MSD_short': 'tab:blue',
     'MSD_centre_of_mass_onepoint': 'tab:blue',
-    'timescaleint': 'tab:green',
+    'MSD_centre_of_mass_proximity': 'tab:blue',
+    'timescaleint': 'tab:orange',
     'timescaleint_nofit': 'tab:orange',
     'boxcounting_collective': 'tab:orange',
     'boxcounting_shorttime': 'tab:orange',
     'boxcounting_first_quad': 'tab:orange',
+    'C_N_simplefit': 'tab:red',
     'D0Sk': 'tab:red',
 }
 
@@ -58,13 +63,15 @@ markers = {
     'MSD_long': '_',
     'MSD_first': '_',
     'MSD_centre_of_mass_onepoint': '_',
+    'MSD_centre_of_mass_proximity': '_',
     'boxcounting': '_',
     'boxcounting_first_quad': '_',
     'boxcounting_shorttime': '_',
     'boxcounting_collective': 'x',
-    'timescaleint': 'o',
+    'timescaleint': '+',
     'timescaleint_nofit': 'o',
     'D0Sk': 'o',
+    'C_N_simplefit': '|',
 }
 
 def go(file, sources, PLOT_AGAINST_K, TWO_PI, logarithmic_y, fix_axes, export_destination=None):
@@ -86,6 +93,8 @@ def go(file, sources, PLOT_AGAINST_K, TWO_PI, logarithmic_y, fix_axes, export_de
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     
     MSD_D = None
+    pack_frac_calced = None
+    pack_frac_given  = None
 
     # for source in ['f', 'Fs', 'DDM', 'boxcounting', 'boxcounting_shorttime', 'MSD']:
     # for source in ['boxcounting', 'MSD', 'Fs', 'f', 'DDM']:
@@ -95,7 +104,9 @@ def go(file, sources, PLOT_AGAINST_K, TWO_PI, logarithmic_y, fix_axes, export_de
     # for source in [f'f_{timescale}', f'DDM_{timescale}', f'DDM_long', 'DDM', 'timescaleint']:
     for source in sources:
 
-        source_label = f'{source_names[source]}' if not source.startswith('MSD') else None
+        source_label = f'{source_names[source]}'# if not source.startswith('MSD') else None
+        if source in ['MSD', 'MSD_short']:
+            source_label = None
 
         if source == 'D0Sk':
             data = common.load(f"scattering_functions/data/F_{file}.npz")
@@ -128,6 +139,8 @@ def go(file, sources, PLOT_AGAINST_K, TWO_PI, logarithmic_y, fix_axes, export_de
             try:
                 data = common.load(f'visualisation/data/Ds_from_{source}_{file}.npz')
             except FileNotFoundError:
+                if source == 'MSD_short':
+                    raise
                 print('FileNotFound', source)
                 continue
             Ds     = data['Ds']
@@ -173,7 +186,7 @@ def go(file, sources, PLOT_AGAINST_K, TWO_PI, logarithmic_y, fix_axes, export_de
                 # D_uncs = D_uncs[xs > thresh]
                 # xs = xs[xs > thresh]
 
-            elif source.startswith('timescaleint'):
+            elif source.startswith('timescaleint') or source.startswith('C_N') :
                 if PLOT_AGAINST_K:
                     print('skipping timescaleint')
                     continue
@@ -202,8 +215,9 @@ def go(file, sources, PLOT_AGAINST_K, TWO_PI, logarithmic_y, fix_axes, export_de
 
 
         diameter = data.get('particle_diameter')
+
         
-        if 'pixel_size' in data and data['pixel_size'] is not None:
+        if 'pixel_size' in data and data['pixel_size'] != None:
             if diameter and not np.isnan(diameter):
                 if PLOT_AGAINST_K:
                     pixel_size = data['pixel_size'] * diameter
@@ -211,7 +225,7 @@ def go(file, sources, PLOT_AGAINST_K, TWO_PI, logarithmic_y, fix_axes, export_de
                     pixel_size = data['pixel_size'] / diameter
             else:
                 pixel_size = data['pixel_size']
-        if 'window_size_x' in data and data['window_size_x'] is not None:
+        if 'window_size_x' in data and data['window_size_x'] != None:
             if diameter and not np.isnan(diameter):
                 if PLOT_AGAINST_K:
                     window_size = min(data['window_size_x'], data['window_size_y']) * diameter
@@ -220,11 +234,18 @@ def go(file, sources, PLOT_AGAINST_K, TWO_PI, logarithmic_y, fix_axes, export_de
             else:
                 window_size = min(data['window_size_x'], data['window_size_y'])
 
+        if 'pack_frac_given' in data and data['pack_frac_given'] != None:
+            pack_frac_given = data['pack_frac_given']
+        if 'pack_frac_calced' in data and data['pack_frac_calced'] != None:
+            pack_frac_calced = data['pack_frac_calced']
+
         if diameter and not np.isnan(diameter):
             if PLOT_AGAINST_K:
                 xs *= diameter
             else:
                 xs /= diameter
+        else:
+            print('not rescaling by diameter')
 
         assert not np.any(np.isnan(xs)), f'nan found in xs from {source}'
 
@@ -250,8 +271,15 @@ def go(file, sources, PLOT_AGAINST_K, TWO_PI, logarithmic_y, fix_axes, export_de
     print('MSD errors hacked')
     ax.fill_between(ax.get_xlim(), 0.97, 1.03, facecolor=colors['MSD_short'], alpha=0.5)
 
-    x = (1+0.1)/(1-0.1)**3
-    ax.hlines(x, *ax.get_xlim(), label='$D_0/S(k=0)$', color='gray')
+    if pack_frac_calced:
+        pack_frac = pack_frac_calced
+    elif pack_frac_given:
+        pack_frac = pack_frac_given
+    else:
+        pack_frac = None
+    if pack_frac:
+        x = (1+pack_frac)/(1-pack_frac)**3
+        ax.hlines(x, *ax.get_xlim(), label=r'$(1+\phi)/(1-\phi)^3$', color='gray')
 
             
     if not PLOT_AGAINST_K:
@@ -311,11 +339,15 @@ def go(file, sources, PLOT_AGAINST_K, TWO_PI, logarithmic_y, fix_axes, export_de
         common.save_fig(fig, f'{export_destination}/Ds_overlapped_{filename}.pdf', hide_metadata=True)
     common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_{filename}.png', dpi=200)
 
+    print()
 
-for file in common.files_from_argv('visualisation/data', 'Ds_from_DDM_'):
+for file in sys.argv[1:]:
 
-    go(file, ['MSD_short', 'f', 'f_short', 'boxcounting_shorttime', 'boxcounting_collective', 'timescaleint_nofit', 'MSD_centre_of_mass_onepoint'],
-        PLOT_AGAINST_K=False, TWO_PI=False, logarithmic_y=True, fix_axes=False)
+    go(file, ['MSD_short', 'D0Sk', 'f', 'f_short', 'boxcounting_shorttime', 'boxcounting_collective', 'timescaleint_nofit', 'timescaleint', 'MSD_centre_of_mass_proximity'],
+        PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, fix_axes=False)
 
-    go(file, ['MSD_short', 'D0Sk', 'f', 'f_short', 'f_long'],
-        PLOT_AGAINST_K=True, TWO_PI=True, logarithmic_y=True, fix_axes=False)
+    # go(file, ['MSD_short', 'boxcounting_collective', 'timescaleint_nofit', 'timescaleint', 'C_N_simplefit'],
+    #     PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, fix_axes=False)
+
+    # go(file, ['MSD_short', 'D0Sk', 'f', 'f_short', 'f_long'],
+    #     PLOT_AGAINST_K=True, TWO_PI=True, logarithmic_y=True, fix_axes=False)

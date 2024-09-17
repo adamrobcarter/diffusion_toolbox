@@ -12,10 +12,15 @@ for phi in [0.02, 0.34, 0.66]:
     data[:, 2] -= data[:, 2].min() # ensure time is zero based
     data[:, 3] -= data[:, 3].min() # ensure ID is zero based
 
+    window_size_x = data[:, 0].max()
+    window_size_y = data[:, 1].max()
+
     np.savez(f'particle_detection/data/particles_alice{phi}.npz', particles=data,
              time_step=0.5, particle_diameter=2.8, pixel_size=PIXEL,
+             window_size_x=window_size_x, window_size_y=window_size_y,
              num_timesteps=num_timesteps)
 
     np.savez(f'particle_linking/data/trajs_alice{phi}.npz', particles=data,
              time_step=0.5, particle_diameter=2.8, pixel_size=PIXEL,
+             window_size_x=window_size_x, window_size_y=window_size_y,
              num_timesteps=num_timesteps)

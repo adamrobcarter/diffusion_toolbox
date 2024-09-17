@@ -52,6 +52,8 @@ def intensity_correlation(data1, data2):
     print(r_sq.shape)
 
 def load(filename):
+    if not filename.endswith('.npz'):
+        filename += '.npz'
     modified = datetime.datetime.fromtimestamp(os.path.getmtime(f'{filename}'))
     diff = datetime.datetime.now() - modified
     print(f'loading {filename}, last modified {str(diff)[:-10]} ago')
@@ -630,3 +632,34 @@ def colormap(value, min=0, max=1):
 
 def colormap_cool(value, min=0, max=1):
     return matplotlib.cm.summer(np.interp(value, (min, max), (0, 0.8)))
+
+
+
+class DisplayScript:
+    figs = []
+
+    def go(self):
+        raise NotImplementedError
+    
+    def run(self, *args):
+        self.go(*args)
+
+        for figdata in self.figs:
+            path = figdata['path'] + '/' + figdata['name']
+            if type(figdata['file_or_files']) is list:
+                path += '_' + '_'.join(figdata['file_or_files'])
+            else:
+                path += '_' + figdata['file_or_files']
+
+            save_fig(figdata['fig']+'.png', path, dpi=figdata['dpi'])
+
+    def fig(self, path, name, file_or_files, subplots=(1, 1), figsize=None, dpi=100):
+        fig, ax = plt.subplots(*subplots, figsize=figsize)
+        self.figs.append({
+            fig: fig,
+            path: path,
+            name: name,
+            dpi: dpi,
+            file_or_files: file_or_files,
+        })
+        return fig, ax
