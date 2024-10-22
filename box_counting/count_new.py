@@ -1,4 +1,4 @@
-import countoscope_old as countoscope_new
+import countoscope as countoscope_new
 import numpy as np
 import time
 import sys
@@ -13,12 +13,13 @@ def calc_and_save(box_sizes_px, sep_sizes_px, data, particles, output_file_name,
     # particles                = data['particles']
     time_step                = data['time_step']
     pixel_size               = data.get('pixel_size', 1)
-    num_timesteps            = data['num_timesteps']
     particle_diameter        = data.get('particle_diameter', np.nan)
     particle_diameter_calced = data.get('particle_diameter_calced')
     depth_of_field           = data.get('depth_of_field')
     window_size_x            = data.get('window_size_x')
     window_size_y            = data.get('window_size_y')
+
+    num_timesteps = int(particles[:, 2].max()) + 1
 
     # if file == 'eleanorlong':
     #     pixel_size = 0.17 # so the boxes are the same size as aliceXXX

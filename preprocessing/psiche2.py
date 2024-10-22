@@ -25,17 +25,26 @@ timestep_map = {
     '0162_Muscovite50_100um': 1,
     '0020_silice7p75um_sediment_x6p8_z15': 0.5,
     '0049_muscovite__100_200um_silice4um_long': 0.5,
+    '0023_silice4um': 1,
+    '0021_silice1p7um': 1,
+    '0080_muscovite100-200um_silice1p7um_NaOH': 2,
+    '0101_RCP_PMMA_KI0_1M': 0.1,
+    '0163_Muscovite50_100um_silice4um': 1,
+    '0092_muscovite50_100um_silice4um_z19apres': 2, # guessed!!!
+    '0024_silice4um_sediment': 1,
 }
 
 skips = ['0154', '0015', '0016', '0046',
           '0003', '0004', '0005', '0006', '0007', '0008', '0009',
           '0010', '0011', '0012', '0013',
+          '0018', # no timestep recorded
+          '0019', '0091', # bin
           '0166', # tomo
           '0164', # abandoned
           ]
 
 def preprocess(directory_path, directory_name, destination_filename, destination_desc):
-    print('processing', directory_name)
+    print(f'processing {directory_name}')
     t0 = time.time()
     
     raw_file = f'{directory_name}.nxs'
@@ -49,31 +58,35 @@ def preprocess(directory_path, directory_name, destination_filename, destination
 
     if 'texp100ms' in directory_name:
         time_step = 0.1
-    elif 'exp500ms' in directory_name or 'exptime500m' in directory_name:
+    elif 'exp0p2s' in directory_name or '200ms' in directory_name:
+        time_step = 0.2
+    elif 'exp500ms' in directory_name or 'exptime500m' in directory_name.lower():
         time_step = 0.5
     elif 'exp200ms' in directory_name:
         time_step = 0.2
-    elif 'exp1s' in directory_name or 'exptime1' in directory_name:
+    elif 'exp1s' in directory_name or 'exptime1' in directory_name or 'Time1s' in directory_name:
         time_step = 1
     elif 'exp2s' in directory_name or 'expTime2s' in directory_name or 'exptime2s' in directory_name:
         time_step = 2
+    elif 'exp4s' in directory_name:
+        time_step = 4
     elif 'exp5s' in directory_name or 'expTime5s' in directory_name or 'exptime5s' in directory_name:
         time_step = 5
+    elif 'texp8s' in directory_name:
+        time_step = 8
     elif 'texp16s' in directory_name:
         time_step = 16
     elif directory_name in timestep_map:
         time_step = timestep_map[directory_name]
     else:
         time_step = float(input('I could not find the timestep. Please enter it (in seconds): '))
-    print(f'time step = {time_step} + 0.012 s')
+    # print(f'time step = {time_step} + 0.012 s')
     time_step += 0.012
-
-    return
 
     # load raw
     with h5py.File(f'{directory_path}/{raw_file}', 'r') as f:
         obj = f['flyscan_00001/scan_data/orca_image']
-        print(obj.shape, obj.dtype)
+        # print(obj.shape, obj.dtype)
 
         if obj.shape[0] > 1000 and False:
             proj = np.full((obj.shape[0]//2, obj.shape[1], obj.shape[2]), np.nan, dtype=np.float16)
@@ -86,11 +99,11 @@ def preprocess(directory_path, directory_name, destination_filename, destination
 
         else:
             proj = np.full(obj.shape, np.nan, dtype=np.float16)
-            for i in tqdm.trange(obj.shape[0]): # possibly because obj is not a real numpy object
+            for i in range(obj.shape[0]): # possibly because obj is not a real numpy object
                 proj[i, :, :] = obj[i, :, :]
 
             # proj = obj.astype(np.float16)
-            print(proj.shape, proj.dtype, f'{proj.nbytes/1e9:.1f}GB')
+            # print(proj.shape, proj.dtype, f'{proj.nbytes/1e9:.1f}GB')
 
     # load refs and dark
     with h5py.File(f'{directory_path}/pre_ref.nxs', 'r') as f:
@@ -103,27 +116,27 @@ def preprocess(directory_path, directory_name, destination_filename, destination
         dark = f['dark_2d'][:]
 
 
-    print('subtracting dark 1')
+    # print('subtracting dark 1')
     refA -= dark
-    print('subtracting dark 2')
+    # print('subtracting dark 2')
     refB -= dark
-    print('subtracting dark 3')
+    # print('subtracting dark 3')
     proj -= dark
     del dark
 
 
-    print('changing dtypes')
+    # print('changing dtypes')
     refA = refA.astype(np.uint32)
     refB = refB.astype(np.uint32)
 
-    print('averaging ref')
+    # print('averaging ref')
     ref = (refA + refB)/2
     del refA, refB
     
-    print('checking no negative')
+    # print('checking no negative')
     assert np.all(ref > 0)
 
-    print('dividing by ref')
+    # print('dividing by ref')
     # stack = proj / ref
     for i in range(proj.shape[0]):
         proj[i] = proj[i] / ref
@@ -135,7 +148,7 @@ def preprocess(directory_path, directory_name, destination_filename, destination
     # print('finishing')
     # proj = proj.astype(np.float16)
 
-    print('up is down')
+    # print('up is down')
     proj = proj[:, ::-1, :]
 
     common.save_data(f'preprocessing/data/stack_{destination_filename}.npz',
@@ -147,18 +160,29 @@ def preprocess(directory_path, directory_name, destination_filename, destination
         stack=proj[::n], pixel_size=0.325, time_step=time_step*n, nth_frame=n,
         NAME=destination_desc)
 
-    print(f'done in {time.time()-t0:.0f}s')
+    # print(f'done in {time.time()-t0:.0f}s')
 
-for f in os.scandir('/data2/acarter/psiche/PSICHE_0624'):
-    if f.is_dir():
-        print(f.name, f.path)
+print('WARNING NOT DOING ALL')
 
-        if 'tomo' in f.name.lower():
-            continue
+files = list(os.scandir('/data2/acarter/psiche/PSICHE_0624'))[88+11+31:]
 
-        internal_name = f'psiche{f.name[1:4]}'
-        internal_desc = f.name[5:].replace('_', ' ')
-        print(internal_desc)
+for f in tqdm.tqdm(files):
+    try:
+        if f.is_dir():
+            print(f.name, f.path)
 
-        preprocess(f.path, f.name, internal_name, internal_desc)
-        # break
+            if 'tomo' in f.name.lower():
+                continue
+
+            if f.name.startswith('_') or f.name == 'slurmdir':
+                continue
+
+            internal_name = f'psiche{f.name[1:4]}'
+            internal_desc = f.name[5:].replace('_', ' ')
+            print(internal_desc)
+
+            preprocess(f.path, f.name, internal_name, internal_desc)
+            # break
+    except Exception as err:
+        print(f'failed on {f.name}')
+        print(err)

@@ -4,7 +4,7 @@ import numpy as np
 import datetime, math
 import scipy.fft
 import tqdm
-import matplotlib.animation, matplotlib.cm
+import matplotlib.animation, matplotlib.cm, matplotlib.colors
 import numba
 import scipy.stats
 import warnings, time
@@ -13,10 +13,16 @@ import termplotlib
 import psutil
 import matplotlib.pyplot as plt
 
-old_colors = plt.rcParams['axes.prop_cycle']
-plt.style.use('dark_background')
-plt.rcParams['axes.prop_cycle'] = old_colors
-FIT_COLOR = 'white'
+# PLOT_COLOR = 'white'
+PLOT_COLOR = 'black'
+
+if PLOT_COLOR == 'black':
+    old_colors = plt.rcParams['axes.prop_cycle']
+    plt.style.use('dark_background')
+    plt.rcParams['axes.prop_cycle'] = old_colors
+    FIT_COLOR = 'white'
+else:
+    FIT_COLOR = 'black'
 
 def get_directory_files(directory, extension, file_starts_with=''):
     filenames = []
@@ -52,6 +58,8 @@ def intensity_correlation(data1, data2):
     print(r_sq.shape)
 
 def load(filename):
+    t0 = time.time()
+
     if not filename.endswith('.npz'):
         filename += '.npz'
     modified = datetime.datetime.fromtimestamp(os.path.getmtime(f'{filename}'))
@@ -71,10 +79,14 @@ def load(filename):
             if data[key].shape: # array
                 print(f'  loaded {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} shape={data[key].shape}, size={arraysize(data[key])}')
             else: # single value
-                print(f'  loaded {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} value={format_value_for_save_load(data[key])}')
+                if data[key] != None:
+                    print(f'  loaded {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} value={format_value_for_save_load(data[key])}')
     else:
         print(f'  loaded, dtype={data.dtype}, shape={data.shape}, size={arraysize(data)}')
         
+    if (comp_time := time.time() - t0) > 60:
+        print(f'  in {comp_time:.0f}s')
+
     return data
 
 def format_value_for_save_load(value):
@@ -86,7 +98,7 @@ def format_value_for_save_load(value):
 def save_data(filename, quiet=False, **data):
     if not quiet:
         print(f'saving {filename}')
-        for key in data.keys():
+        for key in list(data.keys()): # the `list()` makes a copy, allowing us to modify `data`
             if isinstance(data[key], np.ndarray):
                 if data[key].shape: # array
                     if data[key].size * data[key].itemsize > 10e9:
@@ -95,6 +107,9 @@ def save_data(filename, quiet=False, **data):
                 else: # single value
                     print(f'  saving {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} value={format_value_for_save_load(data[key])}')
             else:
+                if data[key] == None:
+                    del data[key]
+                    continue
                 if type(data[key]) in [list,tuple]:
                     nparray = np.array(data[key])
                     print(f'  saving {key.ljust(20)} dtype={str(nparray.dtype).ljust(12)} shape={nparray.shape}, size={arraysize(nparray)}')
@@ -119,6 +134,9 @@ def arraysize(arr, mult=1):
         return f'{size/1e9:.0f}GB'
 
 def fourier(t, x):
+    """
+    returns f, X
+    """
     N = x.shape[0]
     r_spacing = t[1] - t[0]
     X = scipy.fft.rfft(x)
@@ -129,6 +147,29 @@ def fourier(t, x):
     X = np.abs(X)
 
     return f, X#f[:N//2], X[:N//2]
+
+def inverse_fourier(f, X):
+    # might need to remove the last
+    N = f.shape[0] * 2
+    # we gotta reconstruct the double sided spectrum
+    # full_f = np.zeros(N)
+    # full_f[:N//2] = f
+    # full_f[N//2:] = f[::-1]
+    x = scipy.fft.ifft(X, len(X))
+    print('ifft', len(x), len(f))
+    t = 1/f # TODO u ok?
+    return t, x
+
+def inverse_fourier_old(f, X):
+    # might need to remove the last
+    N = f.shape[0] * 2
+    # we gotta reconstruct the double sided spectrum
+    full_f = np.zeros(N)
+    full_f[:N//2] = f
+    full_f[N//2:] = f[::-1]
+    x = scipy.fft.ifft(full_f)
+    t = 1/f # TODO u ok?
+    return t, x
 
 def fourier_2D(x, spacing, axes):
     assert len(axes) == 2
@@ -383,8 +424,14 @@ def numba_p_assert(condition, message):
         print('Assertion failed: ', message)
 
 def exponential_integers(min, max, num=50):
+    # note: i might return less than num - if the integers are closely spaced I will remove duplicates
     assert min < max, f'I got min={min}, max={max}'
-    return np.unique(np.round(10**np.linspace(np.log10(min), np.log10(max), num)).astype('int'))
+    assert isinstance(num, (int, np.integer)), 'num must be an integer'
+    assert min != 0, 'min cannot be 0'
+    assert max-min > num, 'you must request fewer integers than the difference between min and max'
+    # print('minmax', min, max)
+    integers = np.unique(np.round(10**np.linspace(np.log10(min), np.log10(max), num)).astype('int'))
+    return integers
 
 def add_drift(particles, drift_x, drift_y):
     # drift should be per frame, particles should be rows of x,y,t
@@ -446,6 +493,12 @@ def find_drift(particles):
     # tactic:
     # for each particle, do a linear fit to where it exists
     # then weight the fits by length
+
+    # this is a bad idea! because we are fitting different functions to each particle
+    # but the drift must be the same for all particles!
+    # so we should only fit one function
+    # I wonder if there is a clever way to do this with vectors
+
     assert particles.shape[1] == 4, 'you should provide linked data to find_drift'
     num_particles = int(particles[:, 3].max())
     assert particles[:, 3].min() == 0, 'particles should be zero-based'
@@ -500,27 +553,39 @@ def remove_drift(particles):
 import fnmatch
 
 def files_from_argv(location, prefix):
-    files = sys.argv[1:]
+    infiles = sys.argv[1:]
 
-    if len(files) == 1 and files[0].endswith('*'):
-        target = prefix + files[0]
-        
-        files = []
-        all_filenames = os.listdir(location)
-        all_filenames.sort()
-        print(all_filenames)
+    assert len(infiles) > 0, f'len(sys.argv[1:]) = {len(sys.argv[1:])}'
 
-        filenames = fnmatch.filter(all_filenames, target)
-        
-        for filename in filenames:
-            filename_wo_ext = '.'.join(filename.split('.')[:-1])
-            filename_wo_stem = filename_wo_ext.split(prefix)[1]
-            files.append(filename_wo_stem)
+    outfiles = []
 
-    assert len(files), f'no files found. searching for {prefix}'
-    return files
+    for infile in infiles:
+
+        if infile.endswith('*'):
+            target = prefix + infile
+            
+            all_filenames = os.listdir(location)
+            all_filenames.sort()
+            # print('all_filenames', all_filenames)
+
+            filenames = fnmatch.filter(all_filenames, target)
+            
+            for filename in filenames:
+                filename_wo_ext = '.'.join(filename.split('.')[:-1])
+                filename_wo_stem = filename_wo_ext.split(prefix)[1]
+                outfiles.append(filename_wo_stem)
+
+        else:
+            outfiles.append(infile)
+
+    assert len(outfiles), f'no files found. searching for {prefix}'
+    return outfiles
 
 def format_val_and_unc(val, unc, sigfigs=2, latex=True):
+    if isinstance(val, np.ndarray):
+        assert np.sum(val.shape) < 2, f'You gave an array of shape {val.shape}. Only scalars are allowed'
+
+    print(val.shape, unc.shape)
     digits_after_decimal = -math.floor(math.log10(abs(val))) + sigfigs-1
     # print(f'.{digits_after_decimal}f digi')
     if digits_after_decimal < 0:
@@ -570,6 +635,12 @@ def print_memory_use(s=''):
     python_process = psutil.Process(pid)
     memoryUse = python_process.memory_info().rss / 2.0**30  # memory use in GB...I think
     print(f'memory use: {memoryUse:.1f}GB', s)
+
+def density_to_pack_frac(density, diameter):
+    return np.pi/4 * density * diameter**2
+
+def pack_frac_to_density(pack_frac, diameter):
+    return 4/np.pi * pack_frac / diameter**2
 
     
 names = {
@@ -628,7 +699,24 @@ def name(file):
     return names.get(file, file)
 
 def colormap(value, min=0, max=1):
-    return matplotlib.cm.afmhot(np.interp(value, (min, max), (0.25, 0.85)))
+    if PLOT_COLOR == 'black':
+        return matplotlib.cm.afmhot(np.interp(value, (min, max), (0.25, 0.85)))
+    else:
+        return matplotlib.cm.afmhot(np.interp(value, (min, max), (0.2, 0.8)))
+
+def colormap_colorbar(min=0, max=1):
+    cmap = matplotlib.cm.afmhot
+    # min should map to 0.25 and max to 0.85
+    interper = scipy.interpolate.interp1d((0.25, 0.85), (min, max), fill_value="extrapolate")
+    vmin = interper(0)
+    vmax = interper(1)
+    print('vmin, vmax', vmin, vmax)
+    norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+    print(norm(0))
+    print(norm(19))
+    return matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
+
+    # there is surely a much better solution to this which is to create a custom colormap that has the range you want
 
 def colormap_cool(value, min=0, max=1):
     return matplotlib.cm.summer(np.interp(value, (min, max), (0, 0.8)))
@@ -638,7 +726,7 @@ def colormap_cool(value, min=0, max=1):
 class DisplayScript:
     figs = []
 
-    def go(self):
+    def go(self, file_or_files):
         raise NotImplementedError
     
     def run(self, *args):
@@ -663,3 +751,4 @@ class DisplayScript:
             file_or_files: file_or_files,
         })
         return fig, ax
+

@@ -42,11 +42,13 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
     # ax.hlines(popt[0], t[1], t[-1], color='black')
 
     ax.semilogx()
+    ax.semilogy()
+    ax.set_ylim(0.0004, 0.03)
     # ax.set_ylim(msd[1:].min()*0.6, msd.max()/0.8)
     # ax.set_xlim(t[1]*0.8, t[-1]/0.8)
 
     # ax.set_ylim(0.01, 0.04)
-    ax.set_ylim(np.quantile(D, 0.02), np.quantile(D, 0.98))
+    # ax.set_ylim(np.quantile(D, 0.02), np.quantile(D, 0.98))
 
     ax.set_ylabel(r'$D$')
     ax.set_xlabel('$\Delta t$ (s)')

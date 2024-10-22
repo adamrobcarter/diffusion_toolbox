@@ -3,7 +3,6 @@ import numpy as np
 import scipy.optimize
 import common
 import scipy.integrate
-import sDFT_interactions
 import sys
 
 print('only use me for low densities!')

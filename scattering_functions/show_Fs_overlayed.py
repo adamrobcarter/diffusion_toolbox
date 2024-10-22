@@ -8,7 +8,8 @@ import scipy.optimize
 
 subplot_i = 0
 
-PRESENT_SMALL = True
+PRESENT_SMALL = False
+LOGARITHMIC_Y = False
 
 figsize = (5, 4)
 if PRESENT_SMALL:
@@ -155,15 +156,16 @@ def go(file, SHOW_FIT=False, export_destination=None):
             t_th = np.logspace(np.log10(t[1]), np.log10(t[-1]))
             theory_curve = func(t_th, popt)
             if SHOW_FIT:
-                ax.plot(t_th, theory_curve, color='white', zorder=-1, label='fit' if graph_i==len(target_ks)-1 else None)
+                ax.plot(t_th, theory_curve, color=common.FIT_COLOR, zorder=-1, label='fit' if graph_i==len(target_ks)-1 else None)
 
             # ax.set_ylim(5e-4, 3)
-            ax.set_ylim(1e-2, 1.3e0)
             offscreen = f <= 0
             print(f'offscreen: {offscreen.sum()/offscreen.size}')
 
-            
-            t_index_for_text = int(t_th.size * (3-graph_i) / 4)
+            if LOGARITHMIC_Y:
+                t_index_for_text = int(t_th.size * (3-graph_i) / 4)
+            else:
+                t_index_for_text = int(350 / k_index)
             angle = np.tan(np.gradient(theory_curve, t_th)[t_index_for_text]) * 180/np.pi
             # L_label = rf'$k={k[k_index]:.1f}\mathrm{{\mu m}}^{{-1}}$'
             ax.text(t_th[t_index_for_text+0]/1.5, theory_curve[t_index_for_text+0]/1.5, label,
@@ -172,7 +174,11 @@ def go(file, SHOW_FIT=False, export_destination=None):
 
         ax.legend(fontsize=7)
         ax.semilogx()
-        ax.semilogy()
+        if LOGARITHMIC_Y:
+            ax.semilogy()
+            ax.set_ylim(1e-2, 1.3e0)
+        else:
+            ax.set_ylim(-0.05, 1.05)
 
         if not PRESENT_SMALL:
             ax.set_title(f'$F_s(\Delta t)$, {file}')
@@ -187,10 +193,10 @@ def go(file, SHOW_FIT=False, export_destination=None):
 
         # common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/{fileprefix}_{file}.png', dpi=300, hide_metadata=True)
         if export_destination:
-            common.save_fig(fig, f'{export_destination}/{filename}.pdf', hide_metadata=True)
+            common.save_fig(fig, export_destination, hide_metadata=True)
         common.save_fig(fig, f'scattering_functions/figures_png/{filename}.png', dpi=300)
 
         
 if __name__ == '__main__':
     for file in common.files_from_argv("scattering_functions/data/", "F_"):
-        go()
+        go(file)

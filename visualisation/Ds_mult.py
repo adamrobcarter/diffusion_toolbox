@@ -61,8 +61,8 @@ markers = {
 
 for (sources,) in [
     (['DDM'],),
-    (['f'],),
-    (['f_short'],),
+    # (['f'],),
+    # (['f_short'],),
 ]:
         
     figsize = (5.2, 4.8)
@@ -194,15 +194,17 @@ for (sources,) in [
     # fig.colorbar(scatter)
 
     
-    plt.colorbar.ColorbarBase(ax, cmap=cmap)#, orientation='vertical')   
+    # plt.colorbar.ColorbarBase(ax, cmap=cmap)#, orientation='vertical')   
 
     assert len(all_Ds) > 0, 'no Ds were found at all'
 
     ylim_expand = 1.2
     if np.nanmax(all_Ds) - np.nanmax(all_Ds) < 0.4:
         ylim_expand = 1.5
-    ax.set_ylim(np.nanmin(all_Ds)/ylim_expand, np.nanmax(all_Ds)*ylim_expand)
-    
+    # ax.set_ylim(np.nanmin(all_Ds)/ylim_expand, np.nanmax(all_Ds)*ylim_expand)
+    ax.set_ylim(0, np.nanquantile(all_Ds, 0.9))
+
+
     ax.set_ylabel('$D$ ($\mathrm{\mu m^2/s}$)')
     # ax.set_ylabel('$D/D_0$')
     ax.set_xticks(xtick_pos, files, rotation=-90)

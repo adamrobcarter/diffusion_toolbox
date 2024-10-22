@@ -23,16 +23,19 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
 
     if num_timesteps > 1:
         stack = stack - stack.mean(axis=0)
+    print('stack dtype', stack.dtype)
     stack = np.interp(stack, (stack.min(), stack.max()), (0, 1)) # convert to 0->1 range
     print(stack.max(), stack.mean(), 'maxmean', stack.min(), stack.std())
+
+    print('stack dtype', stack.dtype)
 
     threshold = 1/255
     maxsize = None
     minmass = 0
     diameter = None
-    separation = None # default diameter + 1
+    separation = None # min separation between features. default diameter + 1
     invert = False
-    percentile = None # default 64
+    percentile = None # "Features must have a peak brighter than pixels in this percentile. This helps eliminate spurious peaks. default 64
 
     if file == 'pierre_simdownsampled':
         pass
@@ -69,6 +72,11 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     elif file.startswith('marine2'):
         diameter = 5
         minmass = 0.01
+
+    elif file.startswith('marine3'):
+        diameter = 9
+        minmass = 0.0001
+        percentile = 20
 
     elif file.startswith('marine'):
         # for marine10 at least
@@ -111,13 +119,13 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     term_fig.hist(counts, bin_edges, force_ascii=False, orientation="horizontal")
     term_fig.show()
 
-    hist_fig, hist_ax = plt.subplots(1, 1, figsize=(3, 3))
-    hist_ax.hist(features['mass'], bins=np.linspace(0, np.max(features['mass']), 20))
-    hist_ax.set_yticks([])
-    hist_ax.set_xlabel('mass')
-    hist_ax.set_ylabel('count')
-    common.save_fig(hist_fig, f'/home/acarter/presentations/cin_first/figures/mass_hist_{outfile}.png', hide_metadata=True)
-    common.save_fig(hist_fig, f'particle_detection/figures_png/mass_hist_{outfile}.png')
+    # hist_fig, hist_ax = plt.subplots(1, 1, figsize=(3, 3))
+    # hist_ax.hist(features['mass'], bins=np.linspace(0, np.max(features['mass']), 20))
+    # hist_ax.set_yticks([])
+    # hist_ax.set_xlabel('mass')
+    # hist_ax.set_ylabel('count')
+    # common.save_fig(hist_fig, f'/home/acarter/presentations/cin_first/figures/mass_hist_{outfile}.png', hide_metadata=True)
+    # common.save_fig(hist_fig, f'particle_detection/figures_png/mass_hist_{outfile}.png')
 
     # detector = stracking.detectors.DoGDetector(min_sigma=min_sigma, max_sigma=max_sigma, threshold=threshold)
     # detector_output = detector.run(stack)
@@ -131,12 +139,7 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
 
     particles[:, [0, 1]] *= pixel_size
 
-    # picklepath = f'data/removed_av_particles_{datasource}.pickle'
-    # with open(picklepath, 'wb') as handle:
-    #     pickle.dump(detector_output, handle)
-
     radius = features[['size']].to_numpy()[:, 0] # we use radius not diameter(size) for backward compatibility
-    print('radius shape', radius.shape)
 
     # plt.hist(features[['mass']].to_numpy(), bins=20)
     # plt.semilogy()
@@ -146,24 +149,22 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
         # there is a line in the DoGDetector source about this sqrt 2
     print(f'calced diameter {particle_diameter_calced:.3f}um')
 
-    print(file)
     assert particles.shape[0] > 0, 'no particles were found'
 
-    print(f'found {(particles.shape[0]/num_timesteps):0f} particles per frame')
-    if particle_diameter is not None:
+    print(f'found {(particles.shape[0]/num_timesteps):.0f} particles per frame')
+    if particle_diameter is not None and not np.isnan(particle_diameter):
         density = particles.shape[0]/num_timesteps / (stack.shape[0]*stack.shape[1]*pixel_size**2)
         pack_frac = np.pi/4 * density * particle_diameter**2
         print(f'so packing fraction phi = {pack_frac:.3f}')
 
     common.save_data(f'particle_detection/data/particles_{outfile}.npz',
-            #  particle_picklepath=picklepath,
-            particles=particles, radius=radius, time_step=time_step,
-            threshold=threshold, maxsize=maxsize, minmass=minmass, diameter=diameter, separation=separation,
-            computation_time=time.time()-t0, depth_of_field=depth_of_field,
-            pixel_size=pixel_size, num_timesteps=num_timesteps, particle_diameter=particle_diameter,
-            particle_diameter_calced=particle_diameter_calced,
-            window_size_x=pixel_size*stack.shape[1], window_size_y=pixel_size*stack.shape[2],
-            channel=data.get('channel'), NAME=data.get('NAME'))
-    
-    # we also save the whole dataframe so we can use it for linking if we want
-    features.to_pickle(f'particle_detection/data/particlesdf_{outfile}.pickle')
+        #  particle_picklepath=picklepath,
+        particles=particles, radius=radius, time_step=time_step,
+        threshold=threshold, maxsize=maxsize, minmass=minmass, diameter=diameter, separation=separation,
+        computation_time=time.time()-t0, depth_of_field=depth_of_field,
+        pixel_size=pixel_size, num_timesteps=num_timesteps, particle_diameter=particle_diameter,
+        particle_diameter_calced=particle_diameter_calced,
+        window_size_x=pixel_size*stack.shape[1], window_size_y=pixel_size*stack.shape[2],
+        channel=data.get('channel'), NAME=data.get('NAME'),
+        pack_frac_given=data.get('pack_frac_given'),
+    )

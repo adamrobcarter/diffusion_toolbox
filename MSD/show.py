@@ -4,7 +4,7 @@ import numpy as np
 import scipy.optimize
 import matplotlib.cm
 
-def go(file, SHOW_ERRORBARS=False, SHOW_FIT=True, SHOW_SHORT_FIT=False, SHOW_LONG_FIT=False, export_destination=None):
+def go(file, SHOW_ERRORBARS=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LONG_FIT=False, export_destination=None):
     data = common.load(f'MSD/data/msd_{file}.npz')
     msd = data['msd']
     msd_unc = data['msd_unc']
@@ -27,6 +27,8 @@ def go(file, SHOW_ERRORBARS=False, SHOW_FIT=True, SHOW_SHORT_FIT=False, SHOW_LON
     ax.loglog()
     ax.set_ylim(msd[1:].min()*0.6, msd.max()/0.8)
     # ax.set_xlim(t[1]*0.8, t[-1]/0.8)
+    # ax.set_xlim(0, 20)
+    # ax.set_ylim(0, 0.04)
 
     ax.set_ylabel(r'$\langle r(\Delta t)^2 \rangle$ ($\mathrm{\mu m}$)')
     ax.set_xlabel('$\Delta t$ (s)')
@@ -34,14 +36,19 @@ def go(file, SHOW_ERRORBARS=False, SHOW_FIT=True, SHOW_SHORT_FIT=False, SHOW_LON
     # common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/msd_nofit_{file}.pdf', hide_metadata=True)
     fits = fit_msd(t, msd, msd_unc)
 
+    print('first D=' + common.format_val_and_unc(fits['first']['D'], fits['first']['D_unc']))
+
     if SHOW_FIT:
         ax.plot(fits['full']['t'], fits['full']['MSD'], color='white', linewidth=1, label='fit')
-        
+    print('fit D=' + common.format_val_and_unc(fits['full']['D'], fits['full']['D_unc']))
+
     if SHOW_SHORT_FIT:
         ax.plot(fits['short']['t'], fits['short']['MSD'], color='white', linewidth=1)
+    print('fit short D=' + common.format_val_and_unc(fits['short']['D'], fits['short']['D_unc']))
 
     if SHOW_LONG_FIT:
         ax.plot(fits['long']['t'], fits['long']['MSD'], color='white', linewidth=1)
+    print('fit long D=' + common.format_val_and_unc(fits['long']['D'], fits['long']['D_unc']))
 
     ax.legend()
 
@@ -49,7 +56,7 @@ def go(file, SHOW_ERRORBARS=False, SHOW_FIT=True, SHOW_SHORT_FIT=False, SHOW_LON
     if SHOW_FIT:
         filename += '_fit'
     if export_destination:
-        common.save_fig(fig, f'{export_destination}/{filename}.pdf', hide_metadata=True)
+        common.save_fig(fig, export_destination, hide_metadata=True)
     common.save_fig(fig, f'MSD/figures_png/{filename}.png')
     common.save_data(f'visualisation/data/Ds_from_MSD_{file}',
         Ds=[fits['full']['D']], D_uncs=[fits['full']['D_unc']], labels=[''],

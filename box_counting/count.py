@@ -5,7 +5,7 @@ import sys
 import common
 
 def calc_and_save(box_sizes, sep_sizes, data, particles, output_file_name,
-                  extra_to_save={}, save_counts=False, use_old_overlap=False,
+                  extra_to_save={}, save_counts=False,
                   save_data=True):
     t0 = time.time()
 
@@ -18,12 +18,13 @@ def calc_and_save(box_sizes, sep_sizes, data, particles, output_file_name,
     # particles                = data['particles']
     time_step                = data['time_step']
     pixel_size               = data.get('pixel_size', 1)
-    num_timesteps            = data['num_timesteps']
     particle_diameter        = data.get('particle_diameter', np.nan)
     particle_diameter_calced = data.get('particle_diameter_calced')
     depth_of_field           = data.get('depth_of_field')
     window_size_x            = data.get('window_size_x')
     window_size_y            = data.get('window_size_y')
+
+    num_timesteps = int(particles[:, 2].max()) + 1
 
     # if file == 'eleanorlong':
     #     pixel_size = 0.17 # so the boxes are the same size as aliceXXX
@@ -43,7 +44,6 @@ def calc_and_save(box_sizes, sep_sizes, data, particles, output_file_name,
                                          box_sizes=box_sizes,
                                          #  box_sizes_x=box_sizes_x, box_sizes_y=box_sizes_y,
                                          sep_sizes=sep_sizes,
-                                         use_old_overlap=use_old_overlap,
                                          **extra_params_to_countoscope)
     
     N2_mean = results.nmsd
@@ -58,8 +58,8 @@ def calc_and_save(box_sizes, sep_sizes, data, particles, output_file_name,
  
 
     # also let's calc the packing fraction now as it'll be useful in the future
-    window_width  = particles[:, 0].max() - particles[:, 0].min()
-    window_height = particles[:, 1].max() - particles[:, 1].min()
+    window_width  = window_size_x if window_size_x else particles[:, 0].max() - particles[:, 0].min()
+    window_height = window_size_y if window_size_y else particles[:, 1].max() - particles[:, 1].min()
     density = particles.shape[0]/num_timesteps / (window_width * window_height)
     pack_frac = np.pi/4 * density * particle_diameter**2
 
@@ -70,13 +70,15 @@ def calc_and_save(box_sizes, sep_sizes, data, particles, output_file_name,
                 N_var_mod=results.N_var_mod, N_var_mod_std=results.N_var_mod_std, N_mean_std=results.N_mean_std,
                 time_step=time_step, pack_frac=pack_frac, particle_diameter=particle_diameter,
                 particle_diameter_calced=particle_diameter_calced, computation_time=time.time()-t0,
-                depth_of_field=depth_of_field, old_overlap=use_old_overlap,
+                depth_of_field=depth_of_field,
                 box_coords=results.box_coords,
                 pack_frac_given=data.get('pack_frac_given'),
                 window_size_x=window_size_x, window_size_y=window_size_y, pixel_size=data.get('pixel_size'),
                 **extra_to_save)
     else:
         print('not saving data')
+
+    return 
 
 if __name__ == '__main__':
     for file in common.files_from_argv('particle_detection/data', 'particles_'):
@@ -85,34 +87,25 @@ if __name__ == '__main__':
         # sep_sizes_px = np.array([50, 50, 50, 50, 50, 50, 50,  50])
 
 
-        # for doing timescale integral:
-        box_sizes_px = np.array([1,  2,  4,  8,  16,  32,  64, 128, 256])
-        sep_sizes_px = 50 - box_sizes_px
-        
-        box_sizes_px = np.array([1,  2,  4,  8,  16,  32,  64, 128, 256])
-        sep_sizes_px = np.array([49,  48,  46,  42,  24,  8,  8, 8, 8])
+        # backup
+        box_sizes = np.array([1, 2, 4, 8])
+        sep_sizes = 100-box_sizes
 
-
-
-        sep_sizes_px = np.linspace(5, -5, 2) # 23
-        sep_sizes_px = [-13]
-        # sep_sizes_px = [20, -20]
-        box_sizes_px = np.full_like(sep_sizes_px, 32)
 
         if file.startswith('marine2'):
             box_sizes_px = np.array([1,  2,  4,  8,  16,  32])
             # sep_sizes_px = np.array([49,  48,  46,  42,  24,  8,  8, 8, 8])
             sep_sizes_px = 7 - box_sizes_px
 
-        elif file.startswith('marine'):
-            # box_sizes_px = box_sizes_px[1:]
-            # sep_sizes_px = sep_sizes_px[1:]
-            assert False
+        # elif file.startswith('marine'):
+        #     # box_sizes_px = box_sizes_px[1:]
+        #     # sep_sizes_px = sep_sizes_px[1:]
+        #     assert False
 
         data = common.load(f'particle_detection/data/particles_{file}.npz')
         particles     = data['particles']
         window_size_x = data['window_size_x']
-        window_size_y = data['window_size_x']
+        window_size_y = data['window_size_y']
         
         window_size = min(window_size_x, window_size_y)
 
@@ -120,13 +113,26 @@ if __name__ == '__main__':
         # for eleanorlong timescaleint
         if file.startswith('eleanorlong'):
             pixel_size    = data['pixel_size']
-            box_sizes = np.logspace(np.log10(pixel_size), np.log10(0.9*window_size), 35)
+            if '066' in file:
+                num_boxes = 100
+            else:
+                num_boxes = 35
+            box_sizes = np.logspace(np.log10(pixel_size), np.log10(0.9*window_size), num_boxes) # N was 35, but 70 for eleanorlong066
             # print('aaaa', 0.8*window_size/pixel_size)
             # box_sizes_px = np.array([0.9*window_size/pixel_size])
             sep_sizes = 17 - box_sizes
+            sep_sizes = 9 - box_sizes # moreoverlap
 
         elif file.startswith('brennan'):
-            box_sizes = np.logspace(np.log10(0.2), np.log10(0.9*window_size), 35)
+            if '066' in file:
+                num_boxes = 100
+            else:
+                num_boxes = 35
+            box_sizes = np.logspace(np.log10(0.2), np.log10(0.9*window_size), num_boxes)
+            sep_sizes = 17 - box_sizes
+
+        elif file.startswith('marine'):
+            box_sizes = np.logspace(np.log10(0.2), np.log10(0.9*window_size), 10)
             sep_sizes = 17 - box_sizes
 
         # IS THIS THE TWO PI PROBLEM
@@ -140,11 +146,12 @@ if __name__ == '__main__':
         # sep_sizes_px = 69 - box_sizes_px
         # sep_sizes_px[sep_sizes_px < 2] = 2
 
-        output_filename = f'box_counting/data/counted_{file}.npz'
-
+        output_filename = f'box_counting/data/counted_{file}'
+        # output_filename += '_moreoverlap'
+        output_filename += '.npz'
 
         t0 = time.time()
         calc_and_save(box_sizes, sep_sizes, data, particles,
-            output_filename, save_counts=False, use_old_overlap=False,
+            output_filename, save_counts=False,
             save_data=True)
         print(f'took {time.time()-t0:.0f}s')

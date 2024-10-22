@@ -6,6 +6,8 @@ import scipy.integrate
 import sys
 import matplotlib.cm
 
+TARGET_NUM_BOX_SIZES = 10
+
 fig, ax = plt.subplots(1, 1, figsize=(6, 4.5))
 
 titles = []
@@ -18,8 +20,8 @@ if sys.argv[1] == 'alice0.02_overlapped3' and sys.argv[2] == 'alice0.02_overlapp
 if sys.argv[1] == 'alice0.02_overlapped3' and sys.argv[2] == 'alice0.02_overlapped_neg':
     color_index += 1
 
-collapse_x = True
-collapse_y = True
+# collapse_x = True
+# collapse_y = True
 collapse_x = False
 collapse_y = False
 
@@ -79,102 +81,113 @@ for file in (files := common.files_from_argv('box_counting/data', 'counted_')):
     for box_size_index in range(len(box_sizes)):
     # for box_size_index in [1]:
     # for L in [2**e for e in range(-2, 7)]:
-        L = box_sizes[box_size_index]
-        t = np.copy(t_all)
 
-        delta_N_sq = N2_mean[box_size_index, :]
-        # t = np.arange(0, len(delta_N_sq))[1:]/2
-        # delta_N_sq = delta_N_sq # [1:] is because the point at t=0 msd=0 plots weirdly
+        display = box_size_index % int(len(box_sizes)/TARGET_NUM_BOX_SIZES) == 0
+
         
-        # D0 = 0.038 # Bare diffusion coefficient in um^2/s -- short time?
-        # # D0 = D0 * 2.2
+        if display:
 
-        # if phi == 0.66:   
-        #     D0 = D0 / 2.2 / 1.2
-        #     pass
+            L = box_sizes[box_size_index]
+            t = np.copy(t_all)
 
-        # first_grad = ]
-        f = lambda tau: np.sqrt(tau / np.pi) * ( np.exp(-1/tau) - 1) + scipy.special.erf(np.sqrt(1/tau)) # countoscope eq. 2
+            delta_N_sq = N2_mean[box_size_index, :]
+            # t = np.arange(0, len(delta_N_sq))[1:]/2
+            # delta_N_sq = delta_N_sq # [1:] is because the point at t=0 msd=0 plots weirdly
+            
+            # D0 = 0.038 # Bare diffusion coefficient in um^2/s -- short time?
+            # # D0 = D0 * 2.2
+
+            # if phi == 0.66:   
+            #     D0 = D0 / 2.2 / 1.2
+            #     pass
+
+            # first_grad = ]
+            f = lambda tau: np.sqrt(tau / np.pi) * ( np.exp(-1/tau) - 1) + scipy.special.erf(np.sqrt(1/tau)) # countoscope eq. 2
+            
+            L_2 = L
+            
+            # N2_func = lambda t, D0: 8/np.sqrt(np.pi) * N_mean[box_size_index] * np.sqrt(D0 * t / L**2) # countoscope eq. 3
+            # N2_func_full = lambda t, D0: 2 * N_mean[box_size_index] * (1 - f(4*D0*t/L**2) * f(4*D0*t/L_2**2)) # countoscope eq. 2, countoscope overleaf doc
+
+            # fit_func = N2_func_full
+            # popt, pcov = scipy.optimize.curve_fit(fit_func, t[0:LOWTIME_FIT_END], N2_mean[box_size_index, 0:LOWTIME_FIT_END])
+            # D0 = popt[0]
+            # r2 = common.r_squared(N2_mean[box_size_index, 0:LOWTIME_FIT_END], fit_func(t[0:LOWTIME_FIT_END], D0))
+            # fit to whole thing
+            if depth_of_field:
+                N2_theory = lambda t, D, N: common.N2_nointer_3D(t, D, N, L, L, depth_of_field)
+            else:
+                N2_theory = lambda t, D, N: common.N2_nointer_2D(t, D, N, L, L)
+            fitting_points = np.unique(np.round(10**np.linspace(0, np.log10(t.max()/2))).astype('int'))
+            print(fitting_points)
+            popt, pcov = scipy.optimize.curve_fit(N2_theory, t[fitting_points], delta_N_sq[fitting_points], maxfev=2000)
+            
+            Ds[file][L] = popt[0]
+            D_uncs[file][L] = np.sqrt(pcov[0][0])
+
+            if collapse_x:
+                t /= L**2
+            if collapse_y:
+                delta_N_sq /= L**2
+
+            # t /= t[-1]
+
+            #, r^2={r2:.2f}
+            # D_str += f'±{np.sqrt(pcov[0][0]):.3f}'
+
+            # ax.plot(t_theory, N2_func_full(t_theory, D0), color='black', zorder=5, linestyle='dotted', linewidth=1, label='sFDT (no inter.)' if box_size_index==0 else None)
+
+            # ax.hlines(2*N_mean[box_size_index], t.min(), t.max(), color='grey', linewidth=1, label=r'$2 \langle N \rangle$' if box_size_index==0 else None)
+            # ax.hlines(2*N_var [box_size_index], t.min(), t.max(), linestyles='dashed', color='grey', linewidth=1, label=r'$\mathrm{Var}(N)$' if box_size_index==0 else None)
+
+
+            # N2_theory = 2 * N_mean[box_size_index] * (1 - f(4*D0*t/L**2)**2) # countoscope eq. 2
+            # N2_theory_lowtime = 4 / np.sqrt(np.pi) * N_mean[box_size_index] * np.sqrt(D0 * t_theory) * (L + L_2) / (L * L_2)
+            # ax.plot(t_theory[:LOWTIME_FIT_END], N2_theory_lowtime[:LOWTIME_FIT_END], linestyle='dashed', linewidth=1, color='black', label='sFDT (no inter.) low time' if box_size_index==0 else None)
+
+            # p1, p2 = plateaus.calc_plateaus_for_L(sigma, phi, L)
+            # ax.hlines(p1, t.min(), t.max(), linestyles='dashed', color=exp_plot[0].get_color(), linewidth=1, label='plateaus')
+            # ax.hlines(p2, t.min(), t.max(), linestyles='dashed', color=exp_plot[0].get_color(), linewidth=1)
+
+            # N2_theory_interactions = 2 * N_var[box_size_index] * sDFT_interactions.sDFT_interactions(L, t_theory, phi, D0, sigma)# * 10
+            # ax.plot(t_theory, N2_theory_interactions, color='black', linestyle='dotted', linewidth=1, zorder=3, label='sFDT (w/ inter.)' if box_size_index==0 else None)
+
+            label = rf'$L = {L:.2g}\mathrm{{\mu m}}$'
+            label += f', {file}'
+            # label += f', D={D0:.3f}'
+            # label += f', $sep = {sep_sizes[box_size_index]:.1f}\mathrm{{\mu m}}$'
+            # label += f', $n = {num_boxes_used[box_size_index]:.0f}$'
+            
+            if frac := data.get('data_fraction'):
+                label += f', {frac:.3f} used'
+
+            if collapse_x or collapse_y:
+                markersize = 1
+            else:
+                markersize = 2
+
+            good = delta_N_sq > 1e-7
+            good[0] = False
+
+            ax.plot(t[good], delta_N_sq[good], label=label, color=color, linestyle='none', marker='o', markersize=markersize, markeredgecolor='none')
+            # ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1, label='sDFT (no inter.)' if box_size_index==0 else None)
         
-        L_2 = L
-        
-        # N2_func = lambda t, D0: 8/np.sqrt(np.pi) * N_mean[box_size_index] * np.sqrt(D0 * t / L**2) # countoscope eq. 3
-        # N2_func_full = lambda t, D0: 2 * N_mean[box_size_index] * (1 - f(4*D0*t/L**2) * f(4*D0*t/L_2**2)) # countoscope eq. 2, countoscope overleaf doc
 
-        # fit_func = N2_func_full
-        # popt, pcov = scipy.optimize.curve_fit(fit_func, t[0:LOWTIME_FIT_END], N2_mean[box_size_index, 0:LOWTIME_FIT_END])
-        # D0 = popt[0]
-        # r2 = common.r_squared(N2_mean[box_size_index, 0:LOWTIME_FIT_END], fit_func(t[0:LOWTIME_FIT_END], D0))
-        # fit to whole thing
-        if depth_of_field:
-            N2_theory = lambda t, D, N: common.N2_nointer_3D(t, D, N, L, L, depth_of_field)
-        else:
-            N2_theory = lambda t, D, N: common.N2_nointer_2D(t, D, N, L, L)
-        fitting_points = np.unique(np.round(10**np.linspace(0, np.log10(t.max()/2))).astype('int'))
-        print(fitting_points)
-        popt, pcov = scipy.optimize.curve_fit(N2_theory, t[fitting_points], delta_N_sq[fitting_points], maxfev=2000)
-        
-        Ds[file][L] = popt[0]
-        D_uncs[file][L] = np.sqrt(pcov[0][0])
-
-        if collapse_x:
-            t /= L**2
-        if collapse_y:
-            delta_N_sq /= N_var[box_size_index]
-
-        # t /= t[-1]
-
-        #, r^2={r2:.2f}
-        # D_str += f'±{np.sqrt(pcov[0][0]):.3f}'
-
-        # ax.plot(t_theory, N2_func_full(t_theory, D0), color='black', zorder=5, linestyle='dotted', linewidth=1, label='sFDT (no inter.)' if box_size_index==0 else None)
-
-        # ax.hlines(2*N_mean[box_size_index], t.min(), t.max(), color='grey', linewidth=1, label=r'$2 \langle N \rangle$' if box_size_index==0 else None)
-        # ax.hlines(2*N_var [box_size_index], t.min(), t.max(), linestyles='dashed', color='grey', linewidth=1, label=r'$\mathrm{Var}(N)$' if box_size_index==0 else None)
-
-
-        # N2_theory = 2 * N_mean[box_size_index] * (1 - f(4*D0*t/L**2)**2) # countoscope eq. 2
-        # N2_theory_lowtime = 4 / np.sqrt(np.pi) * N_mean[box_size_index] * np.sqrt(D0 * t_theory) * (L + L_2) / (L * L_2)
-        # ax.plot(t_theory[:LOWTIME_FIT_END], N2_theory_lowtime[:LOWTIME_FIT_END], linestyle='dashed', linewidth=1, color='black', label='sFDT (no inter.) low time' if box_size_index==0 else None)
-
-        # p1, p2 = plateaus.calc_plateaus_for_L(sigma, phi, L)
-        # ax.hlines(p1, t.min(), t.max(), linestyles='dashed', color=exp_plot[0].get_color(), linewidth=1, label='plateaus')
-        # ax.hlines(p2, t.min(), t.max(), linestyles='dashed', color=exp_plot[0].get_color(), linewidth=1)
-
-        # N2_theory_interactions = 2 * N_var[box_size_index] * sDFT_interactions.sDFT_interactions(L, t_theory, phi, D0, sigma)# * 10
-        # ax.plot(t_theory, N2_theory_interactions, color='black', linestyle='dotted', linewidth=1, zorder=3, label='sFDT (w/ inter.)' if box_size_index==0 else None)
-
-        label = rf'$L = {L}\mathrm{{\mu m}}$'
-        label += f', {file}'
-        # label += f', D={D0:.3f}'
-        # label += f', $sep = {sep_sizes[box_size_index]:.1f}\mathrm{{\mu m}}$'
-        # label += f', $n = {num_boxes_used[box_size_index]:.0f}$'
-        
-        if frac := data.get('data_fraction'):
-            label += f', {frac:.3f} used'
-
-        if collapse_x or collapse_y:
-            markersize = 2
-        else:
-            markersize = 2
-        ax.plot(t[1:], delta_N_sq[1:], label=label, color=color, linestyle='none', marker='o', markersize=markersize, markeredgecolor='none')
-        # ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1, label='sDFT (no inter.)' if box_size_index==0 else None)
-        
-
-    titles.append(f'{file}, $\phi_\mathrm{{calc}}={phi:.3f}$, $\sigma={sigma}$')
+    # titles.append(f'{file}, $\phi_\mathrm{{calc}}={phi:.3f}$, $\sigma={sigma}$')
+    titles.append(file)
 
     # ax.legend(loc='lower right', fontsize=8)
-legend = ax.legend(fontsize=6, loc='lower right')
+legend = ax.legend(fontsize=4, loc='lower right')
 for handle in legend.legend_handles:
     handle.set_markersize(6.0)
 ax.semilogy()
 ax.semilogx()
 xlabel = '$t/L^2$' if collapse_x else '$t$'
-ylabel = r'$\Delta N^2(t) / \rangle N \langle$' if collapse_y else '$\Delta N^2(t)$'
+ylabel = r'$\Delta N^2(t) / L^2$' if collapse_y else '$\Delta N^2(t)$'
 ax.set_xlabel(xlabel)
 ax.set_ylabel(ylabel)
 ax.set_title(', '.join(titles))
-ax.set_title(titles[0])
+# ax.set_title(titles[0])
 
 # if collapse_x:
 #     ax.set_ylim(1e-1, 4e0)
@@ -186,7 +199,7 @@ fig.tight_layout()
 names = '_'.join(sys.argv[1:])
 common.save_fig(fig, f'box_counting/figures_png/msd_combined_{names}.png', dpi=300)
 
-
+"""
 sigma_calced = data.get('particle_diameter_calced')
 
 temp = []
@@ -227,3 +240,4 @@ ax.legend(by_label.values(), by_label.keys(),
 # ax.legend(bbox_to_anchor=(1, 1))
 
 common.save_fig(fig, f'box_counting/figures_png/D_combined_{names}.png')
+"""

@@ -2,7 +2,7 @@ import numpy as np
 import scipy.stats
 
 def density_correlation(particles_t0, particles_t1, max_r, num_r_bins, crop_border):
-    r_bin_edges = np.linspace(0, max_r, num_r_bins)
+    r_bin_edges = np.linspace(0, max_r, num_r_bins+1)
     r_bin_width = r_bin_edges[1] - r_bin_edges[0]
     densities = np.zeros((num_r_bins,))
 
@@ -31,20 +31,16 @@ def density_correlation(particles_t0, particles_t1, max_r, num_r_bins, crop_bord
     dy = used_locations_y_t0[:, np.newaxis] - locations_y_t1[np.newaxis, :]
     r = np.sqrt(dx**2 + dy**2) #  r is num_particles x num_all_particles  where elements are the distance
 
-    for bin_index, left_edge in enumerate(r_bin_edges):
-        right_edge = left_edge + r_bin_width
-        # need to find number of particles in donut of inner radius left_edge
-        # and outer radius right_edge
-        
-        num_donuts = num_used_particles_t0
-        assert num_donuts > 0
-        donut_area = np.pi * (right_edge**2 - left_edge**2) # approx = (left_edge + r_bin_width/2) * r_bin_width
+    # find number of interparticle distances in donuts
+    num_particles_in_donuts = np.histogram(r, r_bin_edges)[0]
+    num_donuts = num_used_particles_t0
+    assert num_donuts > 0
+    avg_particles_per_donut = num_particles_in_donuts / num_donuts
+    donut_areas = np.pi * (r_bin_edges[1:]**2 - r_bin_edges[:-1]**2) # approx = (left_edge + r_bin_width/2) * r_bin_width
+    densities = avg_particles_per_donut / donut_areas
 
-        num_particles_in_donuts = np.count_nonzero(np.logical_and(left_edge <= r, r < right_edge))
-
-        avg_particles_per_donut = num_particles_in_donuts / num_donuts
-        densities[bin_index] = avg_particles_per_donut / donut_area
+    r = (r_bin_edges[1:] + r_bin_edges[:-1])/2
 
     avg_density = num_used_particles_t0 / ( (width - 2*crop_border) * (height - 2*crop_border) )
     densities = densities / avg_density
-    return r_bin_edges, densities, avg_density
+    return r, densities, avg_density

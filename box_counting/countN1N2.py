@@ -14,11 +14,12 @@ def calc_and_save(box_sizes_px, sep_sizes_px, file, output_file_name, drift):
     particles                  = data['particles']
     time_step                  = data['time_step']
     pixel_size                 = data['pixel_size']
-    num_timesteps              = data['num_timesteps']
     particle_diameter          = data['particle_diameter']
     particle_diameter_calced   = data.get('particle_diameter_calced')
     window_size_x            = data.get('window_size_x')
     window_size_y            = data.get('window_size_y')
+
+    num_timesteps = int(particles[:, 2].max()) + 1
 
     if file == 'eleanorlong':
         pixel_size = 0.17 # so the boxes are the same size as aliceXXX

@@ -7,13 +7,14 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
     data = common.load(f'particle_detection/data/particles_{file}.npz')
     time_step                = data['time_step']
     pixel_size               = data.get('pixel_size', 1)
-    num_timesteps            = data['num_timesteps']
     particle_diameter        = data.get('particle_diameter', np.nan)
     particle_diameter_calced = data.get('particle_diameter_calced')
     depth_of_field           = data.get('depth_of_field')
     window_size_x            = data.get('window_size_x')
     window_size_y            = data.get('window_size_y')
     particles                = data['particles']
+
+    num_timesteps = int(particles[:, 2].max()) + 1
 
     box_size = 8
 

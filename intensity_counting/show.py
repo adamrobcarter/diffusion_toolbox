@@ -149,13 +149,15 @@ for file in common.files_from_argv('intensity_counting/data/', 'counted_'):
 
     ax.legend(fontsize=6 if not PRESENT_SMALL else 7, loc='lower right')
     # ax.semilogy()
-    ax.set_ylim(0, 0.02)
+    # ax.set_ylim(0, 0.02)
     # ax.semilogx()
     xlabel = '$t/L^2$' if collapse_x else '$t$ ($\mathrm{s}$)'
     ylabel = r'$\Delta I^2(t)/\langle N \rangle$' if collapse_y else r'$\langle \Delta I^2(t) \rangle$ ($\mathrm{\mu m^2}$)'
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-    ax.grid()
+    # ax.grid()
+    ax.semilogx()
+    ax.semilogy()
     
     title = file
     # title = f'Simulated colloids in RCP spheres\n$\phi={phi:.3f}$'

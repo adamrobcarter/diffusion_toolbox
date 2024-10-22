@@ -89,11 +89,11 @@ def msds_for_box_size(intensities, box_size, sep, window_width, window_height, m
     variance = counts.var()
     # variance = np.mean(counts**2) - avg**2
 
-    msds = (counts[:, :] - counts[0, :])**2
+    # msds = (counts[:, :] - counts[0, :])**2
+    # msds = np.transpose(msds)
 
-    msds = np.transpose(msds)
-    # counts_t = np.transpose(counts)
-    # msds = msd_matrix(counts_t)
+    counts_t = np.transpose(counts)
+    msds = msd_matrix(counts_t)
 
 
     # msd_avgs = np.mean(msds, axis=0)

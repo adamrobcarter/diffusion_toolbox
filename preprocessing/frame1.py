@@ -4,14 +4,14 @@ import common
 import sys
 import matplotlib.cm
 
-SMALL = True
-REMOVE_BACKGROUND = False
+SMALL = False
+REMOVE_BACKGROUND = True
 
 ANNOTATE_PACK_FRAC = False
 ANNOTATE_PARTICLE_DIAMETER = False
 
 
-THIS SHOULD USE STACK_MOVIE.PY!!
+# THIS SHOULD USE STACK_MOVIE.PY!!
 
 for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     data = common.load(f'preprocessing/data/stack_{file}.npz')
@@ -60,7 +60,7 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     print(file, frame1.mean()/(frame1.max()-frame1.min()))
 
     color = 'white' if frame1.mean()/(frame1.max()-frame1.min()) < 0.2 else 'black'
-    color = 'black'
+    # color = 'black'
 
 
     try:
@@ -87,4 +87,4 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     if REMOVE_BACKGROUND:
         filename += '_bkgrem'
     common.save_fig(fig, f'preprocessing/figures_png/{filename}.png', dpi=600, only_plot=True)
-    common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/frame1_{file}.png', dpi=300, only_plot=True)
+    # common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/frame1_{file}.png', dpi=300, only_plot=True)

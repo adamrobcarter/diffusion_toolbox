@@ -5,6 +5,7 @@ import sys
 import warnings, math
 import scipy.optimize, scipy.signal
 import matplotlib.cm
+import visualisation.Ds_overlapped
 
 subplot_i = 0
 
@@ -21,13 +22,25 @@ D_ERROR_THRESH = 10 # point ignored if D_unc/D > this. was 0.1
 EXP_FIT = 0
 T_MINUS_T0_FIT = 1
 EXP_TIMES_CONST_FIT = 2
+DOMINIGUEZ_FIT = 3
 
 FIT = EXP_TIMES_CONST_FIT
+# FIT = DOMINIGUEZ_FIT
 
 DO_SHORT_LINEAR_FIT = False
 FIT_WITH_ZERO_POINT = True
 
-def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mult=False):
+CROP_AT_SK_MINIMUM = False
+
+SHOW_TWOSTAGE_FIT = False
+
+FILTER_RISING_MULTIPLE = 2.5
+
+def show_single_F_type(
+        file, type_index, Ftype, fig, axes,
+        num_displayed_ks, mult=False, do_fits=True,
+        markersize=5, errorbar_alpha=0.2, bad_alpha=0.2, color=None
+    ):
     lin_short_axes, lin_axes, log_axes, D_axes = axes
     # lin_short_axes, lin_axes, log_axes, D_axes, extra_axes = axes
 
@@ -43,6 +56,18 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
     D_uncs_for_saving_long = []
     ks_for_saving_long = []
 
+    Ds_for_saving_first = []
+    D_uncs_for_saving_first = []
+    ks_for_saving_first = []
+
+    Ds_for_saving_D1 = []
+    D_uncs_for_saving_D1 = []
+    ks_for_saving_D1 = []
+
+    Ds_for_saving_D2 = []
+    D_uncs_for_saving_D2 = []
+    ks_for_saving_D2 = []
+
     if Ftype == 'f' and SHOW_SEGRE_PUSEY_RESCALING_AXIS:
         sp_fig, sp_axs = plt.subplots(2, 1, figsize=(4, 6))
 
@@ -52,17 +77,33 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
     F_all     = d["F"]
     F_unc_all = d['F_unc']
     k_all     = d["k"]
-    particle_diameter     = d['particle_diameter']
+    particle_diameter = d['particle_diameter']
 
     every_nth_k = int(math.ceil(k_all.shape[1] / num_displayed_ks))
     every_nth_k = max(every_nth_k, 1)
 
     graph_i = 0
 
-    for k_index in range(k_all.shape[1]):
-        # target_k = target_ks[graph_i]
-            # k_index_skold = np.argmax(k_skold_all[0, :] > target_k)
+    S_of_k = F_all[0, :]
+    min_index = np.nanargmin(S_of_k)
+    k_at_min = k_all[0, min_index]
 
+    try:
+        D0, _, _ = visualisation.Ds_overlapped.get_D0(file)
+    except Exception as e:
+        print(e)
+        D0 = None
+
+    def print_D(D):
+        if D0 == None:
+            return f'$D={D}\mathrm{{\mu m^2/s}}$'
+        else:
+            return f'$D={D/D0:.2g}D_0$'
+
+    if color == None:
+        color = colors[type_index]
+
+    for k_index in range(k_all.shape[1]):
         if Ftype == 'DDM':
             ks = k_all
         else:
@@ -78,6 +119,10 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
             k_str += f'={2*np.pi/k/particle_diameter:.2g}σ'
         print(k_str)
 
+        if CROP_AT_SK_MINIMUM and k < k_at_min:
+            print('  skipping - below S(k) minimum')
+            continue
+
         f     = F_all    [:, k_index]
         f_unc = F_unc_all[:, k_index]
         if Ftype == 'f':
@@ -91,18 +136,6 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
             #     warnings.warn("k_index == 0, which probably means everything is 1 because of the normalisation")
             #     continue
 
-        display = False
-        if k_index % every_nth_k == 0:
-            display = True
-
-            ax = lin_axes[graph_i]
-            ax_short = lin_short_axes[graph_i]
-            D_ax = D_axes[graph_i]
-            log_ax = log_axes[graph_i]
-            log_ax.semilogy()
-            # extra_ax = extra_axes[graph_i]
-
-            graph_i += 1
 
         
         if np.isfinite(particle_diameter):
@@ -117,6 +150,23 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
         if common.nanfrac(f) == 1:
             print(f'all nan at k={k:.2g} (i={graph_i})')
             continue
+
+        
+        display = False
+        if k_index % every_nth_k == 0:
+            display = True
+        if k_index < 10:
+            display = True
+        if display:
+
+            ax = lin_axes[graph_i]
+            ax_short = lin_short_axes[graph_i]
+            D_ax = D_axes[graph_i]
+            log_ax = log_axes[graph_i]
+            log_ax.semilogy()
+            # extra_ax = extra_axes[graph_i]
+
+            graph_i += 1
 
 
         # if Ftype == 'f':
@@ -137,22 +187,46 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
         # new noise identification idea
         # first noise point is first point where the gradient is no longer getting more negative
         grad = np.gradient(np.log10(f), np.log10(t))
+        width = None
         if file.startswith('marine'):
             prominence = 1
+        elif file.startswith('eleanorlong'):
+            prominence = 0.1
+            if file == 'eleanorlong001':
+                prominence = 0.1
+            if file == 'eleanorlong034':
+                prominence = 1
+            if file == 'eleanorlong066':
+                prominence = 2
+            # width = 1
+        elif file.startswith('brennan'):
+            prominence = 1 # 0.66
         else:
-            prominence = 0.01 # eleanor/alice
+            prominence = 0.1 # was 0.01
         # prominance filters out peaks that are just noise. A smoothing filter would probably be better though
         # increase prominance to allow bigger noise
-        peaks, props = scipy.signal.find_peaks(-grad, prominence=prominence)
+        peaks, props = scipy.signal.find_peaks(-grad, prominence=prominence, width=width)
         f_bad = np.full(f.shape, False)
-        # print(np.log10(t[np.array(peaks)]))
-        # print(props)
+
         if len(peaks):
             f_bad[peaks[0]:] = True
         else:
             print('  no peaks in -grad found?!')
+            
 
-        f_bad[f<0] = True
+        # now we do another filter (should this be the only one?)
+        # if the signal increases by more than `thresh` times, it's noise
+        increase = f[1:] / f[:-1]
+        above_thresh = increase > FILTER_RISING_MULTIPLE
+        if above_thresh.sum():
+            f_bad[np.argmax(above_thresh):] = True
+
+        if np.sum(~f_bad) > 1:
+            increase_good = f[~f_bad][1:] / f[~f_bad][:-1]
+            print(f'  biggest good rise: {increase_good.max():.2f}')
+
+        # negative points are definitely noise
+        f_bad[f<=0] = True
 
         # don't use the zero point to fit
         if not FIT_WITH_ZERO_POINT:
@@ -161,24 +235,43 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
             assert f_bad[0] == False
 
         if display:
-            ax.plot(t[~f_bad], f[~f_bad], color=colors[type_index], linestyle='', label=f'{Ftype} {file}', marker='.')
-            ax.errorbar(t[~f_bad], f[~f_bad], yerr=f_unc[~f_bad], color=colors[type_index], linestyle='', alpha=0.2, marker='none')
-            ax.errorbar(t[ f_bad], f[ f_bad], yerr=f_unc[ f_bad], color=colors[type_index], linestyle='', alpha=0.2,        marker='.')
+            
+            # full time linear axis
+            # good points, bad points
+            ax.plot(t[~f_bad], f[~f_bad], color=color, linestyle='', label=f'{Ftype} {file}', marker='.', markersize=markersize)
+            ax.plot(t[~f_bad], f[~f_bad], color=color, linestyle='', alpha=bad_alpha,               marker='.', markersize=markersize)
+            # good errorbars, bad errorbars
+            ax.errorbar(t[~f_bad], f[~f_bad], yerr=f_unc[~f_bad], color=color, linestyle='', alpha=errorbar_alpha,                 marker='none')
+            ax.errorbar(t[ f_bad], f[ f_bad], yerr=f_unc[ f_bad], color=color, linestyle='', alpha=min(errorbar_alpha, bad_alpha), marker='none')
 
-        
-            log_ax.plot(t[~f_bad], f[~f_bad], color=colors[type_index], linestyle='', label=f'{Ftype} {file}', marker='.')
-            log_ax.errorbar(t[~f_bad], f[~f_bad], yerr=f_unc[~f_bad], color=colors[type_index], linestyle='', alpha=0.2, marker='none')
-            log_ax.errorbar(t[ f_bad], f[ f_bad], yerr=f_unc[ f_bad], color=colors[type_index], linestyle='', alpha=0.2,        marker='.')
+            # log log axis
+            # good points, bad points
+            log_ax.plot(t[~f_bad], f[~f_bad], color=color, linestyle='', label=f'{Ftype} {file}', marker='.', markersize=markersize)
+            log_ax.plot(t[ f_bad], f[ f_bad], color=color, linestyle='', alpha=bad_alpha,               marker='.', markersize=markersize)
+            # good errorbars, bad errobars
+            log_ax.errorbar(t[~f_bad], f[~f_bad], yerr=f_unc[~f_bad], color=color, linestyle='', alpha=errorbar_alpha,                 marker='none')
+            log_ax.errorbar(t[ f_bad], f[ f_bad], yerr=f_unc[ f_bad], color=color, linestyle='', alpha=min(errorbar_alpha, bad_alpha), marker='none')
+
             log_ax.set_ylim(f.min()/1.2, f.max()*1.2)
 
-            # ax.errorbar(t[~f_bad], f[~f_bad], yerr=0,           color=colors[type_index], linestyle='', label=f'{Ftype} {file}', marker='.')
-            # ax.errorbar(t[ f_bad], f[ f_bad], yerr=0,           color=colors[type_index], linestyle='', alpha=0.2,        marker='.')
-            # ax.scatter(t[~f_bad], f[~f_bad], color=colors[type_index], label=f'{Ftype} {file}', s=6)
-            # ax.scatter(t[ f_bad], f[ f_bad], color=colors[type_index], alpha=0.3,        s=6)
+            # short time linear axis
+            ax_short.plot(t, f, color=color, linestyle='', marker='.', markersize=markersize)
+            ax_short.errorbar(t, f, yerr=f_unc, color=color, linestyle='', alpha=errorbar_alpha)
+            
+            SHORT_PLOT_MAX_X = 10 # for eleanor etc
+            SHORT_PLOT_Y0 = f[0:int(SHORT_PLOT_MAX_X+1)].min() # for eleanor
+
+            if file.startswith('marine'):
+                SHORT_PLOT_MAX_X = 1 # for marine
+                SHORT_PLOT_Y0 = 0 # for marine
+
+            ax_short.set_xlim(0, SHORT_PLOT_MAX_X)
+            ax_short.set_ylim(SHORT_PLOT_Y0, f[0:int(SHORT_PLOT_MAX_X+1)].max())
+
+
             
             # print(f'{Ftype} k={k:.2f} avg err = ')
 
-            ax.legend(fontsize=7 if not mult else 5)
                 # ax.semilogx()
             ax.semilogy()
             newtitle = '\n' + Ftype + ':' + label
@@ -209,194 +302,279 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
         if negative.sum() > 0:
             print(f'  negative: {negative.sum()/negative.size:.2f}')
 
-        # fits
-        # we fit to log(f(k, t)) because otherwise points near one make a much
-        # larger impact to the fit than points near zero
-        if FIT == T_MINUS_T0_FIT:
-            func = lambda t, D, t0 : np.exp(-(t-t0) * k**2 * D)
-            log_func = lambda t, D, t0: np.log10( func(t, D, t0) )
-            log_unc = lambda x, dx : 0.5 * np.log((x+dx)/(x-dx)) # what is this?
-            log_f_unc  = log_unc(f, f_unc )
-        elif FIT == EXP_TIMES_CONST_FIT:
-            func = lambda t, D, c : c * np.exp(-t * k**2 * D)
-            log_func = lambda t, D, c: np.log10( func(t, D, c) )
-            log_unc = lambda x, dx : 0.5 * np.log((x+dx)/(x-dx)) # what is this?
-            log_f_unc  = log_unc(f, f_unc )
-        elif FIT == EXP_FIT:
-            func = lambda t, D : np.exp(-t * k**2 * D)
-            log_func = lambda t, D: np.log10( func(t, D) )
-            log_unc = lambda x, dx : 0.5 * np.log((x+dx)/(x-dx)) # what is this?
-            log_f_unc  = log_unc(f, f_unc )
-            
-        p0 = [0.05]
-        p0 = None
-
-        if (~f_bad).sum() == 0:
-            print('  no good data, skipping rest')
-            continue
-            
-        f_popt, f_pcov = scipy.optimize.curve_fit(
-                log_func, t[~f_bad], np.log10(f[~f_bad]),
-                # p0=p0, sigma=log_f_unc[~f_bad], absolute_sigma=True
-            )
-        # print('  total: disabled sigma fitting')
-            # Fs_popt, Fs_pcov = scipy.optimize.curve_fit(log_func, t2[~Fs_bad], np.log10(Fs[~Fs_bad]), sigma=log_Fs_unc[~Fs_bad], absolute_sigma=True)
-        if FIT_WITH_ZERO_POINT:
-            theory_start = 0.1
-        else:
-            theory_start = t[1]
-        t_th = np.logspace(np.log10(theory_start), np.log10(t[-1]))
-
-        if np.isfinite(np.sqrt(f_pcov)[0,0]):
-            D = f_popt[0]
-            D_unc = np.sqrt(f_pcov)[0][0]
-
-            if display:
-                ax      .plot(t_th, func(t_th, *f_popt), color=colors[type_index], linestyle='dashdot', label=f'total $D={D:.2g}$')
-                ax_short.plot(t_th, func(t_th, *f_popt), color=colors[type_index], linestyle='dashdot', label=f'total $D={D:.2g}$')
-                log_ax  .plot(t_th, func(t_th, *f_popt), color=colors[type_index], linestyle='dashdot', label=f'total $D={D:.2g}$')
-                    # ax.plot(t_th, func(t_th, *Fs_popt), color='tab:orange',   linestyle='dotted')
-                D_ax.hlines(f_popt[0], t.min(), t.max(), color=colors[type_index], linestyle='dashdot', label='total')
-
-            if D_unc/D > D_ERROR_THRESH:
-                print(f'  total: stopping. D_unc/D = {D_unc/D:.2g}')
+        if do_fits:
+            # first point D:
+            assert t[0] == 0
+            assert f[0] == 1
+            if f[1] > 1e-2:
+                D_first = -1 / (k**2 * t[1]) * np.log(f[1])
+                D_unc_first = 1 / (k**2 * t[1] * f[1]) * f_unc[1]
+                # print(f'  first D={D_first:.3g}')
+                assert D_unc_first >= 0, f'D_unc_first={D_unc_first:.3f} = 1 / ({k:.3f}**2 * {t[1]:.3f} * {f[1]:.3f}) * {f_unc[1]:.3f}'
+                Ds_for_saving_first    .append(D_first)
+                D_uncs_for_saving_first.append(D_unc_first)
+                ks_for_saving_first    .append(k)
             else:
-
-                print(f'  total:{common.format_val_and_unc(D, D_unc)}, (D_unc/D = {D_unc/D:.2g})')
-
-                Ds_for_saving.append(D)
-                D_uncs_for_saving.append(D_unc)
-                ks_for_saving.append(k)
-
-        else:
-            print(f'  total: stopping. covariance not estimated')
-
-        # new fit
-        # new_func = lambda t, a, b, c : a*t**2 + b*t + c
-        # # log_func = lambda t, D: np.log10( func(t, D) )
-        # # log_unc = lambda x, dx : 0.5 * np.log((x+dx)/(x-dx))
-        # # log_f_unc  = log_unc(f, f_unc )
-        # if (~f_bad).sum() > 2:
-        #     new_popt, new__pcov = scipy.optimize.curve_fit(new_func, t[~f_bad], f[~f_bad])
-            
-        #     if display:
-        #         ax      .plot(t_th, new_func(t_th, *new_popt), color='red', alpha=0.5)
-        #         ax_short.plot(t_th, new_func(t_th, *new_popt), color='red', alpha=0.5)
-
-        f_points_short = (~f_bad) & (t < 8)
-        f_points_long  = (~f_bad) & (t > 100)
-
-
-        if display:
-            SHORT_PLOT_MAX_X = 10 # for eleanor etc
-            SHORT_PLOT_Y0 = f[0:int(SHORT_PLOT_MAX_X+1)].min() # for eleanor
-
-            if file.startswith('marine'):
-                SHORT_PLOT_MAX_X = 1 # for marine
-                SHORT_PLOT_Y0 = 0 # for marine
-
-            ax_short.errorbar(t, f, yerr=f_unc, color=colors[type_index], linestyle='', alpha=0.2)
-            ax_short.errorbar(t, f, yerr=0, color=colors[type_index], linestyle='', marker='.')
-            # ax_short.errorbar(t, f, yerr=0, color=colors[type_index], linestyle='', marker='.')
-            # ax_short.semilogy()
-            ax_short.set_xlim(0, SHORT_PLOT_MAX_X)
-            ax_short.set_ylim(SHORT_PLOT_Y0, f[0:int(SHORT_PLOT_MAX_X+1)].max())
-            
-        if f_points_short.sum() > 2:
-            f_popt_short, f_pcov_short = scipy.optimize.curve_fit(
-                    log_func, t[f_points_short], np.log10(f[f_points_short]),
-                    p0=p0#, sigma=log_f_unc[f_points_short], absolute_sigma=True
-                )
-            # print('  short: we had to disable sigma fitting')
+                print('  skipped first')
                 
-            D_short = f_popt_short[0]
-            D_unc_short = np.sqrt(f_pcov_short)[0][0]
 
-            if np.isfinite(D_unc_short):
-                
-                if display:
-                    ax      .plot(t_th, func(t_th, *f_popt_short), color=colors[type_index], linestyle='dotted', label=f'short fit $D={D_short:.2g}$')
-                    ax_short.plot(t_th, func(t_th, *f_popt_short), color=colors[type_index], linestyle='dotted', label=f'short fit $D={D_short:.2g}$')
-                    log_ax  .plot(t_th, func(t_th, *f_popt_short), color=colors[type_index], linestyle='dotted', label=f'short fit $D={D_short:.2g}$')
-                    D_ax.hlines(D_short,  t.min(), t.max(), color=colors[type_index], linestyle='dotted', label='short')
-
-                if D_unc_short/D_short > D_ERROR_THRESH:
-                    print(f'  short: stopping. D_unc/D = {D_unc_short/D_short:.2g}')
-                
+            # fits
+            # we fit to log(f(k, t)) because otherwise points near one make a much
+            # larger impact to the fit than points near zero
+            if FIT == T_MINUS_T0_FIT:
+                func = lambda t, D, t0 : np.exp(-(t-t0) * k**2 * D)
+                log_func = lambda t, D, t0: np.log10( func(t, D, t0) )
+                # log_unc = lambda x, dx : 0.5 * np.log((x+dx)/(x-dx)) # what is this?
+                # log_f_unc  = log_unc(f, f_unc )
+            elif FIT == EXP_TIMES_CONST_FIT:
+                func = lambda t, D, c : c * np.exp(-t * k**2 * D)
+                log_func = lambda t, D, c: np.log10( func(t, D, c) )
+                # log_unc = lambda x, dx : 0.5 * np.log((x+dx)/(x-dx)) # what is this?
+                # log_f_unc  = log_unc(f, f_unc )
+            elif FIT == EXP_FIT:
+                func = lambda t, D : np.exp(-t * k**2 * D)
+                log_func = lambda t, D: np.log10( func(t, D) )
+                # log_unc = lambda x, dx : 0.5 * np.log((x+dx)/(x-dx)) # what is this?
+                # log_f_unc  = log_unc(f, f_unc )
+            elif FIT == DOMINIGUEZ_FIT:
+                assert '034' in file
+                Lh = 0.2*particle_diameter
+                if 1/k < Lh:
+                    func = lambda t, D : np.exp(-t * k**2 * D)
+                    log_func = lambda t, D: np.log10( func(t, D) )
                 else:
-                    print(f'  short: {common.format_val_and_unc(D_short, D_unc_short)}  (D_unc/D = {D_unc_short/D_short:.2g})')
+                    func = lambda t, D : np.exp(-t * k * D / Lh)
+                    log_func = lambda t, D: np.log10( func(t, D) )
+                
+            p0 = [0.05]
+            p0 = None
             
-                    Ds_for_saving_short    .append(D_short)
-                    D_uncs_for_saving_short.append(D_unc_short)
-                    ks_for_saving_short    .append(k)
-                    
-            else:
-                print('  short: stopping. covariance not estimated')
 
-            if DO_SHORT_LINEAR_FIT:
-                linear_func = lambda t, D : 1 - D*k**2*t
-                f_popt_short_linear, f_pcov_short_linear = scipy.optimize.curve_fit(
-                        linear_func, t[f_points_short], f[f_points_short],
+            if (~f_bad).sum() < 2:
+                print('  no good data, skipping rest')
+                continue
+                
+            # total fit
+            f_popt, f_pcov = scipy.optimize.curve_fit(
+                    log_func, t[~f_bad], np.log10(f[~f_bad]),
+                    # p0=p0, sigma=log_f_unc[~f_bad], absolute_sigma=True
+                )
+            
+            if FIT == EXP_TIMES_CONST_FIT:
+                print(f'  total c = {f_popt[1]:.3g} pm {np.sqrt(f_pcov[1, 1])}')
+
+            if FIT_WITH_ZERO_POINT:
+                theory_start = 0.1
+            else:
+                theory_start = t[1]
+            t_th = np.logspace(np.log10(theory_start), np.log10(t[-1]))
+
+            if np.isfinite(np.sqrt(f_pcov)[0,0]):
+                D = f_popt[0]
+                D_unc = np.sqrt(f_pcov)[0][0]
+
+                if display:
+                    ax      .plot(t_th, func(t_th, *f_popt), color=color, linestyle='dashdot', label=f'total {print_D(D)}')
+                    ax_short.plot(t_th, func(t_th, *f_popt), color=color, linestyle='dashdot', label=f'total {print_D(D)}')
+                    log_ax  .plot(t_th, func(t_th, *f_popt), color=color, linestyle='dashdot', label=f'total {print_D(D)}')
+                        # ax.plot(t_th, func(t_th, *Fs_popt), color='tab:orange',   linestyle='dotted')
+                    D_ax.hlines(f_popt[0], t.min(), t.max(), color=color, linestyle='dashdot', label='total')
+
+                if D_unc/D > D_ERROR_THRESH:
+                    print(f'  total: stopping. D_unc/D = {D_unc/D:.2g}')
+                else:
+
+                    print(f'  total:{common.format_val_and_unc(D, D_unc)}, (D_unc/D = {D_unc/D:.2g})')
+
+                    Ds_for_saving.append(D)
+                    D_uncs_for_saving.append(D_unc)
+                    ks_for_saving.append(k)
+
+            else:
+                print(f'  total: stopping. covariance not estimated')
+
+            # new fit
+            # new_func = lambda t, a, b, c : a*t**2 + b*t + c
+            # # log_func = lambda t, D: np.log10( func(t, D) )
+            # # log_unc = lambda x, dx : 0.5 * np.log((x+dx)/(x-dx))
+            # # log_f_unc  = log_unc(f, f_unc )
+            # if (~f_bad).sum() > 2:
+            #     new_popt, new__pcov = scipy.optimize.curve_fit(new_func, t[~f_bad], f[~f_bad])
+                
+            #     if display:
+            #         ax      .plot(t_th, new_func(t_th, *new_popt), color='red', alpha=0.5)
+            #         ax_short.plot(t_th, new_func(t_th, *new_popt), color='red', alpha=0.5)
+
+            f_points_short = (~f_bad) & (t < 8)
+            f_points_long  = (~f_bad) & (t > 100)
+
+                
+            ###### short fit
+            if f_points_short.sum() > 2:
+                f_popt_short, f_pcov_short = scipy.optimize.curve_fit(
+                        log_func, t[f_points_short], np.log10(f[f_points_short]),
                         p0=p0#, sigma=log_f_unc[f_points_short], absolute_sigma=True
                     )
-                D_short_linear = f_popt_short_linear[0]
-                D_unc_short_linear = np.sqrt(f_pcov_short_linear)[0][0]
+                # print('  short: we had to disable sigma fitting')
+                if FIT == EXP_TIMES_CONST_FIT:
+                    print(f'  short c = {f_popt_short[1]:.3g} pm {np.sqrt(f_pcov_short[1, 1])}')
+                    
+                D_short = f_popt_short[0]
+                D_unc_short = np.sqrt(f_pcov_short)[0][0]
 
-                if np.isfinite(D_unc_short_linear):
+                if np.isfinite(D_unc_short):
+                    
                     if display:
-                        # ax.plot(t_th, linear_func(t_th, *f_popt_short_linear), color=colors[type_index], linestyle='dotted', label='short')
-                        ax_short.plot(t_th, linear_func(t_th, *f_popt_short_linear), color='tab:red', linestyle='dotted', label=f'short lin $D={D_short_linear:.2g}$')
-                        ax      .plot(t_th, linear_func(t_th, *f_popt_short_linear), color='tab:red', linestyle='dotted', label=f'short lin $D={D_short_linear:.2g}$')
-                        log_ax  .plot(t_th, linear_func(t_th, *f_popt_short_linear), color='tab:red', linestyle='dotted', label=f'short lin $D={D_short_linear:.2g}$')
-                        D_ax.hlines(f_popt_short_linear[0],  t.min(), t.max(), color='tab:red', linestyle='dotted', label='short lin')
+                        ax      .plot(t_th, func(t_th, *f_popt_short), color=color, linestyle='dotted', label=f'short fit {print_D(D_short)}')
+                        ax_short.plot(t_th, func(t_th, *f_popt_short), color=color, linestyle='dotted', label=f'short fit {print_D(D_short)}')
+                        log_ax  .plot(t_th, func(t_th, *f_popt_short), color=color, linestyle='dotted', label=f'short fit {print_D(D_short)}')
+                        D_ax.hlines(D_short,  t.min(), t.max(), color=color, linestyle='dotted', label='short')
 
-                    if D_unc_short_linear/D_short_linear > D_ERROR_THRESH:
-                        print(f'  short linear: stopping. D_unc/D = {D_unc_short_linear/D_short_linear:.2g}')
-
+                    if D_unc_short/D_short > D_ERROR_THRESH:
+                        print(f'  short: stopping. D_unc/D = {D_unc_short/D_short:.2g}')
+                    
                     else:
-                        print(f'  short linear: {common.format_val_and_unc(D_short_linear, D_unc_short_linear)} (D_unc/D = {D_unc_short_linear/D_short_linear:.2g})')
-                        # Ds_for_saving_short    .append(f_popt_short_linear[0])
-                        # D_uncs_for_saving_short.append(np.sqrt(f_pcov_short_linear)[0][0])
-                        # ks_for_saving_short    .append(k)
+                        print(f'  short: {common.format_val_and_unc(D_short, D_unc_short)}  (D_unc/D = {D_unc_short/D_short:.2g})')
+                
+                        Ds_for_saving_short    .append(D_short)
+                        D_uncs_for_saving_short.append(D_unc_short)
+                        ks_for_saving_short    .append(k)
                         
                 else:
-                    print('  short linear: stopping. covariance not estimated')
-        else:
-            print('  short: not attempting')
+                    print('  short: stopping. covariance not estimated')
 
-        if f_points_long.sum() > 2:
-            f_popt_long, f_pcov_long = scipy.optimize.curve_fit(
-                    log_func, t[f_points_long], np.log10(f[f_points_long,]), 
-                    # p0=p0, sigma=log_f_unc[f_points_long], absolute_sigma=True
-                )
-            print('  long:  disabled sigma fitting')
-                
-            D_long = f_popt_long[0]
-            D_unc_long = np.sqrt(f_pcov_long)[0][0]
+                ###### short linear fit
+                if DO_SHORT_LINEAR_FIT:
+                    linear_func = lambda t, D : 1 - D*k**2*t
+                    f_popt_short_linear, f_pcov_short_linear = scipy.optimize.curve_fit(
+                            linear_func, t[f_points_short], f[f_points_short],
+                            p0=p0#, sigma=log_f_unc[f_points_short], absolute_sigma=True
+                        )
+                    D_short_linear = f_popt_short_linear[0]
+                    D_unc_short_linear = np.sqrt(f_pcov_short_linear)[0][0]
 
-            if np.isfinite(D_unc_long):
-                
-                if D_unc_long/D_long > D_ERROR_THRESH:
-                    # print(f'  short linear: D_unc/D = {D_unc_long/D_long:.2g}')
-                    pass
-                else:
-                
-                    if display:
-                        ax.plot(t_th, func(t_th, *f_popt_long), color=colors[type_index], linestyle='dashed', label='long')
-                    
-                    Ds_for_saving_long    .append(D_long)
-                    D_uncs_for_saving_long.append(D_unc_long)
-                    ks_for_saving_long    .append(k)
+                    if np.isfinite(D_unc_short_linear):
+                        if display:
+                            # ax.plot(t_th, linear_func(t_th, *f_popt_short_linear), color=color, linestyle='dotted', label='short')
+                            ax_short.plot(t_th, linear_func(t_th, *f_popt_short_linear), color='tab:red', linestyle='dotted', label=f'short lin {print_D(D_short_linear)}')
+                            ax      .plot(t_th, linear_func(t_th, *f_popt_short_linear), color='tab:red', linestyle='dotted', label=f'short lin {print_D(D_short_linear)}')
+                            log_ax  .plot(t_th, linear_func(t_th, *f_popt_short_linear), color='tab:red', linestyle='dotted', label=f'short lin {print_D(D_short_linear)}')
+                            D_ax.hlines(f_popt_short_linear[0],  t.min(), t.max(), color='tab:red', linestyle='dotted', label='short lin')
 
-                    if display:
-                        D_ax.hlines(f_popt_long[0],  t.min(), t.max(), color=colors[type_index], linestyle='dashed', label='long')
+                        if D_unc_short_linear/D_short_linear > D_ERROR_THRESH:
+                            print(f'  short linear: stopping. D_unc/D = {D_unc_short_linear/D_short_linear:.2g}')
+
+                        else:
+                            print(f'  short linear: {common.format_val_and_unc(D_short_linear, D_unc_short_linear)} (D_unc/D = {D_unc_short_linear/D_short_linear:.2g})')
+                            # Ds_for_saving_short    .append(f_popt_short_linear[0])
+                            # D_uncs_for_saving_short.append(np.sqrt(f_pcov_short_linear)[0][0])
+                            # ks_for_saving_short    .append(k)
+                            
+                    else:
+                        print('  short linear: stopping. covariance not estimated')
             else:
-                print('  long:  stopping. covariance not estimated')
-        else:
-            print('  long:  not attempting')
+                print('  short: not attempting')
+
+            ######## long fit
+            if f_points_long.sum() > 2:
+                f_popt_long, f_pcov_long = scipy.optimize.curve_fit(
+                        log_func, t[f_points_long], np.log10(f[f_points_long,]), 
+                        # p0=p0, sigma=log_f_unc[f_points_long], absolute_sigma=True
+                    )
+                if FIT == EXP_TIMES_CONST_FIT:
+                    print(f'  long c = {f_popt_long[1]:.3g} pm {np.sqrt(f_pcov_long[1, 1])}')
+                
+                print('  long:  disabled sigma fitting')
+                    
+                D_long = f_popt_long[0]
+                D_unc_long = np.sqrt(f_pcov_long)[0][0]
+
+                if np.isfinite(D_unc_long):
+                    
+                    if D_unc_long/D_long > D_ERROR_THRESH:
+                        # print(f'  short linear: D_unc/D = {D_unc_long/D_long:.2g}')
+                        pass
+                    else:
+                    
+                        if display:
+                            ax    .plot(t_th, func(t_th, *f_popt_long), color=color, linestyle='dashed', label=f'long {print_D(D_long)}')
+                            log_ax.plot(t_th, func(t_th, *f_popt_long), color=color, linestyle='dashed', label=f'long {print_D(D_long)}')
+                        
+                        Ds_for_saving_long    .append(D_long)
+                        D_uncs_for_saving_long.append(D_unc_long)
+                        ks_for_saving_long    .append(k)
+
+                        if display:
+                            D_ax.hlines(f_popt_long[0],  t.min(), t.max(), color=color, linestyle='dashed', label='long')
+                else:
+                    print('  long:  stopping. covariance not estimated')
+            else:
+                print('  long:  not attempting')
 
 
-            
+            ######## two stage fit
+            if np.sum(~f_bad) < 4:
+                print('  twostage: not enough data')
+            else:
+                func_twostage = lambda t, D1, D2, A1, A2 : A1 * np.exp(-t * k**2 * D1) + A2 * np.exp(-t * k**2 * D2)
+                log_func_twostage = lambda t, D1, D2, A1, A2: np.log10( func_twostage(t, D1, D2, A1, A2) )
+                # func_twostage = lambda t, D1, D2, A1: A1 * np.exp(-t * k**2 * D1) + (1-A1) * np.exp(-t * k**2 * D2)
+                # log_func_twostage = lambda t, D1, D2, A1: np.log10( func_twostage(t, D1, D2, A1) )
+                # func_twostage = lambda t, D2, A1: A1 * np.exp(-t * k**2 * D_short) + (1-A1) * np.exp(-t * k**2 * D2)
+                # log_func_twostage = lambda t, D2, A1: np.log10( func_twostage(t, D2, A1) )
+
+                try:
+
+                    if D0:
+                        p0 = [0.5*D0, 20*D0, 0.9, 0.1]
+                    else:
+                        p0 = None
+                    # p0 = [D_short, 20*D0, 0.1]
+                    # p0 = [20*D0, 0.1]
+                    f_popt_twostage, f_pcov_twostage = scipy.optimize.curve_fit(
+                            log_func_twostage, t[~f_bad], np.log10(f[~f_bad]), p0=p0
+                            # p0=p0, sigma=log_f_unc[f_points_long], absolute_sigma=True
+                        )
+                except RuntimeError as err:
+                    print('  twostage:', err)
+                
+                # D = f_popt[0]
+                # D_unc = np.sqrt(f_pcov_twostage)[0][0]
+                else:
+                    if display and SHOW_TWOSTAGE_FIT:
+                        color = 'tab:green'
+                        alpha = 1 if np.isfinite(np.sqrt(f_pcov_twostage)[0,0]) else 0.5
+                        ax      .plot(t_th, func_twostage(t_th, *f_popt_twostage), color=color, alpha=alpha, linestyle='dashed', label=f'twostage {print_D(f_popt_twostage[0])}, {print_D(f_popt_twostage[1])}')
+                        ax_short.plot(t_th, func_twostage(t_th, *f_popt_twostage), color=color, alpha=alpha, linestyle='dashed', label=f'twostage {print_D(f_popt_twostage[0])}, {print_D(f_popt_twostage[1])}')
+                        log_ax  .plot(t_th, func_twostage(t_th, *f_popt_twostage), color=color, alpha=alpha, linestyle='dashed', label=f'twostage {print_D(f_popt_twostage[0])}, {print_D(f_popt_twostage[1])}')
+                            # ax.plot(t_th, func(t_th, *Fs_popt), color='tab:orange',   linestyle='dotted')
+                        # D_ax.hlines(f_popt[0], t.min(), t.max(), color=color, linestyle='dashdot', label='total')
+
+                    # if D_unc/D > D_ERROR_THRESH:
+                    #     print(f'  total: stopping. D_unc/D = {D_unc/D:.2g}')
+                    # else:
+                    if np.isfinite(np.sqrt(f_pcov_twostage)[0,0]):
+                        print(f'  twostage: D1={f_popt_twostage[0]:.2g}, D2={f_popt_twostage[1]:.2g}, A1={f_popt_twostage[2]:.2g}, A2={f_popt_twostage[3]:.2g}')
+                        # print(f'  twostage: D1={f_popt_twostage[0]:.2g}, D2={f_popt_twostage[1]:.2g}, A1={f_popt_twostage[2]:.2g}')
+                        # print(f'  twostage: D2={f_popt_twostage[0]:.2g}, A1={f_popt_twostage[1]:.2g}')
+
+                        # print(f'  total:{common.format_val_and_unc(D, D_unc)}, (D_unc/D = {D_unc/D:.2g})')
+
+                        Ds_for_saving_D1.append(f_popt_twostage[0])
+                        D_uncs_for_saving_D1.append(np.sqrt(f_pcov_twostage[0, 0]))
+                        ks_for_saving_D1.append(k)
+                        
+                        Ds_for_saving_D2.append(f_popt_twostage[1])
+                        D_uncs_for_saving_D2.append(np.sqrt(f_pcov_twostage[1, 1]))
+                        ks_for_saving_D2.append(k)
+
+                    else:
+                        print('  twostage: covariance failed')
+
+
+
+        ##### displaying
+
         D      = -1/(k**2 * t ) * np.log(f)
         D_unc  =  1/(k**2 * t ) / np.sqrt(f**2) * f_unc # the sqrt(**2) is needed to prevent negative errors
             
@@ -405,14 +583,14 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
             
         
         if display:
-            D_ax.scatter(t [~f_bad  ], D [~f_bad  ], color=colors[type_index], label=Ftype, s=6)
-            D_ax.scatter(t [ f_bad  ], D [ f_bad  ], color=colors[type_index],   alpha=0.2, s=6)
+            D_ax.scatter(t [~f_bad  ], D [~f_bad  ], color=color, label=Ftype, s=6)
+            D_ax.scatter(t [ f_bad  ], D [ f_bad  ], color=color,   alpha=0.2, s=6)
             D_ax.scatter(t [~f_bad  ], D2[~f_bad  ], color=colors[type_index+1], label=Ftype, s=6)
             D_ax.scatter(t [ f_bad  ], D2[ f_bad  ], color=colors[type_index+1],   alpha=0.2, s=6)
-                # D_ax.errorbar(t , D , yerr=D_unc , fmt='', color=colors[type_index], alpha=0.2, linestyle='none')
-            D_ax.errorbar(t , D , yerr=D_unc , fmt='', color=colors[type_index], alpha=0.2, linestyle='none')
-            D_ax.errorbar(t , D2, yerr=D2_unc, fmt='', color=colors[type_index+1], alpha=0.2, linestyle='none')
-                # D_ax.errorbar(t , D , yerr=D_unc , fmt='', color=colors[type_index], alpha=0.2, linestyle='none')
+                # D_ax.errorbar(t , D , yerr=D_unc , fmt='', color=color, alpha=0.2, linestyle='none')
+            D_ax.errorbar(t , D , yerr=D_unc , fmt='', color=color, alpha=errorbar_alpha, linestyle='none')
+            D_ax.errorbar(t , D2, yerr=D2_unc, fmt='', color=colors[type_index+1], alpha=errorbar_alpha, linestyle='none')
+                # D_ax.errorbar(t , D , yerr=D_unc , fmt='', color=color, alpha=0.2, linestyle='none')
                 
             D_ax.semilogx()
             log_ax.semilogx()
@@ -447,16 +625,16 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
                     # ax.relim() # tell mpl to ignore errorbars when
                     # ax.autoscale_view() # calcing axis limits
                 pass
-            D_ax.set_ylim(1e-2, 1e0)
+            D_ax.set_ylim(1e-2, 5e0)
             
             # D_long  = {0.34: 0.023, 0.66: 0.006}
             # D_short = {0.34: 0.033, 0.66: 0.018}
             # D_ax.axhline(y=D_short[phi], color='black', linewidth=1, linestyle=':', label=r'D from MSD')
             # D_ax.axhline(y=D_long [phi], color='black', linewidth=1, linestyle=':')
             
-            D_ax    .legend(fontsize=7 if not mult else 5)
-            ax_short.legend(fontsize=7)
-            log_ax  .legend(fontsize=7)
+            D_ax    .legend(fontsize=6 if not mult else 5)
+            ax_short.legend(fontsize=6)
+            log_ax  .legend(fontsize=6)
 
             ax_short.set_title('$f(k, t)$ lin, short time ' + label, fontsize=8)
             D_ax    .set_title('$D$ ' + label,                       fontsize=8)
@@ -465,8 +643,8 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
             
             D_ax.semilogy()
 
-            D0 = 0.04
-            D_ax.hlines(D0, t.min(), t.max(), color='tab:green', linestyle='dotted')
+            # D0 = 0.04
+            # D_ax.hlines(D0, t.min(), t.max(), color='tab:green', linestyle='dotted')
 
         if Ftype == 'f' and display and DO_SHORT_LINEAR_FIT:
             # Segre-Pusey rescaling (Segre & Pusey 1996, p772)
@@ -494,6 +672,10 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
                 Ds_ax.errorbar(k*particle_diameter, D0/Ds, yerr=D0*Ds_unc/Ds**2, marker='o', color='tab:blue')#, label=fr'$k\sigma={k*particle_diameter:.1f}$', color=color)
                     # sp_ax.plot(t[ f_bad], D2[ f_bad]/Ds,                     color=color, alpha=0.2)
     
+        if display:
+            
+            ax.legend(fontsize=6 if not mult else 5)
+
 
     if Ftype == 'f' and SHOW_SEGRE_PUSEY_RESCALING_AXIS:
         # sp_ax.semilogx()
@@ -511,29 +693,46 @@ def show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks, mul
 
         common.save_fig(sp_fig, f'scattering_functions/figures_png/segre_pusey_rescaling_{file}.png')     
 
-    common.save_data(f'visualisation/data/Ds_from_{Ftype}_{file}',
-                Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, ks=ks_for_saving,
-                particle_diameter=particle_diameter,
-                pixel_size=d.get('pixel_size'),
-                channel=d.get('channel'), NAME=d.get('NAME'))
-    common.save_data(f'visualisation/data/Ds_from_{Ftype}_short_{file}',
-                Ds=Ds_for_saving_short, D_uncs=D_uncs_for_saving_short, ks=ks_for_saving_short,
-                particle_diameter=particle_diameter,
-                pixel_size=d.get('pixel_size'),
-                channel=d.get('channel'), NAME=d.get('NAME'))
-    common.save_data(f'visualisation/data/Ds_from_{Ftype}_long_{file}',
-                Ds=Ds_for_saving_long, D_uncs=D_uncs_for_saving_long, ks=ks_for_saving_long,
-                particle_diameter=particle_diameter,
-                pixel_size=d.get('pixel_size'),
-                channel=d.get('channel'), NAME=d.get('NAME'))
+    if do_fits:
+        common.save_data(f'visualisation/data/Ds_from_{Ftype}_{file}',
+                    Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, ks=ks_for_saving,
+                    particle_diameter=particle_diameter,
+                    pixel_size=d.get('pixel_size'),
+                    channel=d.get('channel'), NAME=d.get('NAME'))
+        common.save_data(f'visualisation/data/Ds_from_{Ftype}_short_{file}',
+                    Ds=Ds_for_saving_short, D_uncs=D_uncs_for_saving_short, ks=ks_for_saving_short,
+                    particle_diameter=particle_diameter,
+                    pixel_size=d.get('pixel_size'),
+                    channel=d.get('channel'), NAME=d.get('NAME'))
+        common.save_data(f'visualisation/data/Ds_from_{Ftype}_long_{file}',
+                    Ds=Ds_for_saving_long, D_uncs=D_uncs_for_saving_long, ks=ks_for_saving_long,
+                    particle_diameter=particle_diameter,
+                    pixel_size=d.get('pixel_size'),
+                    channel=d.get('channel'), NAME=d.get('NAME'))
+        common.save_data(f'visualisation/data/Ds_from_{Ftype}_first_{file}',
+                    Ds=Ds_for_saving_first, D_uncs=D_uncs_for_saving_first, ks=ks_for_saving_first,
+                    particle_diameter=particle_diameter,
+                    pixel_size=d.get('pixel_size'),
+                    channel=d.get('channel'), NAME=d.get('NAME'))
+        common.save_data(f'visualisation/data/Ds_from_{Ftype}_D1_{file}',
+                    Ds=Ds_for_saving_D1, D_uncs=D_uncs_for_saving_D1, ks=ks_for_saving_D1,
+                    particle_diameter=particle_diameter,
+                    pixel_size=d.get('pixel_size'),
+                    channel=d.get('channel'), NAME=d.get('NAME'))
+        common.save_data(f'visualisation/data/Ds_from_{Ftype}_D2_{file}',
+                    Ds=Ds_for_saving_D2, D_uncs=D_uncs_for_saving_D2, ks=ks_for_saving_D2,
+                    particle_diameter=particle_diameter,
+                    pixel_size=d.get('pixel_size'),
+                    channel=d.get('channel'), NAME=d.get('NAME'))
 
 if __name__ == '__main__':
     for file in sys.argv[1:]:
 
         
         num_displayed_ks = 20
-        fig, axes = plt.subplots(4, num_displayed_ks, figsize=(num_displayed_ks*3, 4*2.8))
-        
+        fig, axes = plt.subplots(4, num_displayed_ks-5, figsize=(num_displayed_ks*3, 4*2.8))
+        #                         big big big hack: ^^
+
         for type_index, Ftype in enumerate(['f', 'Fs']):
         # for type_index, Ftype in enumerate(['Fs', 'f', 'DDM']):
 

@@ -3,7 +3,7 @@ import numpy as np
 import time
 import sys
 import common
-
+"""
 # please use calc_and_save from count.py
 def calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, output_file_name, drift):
     t0 = time.time()
@@ -12,13 +12,14 @@ def calc_and_save(box_sizes_x, box_sizes_y, sep_sizes, file, output_file_name, d
     particles                  = data['particles']
     time_step                  = data['time_step']
     pixel_size                 = data['pixel_size']
-    num_timesteps              = data['num_timesteps']
     particle_diameter          = data['particle_diameter']
     # particle_diameter_calced   = data['particle_diameter_calced']
     particle_diameter_calced   = data.get('particle_diameter_calced')
     # particles[:, [2]] += 1 # make t 1-based
     window_size_x = None
     window_size_y = None
+
+    num_timesteps = int(particles[:, 2].max()) + 1
 
     if file == 'eleanorlong':
         pixel_size = 0.17 # so the boxes are the same size as aliceXXX

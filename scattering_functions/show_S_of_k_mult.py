@@ -44,7 +44,7 @@ ax.set_xlabel('$k\sigma$')
 filenames_str = '_'.join(filenames)
 
 # if export_destination:
-#     common.save_fig(fig, f'{export_destination}/S_of_k_{file}.pdf', hide_metadata=True)
+#     common.save_fig(fig, export_destination, hide_metadata=True)
 common.save_fig(fig, f'scattering_functions/figures_png/S_of_k_{filenames_str}.png')
 
 # if __name__ == '__main__':

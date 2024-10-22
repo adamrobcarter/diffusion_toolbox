@@ -5,7 +5,7 @@ import sys
 import matplotlib.cm
 import warnings
 
-DISPLAY_SMALL = True
+DISPLAY_SMALL = False
 INVERSE_COLORS = False
 
 # HIGHLIGHTS = True # displays 50 frames evenly throughout the stack instead of the first 50
@@ -26,7 +26,7 @@ TWOCHANNEL = 5
 METHOD = NONE
 # METHOD = REMOVE_BACKGROUND
 
-ADD_DRIFT = True
+ADD_DRIFT = False
 
 if METHOD == NONE:
     BACKWARDS = False
@@ -48,7 +48,7 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
                      dpi=300,
                      display_small=True, inverse_colors=False, highlights=False,
                      backwards=False, method=NONE, stacks=None, stackcolors=None, channel=None,
-                     no_stack=False, num_frames=None):
+                     no_stack=False, num_frames=None, dataset_name=None):
 
     if not no_stack:
         if method == TWOCHANNEL:
@@ -69,6 +69,8 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
     fig, ax = plt.subplots(1, 1, figsize=figsize)
 
     time_mult = 4
+    if file.startswith('marine'):
+        time_mult = 0.25
     if file.startswith('marine'):
         time_mult = 0.25
     
@@ -129,6 +131,8 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
     # common.term_hist(usedstack)
 
     # print('min mean max', usedstack.min(), usedstack.mean(), usedstack.max())
+    vmin = np.quantile(usedstack, 0.01)
+    vmax = np.quantile(usedstack, 0.99)
 
     def show(index):
         if not no_stack:
@@ -143,7 +147,7 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
             else:
                 frame = usedstack[index, :, :]
 
-            show_single_frame(ax, frame, pixel_size, channel)
+            show_single_frame(ax, frame, pixel_size, channel, vmin=vmin, vmax=vmax)
 
         
             color = 'white' if frame.mean()/(frame.max()-frame.min()) < 0.2 else 'black' # this used to be usedstack not frame
@@ -153,6 +157,8 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
         
         time_string = speed_string(time_mult, every_nth_frame*nth_frame)#+f'\ntime = {timestep*time_step*nth_frame:.1f}s'
         ax.text(0.95, 0.05, time_string, color=color, transform=ax.transAxes, ha='right', fontsize=10)
+
+        ax.text(0.1, 0.9, dataset_name, transform=ax.transAxes, fontsize=15, color=color)
      
         
         # for hiding border
@@ -170,7 +176,7 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
 
     common.save_gif(show, range(num_timesteps), fig, outputfilename, fps=fps, dpi=dpi)
 
-def show_single_frame(ax, frame, pixel_size, channel=None):
+def show_single_frame(ax, frame, pixel_size, channel=None, vmin=None, vmax=None):
 
     
     # vmin = np.quantile(usedstack, 0.01)
@@ -191,7 +197,7 @@ def show_single_frame(ax, frame, pixel_size, channel=None):
     else:
         cmap = matplotlib.cm.Greys
 
-    ax.imshow(frame, cmap=cmap, interpolation='none')
+    ax.imshow(frame, cmap=cmap, interpolation='none', vmin=vmin, vmax=vmax)
 
     
     color = 'white' if frame.mean()/(frame.max()-frame.min()) < 0.2 else 'black'
@@ -199,8 +205,7 @@ def show_single_frame(ax, frame, pixel_size, channel=None):
    
 
 
-if __name__ == '__main__':
-    for file in common.files_from_argv('preprocessing/data/', 'stack_'):
+def go(file, outputfilename, add_drift=False, display_small=False, method=NONE, highlights=False, backward=False, flip_y=False):
         data = common.load(f'preprocessing/data/stack_{file}.npz')
         
         stack      = data['stack']
@@ -208,20 +213,35 @@ if __name__ == '__main__':
         time_step  = data['time_step']
         channel    = data.get('channel')
 
-        if ADD_DRIFT:
+        if add_drift:
             stack = common.add_drift_intensity(stack, 1)
-            print('NAUGHTY')
+            print('adding drift')
             stack = np.swapaxes(stack, 1, 2)
 
-        if DISPLAY_SMALL:
+        if display_small:
             # crop
-            stack = stack[:, :500, :500]
+            stack = stack[:, :300, :300]
 
+        if flip_y:
+            stack = stack[:, ::-1, :]
 
         # print(stack.shape[1], 'x', stack.shape[2], 'px')
         # print(stack.min(), stack.max())
 
 
+        save_array_movie(stack, pixel_size, time_step, file, outputfilename,
+                         nth_frame=data.get('nth_frame', 1),
+                         display_small=DISPLAY_SMALL, inverse_colors=INVERSE_COLORS, highlights=HIGHLIGHTS,
+                         backwards=BACKWARDS, method=METHOD, channel=channel,
+                         dataset_name=data.get('NAME'))
+        # save_array_movie(stack, pixel_size, time_step, file, f"/home/acarter/presentations/cmd31/figures/{filename}.mp4",
+        #                  nth_frame=data.get('nth_frame', 1))
+        # save_array_movie(stack_copy, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}.mp4")
+
+        
+if __name__ == '__main__':
+    for file in common.files_from_argv('preprocessing/data/', 'stack_'):
+        
         filename = f'stack_movie_{file}'
         if METHOD == REMOVE_BACKGROUND:
             filename += '_bkgrem'
@@ -235,10 +255,13 @@ if __name__ == '__main__':
             filename += '_backwards'
         if ADD_DRIFT:
             filename += '_drifted'
-        save_array_movie(stack, pixel_size, time_step, file, f"preprocessing/figures_png/{filename}.gif",
-                         nth_frame=data.get('nth_frame', 1),
-                         display_small=DISPLAY_SMALL, inverse_colors=INVERSE_COLORS, highlights=HIGHLIGHTS,
-                         backwards=BACKWARDS, method=METHOD, channel=channel)
-        # save_array_movie(stack, pixel_size, time_step, file, f"/home/acarter/presentations/cmd31/figures/{filename}.mp4",
-        #                  nth_frame=data.get('nth_frame', 1))
-        # save_array_movie(stack_copy, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}.mp4")
+
+        go(
+            file,
+            outputfilename=filename,
+            add_drift=ADD_DRIFT,
+            method=METHOD,
+            display_small=DISPLAY_SMALL,
+            highlights=HIGHLIGHTS,
+            backward=BACKWARDS
+        )

@@ -22,7 +22,7 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=N
     # common.term_hist(x)
     y = particles[particles_at_t, 0]/pixel_size
     r = radius[particles_at_t] * np.sqrt(2) # TODO: should this be /pixel_size?
-    r = np.full_like(r, r.mean())
+    r = np.full_like(r, r.mean()) * 2
     warnings.warn('i disabled showing radius')
     if particles.shape[1] == 4:
         id = particles[particles_at_t, 3]
@@ -31,8 +31,10 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=N
         if particles.shape[1] == 4:
             return matplotlib.cm.tab20(int(id[i]%20))
         else:
-            if channel:
+            if channel == 'red':
                 return 'white'
+            elif channel == 'green':
+                return 'red'
             return 'red'
         
     alpha = 0.7
@@ -42,7 +44,7 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=N
     if cross:
         pass
     elif outline:
-        circles = [plt.Circle((x[i], y[i]), edgecolor=color(i), facecolor='none', radius=r[i]*2, linewidth=0.5, alpha=alpha) for i in range(particles_at_t.sum())]
+        circles = [plt.Circle((x[i], y[i]), edgecolor=color(i), facecolor='none', radius=r[i]*2, linewidth=1, alpha=alpha) for i in range(particles_at_t.sum())]
         # c = matplotlib.collections.PatchCollection(circles, facecolor='red', alpha=0.5)
         c = matplotlib.collections.PatchCollection(circles, match_original=True)
     else:
@@ -52,7 +54,7 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=N
     ax.add_collection(c)
 
 if __name__ == '__main__':
-    for file in sys.argv[1:]:
+    for file in common.files_from_argv('preprocessing/data', 'stack_'):
         data_stack = common.load(f'preprocessing/data/stack_{file}.npz')
         stack      = data_stack['stack']
         pixel_size = data_stack['pixel_size']
@@ -67,13 +69,17 @@ if __name__ == '__main__':
         # stack = stack[:, :500, :500]
 
         stack = stack - stack.mean(axis=0) # remove space background
+        # stack = np.interp(stack, (stack.min(), stack.max()), (0, 1)) # convert to 0->1 range
         
         def add_outlines(timestep, ax):
             add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=channel)
 
         filename = f'movie_{file}'
-        preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"particle_detection/figures_png/{filename}.gif",
-                                                func=add_outlines, channel=channel)
+        preprocessing.stack_movie.save_array_movie(
+            stack, pixel_size, time_step, file, f"particle_detection/figures_png/{filename}.gif",
+            func=add_outlines, channel=channel,
+            dataset_name=data_stack.get('NAME')
+        )
         # preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}.mp4",
         #                                            func=add_outlines)
 

@@ -20,15 +20,17 @@ print('num_timesteps', num_timesteps)
 window_size_x = data_param[:, 0].max()
 window_size_y = data_param[:, 1].max()
 
+particle_diameter = 3.09
+
 print('saving')
 common.save_data(f'particle_detection/data/particles_eleanorlong034.npz', particles=data_param,
-            time_step=0.5, particle_diameter=2.8, pixel_size=PIXEL,
+            time_step=0.5, particle_diameter=particle_diameter, pixel_size=PIXEL,
             window_size_x=window_size_x, window_size_y=window_size_y,
             pack_frac_given=0.342,
             num_timesteps=num_timesteps)
 # np.save(f'particle_detection/data/particles_eleanorlong.npy', data_param)
 common.save_data(f'particle_linking/data/trajs_eleanorlong034.npz', particles=data_param,
-         time_step=0.5, particle_diameter=2.8, pixel_size=PIXEL,
+         time_step=0.5, particle_diameter=particle_diameter, pixel_size=PIXEL,
             window_size_x=window_size_x, window_size_y=window_size_y,
             pack_frac_given=0.342,
          num_timesteps=num_timesteps)

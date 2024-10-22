@@ -1,0 +1,90 @@
+import common
+import matplotlib.pyplot as plt
+import numpy as np
+import countoscope_theory.structure_factor
+import scipy.optimize, scipy.stats
+import matplotlib.ticker
+
+SMALL = False
+SHOW_R_AXIS = False
+FORCE_LOG_X_AXIS = True
+RESCALE_X_AXIS_BY_DIAMETER = False
+SPLIT_AND_COLOR = False
+SHOW_FIT = False
+SHOW_THEORY = True
+
+def go(file, export_destination=None):
+    data = common.load(f"scattering_functions/data/F_{file}.npz")
+    t                 = data["t"]
+    F                 = data["F_unbinned"] # (num timesteps) x (num kx) x (num ky)
+    # F_unc             = data['F_unc']
+    F_unc = np.zeros_like(F)
+    k                 = data["k_unbinned"]
+    k_x               = data["k_x"]
+    k_y               = data["k_y"]
+    particle_diameter = data.get('particle_diameter')
+
+    S     = F    [0, :]
+    k     = k    [0, :]
+    S_unc = F_unc[0, :]
+
+    # f = F / S
+    f = F
+
+    fig, ax = plt.subplots(1, 1, figsize=(3.2, 3) if SMALL else (6, 3.2))
+    ax.set_title('$F(k, t)$')
+
+    # # we specify the edges of the boxes
+    # print(k_x.shape, k_y.shape, f.shape)
+    # spacing_x = k_x[-1] - k_x[-2]
+    # k_x = np.concatenate([k_x, [k_x[-1]+spacing_x]])
+    # spacing_y = k_y[-1] - k_y[-2]
+    # k_y = np.concatenate([k_y, [k_y[-1]+spacing_y]])
+    print(k_x.shape, k_y.shape, f.shape)
+
+    axis_limits = 1
+
+    # need x and y to be a mesh
+    k_x_size = k_x.size
+    k_y_size = k_y.size
+    k_x = np.repeat(k_x[:, np.newaxis], k_y_size, axis=1)
+    k_y = np.repeat(k_y[np.newaxis, :], k_x_size, axis=0)
+
+    # x = 2*np.pi/k_x / particle_diameter
+    # y = 2*np.pi/k_y / particle_diameter
+    # print(x)
+
+    
+    # vmin = -5
+    # vmax = 0
+    vmin = 0
+    vmax = 1
+    
+    def show_at_t(time):
+        ax.clear()
+        # ax.pcolormesh(k_x, k_y, np.log10(f[time, :, :]), shading='nearest', vmin=vmin, vmax=vmax)
+        ax.pcolormesh(k_x, k_y, f[time, :, :], shading='nearest', vmin=vmin, vmax=vmax)
+        ax.text(0.05, 0.05, f't={t[time]:.1f}', transform=ax.transAxes)
+        ax.set_aspect('equal')
+        ax.set_xlim(-axis_limits, axis_limits)
+        ax.set_ylim(-0.01, axis_limits)
+        # ax.set_xlabel('$L_x$')
+        # ax.set_ylabel('$L_y$')
+        ax.set_xlabel('$k_x$')
+        ax.set_ylabel('$k_y$')
+
+        # ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, pos: f'${2*np.pi/x/particle_diameter:0.1f}\sigma$' if x != 0 else ''))
+        # ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda x, pos: f'${2*np.pi/x/particle_diameter:0.1f}\sigma$' if x != 0 else ''))
+        # ax.set_xticks([-2, -1, -0.5, 0.5, 1, 2])
+
+    common.save_gif(show_at_t, range(0, t.size//2), fig, f'scattering_functions/figures_png/f_heatmap_{file}.gif', fps=2)
+
+    # if export_destination:
+    #     common.save_fig(fig, export_destination, hide_metadata=True)
+    # common.save_fig(fig, f'scattering_functions/figures_png/S_of_k_all_{file}.png')
+
+
+
+if __name__ == '__main__':
+    for file in common.files_from_argv('scattering_functions/data', 'F_'):
+        go(file)
