@@ -1,4 +1,5 @@
 import scattering_functions.calc_both
+import common
 
 # scattering_functions.calc_both.calc_for_f_type('F')
 # scattering_functions.calc_both.calc_for_f_type(
@@ -60,15 +61,32 @@ import scattering_functions.calc_both
 # )
 
 ####### for testing k_x=0
-scattering_functions.calc_both.calc_for_f_type(
-    'F',
-    log=False,
-    # max_K=1.08,
-    num_k_bins=50,  # computation time is proportional to this squared
-    # file_suffix='_25bins',
-    cores=16, # increasing this above 16 seems risky
-    max_time_origins=50, # computation time is directly proportional # eleanorlong needs this big
-    # S_only=True,
-    use_zero=True,
-    file_suffix='_usezero',
-)
+# for file in common.files_from_argv('particle_detection/data', 'particles_'):
+#     scattering_functions.calc_both.calc_for_f_type(
+#         file,
+#         'F',
+#         log=False,
+#         # max_K=1.08,
+#         num_k_bins=50,  # computation time is proportional to this squared
+#         # file_suffix='_25bins',
+#         cores=16, # increasing this above 16 seems risky
+#         max_time_origins=25, # computation time is directly proportional # eleanorlong needs this big
+#         # S_only=True,
+#         use_zero=True,
+#         file_suffix='_usezero',
+#     )
+
+
+for file in common.files_from_argv('particle_detection/data', 'particles_'):
+    scattering_functions.calc_both.calc_for_f_type(
+        file,
+        'F',
+        log=False,
+        # max_K=1.08,
+        # file_suffix='_25bins',
+        cores=16, # increasing this above 16 seems risky
+        max_time_origins=10000, # computation time is directly proportional # eleanorlong needs this big
+        # S_only=True,
+        use_zero=False,
+        # file_suffix='_smallbins',
+    )

@@ -585,7 +585,7 @@ def format_val_and_unc(val, unc, sigfigs=2, latex=True):
     if isinstance(val, np.ndarray):
         assert np.sum(val.shape) < 2, f'You gave an array of shape {val.shape}. Only scalars are allowed'
 
-    print(val.shape, unc.shape)
+    # print(val.shape, unc.shape)
     digits_after_decimal = -math.floor(math.log10(abs(val))) + sigfigs-1
     # print(f'.{digits_after_decimal}f digi')
     if digits_after_decimal < 0:

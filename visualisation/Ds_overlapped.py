@@ -114,6 +114,10 @@ def get_D0(file):
         file = file.split('_crop')[0]
     if '_first' in file:
         file = file.split('_first')[0]
+    if '_first' in file:
+        file = file.split('_smallbins')[0]
+    if '_first' in file:
+        file = file.split('_nozero')[0]
     data = common.load(f"visualisation/data/Ds_from_{D0_SOURCE}_{file}.npz")
     D_MSD = data["Ds"][0]
     sigma = data['particle_diameter']

@@ -1,74 +1,50 @@
 import scattering_functions.calc_both
+import scattering_functions.scattering_functions_nonumba
+import common
+import pickle
+import time
+import numpy as np
 
-# scattering_functions.calc_both.calc_for_f_type('F')
-# scattering_functions.calc_both.calc_for_f_type(
-#     'F',
-#     log=False,
-#     max_K=0.35,
-#     num_k_bins=200,  # computation time is proportional to this squared
-#     file_suffix='_200bins',
-#     cores=60, 
-#     max_time_origins=10, # computation time is directly proportional
-#     S_only=True
-# )
+d_frames = [1, 2, 3, 4, 5, 6, 7, 8]
 
-# scattering_functions.calc_both.calc_for_f_type(
-#     'F',
-#     log=False,
-#     max_K=0.35,
-#     num_k_bins=100,  # computation time is proportional to this squared
-#     file_suffix='_100bins',
-#     cores=60, 
-#     max_time_origins=10, # computation time is directly proportional
-#     S_only=True
-# )
+for file in common.files_from_argv('particle_detection/data', 'particles_'):
 
-# scattering_functions.calc_both.calc_for_f_type(
-#     'F',
-#     log=False,
-#     max_K=0.35,
-#     num_k_bins=50,  # computation time is proportional to this squared
-#     file_suffix='_50bins',
-#     cores=60, 
-#     max_time_origins=10, # computation time is directly proportional
-#     S_only=True
-# )
+    particles_at_frame, num_timesteps, d_frames, min_K, max_K, data = scattering_functions.calc_both.setup('F', file, d_frames)
 
-####### normal
-# scattering_functions.calc_both.calc_for_f_type(
-#     'F',
-#     log=False,
-#     # max_K=1.08,
-#     num_k_bins=50,  # computation time is proportional to this squared
-#     # file_suffix='_25bins',
-#     cores=16, # increasing this above 16 seems risky
-#     max_time_origins=500, # computation time is directly proportional # eleanorlong needs this big
-#     # S_only=True,
-# )
+    all_data = []
 
-######## first
-# scattering_functions.calc_both.calc_fnor_f_type(
-#     'F',
-#     log=False,
-#     # max_K=1.08,
-#     num_k_bins=50,  # computation time is proportional to this squared
-#     # file_suffix='_25bins',
-#     cores=16, # increasing this above 16 seems risky
-#     max_time_origins=10000, # all time origins
-#     first_point_only=True,
-#     file_suffix='_first',
-# )
+    for max_time_origins in np.logspace(1, 5, num=25):
+    # for max_time_origins in [1, 8, 64, 512]:
+    # for max_time_origins in [1, 64]:
+        print('doing', max_time_origins)
 
-####### for testing k_x=0
-scattering_functions.calc_both.calc_for_f_type(
-    'F',
-    log=False,
-    # max_K=1.08,
-    num_k_bins=50,  # computation time is proportional to this squared
-    # file_suffix='_25bins',
-    cores=16, # increasing this above 16 seems risky
-    max_time_origins=50, # computation time is directly proportional # eleanorlong needs this big
-    # S_only=True,
-    use_zero=True,
-    file_suffix='_usezero',
-)
+        t0 = time.time()
+
+        Fs, F_unc, ks, F_unbinned, F_unc_unbinned, k_unbinned, k_x, k_y = scattering_functions.scattering_functions_nonumba.intermediate_scattering(
+            False, 'F', 50, max_time_origins, d_frames,
+            particles_at_frame, num_timesteps, max_K, min_K, cores=16, use_zero=False, use_big_k=False, linear_log_crossover_k=0.2
+        )
+
+        t1 = time.time()
+
+        ret = dict(F=Fs, F_unc=F_unc, k=ks, k_x=k_x, k_y=k_y,
+            F_unbinned=F_unbinned, k_unbinned=k_unbinned, F_unc_unbinned=F_unc_unbinned,
+            t=d_frames*data['time_step'], min_K=min_K,
+            max_time_origins=max_time_origins, computation_time=t1-t0,
+            particle_diameter=data['particle_diameter'],
+            pixel_size=data['pixel_size'], pack_frac_given=data.get('pack_frac_given'),
+            window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
+            NAME=data.get('NAME'), channel=data.get('channel'),
+        )
+
+        all_data.append(ret)
+
+        print(f'done in {t1-t0:.0f}s')
+
+        if t1-t0 > 200:
+            break
+    
+    with open(f'scattering_functions/data/F_quantify_noise_{file}.pickle', "wb" ) as f:
+        print('saving')
+        pickle.dump(all_data, f)
+        print('saved')

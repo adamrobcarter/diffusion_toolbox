@@ -96,7 +96,7 @@ def show_single_F_type(
 
     def print_D(D):
         if D0 == None:
-            return f'$D={D}\mathrm{{\mu m^2/s}}$'
+            return f'$D={D:.3g}\mathrm{{\mu m^2/s}}$'
         else:
             return f'$D={D/D0:.2g}D_0$'
 
@@ -155,6 +155,7 @@ def show_single_F_type(
         display = False
         if k_index % every_nth_k == 0:
             display = True
+            display = False
         if k_index < 10:
             display = True
         if display:
@@ -285,13 +286,14 @@ def show_single_F_type(
                 # ax.set_ylim(9.9e-1, 1.01)
                 # ax.set_xlim(0, 1000)
                 # ax.set_ylim(1e-3 * (1/k) , 1.1)
-            end_plot_time = 1/(k+0.005) * 200
-            end_plot_y = f[np.argmax(t > end_plot_time)] * 0.8
+            end_plot_time = 1/(k+0.005) * 10 # WAS 200
+            end_plot_y = f[np.argmax(t > end_plot_time)] * 0.99
+            print('@@@', np.argmax(t > end_plot_time), f[np.argmax(t > end_plot_time)])
             if end_plot_y > 1: end_plot_y = 0.9
             if end_plot_y < 1e-4: end_plot_y = 1e-4
             ax.set_ylim(end_plot_y , 1.01)
                 # ax.set_xlim(0, 1/k**2 * 100)
-            ax.set_xlim(0, end_plot_time)
+            ax.set_xlim(-end_plot_time/50, end_plot_time)
 
             # ax.set_ylim(min(max(func(t[np.argmax(f_bad[1:])], *f_popt), 1e-3), 9.9e-1), 1.01)
             # ax.set_ylim(1e-3, 1.1)
