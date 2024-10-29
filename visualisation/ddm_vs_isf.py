@@ -8,7 +8,7 @@ import scipy.optimize
 subplot_i = 0
 
 for file in sys.argv[1:]:
-    d = common.load(f"scattering_functions/data/F_{file}.npz")
+    d = common.load(f"isf/data/F_{file}.npz")
     t         = d["t"]
     F_all     = d["F"]
     F_unc_all = d['F_unc']
@@ -22,7 +22,7 @@ for file in sys.argv[1:]:
 
     F_D_all = 2 * F0_all - 2 * F_all
 
-    d2 = common.load(f"scattering_functions/data/F_s_{file}.npz")
+    d2 = common.load(f"isf/data/F_s_{file}.npz")
     t2         = d2["t"]
     Fs_all     = d2["F"]
     Fs_unc_all = d2['F_unc']

@@ -183,7 +183,7 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, NAME, channel, live=False
     #          A=A_of_q, B=B_of_q, q=q,
     #          pack_frac_given=data.get('pack_frac_given'), particle_diameter=data.get('particle_diameter'))
     
-    # common.save_data(f'scattering_functions/data/DDM_{file}.npz',
+    # common.save_data(f'isf/data/DDM_{file}.npz',
     #                  t=t, F=DDM_f, F_unc=DDM_f_unc, k=real_ks,
     #                  particle_diameter=data.get('particle_diameter'))
 

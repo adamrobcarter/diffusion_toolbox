@@ -130,7 +130,7 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
     data = None
 
     if source == 'D0Sk':
-        data = common.load(f"scattering_functions/data/F_{file}.npz")
+        data = common.load(f"isf/data/F_{file}.npz")
         t                 = data["t"]
         F                 = data["F"] # (num timesteps) x (num k bins)
         F_unc             = data['F_unc']
@@ -159,7 +159,7 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
         D_uncs = D_MSD / S[:]**2 * S_unc[:]
 
     elif source == 'D0Sk_theory':
-        data = common.load(f"scattering_functions/data/F_{file}.npz")
+        data = common.load(f"isf/data/F_{file}.npz")
         t                 = data["t"]
         F                 = data["F"] # (num timesteps) x (num k bins)
         F_unc             = data['F_unc']

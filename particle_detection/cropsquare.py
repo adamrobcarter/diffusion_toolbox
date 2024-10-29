@@ -3,7 +3,7 @@ import numpy as np
 
 CROP = np.sqrt(2)/2
 CROP = 1
-CROP = 0.9
+CROP = 1
 
 for file in common.files_from_argv('particle_detection/data', 'particles_'):
     data = common.load(f'particle_detection/data/particles_{file}.npz')
