@@ -21,7 +21,10 @@ UNC_INCLUDES_NMSD_UNC = False
 NOFIT_CROP_THRESHOLD = 1e-4
 
 RESCALE_X_L2 = 1
-RESCALE_X = RESCALE_X_L2
+# RESCALE_X = RESCALE_X_L2
+RESCALE_X = 0
+
+PLATEAU_SOURCE = 'var'
 
 """
 Countoscope appendix:
@@ -167,20 +170,26 @@ def C_N_simplefit(t, C_N_over_VarN, C_N_over_VarN_unc, L):
     D_from_fit_unc = np.sqrt(pcov[0][0])
     return D_from_fit, D_from_fit_unc, func
 
-for file in common.files_from_argv('box_counting/data', 'counted_'):
 
-    D_fig = plt.figure()
-    T_fig = plt.figure()
-    D_ax = D_fig.gca()
-    T_ax = T_fig.gca()
+def go(file, ax, plateau_source, legend_fontsize=8, title=None):
+    ax_supplied = ax != None
+    if ax_supplied:
+        integ_axs = ax
+    else:
+        integ_fig, integ_axs = plt.subplots(1, 1, figsize=(6, 5))
+
+    # D_fig = plt.figure()
+    # T_fig = plt.figure()
+    # D_ax = D_fig.gca()
+    # T_ax = T_fig.gca()
 
     # integrand_fig = plt.figure()
     # integrand_ax = integrand_fig.gca()
-    integrand_fig, (integrand_ax_old, mid_ax, extra_ax) = plt.subplots(3, 1, figsize=(6, 15))
-    integ_fig, integ_axs = plt.subplots(1, 1, figsize=(6, 5))
+    # integrand_fig, (integrand_ax_old, mid_ax, extra_ax) = plt.subplots(3, 1, figsize=(6, 15))
+    
 
-    integrand_rescaled_fig = plt.figure()
-    integrand_rescaled_ax = integrand_rescaled_fig.gca()
+    # integrand_rescaled_fig = plt.figure()
+    # integrand_rescaled_ax = integrand_rescaled_fig.gca()
 
     C_N_fig, C_N_ax = plt.subplots(1, 1)
 
@@ -214,7 +223,6 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
     D_of_Ls_simplefit     = np.full((num_boxes), np.nan)
     D_of_L_uncs_simplefit = np.full((2, num_boxes), np.nan)
 
-
     for box_size_index in tqdm.trange(num_boxes, desc='timescale integral'):
         # T_of_Ls[box_size_index] = common.T_of_L(N2_mean[box_size_index, :], N_var[box_size_index], t)
         L = box_sizes[box_size_index]
@@ -227,16 +235,12 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
         print(f'{L_label} N_var={N_var[box_size_index]:.4f}, N_var/L^2={N_var[box_size_index]/L**2:.4f}')
 
 
-        plateau, plateau_std = box_counting.msd_single.get_plateau(N2_mean[box_size_index, :], file, L, phi, sigma, t)
+        plateau, plateau_std = box_counting.msd_single.get_plateau(
+            plateau_source, file=file, nmsd=N2_mean[box_size_index, :], L=L, phi=phi, sigma=sigma, t=t, var=N_var[box_size_index], varmod=N_var_mod[box_size_index]
+        )
+        var_label = plateau_source
 
-        # var_label = 'original'
-        # var = N_var[box_size_index]
-        var_label = 'plateau'
-        var = plateau / 2
-        # var_label = 'mean'
-        # var = N_mean[box_size_index]*2
-
-        T_integrand_func = lambda nmsd: (1 - 0.5 * nmsd / var )**2 # countoscope paper eq. 8
+        T_integrand_func = lambda nmsd: (1 - nmsd / plateau )**2 # countoscope paper eq. 8
         T_integrand     = T_integrand_func(N2_mean[box_size_index, :])
         T_integrand_min = T_integrand_func(N2_mean[box_size_index, :] + N2_std[box_size_index, :])
         T_integrand_max = T_integrand_func(N2_mean[box_size_index, :] - N2_std[box_size_index, :])
@@ -394,26 +398,28 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
             C_N_ax.scatter(t, C_N_over_VarN, s=2)
             C_N_ax.plot(t, simplefit_func(t, D_simplefit), color='grey')
 
-    integrand_ax.legend(fontsize=8)
+    integrand_ax.legend(fontsize=legend_fontsize)
     integrand_ax.loglog()
     if RESCALE_X == RESCALE_X_L2:
         integrand_ax.set_xlabel('$t/L^2$')
     else:
         integrand_ax.set_xlabel('$t$')
 
-    D_ax.plot(box_sizes/sigma, D_of_Ls,  label=f'')
-    T_ax.plot(box_sizes/sigma, T_of_Ls, label=f'')
+    # D_ax.plot(box_sizes/sigma, D_of_Ls,  label=f'')
+    # T_ax.plot(box_sizes/sigma, T_of_Ls, label=f'')
     
-    common.save_data(f'visualisation/data/Ds_from_timescaleint_{file}',
+    integrand_ax.hlines(NOFIT_CROP_THRESHOLD, *integrand_ax.get_xlim(), label='nofit crop threshold', color='gray')
+
+    common.save_data(f'visualisation/data/Ds_from_timescaleint_{plateau_source}_{file}',
              Ds=D_of_Ls, D_uncs=D_of_L_uncs, Ls=box_sizes,
              particle_diameter=sigma)
-    common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_{file}',
+    common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_{plateau_source}_{file}',
              Ds=D_of_Ls_nofit, D_uncs=D_of_L_uncs_nofit, Ls=box_sizes,
              particle_diameter=sigma)
-    common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_cropped_{file}',
+    common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_cropped_{plateau_source}_{file}',
              Ds=D_of_Ls_nofit2, D_uncs=D_of_L_uncs_nofit2, Ls=box_sizes,
              particle_diameter=sigma)
-    common.save_data(f'visualisation/data/Ds_from_C_N_simplefit_{file}',
+    common.save_data(f'visualisation/data/Ds_from_C_N_simplefit_{plateau_source}_{file}',
              Ds=D_of_Ls_simplefit, D_uncs=D_of_L_uncs_simplefit, Ls=box_sizes,
              particle_diameter=sigma)
     
@@ -430,11 +436,19 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
     # integrand_ax.seintegrand_ylabel(r'$integrand(L)$')
     # integrand_ax.set_ylim(1e-4, 1.1e0)
     # integrand_fig.savefig('figures_png/integrand.png', dpi=300)
-
-    integrand_ax.set_title(fr'{file} timescale integrand, $\phi={phi:.3f}$, $\sigma={sigma}$, var:{var_label}')
-    common.save_fig(integ_fig, f'box_counting/figures_png/integrand_{file}.png', dpi=300)
+    if title:
+        integrand_ax.set_title(title)
+    else:
+        integrand_ax.set_title(fr'{file} timescale integrand, $\phi={phi:.3f}$, $\sigma={sigma}$, plateau:{var_label}', fontsize=10)
     
-    C_N_ax.semilogx()
-    C_N_ax.semilogy()
-    C_N_ax.set_ylim(1e-4, 1.1)
-    common.save_fig(C_N_fig, f'box_counting/figures_png/C_N_{file}.png', dpi=300)
+    if not ax_supplied:
+        common.save_fig(integ_fig, f'box_counting/figures_png/integrand_{file}.png', dpi=300)
+    
+    # C_N_ax.semilogx()
+    # C_N_ax.semilogy()
+    # C_N_ax.set_ylim(1e-4, 1.1)
+    # common.save_fig(C_N_fig, f'box_counting/figures_png/C_N_{file}.png', dpi=300)
+
+if __name__ == '__main__':  
+    for file in common.files_from_argv('box_counting/data', 'counted_'):
+        go(file, plateau_source=PLATEAU_SOURCE)

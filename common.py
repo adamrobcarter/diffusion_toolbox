@@ -752,3 +752,64 @@ class DisplayScript:
         })
         return fig, ax
 
+
+def rotate_particles(rotation_degrees, particles, width, height):
+    th = rotation_degrees / 180 * np.pi
+    rotation = np.array([[np.cos(th), -np.sin(th)],[np.sin(th), np.cos(th)]])
+
+    if rotation_degrees % 90 == 45:
+        # if it's a 45deg rotation, lets make our life easier by making it square first
+        crop = min(width, height)
+        particles = crop_particles(particles, crop, crop)
+        width  = crop
+        height = crop
+
+    particles[:, [0, 1]] = particles[:, [0, 1]] @ rotation # note xys is a view of particles!
+        # now we have rotated but we've also probably moved
+        # so we find where corners have moved to and move them back
+    corners = np.array([
+            [0, 0],
+            [width, 0],
+            [0, height],
+            [width, height]
+        ])
+    new_corners = corners @ rotation
+    if rotation_degrees % 90 == 0:
+        pass
+    elif rotation_degrees % 90 == 45:
+        # new_corners is now the midpoints of the sides of the rectangle defined by new_corners
+        new_corners = (new_corners[[0, 1, 2, 3], :] + new_corners[[1, 2, 3, 0], :]) / 2
+
+    else:
+        raise Exception()
+    
+    x_offset = new_corners[:, 0].min()
+    y_offset = new_corners[:, 1].min()
+    particles[:, 0] -= x_offset
+    particles[:, 1] -= y_offset
+    new_corners[:, 0] -= x_offset
+    new_corners[:, 1] -= y_offset
+
+    width  = new_corners[:, 0].max()
+    height = new_corners[:, 1].max()
+    
+    if rotation_degrees % 90 == 45:
+        # we need to crop out the particles that didn't make it
+        in_x = (0 < particles[:, 0]) & (particles[:, 0] < width)
+        in_y = (0 < particles[:, 1]) & (particles[:, 1] < height)
+        # print('removing', np.sum(in_x & in_y)/(in_x & in_y).size)
+        particles = particles[in_x & in_y, :]
+
+    # assert particles[:, 0].min() >= 0
+    # assert particles[:, 1].min() >= 0
+    # assert particles[:, 0].max() <= width
+    # assert particles[:, 1].max() <= height
+
+    return particles, width, height
+
+def crop_particles(particles, crop_x, crop_y, start_x=0, start_y=0):
+    particles_in_crop = (start_x <= particles[:, 0]) & (particles[:, 0] < crop_x) & (start_y <= particles[:, 1]) & (particles[:, 1] < crop_y)
+    p = particles[particles_in_crop, :]
+    p[:, 0] -= start_x
+    p[:, 1] -= start_y
+    return p

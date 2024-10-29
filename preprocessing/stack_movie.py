@@ -44,11 +44,18 @@ def speed_string(time_mult, every_nth_frame):
     return f'{time_mult*every_nth_frame}x speed'
 
 def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
+                     window_size_x, window_size_y,
                      func=lambda timestep, ax : None, nth_frame=1, max_num_frames=50,
                      dpi=300,
                      display_small=True, inverse_colors=False, highlights=False,
                      backwards=False, method=NONE, stacks=None, stackcolors=None, channel=None,
-                     no_stack=False, num_frames=None, dataset_name=None):
+                     dataset_name=None,
+                     num_timesteps_in_data=None, # how many timesteps are in the original data?. only needed if stack is None
+                     ):
+
+    figsize = (3, 3)
+
+    no_stack = stack == None
 
     if not no_stack:
         if method == TWOCHANNEL:
@@ -93,7 +100,10 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
 
     if fps < 0.2:
         warnings.warn(f'fps = {fps}')
-    frames = range(0, min(stack.shape[0], max_num_frames*every_nth_frame), every_nth_frame)
+
+    if not no_stack:
+        num_timesteps_in_data = stack.shape[0]
+    frames = range(0, min(num_timesteps_in_data, max_num_frames*every_nth_frame), every_nth_frame)
 
     if not no_stack:
         if backwards:
@@ -131,29 +141,33 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
     # common.term_hist(usedstack)
 
     # print('min mean max', usedstack.min(), usedstack.mean(), usedstack.max())
-    vmin = np.quantile(usedstack, 0.01)
-    vmax = np.quantile(usedstack, 0.99)
+    if not no_stack:
+        vmin = np.quantile(usedstack, 0.01)
+        vmax = np.quantile(usedstack, 0.99)
 
     def show(index):
+        if backwards:
+            timestep = frames[-index]
+        else:
+            timestep = frames[index]
+
+        ax.clear()
+
         if not no_stack:
-            if backwards:
-                timestep = frames[-index]
-            else:
-                timestep = frames[index]
-            ax.clear()
 
             if len(usedstack.shape) == 4:
                 frame = usedstack[index, :, :, :]
             else:
                 frame = usedstack[index, :, :]
 
-            show_single_frame(ax, frame, pixel_size, channel, vmin=vmin, vmax=vmax)
-
-        
             color = 'white' if frame.mean()/(frame.max()-frame.min()) < 0.2 else 'black' # this used to be usedstack not frame
         
+            show_single_frame(ax, frame, pixel_size, channel=channel, vmin=vmin, vmax=vmax, window_size_x=window_size_x, window_size_y=window_size_y)
+
         else:
-            color = 'black'
+            color = 'gray'
+
+            show_single_frame(ax, None, pixel_size, channel=channel, window_size_x=window_size_x, window_size_y=window_size_y)
         
         time_string = speed_string(time_mult, every_nth_frame*nth_frame)#+f'\ntime = {timestep*time_step*nth_frame:.1f}s'
         ax.text(0.95, 0.05, time_string, color=color, transform=ax.transAxes, ha='right', fontsize=10)
@@ -169,14 +183,14 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
         func(timestep, ax)
 
     if no_stack:
-        num_timesteps = num_frames
+        num_timesteps = max_num_frames
         assert num_timesteps > 0
     else:
         num_timesteps = usedstack.shape[0]
 
     common.save_gif(show, range(num_timesteps), fig, outputfilename, fps=fps, dpi=dpi)
 
-def show_single_frame(ax, frame, pixel_size, channel=None, vmin=None, vmax=None):
+def show_single_frame(ax, frame, pixel_size, window_size_x, window_size_y, channel=None, vmin=None, vmax=None):
 
     
     # vmin = np.quantile(usedstack, 0.01)
@@ -197,10 +211,16 @@ def show_single_frame(ax, frame, pixel_size, channel=None, vmin=None, vmax=None)
     else:
         cmap = matplotlib.cm.Greys
 
-    ax.imshow(frame, cmap=cmap, interpolation='none', vmin=vmin, vmax=vmax)
-
+    if frame != None:
+        ax.imshow(frame, cmap=cmap, interpolation='none', vmin=vmin, vmax=vmax, extent=(0, window_size_x, 0, window_size_y))
     
-    color = 'white' if frame.mean()/(frame.max()-frame.min()) < 0.2 else 'black'
+    ax.set_xlim(0, window_size_x)
+    ax.set_ylim(0, window_size_y)
+    
+    if frame:
+        color = 'white' if frame.mean()/(frame.max()-frame.min()) < 0.2 else 'black'
+    else:
+        color = 'gray'
     common.add_scale_bar(ax, pixel_size, color=color)
    
 
@@ -212,6 +232,8 @@ def go(file, outputfilename, add_drift=False, display_small=False, method=NONE, 
         pixel_size = data['pixel_size']
         time_step  = data['time_step']
         channel    = data.get('channel')
+        window_size_x = data['window_size_x']
+        window_size_y = data['window_size_y']
 
         if add_drift:
             stack = common.add_drift_intensity(stack, 1)
@@ -233,7 +255,9 @@ def go(file, outputfilename, add_drift=False, display_small=False, method=NONE, 
                          nth_frame=data.get('nth_frame', 1),
                          display_small=DISPLAY_SMALL, inverse_colors=INVERSE_COLORS, highlights=HIGHLIGHTS,
                          backwards=BACKWARDS, method=METHOD, channel=channel,
-                         dataset_name=data.get('NAME'))
+                         dataset_name=data.get('NAME'),
+                         window_size_x=window_size_x, window_size_y=window_size_y
+        )
         # save_array_movie(stack, pixel_size, time_step, file, f"/home/acarter/presentations/cmd31/figures/{filename}.mp4",
         #                  nth_frame=data.get('nth_frame', 1))
         # save_array_movie(stack_copy, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}.mp4")

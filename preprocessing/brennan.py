@@ -23,13 +23,16 @@ def go(infile, outfile, orig_width, out_width):
     print(f'keeping {not_too_long.sum()/not_too_long.size:.2f} (too long)')
     data = data[not_too_long, :]
 
+    print('raw histogram:')
     common.term_hist(data[:, 1])
     data[:, 0] = data[:, 0] % orig_width
     data[:, 1] = data[:, 1] % orig_width
 
+    print('modded into window:')
     common.term_hist(data[:, 1])
     keep = ( data[:, 0] > 0 ) & ( data[:, 0] < out_width ) &  ( data[:, 1] > 0 ) & ( data[:, 1] < out_width )
-    
+    assert keep.sum() == keep.size
+
     if orig_width > out_width:
         num_timesteps = int(data[:, 2].max() + 1)
         common.save_data(f'particle_detection/data/particles_{outfile}_nocrop.npz', particles=data,
@@ -37,9 +40,10 @@ def go(infile, outfile, orig_width, out_width):
                     window_size_x=orig_width, window_size_y=orig_width,
                     num_timesteps=num_timesteps)
 
-    common.term_hist(data[keep, 1])
-    print(f'keeping {keep.sum()/keep.size:.2f} (inside crop)')
-    data = data[keep, :]
+    # print('cropped into window:')
+    # common.term_hist(data[keep, 1])
+    # print(f'keeping {keep.sum()/keep.size:.2f} (inside crop)')
+    # data = data[keep, :]
 
     num_timesteps = int(data[:, 2].max() + 1)
 
@@ -54,7 +58,8 @@ def go(infile, outfile, orig_width, out_width):
 # go('raw_data/brennan/noHydro2D_Leim_run_dt_0.0125_nsave_40.suspension_phi_0.34_L_640_modified.txt', 'brennan_nohydro_034', 640, 320)
 # 0.66
 # go('/data2/acarter/Spectral_Sophie_Boxes/data/spec_softetakt_long_run_dtau_0.025_nsave_4.suspension_phi_0.66_L_288_modified.txt', 'brennan_hydro_066', 288, 288)
-go('/data2/acarter/Spectral_Sophie_Boxes/data/noHydro2D_Leim_run_dt_9.765625e5_nsave_256_long.suspension_phi_0.66_L_640_eq_modified.txt', 'brennan_nohydro_066', 640, 288)
+# go('/data2/acarter/Spectral_Sophie_Boxes/data/noHydro2D_Leim_run_dt_9.765625e5_nsave_256_long.suspension_phi_0.66_L_640_eq_modified.txt', 'brennan_nohydro_066', 640, 288)
+go('/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/noHydro2D_Leim_run_dt_1.25e2_nsave_40_long_D0p04.suspension_phi_0.34_L_1280_modified.txt', 'sim_nohydro_034', 1280, 1280)
 
 
 """

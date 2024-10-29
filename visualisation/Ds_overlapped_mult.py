@@ -7,9 +7,9 @@ import visualisation.Ds_overlapped
 SHOW_TWIN_K_AXIS = False
 PRESENT_SMALL = False
 
-DISCRETE_COLORS = True
+DISCRETE_COLORS = False
 
-ERRORBAR_ALPHA = 0.3
+ERRORBAR_ALPHA = 0.1
 
 source_names = {
     'DDM': 'DDM',
@@ -84,7 +84,7 @@ def show_one_file(
         i, file, sources, PLOT_AGAINST_K, TWO_PI, logarithmic_y,
         fix_axes, filename, fig, ax,
         export_destination=None,
-        show_pixel=True, show_window=True, crop_end=None
+        show_pixel=True, show_window=True, crop_end=None, num_files=0
     ):
 
     all_Ds = []
@@ -105,7 +105,7 @@ def show_one_file(
     if DISCRETE_COLORS:
         color = ['tab:blue', 'tab:orange', 'tab:green'][i]
     else:
-        color = common.colormap(i, 0, 2.5)
+        color = common.colormap(i, 0, num_files)
 
     # get all the data
     for source in sources:
@@ -193,7 +193,7 @@ def show_one_file(
                 else:
                     yerrs  = yerrs [:crop_end]
 
-            ax.plot(x_this, ys, linestyle='none', marker=markers.get(source, '.'), markersize=4, color=color, label=source_label)
+            ax.plot(x_this, ys, linestyle='-', marker=markers.get(source, '.'), markersize=2, color=color, label=source_label)
             ax.errorbar(x_this, ys, yerr=yerrs, linestyle='none', marker='none', alpha=ERRORBAR_ALPHA, color=color)
             # print(xs[source], ys)
         # assert not np.any(np.isnan(Ds)), 'nan was found in Ds'
@@ -252,26 +252,27 @@ def go(files, export_destination=None):
 
         show_one_file(
             i, file, [
-                'boxcounting_collective',
-                # 'f_first',
+                # 'boxcounting_collective',
+                'f_first',
                 # 'f_short',
                 # 'f',
                 # 'f_long',
                 'MSD_first',
                 # 'timescaleint',
-                'timescaleint_nofit_cropped'
+                # 'timescaleint_nofit_cropped'
             ],
             PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, fix_axes=False,
-            fig=fig, ax=ax, filename=filename, show_window=False, show_pixel=False, crop_end=-4
+            fig=fig, ax=ax, filename=filename, show_window=False, show_pixel=False, crop_end=-4,
+            num_files=len(files),
         )
 
     ax.legend(fontsize=5)
     
     if export_destination:
         common.save_fig(fig, export_destination, hide_metadata=True)
-    filenames = '_'.join(sys.argv[1:])
+    filenames = '_'.join(files)
     common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_mult_{filenames}.png', dpi=200)
 
     
 if __name__ == '__main__':
-    go(sys.argv[1:])
+    go(common.files_from_argv('visualisation/data', 'Ds_from_f_first_'))

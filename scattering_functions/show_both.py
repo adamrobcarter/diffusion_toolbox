@@ -79,14 +79,19 @@ def show_single_F_type(
     k_all     = d["k"]
     particle_diameter = d['particle_diameter']
 
-    every_nth_k = int(math.ceil(k_all.shape[1] / num_displayed_ks))
+    ks_2D = len(k_all.shape) == 2
+
+    num_ks = k_all.shape[1] if ks_2D else k_all.size
+
+    every_nth_k = int(math.ceil(num_ks / num_displayed_ks))
     every_nth_k = max(every_nth_k, 1)
 
     graph_i = 0
 
-    S_of_k = F_all[0, :]
-    min_index = np.nanargmin(S_of_k)
-    k_at_min = k_all[0, min_index]
+    if CROP_AT_SK_MINIMUM:
+        S_of_k = F_all[0, :]
+        min_index = np.nanargmin(S_of_k)
+        k_at_min = k_all[0, min_index]
 
     try:
         D0, _, _ = visualisation.Ds_overlapped.get_D0(file)
@@ -103,13 +108,14 @@ def show_single_F_type(
     if color == None:
         color = colors[type_index]
 
-    for k_index in range(k_all.shape[1]):
-        if Ftype == 'DDM':
+    for k_index in range(num_ks):
+        if Ftype == 'DDM' or (not ks_2D):
             ks = k_all
         else:
             ks = k_all[0, :]
 
         # k_index = np.argmax(ks >= target_k)
+
         k = ks[k_index]
 
 
@@ -136,7 +142,10 @@ def show_single_F_type(
             #     warnings.warn("k_index == 0, which probably means everything is 1 because of the normalisation")
             #     continue
 
-
+        if np.all(f == 0):
+            print('  all f zero!')
+        if np.all(f == 1):
+            print('  all f == 1!')
         
         if np.isfinite(particle_diameter):
             k_label = fr'$k\sigma={k*particle_diameter:.2g}$'
@@ -169,6 +178,24 @@ def show_single_F_type(
 
             graph_i += 1
 
+        if do_fits:
+            # first point D:
+            if t.size == 1:
+                first_index = 0
+            else:
+                assert t[0] == 0
+                assert f[0] == 1
+                first_index = 1
+            if f[first_index] > 1e-2:
+                D_first = -1 / (k**2 * t[first_index]) * np.log(f[first_index])
+                D_unc_first = 1 / (k**2 * t[first_index] * f[first_index]) * f_unc[first_index]
+                # print(f'  first D={D_first:.3g}')
+                assert D_unc_first >= 0, f'D_unc_first={D_unc_first:.3f} = 1 / ({k:.3f}**2 * {t[1]:.3f} * {f[1]:.3f}) * {f_unc[1]:.3f}'
+                Ds_for_saving_first    .append(D_first)
+                D_uncs_for_saving_first.append(D_unc_first)
+                ks_for_saving_first    .append(k)
+            else:
+                print('  skipped first')
 
         # if Ftype == 'f':
         #     noise_thresh = 1e-2 # for eleanorlong!!
@@ -185,34 +212,35 @@ def show_single_F_type(
         # f_bad   = f_noise
         # f_bad[0] = True
 
-        # new noise identification idea
-        # first noise point is first point where the gradient is no longer getting more negative
-        grad = np.gradient(np.log10(f), np.log10(t))
-        width = None
-        if file.startswith('marine'):
-            prominence = 1
-        elif file.startswith('eleanorlong'):
-            prominence = 0.1
-            if file == 'eleanorlong001':
-                prominence = 0.1
-            if file == 'eleanorlong034':
-                prominence = 1
-            if file == 'eleanorlong066':
-                prominence = 2
-            # width = 1
-        elif file.startswith('brennan'):
-            prominence = 1 # 0.66
-        else:
-            prominence = 0.1 # was 0.01
-        # prominance filters out peaks that are just noise. A smoothing filter would probably be better though
-        # increase prominance to allow bigger noise
-        peaks, props = scipy.signal.find_peaks(-grad, prominence=prominence, width=width)
         f_bad = np.full(f.shape, False)
-
-        if len(peaks):
-            f_bad[peaks[0]:] = True
-        else:
-            print('  no peaks in -grad found?!')
+        if t.size > 1:
+            # new noise identification idea
+            # first noise point is first point where the gradient is no longer getting more negative
+            grad = np.gradient(np.log10(f), np.log10(t))
+            width = None
+            if file.startswith('marine'):
+                prominence = 1
+            elif file.startswith('eleanorlong'):
+                prominence = 0.1
+                if file == 'eleanorlong001':
+                    prominence = 0.1
+                if file == 'eleanorlong034':
+                    prominence = 1
+                if file == 'eleanorlong066':
+                    prominence = 2
+                # width = 1
+            elif file.startswith('brennan'):
+                prominence = 1 # 0.66
+            else:
+                prominence = 0.1 # was 0.01
+            # prominance filters out peaks that are just noise. A smoothing filter would probably be better though
+            # increase prominance to allow bigger noise
+            peaks, props = scipy.signal.find_peaks(-grad, prominence=prominence, width=width)
+            
+            if len(peaks):
+                f_bad[peaks[0]:] = True
+            else:
+                print('  no peaks in -grad found?!')
             
 
         # now we do another filter (should this be the only one?)
@@ -305,21 +333,6 @@ def show_single_F_type(
             print(f'  negative: {negative.sum()/negative.size:.2f}')
 
         if do_fits:
-            # first point D:
-            assert t[0] == 0
-            assert f[0] == 1
-            if f[1] > 1e-2:
-                D_first = -1 / (k**2 * t[1]) * np.log(f[1])
-                D_unc_first = 1 / (k**2 * t[1] * f[1]) * f_unc[1]
-                # print(f'  first D={D_first:.3g}')
-                assert D_unc_first >= 0, f'D_unc_first={D_unc_first:.3f} = 1 / ({k:.3f}**2 * {t[1]:.3f} * {f[1]:.3f}) * {f_unc[1]:.3f}'
-                Ds_for_saving_first    .append(D_first)
-                D_uncs_for_saving_first.append(D_unc_first)
-                ks_for_saving_first    .append(k)
-            else:
-                print('  skipped first')
-                
-
             # fits
             # we fit to log(f(k, t)) because otherwise points near one make a much
             # larger impact to the fit than points near zero

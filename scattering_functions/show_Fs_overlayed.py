@@ -43,11 +43,11 @@ def go(file, SHOW_FIT=False, export_destination=None):
         Fs_skold_all = F_all / F0_all
         k_skold_all = k_all / np.sqrt(F0_all)
 
-        num_ks = k_all.shape[1]
+        # num_ks = k_all.shape[1]
 
-        target_ks = (0.1, 0.14, 0.5, 1.3, 2, 4, 8)
+        target_ks = (0.001, 0.14, 0.5, 1.3, 2, 4, 8)
         if PRESENT_SMALL:
-            target_ks = (0.2, 0.8, 2.4)
+            target_ks = (0.2, 0.8, 2.4, 4.8)
 
         fig, ax = plt.subplots(1, 1, figsize=figsize)
 
@@ -147,7 +147,7 @@ def go(file, SHOW_FIT=False, export_destination=None):
             print(t.shape, f.shape)
 
             ax.scatter(t_for_plot[~bad_for_plot], F_for_plot[~bad_for_plot], label='observations' if graph_i==len(target_ks)-1 else None, s=15, color=color)
-            ax.scatter(t_for_plot[ bad_for_plot], F_for_plot[ bad_for_plot], alpha=0.2, s=15, color=color)
+            ax.scatter(t_for_plot[ bad_for_plot], F_for_plot[ bad_for_plot], alpha=1, s=15, color=color)
         
         
             func = lambda t, D : np.exp(-t * k**2 * D)
@@ -165,10 +165,14 @@ def go(file, SHOW_FIT=False, export_destination=None):
             if LOGARITHMIC_Y:
                 t_index_for_text = int(t_th.size * (3-graph_i) / 4)
             else:
-                t_index_for_text = int(350 / k_index)
+                t_index_for_text = int(350 / (k_index+10))
+            t_index_for_text = min(t_index_for_text, t_th.size-1)
+
+            t_index_for_text = np.argmax(f<0.5)
+
             angle = np.tan(np.gradient(theory_curve, t_th)[t_index_for_text]) * 180/np.pi
             # L_label = rf'$k={k[k_index]:.1f}\mathrm{{\mu m}}^{{-1}}$'
-            ax.text(t_th[t_index_for_text+0]/1.5, theory_curve[t_index_for_text+0]/1.5, label,
+            ax.text(t_th[t_index_for_text+0], theory_curve[t_index_for_text+0], label,
                     horizontalalignment='center', color=color, fontsize=9,
                     transform_rotates_text=True, rotation=angle, rotation_mode='anchor')
 

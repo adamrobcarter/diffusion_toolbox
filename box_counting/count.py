@@ -122,6 +122,7 @@ if __name__ == '__main__':
             # box_sizes_px = np.array([0.9*window_size/pixel_size])
             sep_sizes = 17 - box_sizes
             sep_sizes = 9 - box_sizes # moreoverlap
+            sep_sizes = 7 - box_sizes # moremoreoverlap
 
         elif file.startswith('brennan'):
             if '066' in file:

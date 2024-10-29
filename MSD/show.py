@@ -96,7 +96,7 @@ def fit_msd(t, msd, msd_unc):
     }
     # print(f'full  fit: D={popt[0]:.4f}')
 
-    fitting_points_short = common.exponential_integers(1, min(10, t.size-1))
+    fitting_points_short = range(1, min(10, t.size-1))
     func_short = lambda t, D: 4*D*t
     popt_short, pcov_short = scipy.optimize.curve_fit(func_short, t[fitting_points_short], msd[fitting_points_short])
     

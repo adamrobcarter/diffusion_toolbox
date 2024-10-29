@@ -81,7 +81,7 @@ def get_particles_at_frame(F_type, particles):
 
     return particles_at_frame, num_timesteps
 
-def intermediate_scattering(log, F_type, num_k_bins, max_time_origins, d_frames, particles_at_frame, num_timesteps, max_K, min_K, cores, use_zero=False, use_big_k=True, linear_log_crossover_k=1):
+def intermediate_scattering(log, F_type, num_k_bins, max_time_origins, d_frames, particles_at_frame, num_timesteps, max_K, min_K, cores, use_zero=False, use_big_k=True, linear_log_crossover_k=1, use_doublesided_k=False):
     """
     log: if True, the k bins will be logarithmically spaced
     F_type: 'F' or 'F_s' for the self-ISF. The self-ISF code is probably broken atm
@@ -93,8 +93,9 @@ def intermediate_scattering(log, F_type, num_k_bins, max_time_origins, d_frames,
     min_K:
     """
     assert not np.isnan(max_K)
+    assert 0 in d_frames, 'you need 0 in d_frames in order to calculate S(k) for the normalisation'
 
-    k_x, k_y, k_bins = get_k_and_bins_for_intermediate_scattering(min_K, max_K, num_k_bins, log_calc=log, log_bins=log, use_zero=use_zero, use_big_k=use_big_k, linear_log_crossover_k=linear_log_crossover_k)
+    k_x, k_y, k_bins = get_k_and_bins_for_intermediate_scattering(min_K, max_K, num_k_bins, log_calc=log, log_bins=log, use_zero=use_zero, use_big_k=use_big_k, linear_log_crossover_k=linear_log_crossover_k, use_doublesided_k=use_doublesided_k)
     
     num_k_bins = k_bins.size - 1
 
@@ -115,6 +116,7 @@ def intermediate_scattering(log, F_type, num_k_bins, max_time_origins, d_frames,
     assert np.all(d_frames < num_timesteps)
 
     use_every_nth_frame = max(int(num_timesteps / max_time_origins), 1)
+    print('mto', max_time_origins, 'uenf', use_every_nth_frame)
 
     if use_every_nth_frame > 1:
         warnings.warn(f'Using every {use_every_nth_frame}th frame as a time origin. Eventually you may want to use every frame')
@@ -122,14 +124,12 @@ def intermediate_scattering(log, F_type, num_k_bins, max_time_origins, d_frames,
     print('beginning computation')
     print('particles_at_frame:', common.arraysize(particles_at_frame))
 
-    progress = tqdm.tqdm(total=len(d_frames)*num_timesteps//use_every_nth_frame)
+    progress = tqdm.tqdm(total=len(d_frames)*num_timesteps//use_every_nth_frame, smoothing=0.03) # low smoothing makes it more like average speed and less like instantaneous speed
 
     if cores > 16:
         warnings.warn(f'using {cores} cores')
 
     with multiprocessing.Pool(cores) as pool:
-        print(f'created pool')
-
         # for dframe_i in tqdm.trange(len(d_frames)):
         for dframe_i in range(len(d_frames)):
             F_, F_unc_, k_, F_unbinned, F_unc_unbinned, k_unbinned = intermediate_scattering_for_dframe(dframe_i, F_type=F_type,
@@ -151,16 +151,16 @@ def intermediate_scattering_for_dframe(dframe_i, F_type, use_every_nth_frame, d_
 
     assert num_frames > d_frame, f'd_frame={d_frame}, num_frames={num_frames}'
 
-    frames_to_use = range(0, num_frames-d_frame-1, use_every_nth_frame)
+    time_origins_to_use = range(0, num_frames-d_frame-1, use_every_nth_frame)
 
-    assert max(frames_to_use) + d_frame < num_frames
+    assert max(time_origins_to_use) + d_frame < num_frames
     
-    num_used_frames = len(frames_to_use)
+    num_used_time_origins = len(time_origins_to_use)
 
-    F = np.full((num_used_frames, k_bins.size-1), np.nan)
+    F = np.full((num_used_time_origins, k_bins.size-1), np.nan)
     k = np.full((k_bins.size-1),                  np.nan) # +1 b/c we get the left and right of the final bin
-    F_full     = np.full((num_used_frames, k_x.size, k_y.size), np.nan)
-    F_unc_full = np.full((num_used_frames, k_x.size, k_y.size), np.nan)
+    F_full     = np.full((num_used_time_origins, k_x.size, k_y.size), np.nan)
+    F_unc_full = np.full((num_used_time_origins, k_x.size, k_y.size), np.nan)
     k_full     = np.full((k_x.size, k_y.size),                  np.nan)
                     
     if F_type == 'F_s':
@@ -175,20 +175,20 @@ def intermediate_scattering_for_dframe(dframe_i, F_type, use_every_nth_frame, d_
         
         particles = []
         # for frame_index in tqdm.trange(num_used_frames, desc='preparing data', leave=False):
-        for frame_index in range(num_used_frames):
-            frame = int(frames_to_use[frame_index])
-            particles.append((particles_at_frame[frame, :, :], particles_at_frame[frame+d_frame, :, :]))
+        for frame_index in range(num_used_time_origins):
+            time_origin = int(time_origins_to_use[frame_index])
+            particles.append((particles_at_frame[time_origin, :, :], particles_at_frame[time_origin+d_frame, :, :]))
 
         # print('passing', common.arraysize(particles[0][0], 2), 'to each process')
 
-        results = pool.map(bound, particles, chunksize=1)
-        progress.update(len(results))
+        # results = pool.map(bound, particles, chunksize=1)
+        # progress.update(len(results))
 
-        # results = []
-        # tasks = pool.imap(bound, particles, chunksize=1)
-        # for result in tasks:
-        #     results.append(result)
-        #     progress.update()
+        results = []
+        tasks = pool.imap(bound, particles, chunksize=1)
+        for result in tasks:
+            results.append(result)
+            progress.update()
 
         # results is now (num used frames) x 2 x (len of slice)
         for i, result in enumerate(results):
@@ -204,7 +204,7 @@ def intermediate_scattering_for_dframe(dframe_i, F_type, use_every_nth_frame, d_
                 assert np.array_equal(k_full, k_unbinned, equal_nan=True)
 
     # need nanmean because binned_statistic will return nan if the bin is empty
-    return np.nanmean(F, axis=0), np.nanstd(F, axis=0)/np.sqrt(num_used_frames), k, np.nanmean(F_full, axis=0), np.nanstd(F_full, axis=0)/np.sqrt(num_used_frames), k_full
+    return np.nanmean(F, axis=0), np.nanstd(F, axis=0)/np.sqrt(num_used_time_origins), k, np.nanmean(F_full, axis=0), np.nanstd(F_full, axis=0)/np.sqrt(num_used_time_origins), k_full
 
 
 def intermediate_scattering_preprocess_run_postprocess(k_x, k_y, k_bins, func, particles):
@@ -242,7 +242,7 @@ def postprocess_scattering(k, F, k_bins):
 
     return k_binned, F_binned
 
-def get_k_and_bins_for_intermediate_scattering(min_K, max_K, num_k_bins, log_calc, log_bins, use_zero, use_big_k=True, linear_log_crossover_k=1):
+def get_k_and_bins_for_intermediate_scattering(min_K, max_K, num_k_bins, log_calc, log_bins, use_zero, use_big_k=True, linear_log_crossover_k=1, use_doublesided_k=False):
 
     sym = False
 
@@ -260,7 +260,13 @@ def get_k_and_bins_for_intermediate_scattering(min_K, max_K, num_k_bins, log_cal
         else:
             k_x = np.concatenate([-k_oneside[::-1], k_oneside])
 
-        k_y = np.concatenate([(0,), k_oneside])
+        if use_doublesided_k:
+            if use_zero:
+                k_y = np.concatenate([-k_oneside[::-1], (0,), k_oneside])
+            else:
+                k_y = np.concatenate([-k_oneside[::-1], k_oneside])
+        else:
+            k_y = np.concatenate([(0,), k_oneside])
 
         # bin_edges = np.concatenate([(0,), np.logspace(np.log10(min_K), np.log10(max_K), num_k_bins)])
         bin_edges = np.concatenate([(0,), k_oneside])

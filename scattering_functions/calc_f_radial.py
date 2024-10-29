@@ -1,22 +1,15 @@
 import numpy as np
-import scattering_functions.scattering_functions_nonumba as scattering_functions
+import scattering_functions.scattering_functions_radial_ks as scattering_functions
 import common
 import time
 
-def setup(F_type, file, d_frames, drift_removed=False, max_K=None):
-    if F_type == 'Fs':
-        filepath = f"particle_linking/data/trajs_{file}.npz"
-    else:
-        filepath = f"particle_detection/data/particles_{file}.npz"
+def setup(file, d_frames, drift_removed=False, max_K=None):
+    filepath = f"particle_detection/data/particles_{file}.npz"
     data = common.load(filepath)
     particles  = data['particles'] # rows of x,y,t
     pixel_size = data.get('pixel_size')
     width      = data['window_size_x']
     height     = data['window_size_y']
-    assert particles[:, 0].min() >= 0
-    assert particles[:, 1].min() >= 0
-    assert particles[:, 0].max() <= width
-    assert particles[:, 1].max() <= height
     
     num_timesteps = int(particles[:, 2].max() + 1)
 
@@ -51,53 +44,51 @@ def setup(F_type, file, d_frames, drift_removed=False, max_K=None):
             # we use this cause it's the same as used by eleanorlong
 
             
-    particles_at_frame, num_timesteps = scattering_functions.get_particles_at_frame(F_type, particles)
+    particles_at_frame, num_timesteps = scattering_functions.get_particles_at_frame(particles)
 
     return particles_at_frame, num_timesteps, d_frames, min_K, max_K, data
 
 def calc_for_f_type(
         file,
-        F_type,
-        log=True,
         max_K=None,
         drift_removed=False,
-        num_k_bins=50, # computation time is proportional to this squared
         file_suffix='',
         cores=16,
-        max_time_origins=100, # this sets (approx) how many different time origins will be averaged over
+        max_time_origins=1000, # this sets (approx) how many different time origins will be averaged over
                               # computation time is directly proportional
-        use_zero=False,
         save=True,
         d_frames=None,
-        use_big_k=True,
-        linear_log_crossover_k=1,
-        use_doublesided_k=False,
     ):
 
     t0 = time.time()
 
-    particles_at_frame, num_timesteps, d_frames, min_K, max_K, data = setup(F_type, file, d_frames, drift_removed, max_K)
+    particles_at_frame, num_timesteps, d_frames, min_K, max_K, data = setup(file, d_frames, drift_removed, max_K)
 
     print('starting calculation')
 
-    Fs, F_unc, ks, F_unbinned, F_unc_unbinned, k_unbinned, k_x, k_y = scattering_functions.intermediate_scattering(
-        log, F_type, num_k_bins, max_time_origins, d_frames, 
-        particles_at_frame, num_timesteps, max_K, min_K, cores=cores, use_zero=use_zero, use_big_k=use_big_k, linear_log_crossover_k=linear_log_crossover_k,
-        use_doublesided_k=use_doublesided_k,
+    num_k_mags   = 64
+    num_k_angles = 64*2
+
+    # k = np.logspace(np.log10(min_K), np.log10(0.3), num=num_k_mags)
+    k = np.arange(min_K, 0.65, step=min_K)
+    print('k size', k.size)
+
+    Fs, F_unc, F_unbinned, F_unc_unbinned, k_x, k_y = scattering_functions.intermediate_scattering(
+        k, num_k_angles, max_time_origins, d_frames, particles_at_frame, num_timesteps, cores
     )
 
     t1 = time.time()
         
-    filename = f"scattering_functions/data/{F_type}_{file}{file_suffix}"
-    # if not log:
-    #     filename += '_nolog'
+    filename = f"scattering_functions/data/F_{file}{file_suffix}.npz"
 
-    to_save = dict(F=Fs, F_unc=F_unc, k=ks, k_x=k_x, k_y=k_y,
-        F_unbinned=F_unbinned, k_unbinned=k_unbinned, F_unc_unbinned=F_unc_unbinned,
+    k = np.repeat(k[np.newaxis, :], Fs.shape[0], axis=0) # backward compatibility
+
+    to_save = dict(F=Fs, F_unc=F_unc, k=k, k_x=k_x, k_y=k_y,
+        F_unbinned=F_unbinned, F_unc_unbinned=F_unc_unbinned,
         t=d_frames*data['time_step'], min_K=min_K,
-        num_k_bins=num_k_bins, max_time_origins=max_time_origins, computation_time=t1-t0, log=log,
+        max_time_origins=max_time_origins, computation_time=t1-t0,
         particle_diameter=data['particle_diameter'], drift_removed=drift_removed,
-        pixel_size=data.get('pixel_size'), pack_frac_given=data.get('pack_frac_given'),
+        pixel_size=data['pixel_size'], pack_frac_given=data.get('pack_frac_given'),
         window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
         NAME=data.get('NAME'), channel=data.get('channel'),
     )
@@ -111,5 +102,20 @@ def calc_for_f_type(
 
 if __name__ == '__main__':
     for file in common.files_from_argv('particle_detection/data', 'particles_'):
-        calc_for_f_type(file, 'F_s')
-        calc_for_f_type(file, 'f')
+
+        if file.startswith('eleanorlong001'):
+            max_time_origins = 20000
+        elif file.startswith('eleanorlong010'):
+            max_time_origins = 5000
+        else:
+            max_time_origins = 500
+
+        if 'cropsquare' in file:
+            max_time_origins *= 2
+
+        calc_for_f_type(
+            file,
+            file_suffix='_radial_onetime',
+            max_time_origins=max_time_origins,
+            d_frames=[0, 120],
+        )

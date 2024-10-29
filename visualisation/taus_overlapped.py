@@ -6,6 +6,8 @@ import countoscope_theory.structure_factor
 import countoscope_theory.timescaleint
 import scipy.special
 
+from visualisation.Ds_overlapped import get_color, get_D0, get_linestyle, get_marker, source_names
+
 SHOW_TWIN_K_AXIS = False
 ERRORBAR_ALPHA = 0.5
 LABELS_ON_PLOT = False
@@ -15,118 +17,7 @@ D0_SOURCE = 'MSD_first'
 
 DEFAULT_FIGSIZE = (6, 5)
 
-source_names = {
-    'DDM': 'DDM',
-    'DDM_short': 'DDM short',
-    'DDM_long': 'DDM long',
-    'f': '$f(k, \Delta t)$',
-    'Fs': '$F_s(k, \Delta t)$',
-    'f_short': '$f(k, \Delta t)$ short',
-    'Fs_short': '$F_s(k, \mathrm{short})$',
-    'f_long': '$f(k, \Delta t)$ long',
-    'f_first': '$f(k, \Delta t)$ first point',
-    'Fs_long': '$F_s(k, \mathrm{long})$',
-    'boxcounting': 'counting full fit',
-    'MSD': 'MSD',
-    'MSD_short': 'MSD',
-    'MSD_long': 'MSD long time',
-    'MSD_first': 'MSD first',
-    'MSD_centre_of_mass_onepoint': 'MSD CoM',
-    'MSD_centre_of_mass_proximity': 'MSD CoM prox',
-    'boxcounting_shorttime': 'Countoscope short time fit',
-    'boxcounting_first_quad': 'Countoscope first point',
-    'boxcounting_collective': 'Countoscope full fit',
-    'timescaleint': 'timescale integral',
-    'timescaleint_nofit': 'timescale integral (no fit)',
-    'D0Sk': r'$D_{MSD}/S(k)$',
-    'D0Sk_theory': r'$D(k)$ theory (no hydro)',
-    'C_N_simplefit': '$C_N$ fit',
-    'D_of_L_theory': '$D(L)$ theory (no hydro)',
-}
-
-colors = {
-    'DDM_short': 'tab:purple',
-    'f': 'lime',
-    'f_short': 'tab:green',
-    'f_long': 'yellowgreen',
-    'f_first': 'green',
-    'Fs_short': 'tab:green',
-    'f_D1': 'tab:green',
-    'f_D2': 'turquoise',
-    # 'boxcounting': 'counting',
-    'MSD_first': 'tab:cyan',
-    'MSD_short': 'tab:blue',
-    'MSD_centre_of_mass_onepoint': 'tab:blue',
-    'MSD_centre_of_mass_proximity': 'tab:blue',
-    'timescaleint': 'gold',
-    'timescaleint_nofit': 'tab:orange',
-    'timescaleint_nofit_cropped': 'tab:orange',
-    'boxcounting_collective': 'tab:orange',
-    'boxcounting_shorttime': 'tab:orange',
-    'boxcounting_first_quad': 'tab:orange',
-    'C_N_simplefit': 'tab:red',
-    'D0Sk': 'mediumspringgreen',
-    'D0Sk_theory': 'aquamarine', # tab:olive,
-    'D_of_L_theory': 'tab:red',
-}
-
-markers = {
-    'DDM_short': '*',
-    'f_short': 'x',
-    'DDM_long': '*',
-    'f_long': 'x',
-    'DDM': '*',
-    'f': '*',
-    'f_first': '*',
-    'MSD': '_',
-    'MSD_short': '_',
-    'MSD_long': '_',
-    'MSD_first': '_',
-    'MSD_centre_of_mass_onepoint': '_',
-    'MSD_centre_of_mass_proximity': '_',
-    'boxcounting': '_',
-    'boxcounting_first_quad': '_',
-    'boxcounting_shorttime': '*',
-    'boxcounting_collective': 'x',
-    'timescaleint': '+',
-    'timescaleint_nofit': 'o',
-    'timescaleint_nofit_cropped': 'o',
-    'D0Sk': 'o',
-    'D0Sk_theory': 'none',
-    'C_N_simplefit': '|',
-    'D_of_L_theory': 'none',
-    'dominiguez_theory': 'none',
-    'D_of_L_theory_Lh': 'none',
-}
-
-linestyle = {
-    'D0Sk_theory': '-',
-    'D_of_L_theory': '-',
-    'D_of_L_theory_Lh': '-',
-    'dominiguez_theory': '-',
-}
-
-
-def get_D0(file):
-    if file == 'eleanorlong066':
-        file = 'eleanorlong066_div8'
-    if '_crop' in file:
-        file = file.split('_crop')[0]
-    if '_trim' in file:
-        file = file.split('_trim')[0]
-    if '_first' in file:
-        file = file.split('_first')[0]
-    if '_first' in file:
-        file = file.split('_smallbins')[0]
-    if '_first' in file:
-        file = file.split('_nozero')[0]
-    data = common.load(f"visualisation/data/Ds_from_{D0_SOURCE}_{file}.npz")
-    D_MSD = data["Ds"][0]
-    sigma = data['particle_diameter']
-    phi = data['pack_frac_given']
-    return D_MSD, sigma, phi
-
-def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
+def get_tau(source, file, PLOT_AGAINST_K, TWO_PI):
     data = None
 
     if source == 'D0Sk':
@@ -186,29 +77,29 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
         Ds = D_MSD / S
         D_uncs = np.zeros_like(Ds)
 
-    elif source == 'D_of_L_theory':
-        D_MSD, sigma, phi = get_D0(file)
+    # elif source == 'D_of_L_theory':
+    #     D_MSD, sigma, phi = get_D0(file)
 
-        L = np.logspace(np.log10(sigma*1e-1), np.log10(sigma*5e1), 200)
-        L = L[::-1] # so that it's the same order as the others
-        D = countoscope_theory.timescaleint.D_of_L(L, 1, phi, sigma)
-        print('itssss', D[-1])
+    #     L = np.logspace(np.log10(sigma*1e-1), np.log10(sigma*5e1), 200)
+    #     L = L[::-1] # so that it's the same order as the others
+    #     D = countoscope_theory.timescaleint.D_of_L(L, 1, phi, sigma)
+    #     print('itssss', D[-1])
 
-        xs = L
-        Ds = D * D_MSD
-        D_uncs = np.zeros_like(Ds)
+    #     xs = L
+    #     Ds = D * D_MSD
+    #     D_uncs = np.zeros_like(Ds)
 
-    elif source == 'D_of_L_theory_Lh':
-        D_MSD, sigma, phi = get_D0(file)
+    # elif source == 'D_of_L_theory_Lh':
+    #     D_MSD, sigma, phi = get_D0(file)
 
-        L = np.logspace(np.log10(sigma*1e-1), np.log10(sigma*5e1), 100)
-        L = L[::-1] # so that it's the same order as the others
-        D = countoscope_theory.timescaleint.D_of_L_Lh(L, 1, phi, sigma)
-        print('itssss', D[-1])
+    #     L = np.logspace(np.log10(sigma*1e-1), np.log10(sigma*5e1), 100)
+    #     L = L[::-1] # so that it's the same order as the others
+    #     D = countoscope_theory.timescaleint.D_of_L_Lh(L, 1, phi, sigma)
+    #     print('itssss', D[-1])
 
-        xs = L
-        Ds = D * D_MSD
-        D_uncs = np.zeros_like(Ds)
+    #     xs = L
+    #     Ds = D * D_MSD
+    #     D_uncs = np.zeros_like(Ds)
 
     elif source == 'dominiguez_theory':
         # assert '034' in file
@@ -273,7 +164,10 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
                     xs = 1 / data['ks']
                     # source_label += ' $1/k$'
 
+            taus = 1 / (data['Ds'] * data['ks']**2)
+
         elif source.startswith('boxcounting') or source.startswith('timescaleint') or source.startswith('C_N'):
+            assert False
             xs = data['Ls']
             if PLOT_AGAINST_K:
                 raise
@@ -322,10 +216,7 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
 
     assert not np.any(np.isnan(xs)), f'nan found in xs from {source}'
     
-    if np.all(Ds == 0):
-        print('all Ds zero!')
-
-    return xs, Ds, D_uncs, pixel_size, window_size, pack_frac_given, pack_frac_calced, diameter
+    return xs, taus, np.zeros_like(taus), pixel_size, window_size, pack_frac_given, pack_frac_calced, diameter
 
 
 def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, ylim=None,
@@ -347,15 +238,15 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
     diameter = None
 
     xs = {}
-    Ds = {}
-    D_uncs = {}
+    taus = {}
+    tau_uncs = {}
 
     used_sources = []
 
     # get all the data
     for source in sources:
         try:
-            xs[source], Ds[source], D_uncs[source], pixel_size_temp, window_size_temp, pack_frac_given_temp, pack_frac_calced_temp, diameter_temp = get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI)
+            xs[source], taus[source], tau_uncs[source], pixel_size_temp, window_size_temp, pack_frac_given_temp, pack_frac_calced_temp, diameter_temp = get_tau(source, file, PLOT_AGAINST_K, TWO_PI)
         
             if pixel_size_temp:       pixel_size       = pixel_size_temp
             if window_size_temp:      window_size      = window_size_temp
@@ -372,10 +263,10 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
     assert found_at_least_one_file
 
     if D0_SOURCE in used_sources:
-        ax.set_ylabel('$D/D_{{MSD}}$')
-        rescale_y = Ds[D0_SOURCE][0]
+        # ax.set_ylabel('$D/D_{{MSD}}$')
+        rescale_y = taus[D0_SOURCE][0]
     else:
-        ax.set_ylabel('$D$ ($\mathrm{\mu m^2/s}$)')
+        ax.set_ylabel(r'$\tau$ ($\mathrm{s}$)')
         rescale_y = 1
 
     if diameter and not np.isnan(diameter):
@@ -419,16 +310,16 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
         source_label = f'{source_names.get(source, source)}'# if not source.startswith('MSD') else None
 
         try:
-            print('x', source, Ds[source][np.nanargmin(xs[source])])
+            print('x', source, taus[source][np.nanargmin(xs[source])])
         except:
             pass
-        print('X', source, Ds[source][0])
+        print('X', source, taus[source][0])
         xs[source] /= rescale_x
         # print('rescale_y', rescale_y)
 
         color = get_color(source)
-        ys = Ds[source] / rescale_y
-        yerrs = D_uncs[source] / rescale_y
+        ys = taus[source] / rescale_y
+        yerrs = tau_uncs[source] / rescale_y
         
         assert not np.any(np.isnan(xs[source]))
 
@@ -452,11 +343,6 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
 
         if LABELS_ON_PLOT:
                 
-            # old code for MSD labels:
-            #         xpos = xmin if PLOT_AGAINST_K else xmax
-            #         ha = 'left' if PLOT_AGAINST_K else 'right'
-            #         ax.text(xpos, ys[0]/1.2, source_label, ha=ha, va='top', color=colors[source], fontsize=LABELS_ON_PLOT_FONTSIZE)
-
             offset = len(ys) // 6 if PLOT_AGAINST_K else -len(ys) // 6
             if source == 'D_of_L_theory':
                 offset = int(len(ys) * 0.6)
@@ -490,28 +376,23 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
 
     assert len(all_Ds) > 0, 'no Ds were found at all'
 
-    # phi = 0.34
-    # D_th_self = ( 1 - 1.73*phi )
-    # D_th_coll = ( 1 + 1.45*phi )
+    # get max time
+    data = common.load(f'particle_detection/data/particles_{file}.npz')
+    particles = data['particles']
+    time_step = data['time_step']
+    max_time = particles[:, 2].max() * time_step
+    print(max_time, 'max_time', ax.get_xlim())
+    ax.hlines(max_time, *ax.get_xlim(), label='max time')
 
     if logarithmic_y:
         ax.semilogy()
 
-    if ylim:
-        ax.set_ylim(*ylim)
-    else:
-        ylim_expand = 1.2
-        if np.nanmax(all_Ds) - np.nanmax(all_Ds) < 0.4:
-            ylim_expand = 1.5
-        ymin = np.nanquantile(all_Ds, 0.02)/ylim_expand
-        # ymin = np.nanmin(all_Ds)
-        # if 'MSD_short' in used_sources:
-        #     ymin = 0.3
-        ax.set_ylim(ymin, np.nanquantile(all_Ds, 0.98)*ylim_expand)
-        # if ylim:
-        #     ax.set_ylim(*ylim)
-        # ax.set_ylabel('$D/D_0$')
-        # ax.set_xticks([])
+    # ylim_expand = 1.2
+    # if np.nanmax(all_Ds) - np.nanmax(all_Ds) < 0.4:
+    #     ylim_expand = 1.5
+    # ymin = np.nanquantile(all_Ds, 0.02)/ylim_expand
+    # ax.set_ylim(ymin, np.nanquantile(all_Ds, 0.98)*ylim_expand)
+    
     ax.semilogx()
     if PLOT_AGAINST_K:
         
@@ -522,18 +403,9 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
             realspace_ax.set_xlabel(r'$2\pi/k / \sigma$')
     else:
         ax.set_xlabel(r'$L / \sigma$')
-    # ax.set_xlabel(r'$k / (2\pi / \sigma)$')
-    # ax.semilogy()
-    # ax.legend(fontsize=5, loc='upper left')
-
-    # ax.legend(fontsize=7, loc='lower right')
+        
     if not LABELS_ON_PLOT:
         ax.legend(fontsize=5)
-    # ax.set_title(f'{file}, errorbars not yet all correct')
-    # name = '_'.join(used_sources)
-    # filename = f'{file}_{name}'
-    # if not TWO_PI:
-    #     filename += '_oneoverk'
 
     if label_k_scaling:
         k_scaling = r'$k \rightarrow L = 2\pi/k$' if TWO_PI else r'$k \rightarrow L = 1/k$'
@@ -544,37 +416,24 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
     #     ax.hlines(D0, *ax.get_xlim())
     #     s = (1+0.66)/(1-0.66)**3
     #     ax.hlines(D0*s, *ax.get_xlim())
+
     
     if not ax_supplied:
         if export_destination:
             common.save_fig(fig, export_destination, hide_metadata=True)
         if output_filename:
-            common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_{output_filename}.png', dpi=200)
+            common.save_fig(fig, f'visualisation/figures_png/taus_overlapped_{output_filename}.png', dpi=200)
 
     print()
 
-def get_linestyle(source):
-    return linestyle.get(trim_source(source), 'none')
-
-def get_marker(source):
-    return markers.get(trim_source(source), '.')
-
-def get_color(source):
-    return colors.get(trim_source(source), 'gray')
-
-suffixes = ['_obs', '_nmsdfitinter', '_nmsdfit', '_var', '_varmod']
-
-def trim_source(source):
-    for suffix in suffixes:
-        source = source.split(suffix)[0]
-    return source
 
 if __name__ == '__main__':
     for file in sys.argv[1:]:
 
         filename = file
 
-        go(file, ['MSD_first',
+        go(file, [
+            # 'MSD_first',
                 #   'MSD_long',
                 #   'D0Sk', 
                 #   'MSD_short',
@@ -582,22 +441,16 @@ if __name__ == '__main__':
                 #   'dominiguez_theory',
                 #   'panzuela_theory',
                 #   'f_D1', 'f_D2',
-                #   'f', 'f_short', 'f_long', 
-                #   'f_first',
+                  'f', 
+                'f_short',
+                'f_long', 
+                  'f_first',
                 # 'f_short',
                 #   'boxcounting_shorttime',
                     # 'boxcounting_first_quad',
                     # 'boxcounting_collective',
-                  'timescaleint_nofit_cropped',
-                  'timescaleint',
                 #   'MSD_centre_of_mass_proximity',
                 # 'D_of_L_theory',
                 # 'D_of_L_theory_Lh',
             ],
-            PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, output_filename=filename)
-
-        # go(file, ['MSD_short', 'boxcounting_collective', 'timescaleint_nofit', 'timescaleint', 'C_N_simplefit'],
-        #     PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True)
-
-        # go(file, ['MSD_short', 'D0Sk', 'f', 'f_short', 'f_long'],
-        #     PLOT_AGAINST_K=True, TWO_PI=True, logarithmic_y=True)
+            PLOT_AGAINST_K=True, TWO_PI=True, logarithmic_y=True, output_filename=filename)
