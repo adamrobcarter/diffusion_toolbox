@@ -33,7 +33,7 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
     obs_plateaus_unc = np.full(box_sizes.shape, np.nan)
 
     for i in range(len(box_sizes)):
-        obs_plateaus[i], obs_plateaus_unc[i] = get_plateau(N2_mean[i, :], file, box_sizes[i], phi, sigma, t)
+        obs_plateaus[i], obs_plateaus_unc[i] = get_plateau('obs', nmsd=N2_mean[i, :], file=file, L=box_sizes[i], phi=phi, sigma=sigma, t=t, var=N_var[i], varmod=N_var_mod[i])
 
     ax.errorbar(box_sizes, obs_plateaus, yerr=0, zorder=10, label='obs', color='tab:blue')
     ax.errorbar(box_sizes, obs_plateaus, yerr=obs_plateaus_unc, alpha=0.5, color='tab:blue')

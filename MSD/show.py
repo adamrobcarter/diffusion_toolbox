@@ -4,10 +4,15 @@ import numpy as np
 import scipy.optimize
 import matplotlib.cm
 
-def go(file, SHOW_ERRORBARS=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LONG_FIT=False, export_destination=None):
+SHOW_NOLOG_SHORTTIME = False
+SHOW_ERRORBARS = False
+
+def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LONG_FIT=False, export_destination=None):
     data = common.load(f'MSD/data/msd_{file}.npz')
     msd = data['msd']
     msd_unc = data['msd_unc']
+
+    print('nan', common.nanfrac(msd))
     
     t_indexes = np.arange(0, msd.size)
     n = (msd.size-1) / t_indexes
@@ -21,14 +26,19 @@ def go(file, SHOW_ERRORBARS=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LON
     # ax.errorbar(t[1:], msd[1:], msd_unc[1:], linestyle='none', marker='none', color='lightskyblue')
     color='tab:blue'
     ax.plot(t[1:], msd[1:], marker='.', markersize=8, linestyle='none', color=color, label='observations')
-    if SHOW_ERRORBARS:
+    if show_errorbars:
         ax.fill_between(t[1:], msd[1:]-msd_unc[1:], msd[1:]+msd_unc[1:], alpha=0.2, color=color)
     
-    ax.loglog()
-    ax.set_ylim(msd[1:].min()*0.6, msd.max()/0.8)
     # ax.set_xlim(t[1]*0.8, t[-1]/0.8)
     # ax.set_xlim(0, 20)
     # ax.set_ylim(0, 0.04)
+    if SHOW_NOLOG_SHORTTIME:
+        END = min(5000, t.size-1)
+        ax.set_xlim(0, t[END])
+        ax.set_ylim(0, msd[END])
+    else:
+        ax.loglog()
+        ax.set_ylim(msd[1:].min()*0.6, msd.max()/0.8)
 
     ax.set_ylabel(r'$\langle r(\Delta t)^2 \rangle$ ($\mathrm{\mu m}$)')
     ax.set_xlabel('$\Delta t$ (s)')
@@ -36,19 +46,20 @@ def go(file, SHOW_ERRORBARS=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LON
     # common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/msd_nofit_{file}.pdf', hide_metadata=True)
     fits = fit_msd(t, msd, msd_unc)
 
-    print('first D=' + common.format_val_and_unc(fits['first']['D'], fits['first']['D_unc']))
+    print('first D=' + common.format_val_and_unc(fits['first']['D'], fits['first']['D_unc'], sigfigs=3))
 
     if SHOW_FIT:
         ax.plot(fits['full']['t'], fits['full']['MSD'], color='white', linewidth=1, label='fit')
-    print('fit D=' + common.format_val_and_unc(fits['full']['D'], fits['full']['D_unc']))
+    print('fit D=' + common.format_val_and_unc(fits['full']['D'], fits['full']['D_unc'], sigfigs=3))
 
     if SHOW_SHORT_FIT:
-        ax.plot(fits['short']['t'], fits['short']['MSD'], color='white', linewidth=1)
-    print('fit short D=' + common.format_val_and_unc(fits['short']['D'], fits['short']['D_unc']))
+        ax.plot(fits['short']['t'], fits['short']['MSD'], color='white', linewidth=1, label='short fit')
+    print('fit short D=' + common.format_val_and_unc(fits['short']['D'], fits['short']['D_unc'], sigfigs=3))
 
-    if SHOW_LONG_FIT:
-        ax.plot(fits['long']['t'], fits['long']['MSD'], color='white', linewidth=1)
-    print('fit long D=' + common.format_val_and_unc(fits['long']['D'], fits['long']['D_unc']))
+    if t.size > 100:
+        if SHOW_LONG_FIT:
+            ax.plot(fits['long']['t'], fits['long']['MSD'], color='white', linewidth=1, label='long fit')
+        print('fit long D=' + common.format_val_and_unc(fits['long']['D'], fits['long']['D_unc'], sigfigs=3))
 
     ax.legend()
 
@@ -68,11 +79,12 @@ def go(file, SHOW_ERRORBARS=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LON
         particle_diameter=data.get('particle_diameter'), pack_frac_given=data.get('pack_frac_given'),
         pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
     )
-    common.save_data(f'visualisation/data/Ds_from_MSD_long_{file}',
-        Ds=[fits['long']['D']], D_uncs=[fits['long']['D_unc']], labels=[''],
-        particle_diameter=data.get('particle_diameter'), pack_frac_given=data.get('pack_frac_given'),
-        pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
-    )
+    if t.size > 100:
+        common.save_data(f'visualisation/data/Ds_from_MSD_long_{file}',
+            Ds=[fits['long']['D']], D_uncs=[fits['long']['D_unc']], labels=[''],
+            particle_diameter=data.get('particle_diameter'), pack_frac_given=data.get('pack_frac_given'),
+            pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
+        )
     common.save_data(f'visualisation/data/Ds_from_MSD_first_{file}',
         Ds=[fits['first']['D']], D_uncs=[fits['first']['D_unc']], labels=[''],
         particle_diameter=data.get('particle_diameter'), pack_frac_given=data.get('pack_frac_given'),
@@ -138,5 +150,5 @@ def fit_msd(t, msd, msd_unc):
 
 if __name__ == '__main__':
     for file in common.files_from_argv('MSD/data', 'msd_'):
-        go(file)
+        go(file, show_errorbars=SHOW_ERRORBARS)
         

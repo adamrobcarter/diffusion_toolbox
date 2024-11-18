@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import countoscope_theory.structure_factor
 import scipy.optimize, scipy.stats
-import scattering_functions.show_f_heatmap
+import isf.show_f_heatmap
 
 TIME = 18
 DO_F_NOT_f = False
@@ -78,7 +78,7 @@ def go(file, export_destination=None):
 
     # plt.suptitle(title) # idk why ax.set_title isn't working
 
-    im = scattering_functions.show_f_heatmap.show_at_t(time_index, ax, k_x, k_y, f, t, vmin, vmax, xlim=xlim, ylim=ylim)
+    im = isf.show_f_heatmap.show_at_t(time_index, ax, k_x, k_y, f, t, vmin, vmax, xlim=xlim, ylim=ylim)
 
     # fig.colorbar(im)
 

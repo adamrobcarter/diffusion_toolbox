@@ -47,19 +47,6 @@ import common
 #     # S_only=True,
 # )
 
-######## first
-# scattering_functions.calc_both.calc_fnor_f_type(
-#     'F',
-#     log=False,
-#     # max_K=1.08,
-#     num_k_bins=50,  # computation time is proportional to this squared
-#     # file_suffix='_25bins',
-#     cores=16, # increasing this above 16 seems risky
-#     max_time_origins=10000, # all time origins
-#     first_point_only=True,
-#     file_suffix='_first',
-# )
-
 ####### for testing k_x=0
 # for file in common.files_from_argv('particle_detection/data', 'particles_'):
 #     scattering_functions.calc_both.calc_for_f_type(
@@ -113,23 +100,30 @@ import common
 
 # doublesided
 for file in common.files_from_argv('particle_detection/data', 'particles_'):
-    if file.startswith('eleanorlong001'):
-        max_time_origins = 20000
-    elif file.startswith('eleanorlong010'):
-        max_time_origins = 5000
+    if '001' in file:
+        max_time_origins = 10000
+    elif '010' in file:
+        max_time_origins = 1000
+    elif '034' in file:
+        max_time_origins = 300
     else:
-        max_time_origins = 500
+        max_time_origins = 150
 
-    if 'cropsquare' in file:
-        max_time_origins *= 2
+    max_time_origins /= 2
+    max_time_origins /= 2
+    # if 'sim_nohydro' in file:
+    #     max_time_origins /= 4
+    # if 'cropsquare' in file:
+    #     max_time_origins *= 2
     
     isf.calc_both.calc_for_f_type(
         file,
         'F',
-        cores=16, # increasing this above 16 seems risky
-        max_time_origins=max_time_origins, # computation time is directly proportional # eleanorlong needs this big (~1000)
-        use_zero=True, use_doublesided_k=True,
-        file_suffix='_doublesided_onetime',
-        d_frames=[0, 120],
-        num_k_bins=20,
+        cores=16, # increasing this above 16 seems risky for big datasets
+        max_time_origins=max_time_origins, # computation time is directly proportional
+        use_zero=True, use_doublesided_k=False,
+        # file_suffix='',
+        # d_frames=[0, 120],
+        num_k_bins=30,
+        linear_log_crossover_k=0.5
     )

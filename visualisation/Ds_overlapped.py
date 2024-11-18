@@ -7,12 +7,13 @@ import countoscope_theory.timescaleint
 import scipy.special
 
 SHOW_TWIN_K_AXIS = False
-ERRORBAR_ALPHA = 0.5
+ERRORBAR_ALPHA = 0.4
 LABELS_ON_PLOT = False
 LABELS_ON_PLOT_FONTSIZE = 7
 D0_SOURCE = 'MSD_first'
 # D0_SOURCE = 'MSD_short'
-
+PREVENT_Y_RESCALING = False
+YLIM = None
 DEFAULT_FIGSIZE = (6, 5)
 
 source_names = {
@@ -68,6 +69,7 @@ colors = {
     'D0Sk': 'mediumspringgreen',
     'D0Sk_theory': 'aquamarine', # tab:olive,
     'D_of_L_theory': 'tab:red',
+    'NtN0_first': 'deeppink',
 }
 
 markers = {
@@ -88,7 +90,7 @@ markers = {
     'boxcounting_first_quad': '_',
     'boxcounting_shorttime': '*',
     'boxcounting_collective': 'x',
-    'timescaleint': '+',
+    'timescaleint': '_',
     'timescaleint_nofit': 'o',
     'timescaleint_nofit_cropped': 'o',
     'D0Sk': 'o',
@@ -108,23 +110,30 @@ linestyle = {
 
 
 def get_D0(file):
-    if file == 'eleanorlong066':
-        file = 'eleanorlong066_div8'
-    if '_crop' in file:
-        file = file.split('_crop')[0]
-    if '_trim' in file:
-        file = file.split('_trim')[0]
-    if '_first' in file:
-        file = file.split('_first')[0]
-    if '_first' in file:
-        file = file.split('_smallbins')[0]
-    if '_first' in file:
-        file = file.split('_nozero')[0]
+    file = get_D0_filename(file)
+
+    suffixes = ['_crop', '_trim', '_first', '_smallbins', '_nozero']
+    for suffix in suffixes:
+        if suffix in file:
+            file = file.split(suffix)[0]
+            
     data = common.load(f"visualisation/data/Ds_from_{D0_SOURCE}_{file}.npz")
     D_MSD = data["Ds"][0]
     sigma = data['particle_diameter']
     phi = data['pack_frac_given']
+    print(f'D_MSD = {D_MSD}')
     return D_MSD, sigma, phi
+
+def get_D0_filename(file):
+
+    # if file == 'sim_nohydro_010_L640':
+    #     file = 'sim_nohydro_010_L640_short'
+
+    if file in ['eleanorlong066', 'sim_nohydro_034_L640', 'sim_nohydro_034_L1280',
+                'sim_nohydro_010_L320', 'sim_nohydro_010_L544', 'sim_nohydro_010_L640',
+                'brennan_hydro_010_L544', 'brennan_hydro_010_L1280']:
+        file += '_div8'
+    return file
 
 def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
     data = None
@@ -159,12 +168,6 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
         D_uncs = D_MSD / S[:]**2 * S_unc[:]
 
     elif source == 'D0Sk_theory':
-        data = common.load(f"isf/data/F_{file}.npz")
-        t                 = data["t"]
-        F                 = data["F"] # (num timesteps) x (num k bins)
-        F_unc             = data['F_unc']
-        k                 = data["k"]
-        # particle_diameter = data.get('particle_diameter', 1)
         
         D_MSD, sigma, phi = get_D0(file)
         
@@ -189,13 +192,12 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
     elif source == 'D_of_L_theory':
         D_MSD, sigma, phi = get_D0(file)
 
-        L = np.logspace(np.log10(sigma*1e-1), np.log10(sigma*5e1), 200)
+        L = np.logspace(np.log10(sigma*1e-1), np.log10(sigma*5e1), 100)
         L = L[::-1] # so that it's the same order as the others
-        D = countoscope_theory.timescaleint.D_of_L(L, 1, phi, sigma)
-        print('itssss', D[-1])
+        D = countoscope_theory.timescaleint.D_of_L(L, D_MSD, phi, sigma)
 
         xs = L
-        Ds = D * D_MSD
+        Ds = D
         D_uncs = np.zeros_like(Ds)
 
     elif source == 'D_of_L_theory_Lh':
@@ -204,7 +206,6 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
         L = np.logspace(np.log10(sigma*1e-1), np.log10(sigma*5e1), 100)
         L = L[::-1] # so that it's the same order as the others
         D = countoscope_theory.timescaleint.D_of_L_Lh(L, 1, phi, sigma)
-        print('itssss', D[-1])
 
         xs = L
         Ds = D * D_MSD
@@ -243,8 +244,8 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
 
     else:
         usedfile = file
-        if source.startswith('MSD') and file == 'eleanorlong066':
-            usedfile = 'eleanorlong066_div8'
+        if source.startswith('MSD'):
+            usedfile = get_D0_filename(file)
         data = common.load(f'visualisation/data/Ds_from_{source}_{usedfile}.npz')
 
 
@@ -261,7 +262,7 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
             print(f'skipping {source} {file}, no Ds found')
             raise FileNotFoundError(f'skipping {source} {file}, no Ds found')
         
-        if source.startswith('f') or source.startswith('Fs') or source.startswith('DDM'):
+        if source.startswith('f') or source.startswith('F_s') or source.startswith('DDM'):
             
             if PLOT_AGAINST_K:
                 xs = data['ks']
@@ -272,8 +273,9 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
                 else:
                     xs = 1 / data['ks']
                     # source_label += ' $1/k$'
+            print(source, 'min f', data['ks'].min(), '2pi/min f', 2*np.pi/data['ks'].min())
 
-        elif source.startswith('boxcounting') or source.startswith('timescaleint') or source.startswith('C_N'):
+        elif source.startswith('boxcounting') or source.startswith('timescaleint') or source.startswith('C_N') or source.startswith('NtN0'):
             xs = data['Ls']
             if PLOT_AGAINST_K:
                 raise
@@ -287,7 +289,7 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
         else:
             raise Exception(f'you need to specify the x scale for {source}')
 
-
+    print(f'avg D_unc/D0 = {np.nanmean(D_uncs/Ds):.3f}, max =  {np.nanmax(D_uncs/Ds):.3f}')
 
     pixel_size = None
     window_size = None
@@ -309,11 +311,11 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
         if 'window_size_x' in data and data['window_size_x'] != None:
             if diameter and not np.isnan(diameter):
                 if PLOT_AGAINST_K:
-                    window_size = min(data['window_size_x'], data['window_size_y']) * diameter
+                    window_size = max(data['window_size_x'], data['window_size_y']) * diameter
                 else:
-                    window_size = min(data['window_size_x'], data['window_size_y']) / diameter
+                    window_size = max(data['window_size_x'], data['window_size_y']) / diameter
             else:
-                window_size = min(data['window_size_x'], data['window_size_y'])
+                window_size = max(data['window_size_x'], data['window_size_y'])
 
         if 'pack_frac_given' in data and data['pack_frac_given'] != None:
             pack_frac_given = data['pack_frac_given']
@@ -324,6 +326,8 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
     
     if np.all(Ds == 0):
         print('all Ds zero!')
+    if np.all(D_uncs == 0):
+        print('all D_uncs zero!')
 
     return xs, Ds, D_uncs, pixel_size, window_size, pack_frac_given, pack_frac_calced, diameter
 
@@ -366,12 +370,12 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
             used_sources.append(source)
             found_at_least_one_file = True
 
-        except FileNotFoundError:
-            print('FileNotFound', source)
+        except FileNotFoundError as e:
+            print('FileNotFound', e)
 
     assert found_at_least_one_file
 
-    if D0_SOURCE in used_sources:
+    if D0_SOURCE in used_sources and not PREVENT_Y_RESCALING:
         ax.set_ylabel('$D/D_{{MSD}}$')
         rescale_y = Ds[D0_SOURCE][0]
     else:
@@ -392,6 +396,7 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
         else:
             ax.set_xlabel(r'$L$')
 
+    assert sum([len(x) for x in xs.values()]) > 0, 'xs was empty'
     xmin = min([min(x) for x in xs.values() if len(x)>0]) / rescale_x
     xmax = max([max(x) for x in xs.values() if len(x)>0]) / rescale_x
 
@@ -418,13 +423,7 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
     for source in used_sources:
         source_label = f'{source_names.get(source, source)}'# if not source.startswith('MSD') else None
 
-        try:
-            print('x', source, Ds[source][np.nanargmin(xs[source])])
-        except:
-            pass
-        print('X', source, Ds[source][0])
-        xs[source] /= rescale_x
-        # print('rescale_y', rescale_y)
+        xs[source] = xs[source] / rescale_x
 
         color = get_color(source)
         ys = Ds[source] / rescale_y
@@ -445,7 +444,7 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
                 ax.fill_between(ax.get_xlim(), ys[0]*0.97, ys[0]*1.03, facecolor=color, alpha=0.5)
 
         else:
-            print('ys', source, ys)
+            # print('ys', source, ys)
             ax.plot(xs[source], ys, linestyle=get_linestyle(source), marker=get_marker(source), markersize=4, color=color,
                 label=plot_label, zorder=zorder)
             ax.errorbar(xs[source], ys, yerr=yerrs, linestyle='none', marker='none', alpha=ERRORBAR_ALPHA, color=color)
@@ -486,7 +485,7 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
         if show_pixel:
             ax.vlines(pixel_size,  min(ys), max(ys), color='gray', linestyle='dotted', label='pixel size')
         if show_window:
-            ax.vlines(window_size, min(ys), max(ys), color='gray', linestyle='dashed', label='window size')
+            ax.vlines(window_size, min(ys), max(ys), color='gray', linestyle='dashed', label='window size (max)')
 
     assert len(all_Ds) > 0, 'no Ds were found at all'
 
@@ -503,11 +502,9 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
         ylim_expand = 1.2
         if np.nanmax(all_Ds) - np.nanmax(all_Ds) < 0.4:
             ylim_expand = 1.5
-        ymin = np.nanquantile(all_Ds, 0.02)/ylim_expand
-        # ymin = np.nanmin(all_Ds)
-        # if 'MSD_short' in used_sources:
-        #     ymin = 0.3
-        ax.set_ylim(ymin, np.nanquantile(all_Ds, 0.98)*ylim_expand)
+        ymin = np.nanquantile(all_Ds, 0.05)/ylim_expand
+        ymax = np.nanquantile(all_Ds, 1)*ylim_expand
+        ax.set_ylim(ymin, ymax)
         # if ylim:
         #     ax.set_ylim(*ylim)
         # ax.set_ylabel('$D/D_0$')
@@ -528,7 +525,7 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
 
     # ax.legend(fontsize=7, loc='lower right')
     if not LABELS_ON_PLOT:
-        ax.legend(fontsize=5)
+        ax.legend(fontsize=7)
     # ax.set_title(f'{file}, errorbars not yet all correct')
     # name = '_'.join(used_sources)
     # filename = f'{file}_{name}'
@@ -557,10 +554,10 @@ def get_linestyle(source):
     return linestyle.get(trim_source(source), 'none')
 
 def get_marker(source):
-    return markers.get(trim_source(source), '.')
+    return markers.get(trim_source(source), 'o')
 
 def get_color(source):
-    return colors.get(trim_source(source), 'gray')
+    return colors.get(trim_source(source), common.FIT_COLOR)
 
 suffixes = ['_obs', '_nmsdfitinter', '_nmsdfit', '_var', '_varmod']
 
@@ -576,25 +573,33 @@ if __name__ == '__main__':
 
         go(file, ['MSD_first',
                 #   'MSD_long',
-                #   'D0Sk', 
+                  'D0Sk', 
                 #   'MSD_short',
-                #   'D0Sk_theory',
+                  'D0Sk_theory',
                 #   'dominiguez_theory',
                 #   'panzuela_theory',
                 #   'f_D1', 'f_D2',
                 #   'f', 'f_short', 'f_long', 
                 #   'f_first',
                 # 'f_short',
+                'f_long',
+                'f',
+                'f_first_first',
                 #   'boxcounting_shorttime',
-                    # 'boxcounting_first_quad',
-                    # 'boxcounting_collective',
-                  'timescaleint_nofit_cropped',
-                  'timescaleint',
+                #     'boxcounting_first_quad',
+                    'boxcounting_collective',
+                #   'timescaleint_nofit_cropped_var',
+                  'timescaleint_var',
                 #   'MSD_centre_of_mass_proximity',
-                # 'D_of_L_theory',
+                'D_of_L_theory',
                 # 'D_of_L_theory_Lh',
+                'NtN0_first',
+                'NtN0_fit',
+                # 'F_s_first',
             ],
-            PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, output_filename=filename)
+            PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, output_filename=filename,
+            ylim=YLIM,
+            )
 
         # go(file, ['MSD_short', 'boxcounting_collective', 'timescaleint_nofit', 'timescaleint', 'C_N_simplefit'],
         #     PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True)

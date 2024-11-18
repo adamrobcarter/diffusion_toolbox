@@ -49,7 +49,7 @@ def reshape(particles):
     num_particles = int(particles[:, 3].max()) + 1
     num_timesteps = int(particles[:, 2].max()) + 1
 
-    assert particles[:, 3].min() == 0
+    assert particles[:, 3].min() == 0, f'smallest ID was {particles[:, 3].min()}'
     assert particles[:, 2].min() == 0
 
     data = np.full((num_particles, num_timesteps, 2), np.nan)
@@ -72,6 +72,7 @@ def calc_internal(data):
             i += 1
 
     hist = [common.nanfrac(data[p, :, :]) for p in range(data.shape[0])]
+    print('nanfrac ')
     common.term_hist(hist)
 
     ps = ps[:i, :, :]
@@ -743,12 +744,14 @@ def calc_incremental(particles):
     msd_sum_sq = np.zeros(num_timesteps)
     msd_count = np.zeros(num_timesteps)
 
-    # for particle in tqdm.trange(num_particles):
     progress = tqdm.tqdm(total=particles.shape[0])
 
     start_index = 0
     current_id = 0
     skipped = 0
+
+    # calc_every = 10
+
     while start_index < particles.shape[0]-1:
         current_id = particles[start_index, 3]
         end_index = start_index + 1
@@ -763,10 +766,16 @@ def calc_incremental(particles):
         # now sort by time
         data_this_particle = data_this_particle[data_this_particle[:, 2].argsort()]
 
+        assert not np.any(np.isnan(data_this_particle))
+
         if data_this_particle.shape[0] == 0:
             pass
 
+        # elif current_id % calc_every != 0:
+        #     pass
+
         else:
+            # print(data_this_particle[:, 2])
             # assert data_this_particle[0, 2] == 0
             # num_timesteps_this_particle = int(data_this_particle[:, 2].max()) + 1
             num_timesteps_this_particle = int(data_this_particle[-1, 2]) + 1
@@ -777,13 +786,16 @@ def calc_incremental(particles):
             if num_timesteps_this_particle != data_this_particle.shape[0]:
                 # this means that the timestep was non-contiguous
                 skipped += 1
+                # print(num_timesteps_this_particle, data_this_particle.shape[0])
             
             else:
+                # print(num_timesteps_this_particle)
                 # assert data_this_particle[-1, 2] == num_timesteps_this_particle - 1
                 # t1 = time.time()
                 x_MSD = msd_fft1d(data_this_particle[:, 0])
                 y_MSD = msd_fft1d(data_this_particle[:, 1])
                 MSD = x_MSD + y_MSD
+                assert not np.any(np.isnan(MSD))
                 # t2 = time.time()
                 msd_sum[:num_timesteps_this_particle] += MSD
                 msd_sum_sq[:num_timesteps_this_particle] += MSD**2
@@ -800,9 +812,24 @@ def calc_incremental(particles):
     progress.close()
 
     print(f'skipped {skipped/num_particles:.2f}')
+    # assert skipped/num_particles < 0.7
+
+    assert not np.any(np.isnan(msd_sum))
+    assert not np.any(np.isnan(msd_count))
+    
+    if np.any(msd_count == 0):
+        index = np.argmax(msd_count==0)
+        print(f'no particles were found after frame={index}')
+        if index < 100:
+            raise Exception(f'no particles were found after frame={index}')
+        msd_sum    = msd_sum   [:index]
+        msd_sum_sq = msd_sum_sq[:index]
+        msd_count  = msd_count [:index]
     
     avg = msd_sum / msd_count
     std = msd_sum_sq / msd_count - avg**2
+
+    assert not np.any(np.isnan(avg))
 
     unc = std / np.sqrt(msd_count)
     # unc = std

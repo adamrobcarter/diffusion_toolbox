@@ -60,10 +60,11 @@ markers = {
     'DDM_short': '*',
     'f_short': 'x',
     'DDM_long': '*',
-    'f_long': 'x',
+    'f_long': '_',
     'DDM': '*',
     'f': '*',
-    'f_first': 'o',
+    'f_first': 'x',
+    'f_first_first': 'x',
     'MSD': '_',
     'MSD_short': '_',
     'MSD_long': '_',
@@ -76,6 +77,8 @@ markers = {
     'boxcounting_collective': 'o',
     'timescaleint': '+',
     'timescaleint_nofit_cropped': '*',
+    'timescaleint_var': '+',
+    'timescaleint_nofit_cropped_var': '*',
     'D0Sk': 'o',
     'C_N_simplefit': '|',
 }
@@ -84,7 +87,8 @@ def show_one_file(
         i, file, sources, PLOT_AGAINST_K, TWO_PI, logarithmic_y,
         fix_axes, filename, fig, ax,
         export_destination=None,
-        show_pixel=True, show_window=True, crop_end=None, num_files=0
+        show_pixel=True, show_window=True, crop_end=None, num_files=0,
+        allow_rescale_y=True
     ):
 
     all_Ds = []
@@ -120,19 +124,23 @@ def show_one_file(
 
             used_sources.append(source)
 
-        except FileNotFoundError:
-            print('FileNotFound', source)
+        except FileNotFoundError as err:
+            print('FileNotFound', err)
 
-    # if 'MSD_short' in used_sources:
-    #     ax.set_ylabel('$D/D_{{MSD}}$')
-    #     rescale_y = Ds['MSD_short'][0]
-    # else:
-    ax.set_ylabel(r'$D/D_{MSD}$')
-    # ax.set_ylabel('$D$ ($\mathrm{\mu m^2/s}$)')
-    #     rescale_y = 1
-
-    D_MSD, _, _ = visualisation.Ds_overlapped.get_D0(file)
-    rescale_y = D_MSD
+    if allow_rescale_y:
+        try:
+            D_MSD, _, _ = visualisation.Ds_overlapped.get_D0(file)
+            rescale_y = D_MSD
+            ax.set_ylabel(r'$D/D_{MSD}$')
+            no_rescale = False
+        except FileNotFoundError as err:
+            no_rescale = True
+            print(err)
+    else:
+        no_rescale = True
+    if no_rescale:
+        rescale_y = 1
+        ax.set_ylabel(r'$D$ ($\mathrm{\mu m^2/s}$)')
 
     if diameter:
         if PLOT_AGAINST_K:
@@ -148,8 +156,9 @@ def show_one_file(
         else:
             ax.set_xlabel(r'$L$')
 
-    assert len(xs.values()) > 0
+    assert len(xs.values()) > 0, f'No values found for {file}. Have you enabled any sources?'
 
+    assert sum([len(x) for x in xs.values()]) > 0, f'xs was empty for {file}'
     xmin = min([min(x) for x in xs.values() if len(x)>0]) / rescale_x
     xmax = max([max(x) for x in xs.values() if len(x)>0]) / rescale_x
 
@@ -174,6 +183,7 @@ def show_one_file(
 
         xs[source] /= rescale_x
 
+
         # color = colors[source]f
         ys = Ds[source] / rescale_y
         yerrs = D_uncs[source] / rescale_y
@@ -185,15 +195,17 @@ def show_one_file(
 
         else:
             x_this = xs[source]
+            print('x mult', x_this[1:]-x_this[:-1])
             if crop_end:
+                print('cropping', crop_end)
                 x_this = x_this[:crop_end]
                 ys     = ys    [:crop_end]
                 if len(yerrs.shape) == 2:
                     yerrs = yerrs [:, :crop_end]
                 else:
                     yerrs  = yerrs [:crop_end]
-
-            ax.plot(x_this, ys, linestyle='-', marker=markers.get(source, '.'), markersize=2, color=color, label=source_label)
+                    
+            ax.plot(x_this, ys, linestyle='none', marker=markers.get(source, '.'), markersize=4, color=color, label=source_label)
             ax.errorbar(x_this, ys, yerr=yerrs, linestyle='none', marker='none', alpha=ERRORBAR_ALPHA, color=color)
             # print(xs[source], ys)
         # assert not np.any(np.isnan(Ds)), 'nan was found in Ds'
@@ -207,20 +219,26 @@ def show_one_file(
             ax.vlines(window_size, min(ys), max(ys), color='gray', linestyle='dashed', label='window size')
 
     assert len(all_Ds) > 0, 'no Ds were found at all'
+    all_Ds = np.array(all_Ds)
+    print(all_Ds)
 
     if logarithmic_y:
         ax.semilogy()
 
-    ylim_expand = 1.2
+    ylim_expand = 1.5
     if np.nanmax(all_Ds) - np.nanmax(all_Ds) < 0.4:
         ylim_expand = 1.5
-    ymin = np.nanmin(all_Ds)/ylim_expand
+    ymin = max(0.01, np.nanmin(all_Ds[all_Ds > 0])/ylim_expand)
+    ymax = np.nanmax(all_Ds)*ylim_expand*1.2
+    print('yminmaxre', ymin, ymax, rescale_y)
     if 'MSD_short' in used_sources:
         ymin = 0.3
-    ax.set_ylim(ymin, np.nanmax(all_Ds)*ylim_expand)
+    ax.set_ylim(ymin, ymax)
+    print('yminmaxre', ymin, ymax, rescale_y)
     if fix_axes:
         # ax.set_ylim(0.1, 5)
         pass
+    # ax.set_ylim(0.03, 0.1)
     # ax.set_ylabel('$D/D_0$')
     # ax.set_xticks([])
     ax.semilogx()
@@ -237,13 +255,13 @@ def show_one_file(
 
 
 
-def go(files, export_destination=None):
-
-    if PRESENT_SMALL:
-        figsize = (3.2, 2.8)
-        figsize = (4, 3)
-    else:
-        figsize = (5, 4)
+def go(files, sources, figsize=None, export_destination=None, plot_against_k=False):
+    if figsize == None:
+        if PRESENT_SMALL:
+            figsize = (3.2, 2.8)
+            figsize = (4, 3)
+        else:
+            figsize = (5, 4)
     fig, ax = plt.subplots(1, 1, figsize=figsize)
 
     for i, file in enumerate(files):
@@ -251,22 +269,14 @@ def go(files, export_destination=None):
         filename = file
 
         show_one_file(
-            i, file, [
-                # 'boxcounting_collective',
-                'f_first',
-                # 'f_short',
-                # 'f',
-                # 'f_long',
-                'MSD_first',
-                # 'timescaleint',
-                # 'timescaleint_nofit_cropped'
-            ],
-            PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, fix_axes=False,
-            fig=fig, ax=ax, filename=filename, show_window=False, show_pixel=False, crop_end=-4,
+            i, file, sources,
+            PLOT_AGAINST_K=plot_against_k, TWO_PI=True, logarithmic_y=True, fix_axes=False,
+            fig=fig, ax=ax, filename=filename, show_window=False, show_pixel=False,
             num_files=len(files),
+            allow_rescale_y=True
         )
 
-    ax.legend(fontsize=5)
+    ax.legend(fontsize=5, loc='upper left' if not plot_against_k else 'upper right')
     
     if export_destination:
         common.save_fig(fig, export_destination, hide_metadata=True)
@@ -275,4 +285,17 @@ def go(files, export_destination=None):
 
     
 if __name__ == '__main__':
-    go(common.files_from_argv('visualisation/data', 'Ds_from_f_first_'))
+    go(
+        common.files_from_argv('isf/data/', 'F_first_'),
+        sources = [
+                'f_first_first',
+                # 'f_first',
+                # 'f_short',
+                # 'f',
+                # 'f_long',
+                'MSD_first',
+                # 'boxcounting_collective',
+                # 'timescaleint_var',
+                # 'timescaleint_nofit_cropped_var'
+            ]
+    )

@@ -13,8 +13,8 @@ import termplotlib
 import psutil
 import matplotlib.pyplot as plt
 
-# PLOT_COLOR = 'white'
-PLOT_COLOR = 'black'
+PLOT_COLOR = 'white'
+# PLOT_COLOR = 'black'
 
 if PLOT_COLOR == 'black':
     old_colors = plt.rcParams['axes.prop_cycle']
@@ -62,9 +62,8 @@ def load(filename):
 
     if not filename.endswith('.npz'):
         filename += '.npz'
-    modified = datetime.datetime.fromtimestamp(os.path.getmtime(f'{filename}'))
-    diff = datetime.datetime.now() - modified
-    print(f'loading {filename}, last modified {str(diff)[:-10]} ago')
+    diff = get_last_modified_time(filename)
+    print(f'loading {filename}, last modified {diff} ago')
     # print(f'loading {filename}, last modified ago')
 
     # try:
@@ -88,6 +87,11 @@ def load(filename):
         print(f'  in {comp_time:.0f}s')
 
     return data
+
+def get_last_modified_time(filename):
+    modified = datetime.datetime.fromtimestamp(os.path.getmtime(f'{filename}'))
+    diff = datetime.datetime.now() - modified
+    return str(diff)[:-10]
 
 def format_value_for_save_load(value):
     if hasattr(value, 'dtype'):
@@ -119,7 +123,10 @@ def save_data(filename, quiet=False, **data):
     np.savez(filename, **data)
 
 def arraysize(arr, mult=1):
-    size = arr.size * arr.itemsize * mult
+    size = arraysize_raw(arr) * mult
+    return format_bytes(size)
+
+def format_bytes(size):
     if size < 1e3:
         # return str(size) + 'B'
         return f'{size}B'
@@ -132,6 +139,9 @@ def arraysize(arr, mult=1):
     else:
         # return str(size/1e9) + 'GB'
         return f'{size/1e9:.0f}GB'
+
+def arraysize_raw(arr):
+    return arr.size * arr.itemsize
 
 def fourier(t, x):
     """
@@ -267,7 +277,7 @@ def save_gif(func, frames, fig, file, fps=1, dpi=300):
     fig.tight_layout()
     ani.save(file, dpi=dpi, fps=fps, writer=writer)
     progress.close()
-    print(f'saved {file} fps={used_fps}')
+    print(f'saved {file} fps={used_fps:.2g}')
 
     
 def N2_nointer_2D(t, D0, N_mean, Lx, Ly=None):
@@ -423,14 +433,15 @@ def numba_p_assert(condition, message):
     if not condition:
         print('Assertion failed: ', message)
 
-def exponential_integers(min, max, num=50):
+def exponential_integers(mini, maxi, num=50):
     # note: i might return less than num - if the integers are closely spaced I will remove duplicates
-    assert min < max, f'I got min={min}, max={max}'
+    assert mini < maxi, f'I got min={mini}, max={maxi}'
     assert isinstance(num, (int, np.integer)), 'num must be an integer'
-    assert min != 0, 'min cannot be 0'
-    assert max-min > num, 'you must request fewer integers than the difference between min and max'
+    assert mini != 0, 'min cannot be 0'
+    num = min(num, maxi-mini)
+    # assert max-min > num, 'you must request fewer integers than the difference between min and max'
     # print('minmax', min, max)
-    integers = np.unique(np.round(10**np.linspace(np.log10(min), np.log10(max), num)).astype('int'))
+    integers = np.unique(np.round(10**np.linspace(np.log10(mini), np.log10(maxi), num)).astype('int'))
     return integers
 
 def add_drift(particles, drift_x, drift_y):
@@ -556,6 +567,21 @@ def files_from_argv(location, prefix):
     infiles = sys.argv[1:]
 
     assert len(infiles) > 0, f'len(sys.argv[1:]) = {len(sys.argv[1:])}'
+
+    if infiles[0].startswith('g:'):
+        if infiles[0] == 'g:el001_crop':
+            return ['eleanorlong001_crop1.0', 'eleanorlong001_crop0.5', 'eleanorlong001_crop0.25', 'eleanorlong001_crop0.125', 'eleanorlong001_crop0.0625']
+        elif infiles[0] == 'g:el034_crop':
+            return ['eleanorlong034_crop1.0', 'eleanorlong034_crop0.5', 'eleanorlong034_crop0.25', 'eleanorlong034_crop0.125', 'eleanorlong034_crop0.0625']
+        elif infiles[0] == 'g:sim_nohydro_001':
+            return ['sim_nohydro_001_L160', 'sim_nohydro_001_L320', 'sim_nohydro_001_L640', 'sim_nohydro_001_L1280']
+        elif infiles[0] == 'g:sim_nohydro_010':
+            return ['sim_nohydro_010_L160', 'sim_nohydro_010_L320', 'sim_nohydro_010_L640']
+        elif infiles[0] == 'g:sim_nohydro_034':
+            return ['sim_nohydro_034_L320', 'sim_nohydro_034_L640', 'sim_nohydro_034_L1280']
+        elif infiles[0] == 'g:psiche_emptymatrix_small':
+            return [f'psiche{str(i).zfill(3)}' for i in (52, 57, 63, 73, 74, 79, 86, 87, 88, 94, 98, 103, 104, 113, 114, 142, 149, 162, 176, 185, 194)]
+        raise Exception('group not found')
 
     outfiles = []
 
@@ -807,9 +833,29 @@ def rotate_particles(rotation_degrees, particles, width, height):
 
     return particles, width, height
 
-def crop_particles(particles, crop_x, crop_y, start_x=0, start_y=0):
-    particles_in_crop = (start_x <= particles[:, 0]) & (particles[:, 0] < crop_x) & (start_y <= particles[:, 1]) & (particles[:, 1] < crop_y)
+def crop_particles(particles, end_x, end_y, start_x=0, start_y=0):
+    particles_in_crop = (start_x <= particles[:, 0]) & (particles[:, 0] < end_x) & (start_y <= particles[:, 1]) & (particles[:, 1] < end_y)
     p = particles[particles_in_crop, :]
     p[:, 0] -= start_x
     p[:, 1] -= start_y
     return p
+
+def get_used_window(file, window_size_x, window_size_y):
+    # note this does not do crop or anything
+    # it just sets max L and min k
+    x, y = window_size_x,  window_size_y
+
+    # if file == 'brennan_hydro_010_L1280':
+    #    x, y = 640, 640
+    # if file == 'brennan_hydro_002_L800' or file == 'eleanorlong001_cropbrennan': # L1600, L800
+    #     x, y = 200, 200
+    #     # return 287.90280468749995, 361.63744921874996 # same as eleanorlong001
+    # if file.startswith('sim_nohydro'):
+    #     if 'L1280' in file or 'L640' in file:
+    #         x, y = 320, 320
+
+    assert window_size_x % x == 0, f'window_size_x % x = {window_size_x % x}, window_size_x = {window_size_x}, x = {x}'
+    assert window_size_y % y == 0, f'window_size_y % y = {window_size_y % y}, window_size_y = {window_size_y}, y = {y}'
+    # these ensure when we do f(k, t) we have the proper periodic conditions
+
+    return x, y

@@ -11,9 +11,6 @@ subplot_i = 0
 
 colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
-# target_ks = (0.1, 0.14, 0.5, 1.3, 2, 4, 8)
-# target_ks = list(np.logspace(np.log10(0.02), np.log10(8), 20))
-# target_ks = list(np.logspace(np.log10(0.02), np.log10(0.1), 25))
 
 SHOW_SEGRE_PUSEY_RESCALING_AXIS = False
 
@@ -35,6 +32,12 @@ CROP_AT_SK_MINIMUM = False
 SHOW_TWOSTAGE_FIT = False
 
 FILTER_RISING_MULTIPLE = 2.5
+
+SHORT_END = 8 # this is time (not frame)
+LONG_START = 100 # this is time (not frame)
+LONG_END   = 1000
+
+LIN_PLOT_END_TIME_MULT = 50 # controls how much time is plotted on the log f/lin t axes
 
 def show_single_F_type(
         file, type_index, Ftype, fig, axes,
@@ -71,7 +74,12 @@ def show_single_F_type(
     if Ftype == 'f' and SHOW_SEGRE_PUSEY_RESCALING_AXIS:
         sp_fig, sp_axs = plt.subplots(2, 1, figsize=(4, 6))
 
-    load = 'F' if Ftype=='f' else Ftype
+    if Ftype == 'f':
+        load = 'F'
+    elif Ftype == 'f_first':
+        load = 'F_first'
+    else:
+        load = Ftype
     d = common.load(f"isf/data/{load}_{file}.npz")
     t         = d["t"]
     F_all     = d["F"]
@@ -117,21 +125,32 @@ def show_single_F_type(
         # k_index = np.argmax(ks >= target_k)
 
         k = ks[k_index]
+        if k == 0:
+            continue
 
+        display = False
+        if k_index % every_nth_k == 0:
+            display = True
+            display = False
+        if k_index < 10:
+            display = True
+        if graph_i >= len(lin_axes):
+            warnings.warn('you have no more free axes')
+            display = False
 
         # print(f'k: target {target_k:.3f}, real {k:.3f}, index {k_index}, 2pi/k={2*np.pi/k:.1f}um')
         k_str = f'k {k:.3f}, index {k_index}, 2pi/k={2*np.pi/k:.1f}um'
         if particle_diameter:
             k_str += f'={2*np.pi/k/particle_diameter:.2g}σ'
-        print(k_str)
+        if display: print(k_str)
 
         if CROP_AT_SK_MINIMUM and k < k_at_min:
-            print('  skipping - below S(k) minimum')
+            if display: print('  skipping - below S(k) minimum')
             continue
 
         f     = F_all    [:, k_index]
         f_unc = F_unc_all[:, k_index]
-        if Ftype == 'f':
+        if Ftype in ['f', 'f_first']:
             f /= F_all[0, k_index]
             f_unc_sq_all = (F_unc_all / F_all[0, :])**2 + (F_all * F_unc_all[0, :] / F_all[0, :]**2)**2
             # assert f_unc_sq.shape == f_unc.shape, f'{f_unc_sq.shape} {f_unc.shape}'
@@ -143,9 +162,9 @@ def show_single_F_type(
             #     continue
 
         if np.all(f == 0):
-            print('  all f zero!')
+            if display: print('  all f zero!')
         if np.all(f == 1):
-            print('  all f == 1!')
+            if display: print('  all f == 1!')
         
         if np.isfinite(particle_diameter):
             k_label = fr'$k\sigma={k*particle_diameter:.2g}$'
@@ -157,18 +176,10 @@ def show_single_F_type(
         label = fr"$k={k:.3f}\mathrm{{\mu m}}$ ({L_label})"
 
         if common.nanfrac(f) == 1:
-            print(f'all nan at k={k:.2g} (i={graph_i})')
+            if display: print(f'all nan at k={k:.2g} (i={graph_i})')
             continue
 
-        
-        display = False
-        if k_index % every_nth_k == 0:
-            display = True
-            display = False
-        if k_index < 10:
-            display = True
         if display:
-
             ax = lin_axes[graph_i]
             ax_short = lin_short_axes[graph_i]
             D_ax = D_axes[graph_i]
@@ -179,23 +190,22 @@ def show_single_F_type(
             graph_i += 1
 
         if do_fits:
-            # first point D:
-            if t.size == 1:
-                first_index = 0
-            else:
-                assert t[0] == 0
-                assert f[0] == 1
-                first_index = 1
+            assert t[0] == 0
+            assert np.isclose(f[0], 1), f'f(0) = {f[0]}'
+            first_index = 1
+            assert t[first_index] > 0
+
             if f[first_index] > 1e-2:
                 D_first = -1 / (k**2 * t[first_index]) * np.log(f[first_index])
-                D_unc_first = 1 / (k**2 * t[first_index] * f[first_index]) * f_unc[first_index]
+                D_unc_first = 1 / (k**2 * t[first_index]) * f_unc[first_index] / f[first_index]
                 # print(f'  first D={D_first:.3g}')
-                assert D_unc_first >= 0, f'D_unc_first={D_unc_first:.3f} = 1 / ({k:.3f}**2 * {t[1]:.3f} * {f[1]:.3f}) * {f_unc[1]:.3f}'
+                assert D_unc_first >= 0, f'D_unc_first={D_unc_first:.3f} = 1 / ({k:.3f}**2 * {t[first_index]:.3f} * {f[first_index]:.3f}) * {f_unc[first_index]:.3f}'
                 Ds_for_saving_first    .append(D_first)
                 D_uncs_for_saving_first.append(D_unc_first)
                 ks_for_saving_first    .append(k)
+                if display: print(f'  first: D={common.format_val_and_unc(D_first, D_unc_first, latex=False)}')
             else:
-                print('  skipped first')
+                if display: print('  first: skipped')
 
         # if Ftype == 'f':
         #     noise_thresh = 1e-2 # for eleanorlong!!
@@ -240,7 +250,7 @@ def show_single_F_type(
             if len(peaks):
                 f_bad[peaks[0]:] = True
             else:
-                print('  no peaks in -grad found?!')
+                if display: print('  no peaks in -grad found?!')
             
 
         # now we do another filter (should this be the only one?)
@@ -252,7 +262,7 @@ def show_single_F_type(
 
         if np.sum(~f_bad) > 1:
             increase_good = f[~f_bad][1:] / f[~f_bad][:-1]
-            print(f'  biggest good rise: {increase_good.max():.2f}')
+            if display: print(f'  biggest good rise: {increase_good.max():.2f}')
 
         # negative points are definitely noise
         f_bad[f<=0] = True
@@ -294,8 +304,9 @@ def show_single_F_type(
                 SHORT_PLOT_MAX_X = 1 # for marine
                 SHORT_PLOT_Y0 = 0 # for marine
 
-            ax_short.set_xlim(0, SHORT_PLOT_MAX_X)
-            ax_short.set_ylim(SHORT_PLOT_Y0, f[0:int(SHORT_PLOT_MAX_X+1)].max())
+            if Ftype == 'f':
+                ax_short.set_xlim(0, SHORT_PLOT_MAX_X)
+                ax_short.set_ylim(SHORT_PLOT_Y0, f[0:int(SHORT_PLOT_MAX_X+1)].max())
 
 
             
@@ -306,22 +317,17 @@ def show_single_F_type(
             newtitle = '\n' + Ftype + ':' + label
             if ax.get_title() != newtitle:
                 ax.set_title(ax.get_title() + newtitle, fontsize=9)
-                # print(~f_bad[1:5])
-                # print(np.argmax(f_bad[1:5]))
-                # print(np.argmax(f_bad[1:] ))
-                # ax.set_xlim(0, max(t[np.argmax(f_bad[1:])], 100))
-                # ax.set_xlim(0, 100)
-                # ax.set_ylim(9.9e-1, 1.01)
-                # ax.set_xlim(0, 1000)
-                # ax.set_ylim(1e-3 * (1/k) , 1.1)
-            end_plot_time = 1/(k+0.005) * 10 # WAS 200
-            end_plot_y = f[np.argmax(t > end_plot_time)] * 0.99
-            print('@@@', np.argmax(t > end_plot_time), f[np.argmax(t > end_plot_time)])
-            if end_plot_y > 1: end_plot_y = 0.9
-            if end_plot_y < 1e-4: end_plot_y = 1e-4
-            ax.set_ylim(end_plot_y , 1.01)
-                # ax.set_xlim(0, 1/k**2 * 100)
-            ax.set_xlim(-end_plot_time/50, end_plot_time)
+                
+            if Ftype == 'f':
+                end_plot_time = 1/(k+0.005) * LIN_PLOT_END_TIME_MULT # WAS 200
+                end_plot_y = f[np.argmax(t > end_plot_time)] * 0.99
+                # print('@@@', np.argmax(t > end_plot_time), f[np.argmax(t > end_plot_time)])
+                if end_plot_y > 1: end_plot_y = 0.9
+                if end_plot_y < 1e-4: end_plot_y = 1e-4
+            
+                ax.set_ylim(end_plot_y , 1.01)
+                    # ax.set_xlim(0, 1/k**2 * 100)
+                ax.set_xlim(-end_plot_time/50, end_plot_time)
 
             # ax.set_ylim(min(max(func(t[np.argmax(f_bad[1:])], *f_popt), 1e-3), 9.9e-1), 1.01)
             # ax.set_ylim(1e-3, 1.1)
@@ -330,7 +336,7 @@ def show_single_F_type(
 
         negative = f <= 0
         if negative.sum() > 0:
-            print(f'  negative: {negative.sum()/negative.size:.2f}')
+            if display: print(f'  negative: {negative.sum()/negative.size:.2f}')
 
         if do_fits:
             # fits
@@ -366,7 +372,7 @@ def show_single_F_type(
             
 
             if (~f_bad).sum() < 2:
-                print('  no good data, skipping rest')
+                if display: print('  no good data, skipping rest')
                 continue
                 
             # total fit
@@ -376,7 +382,7 @@ def show_single_F_type(
                 )
             
             if FIT == EXP_TIMES_CONST_FIT:
-                print(f'  total c = {f_popt[1]:.3g} pm {np.sqrt(f_pcov[1, 1])}')
+                if display: print(f'  total c = {f_popt[1]:.3g} pm {np.sqrt(f_pcov[1, 1])}')
 
             if FIT_WITH_ZERO_POINT:
                 theory_start = 0.1
@@ -396,17 +402,17 @@ def show_single_F_type(
                     D_ax.hlines(f_popt[0], t.min(), t.max(), color=color, linestyle='dashdot', label='total')
 
                 if D_unc/D > D_ERROR_THRESH:
-                    print(f'  total: stopping. D_unc/D = {D_unc/D:.2g}')
+                    if display: print(f'  total: stopping. D_unc/D = {D_unc/D:.2g}')
                 else:
 
-                    print(f'  total:{common.format_val_and_unc(D, D_unc)}, (D_unc/D = {D_unc/D:.2g})')
+                    if display: print(f'  total:{common.format_val_and_unc(D, D_unc)}, (D_unc/D = {D_unc/D:.2g})')
 
                     Ds_for_saving.append(D)
                     D_uncs_for_saving.append(D_unc)
                     ks_for_saving.append(k)
 
             else:
-                print(f'  total: stopping. covariance not estimated')
+                if display: print(f'  total: stopping. covariance not estimated')
 
             # new fit
             # new_func = lambda t, a, b, c : a*t**2 + b*t + c
@@ -420,8 +426,8 @@ def show_single_F_type(
             #         ax      .plot(t_th, new_func(t_th, *new_popt), color='red', alpha=0.5)
             #         ax_short.plot(t_th, new_func(t_th, *new_popt), color='red', alpha=0.5)
 
-            f_points_short = (~f_bad) & (t < 8)
-            f_points_long  = (~f_bad) & (t > 100)
+            f_points_short = (~f_bad) & (t < SHORT_END)
+            f_points_long  = (~f_bad) & (t > LONG_START) & (t < LONG_END)
 
                 
             ###### short fit
@@ -432,7 +438,7 @@ def show_single_F_type(
                     )
                 # print('  short: we had to disable sigma fitting')
                 if FIT == EXP_TIMES_CONST_FIT:
-                    print(f'  short c = {f_popt_short[1]:.3g} pm {np.sqrt(f_pcov_short[1, 1])}')
+                    if display: print(f'  short c = {f_popt_short[1]:.3g} pm {np.sqrt(f_pcov_short[1, 1])}')
                     
                 D_short = f_popt_short[0]
                 D_unc_short = np.sqrt(f_pcov_short)[0][0]
@@ -446,17 +452,17 @@ def show_single_F_type(
                         D_ax.hlines(D_short,  t.min(), t.max(), color=color, linestyle='dotted', label='short')
 
                     if D_unc_short/D_short > D_ERROR_THRESH:
-                        print(f'  short: stopping. D_unc/D = {D_unc_short/D_short:.2g}')
+                        if display: print(f'  short: stopping. D_unc/D = {D_unc_short/D_short:.2g}')
                     
                     else:
-                        print(f'  short: {common.format_val_and_unc(D_short, D_unc_short)}  (D_unc/D = {D_unc_short/D_short:.2g})')
+                        if display: print(f'  short: {common.format_val_and_unc(D_short, D_unc_short)}  (D_unc/D = {D_unc_short/D_short:.2g})')
                 
                         Ds_for_saving_short    .append(D_short)
                         D_uncs_for_saving_short.append(D_unc_short)
                         ks_for_saving_short    .append(k)
                         
                 else:
-                    print('  short: stopping. covariance not estimated')
+                    if display: print('  short: stopping. covariance not estimated')
 
                 ###### short linear fit
                 if DO_SHORT_LINEAR_FIT:
@@ -477,18 +483,18 @@ def show_single_F_type(
                             D_ax.hlines(f_popt_short_linear[0],  t.min(), t.max(), color='tab:red', linestyle='dotted', label='short lin')
 
                         if D_unc_short_linear/D_short_linear > D_ERROR_THRESH:
-                            print(f'  short linear: stopping. D_unc/D = {D_unc_short_linear/D_short_linear:.2g}')
+                            if display: print(f'  short linear: stopping. D_unc/D = {D_unc_short_linear/D_short_linear:.2g}')
 
                         else:
-                            print(f'  short linear: {common.format_val_and_unc(D_short_linear, D_unc_short_linear)} (D_unc/D = {D_unc_short_linear/D_short_linear:.2g})')
+                            if display: print(f'  short linear: {common.format_val_and_unc(D_short_linear, D_unc_short_linear)} (D_unc/D = {D_unc_short_linear/D_short_linear:.2g})')
                             # Ds_for_saving_short    .append(f_popt_short_linear[0])
                             # D_uncs_for_saving_short.append(np.sqrt(f_pcov_short_linear)[0][0])
                             # ks_for_saving_short    .append(k)
                             
                     else:
-                        print('  short linear: stopping. covariance not estimated')
+                        if display: print('  short linear: stopping. covariance not estimated')
             else:
-                print('  short: not attempting')
+                if display: print('  short: not attempting')
 
             ######## long fit
             if f_points_long.sum() > 2:
@@ -497,9 +503,9 @@ def show_single_F_type(
                         # p0=p0, sigma=log_f_unc[f_points_long], absolute_sigma=True
                     )
                 if FIT == EXP_TIMES_CONST_FIT:
-                    print(f'  long c = {f_popt_long[1]:.3g} pm {np.sqrt(f_pcov_long[1, 1])}')
+                    if display: print(f'  long c = {f_popt_long[1]:.3g} pm {np.sqrt(f_pcov_long[1, 1])}')
                 
-                print('  long:  disabled sigma fitting')
+                if display: print('  long:  disabled sigma fitting')
                     
                 D_long = f_popt_long[0]
                 D_unc_long = np.sqrt(f_pcov_long)[0][0]
@@ -522,14 +528,14 @@ def show_single_F_type(
                         if display:
                             D_ax.hlines(f_popt_long[0],  t.min(), t.max(), color=color, linestyle='dashed', label='long')
                 else:
-                    print('  long:  stopping. covariance not estimated')
+                    if display: print('  long:  stopping. covariance not estimated')
             else:
-                print('  long:  not attempting')
+                if display: print('  long:  not attempting')
 
 
             ######## two stage fit
             if np.sum(~f_bad) < 4:
-                print('  twostage: not enough data')
+                if display: print('  twostage: not enough data')
             else:
                 func_twostage = lambda t, D1, D2, A1, A2 : A1 * np.exp(-t * k**2 * D1) + A2 * np.exp(-t * k**2 * D2)
                 log_func_twostage = lambda t, D1, D2, A1, A2: np.log10( func_twostage(t, D1, D2, A1, A2) )
@@ -551,7 +557,7 @@ def show_single_F_type(
                             # p0=p0, sigma=log_f_unc[f_points_long], absolute_sigma=True
                         )
                 except RuntimeError as err:
-                    print('  twostage:', err)
+                    if display: print('  twostage:', err)
                 
                 # D = f_popt[0]
                 # D_unc = np.sqrt(f_pcov_twostage)[0][0]
@@ -569,7 +575,7 @@ def show_single_F_type(
                     #     print(f'  total: stopping. D_unc/D = {D_unc/D:.2g}')
                     # else:
                     if np.isfinite(np.sqrt(f_pcov_twostage)[0,0]):
-                        print(f'  twostage: D1={f_popt_twostage[0]:.2g}, D2={f_popt_twostage[1]:.2g}, A1={f_popt_twostage[2]:.2g}, A2={f_popt_twostage[3]:.2g}')
+                        if display: print(f'  twostage: D1={f_popt_twostage[0]:.2g}, D2={f_popt_twostage[1]:.2g}, A1={f_popt_twostage[2]:.2g}, A2={f_popt_twostage[3]:.2g}')
                         # print(f'  twostage: D1={f_popt_twostage[0]:.2g}, D2={f_popt_twostage[1]:.2g}, A1={f_popt_twostage[2]:.2g}')
                         # print(f'  twostage: D2={f_popt_twostage[0]:.2g}, A1={f_popt_twostage[1]:.2g}')
 
@@ -584,7 +590,7 @@ def show_single_F_type(
                         ks_for_saving_D2.append(k)
 
                     else:
-                        print('  twostage: covariance failed')
+                        if display: print('  twostage: covariance failed')
 
 
 
@@ -709,49 +715,49 @@ def show_single_F_type(
         common.save_fig(sp_fig, f'isf/figures_png/segre_pusey_rescaling_{file}.png')     
 
     if do_fits:
-        common.save_data(f'visualisation/data/Ds_from_{Ftype}_{file}',
-                    Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, ks=ks_for_saving,
-                    particle_diameter=particle_diameter,
-                    pixel_size=d.get('pixel_size'),
-                    channel=d.get('channel'), NAME=d.get('NAME'))
-        common.save_data(f'visualisation/data/Ds_from_{Ftype}_short_{file}',
-                    Ds=Ds_for_saving_short, D_uncs=D_uncs_for_saving_short, ks=ks_for_saving_short,
-                    particle_diameter=particle_diameter,
-                    pixel_size=d.get('pixel_size'),
-                    channel=d.get('channel'), NAME=d.get('NAME'))
-        common.save_data(f'visualisation/data/Ds_from_{Ftype}_long_{file}',
-                    Ds=Ds_for_saving_long, D_uncs=D_uncs_for_saving_long, ks=ks_for_saving_long,
-                    particle_diameter=particle_diameter,
-                    pixel_size=d.get('pixel_size'),
-                    channel=d.get('channel'), NAME=d.get('NAME'))
         common.save_data(f'visualisation/data/Ds_from_{Ftype}_first_{file}',
                     Ds=Ds_for_saving_first, D_uncs=D_uncs_for_saving_first, ks=ks_for_saving_first,
                     particle_diameter=particle_diameter,
                     pixel_size=d.get('pixel_size'),
                     channel=d.get('channel'), NAME=d.get('NAME'))
-        common.save_data(f'visualisation/data/Ds_from_{Ftype}_D1_{file}',
-                    Ds=Ds_for_saving_D1, D_uncs=D_uncs_for_saving_D1, ks=ks_for_saving_D1,
-                    particle_diameter=particle_diameter,
-                    pixel_size=d.get('pixel_size'),
-                    channel=d.get('channel'), NAME=d.get('NAME'))
-        common.save_data(f'visualisation/data/Ds_from_{Ftype}_D2_{file}',
-                    Ds=Ds_for_saving_D2, D_uncs=D_uncs_for_saving_D2, ks=ks_for_saving_D2,
-                    particle_diameter=particle_diameter,
-                    pixel_size=d.get('pixel_size'),
-                    channel=d.get('channel'), NAME=d.get('NAME'))
+        if Ftype != 'f_first':
+            common.save_data(f'visualisation/data/Ds_from_{Ftype}_{file}',
+                        Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, ks=ks_for_saving,
+                        particle_diameter=particle_diameter,
+                        pixel_size=d.get('pixel_size'),
+                        channel=d.get('channel'), NAME=d.get('NAME'))
+            common.save_data(f'visualisation/data/Ds_from_{Ftype}_short_{file}',
+                        Ds=Ds_for_saving_short, D_uncs=D_uncs_for_saving_short, ks=ks_for_saving_short,
+                        particle_diameter=particle_diameter,
+                        pixel_size=d.get('pixel_size'),
+                        channel=d.get('channel'), NAME=d.get('NAME'))
+            common.save_data(f'visualisation/data/Ds_from_{Ftype}_long_{file}',
+                        Ds=Ds_for_saving_long, D_uncs=D_uncs_for_saving_long, ks=ks_for_saving_long,
+                        particle_diameter=particle_diameter,
+                        pixel_size=d.get('pixel_size'),
+                        channel=d.get('channel'), NAME=d.get('NAME'))
+            common.save_data(f'visualisation/data/Ds_from_{Ftype}_D1_{file}',
+                        Ds=Ds_for_saving_D1, D_uncs=D_uncs_for_saving_D1, ks=ks_for_saving_D1,
+                        particle_diameter=particle_diameter,
+                        pixel_size=d.get('pixel_size'),
+                        channel=d.get('channel'), NAME=d.get('NAME'))
+            common.save_data(f'visualisation/data/Ds_from_{Ftype}_D2_{file}',
+                        Ds=Ds_for_saving_D2, D_uncs=D_uncs_for_saving_D2, ks=ks_for_saving_D2,
+                        particle_diameter=particle_diameter,
+                        pixel_size=d.get('pixel_size'),
+                        channel=d.get('channel'), NAME=d.get('NAME'))
 
 if __name__ == '__main__':
     for file in sys.argv[1:]:
 
         
         num_displayed_ks = 20
-        fig, axes = plt.subplots(4, num_displayed_ks-5, figsize=(num_displayed_ks*3, 4*2.8))
-        #                         big big big hack: ^^
+        fig, axes = plt.subplots(4, num_displayed_ks, figsize=(num_displayed_ks*3, 4*2.8))
 
-        for type_index, Ftype in enumerate(['f', 'Fs']):
+        for type_index, Ftype in enumerate(['f', 'F_s']):
         # for type_index, Ftype in enumerate(['Fs', 'f', 'DDM']):
 
-            fig = show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks)
+            show_single_F_type(file, type_index, Ftype, fig, axes, num_displayed_ks)
 
                 
         plt.suptitle(fr'F or F_s (k, t), {file}')

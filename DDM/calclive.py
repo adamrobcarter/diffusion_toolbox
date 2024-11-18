@@ -11,6 +11,8 @@ for file in common.files_from_argv('preprocessing/data', 'stack_'):
     stack      = data['stack']
     pixel_size = data['pixel_size']
     time_step  = data['time_step']
+    NAME       = data.get('NAME')
+    channel    = data.get('channel')
 
     if background_removed:
         stack = stack - stack.mean(axis=0)
@@ -23,7 +25,7 @@ for file in common.files_from_argv('preprocessing/data', 'stack_'):
             sigma = 0
             pixel = 0
             
-            DDM.show.show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=True)
+            DDM.show.show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=True, NAME=NAME, channel=channel)
             DDM.viz.show(file, F_D_sq_all, t, k, time_origins)
 
             common.save_data(f'DDM/data/ddm_{file}.npz', quiet=True,

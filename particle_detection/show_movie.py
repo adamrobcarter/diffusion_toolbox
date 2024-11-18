@@ -4,6 +4,8 @@ import sys
 import particle_detection.show
 import preprocessing.stack_movie
 
+CROP = 100
+
 if __name__ == '__main__':
     # SUFFIX = '_nominmass'
     SUFFIX = ''
@@ -18,6 +20,11 @@ if __name__ == '__main__':
         window_size_x = data_particles['window_size_x']
         window_size_y = data_particles['window_size_y']
 
+        in_crop = (particles[:, 0] < CROP) & (particles[:, 1] < CROP)
+        particles = particles[in_crop, :]
+        window_size_x = CROP
+        window_size_y = CROP
+
         try:
             data_stack = common.load(f'preprocessing/data/stack_{file}.npz')
 
@@ -25,7 +32,7 @@ if __name__ == '__main__':
             num_timesteps = int(particles[:, 2].max() - 1)
             stack = None
             pixel_size = 1
-            radius = np.full(particles.shape[0], 0.002*160)
+            # radius = np.full(particles.shape[0], 0.002*160)
 
             no_stack = True
         
@@ -46,7 +53,7 @@ if __name__ == '__main__':
             stack = stack - stack.mean(axis=0) # remove space background
         
         def add_outlines(timestep, ax):
-            particle_detection.show.add_particle_outlines(ax, pixel_size, particles, radius, timestep)
+            particle_detection.show.add_particle_outlines(ax, pixel_size, particles, radius, timestep, outline=False)
 
         filename = f'movie_{file}{SUFFIX}.gif'
         preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"preprocessing/figures_png/{filename}",

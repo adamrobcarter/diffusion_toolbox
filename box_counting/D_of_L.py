@@ -10,7 +10,7 @@ import matplotlib.cm
 import box_counting.msd_single
 
 SHOW_THEORY = False
-SHOW_TIMESCALEINTEGRAL_FIT = False
+SHOW_TIMESCALEINTEGRAL_FIT = True
 
 LATE_CN_ALPHA = 0.2
 
@@ -89,13 +89,14 @@ def do_late_integral(t, L, T_integrand, M2_index, M1_index):
     a_unc = np.sqrt(late_pcov)[0, 0]
     b_unc = np.sqrt(late_pcov)[1, 1]
     late_fit_func_real = lambda t, a, b: np.exp(0.5 * late_fit_func(np.log(t), a, b))
-    t_fit_late = np.logspace(np.log10(t[M1_index]), np.log10(t.max()))
+    t_end = t.max()*1000
+    t_fit_late = np.logspace(np.log10(t[M1_index]), np.log10(t_end))
     assert np.all(late_fit_func_real(t_fit_late, *late_popt) > 0), f'some of late_fit_func_real were negative for L={L}'
-    late_integral = scipy.integrate.quad(late_fit_func_real, t[M2_index], t.max(), args=(a, b))[0]
-    late_integral_00 = scipy.integrate.quad(late_fit_func_real, t[M2_index], t.max(), args=(a+a_unc, b+b_unc))[0]
-    late_integral_01 = scipy.integrate.quad(late_fit_func_real, t[M2_index], t.max(), args=(a+a_unc, b-b_unc))[0]
-    late_integral_10 = scipy.integrate.quad(late_fit_func_real, t[M2_index], t.max(), args=(a-a_unc, b+b_unc))[0]
-    late_integral_11 = scipy.integrate.quad(late_fit_func_real, t[M2_index], t.max(), args=(a-a_unc, b-b_unc))[0]
+    late_integral    = scipy.integrate.quad(late_fit_func_real, t[M2_index], t_end, args=(a, b))[0]
+    late_integral_00 = scipy.integrate.quad(late_fit_func_real, t[M2_index], t_end, args=(a+a_unc, b+b_unc))[0]
+    late_integral_01 = scipy.integrate.quad(late_fit_func_real, t[M2_index], t_end, args=(a+a_unc, b-b_unc))[0]
+    late_integral_10 = scipy.integrate.quad(late_fit_func_real, t[M2_index], t_end, args=(a-a_unc, b+b_unc))[0]
+    late_integral_11 = scipy.integrate.quad(late_fit_func_real, t[M2_index], t_end, args=(a-a_unc, b-b_unc))[0]
 
     int_min = min(late_integral, late_integral_00, late_integral_01, late_integral_10, late_integral_11)
     int_max = max(late_integral, late_integral_00, late_integral_01, late_integral_10, late_integral_11)
@@ -171,12 +172,14 @@ def C_N_simplefit(t, C_N_over_VarN, C_N_over_VarN_unc, L):
     return D_from_fit, D_from_fit_unc, func
 
 
-def go(file, ax, plateau_source, legend_fontsize=8, title=None):
+def go(file, plateau_source, ax=None, legend_fontsize=8, title=None, save_data=True,
+       plot_color=None, export_destination=None, figsize=(6, 5), sep_in_label=False,
+       show_nofit_cutoff=True):
     ax_supplied = ax != None
     if ax_supplied:
         integ_axs = ax
     else:
-        integ_fig, integ_axs = plt.subplots(1, 1, figsize=(6, 5))
+        integ_fig, integ_axs = plt.subplots(1, 1, figsize=figsize)
 
     # D_fig = plt.figure()
     # T_fig = plt.figure()
@@ -286,6 +289,10 @@ def go(file, ax, plateau_source, legend_fontsize=8, title=None):
             M2_index = max(M2_index, MIN_M2_INDEX)
             M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
             D0 = 0.0175
+        elif file.startswith('sim_'):
+            M2_index = min(int(1800 * np.sqrt(L)), t.shape[0]-1)
+            M2_index = max(M2_index, MIN_M2_INDEX)
+            M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
         else:
             raise Exception('you need to define the parameters for this dataset')
 
@@ -304,8 +311,9 @@ def go(file, ax, plateau_source, legend_fontsize=8, title=None):
             print(f'  final uncs {D_of_L_min/D_of_L:.3f} {D_of_L_max/D_of_L:.3f}')
             D_of_Ls[box_size_index] = D_of_L
             D_of_L_uncs[:, box_size_index] = [D_of_L - D_of_L_min, D_of_L_max - D_of_L]
+            late_integral_success = True
         except PositiveSlopeInTimescaleIntegralFitException:
-            pass
+            late_integral_success = False
         
         # nofit method
         data_integral_full, data_integral_full_min, data_integral_full_max = do_data_integral(t, T_integrand, T_integrand_min, T_integrand_max, -1)
@@ -354,12 +362,17 @@ def go(file, ax, plateau_source, legend_fontsize=8, title=None):
                 rescale_x = 1
 
 
-            color = common.colormap(box_size_index, 0, len(box_sizes))
+            color = plot_color if plot_color else common.colormap(box_size_index, 0, len(box_sizes))
             
             sep = sep_sizes[box_size_index]
-            label = f'L={L:.2f}, s={sep:.2f}'
             if sigma := data.get('particle_diameter'):
-                label = f'$L={L/sigma:.2g}\sigma$, $s={sep/sigma:.2g}\sigma$'
+                label = f'$L={L/sigma:.2g}\sigma$'
+                if sep_in_label:
+                    label += f', $s={sep/sigma:.2g}\sigma$'
+            else:
+                label = f'L={L:.2f}'
+                if sep_in_label:
+                    label += f', s={sep:.2f}'
             line = integrand_ax.plot(t[1:M2_index]/rescale_x, T_integrand[1:M2_index], color=color, label=label, zorder=5)
             integrand_ax.plot(t[M2_index:]/rescale_x, T_integrand[M2_index:], alpha=LATE_CN_ALPHA, color=color, zorder=4)
             # integrand_rescaled_ax.plot(t[1:]/L**2, T_integrand[1:])
@@ -367,7 +380,8 @@ def go(file, ax, plateau_source, legend_fontsize=8, title=None):
             t_fit_early = np.logspace(-2, np.log10(t[1]))
             if SHOW_TIMESCALEINTEGRAL_FIT:
                 integrand_ax.plot(t_fit_early/rescale_x, early_fit_func(t_fit_early, *early_popt), color=line[0].get_color(), linestyle=':')
-                integrand_ax.plot(t_fit_late/rescale_x, late_fit_func_real(t_fit_late, *late_popt), color=line[0].get_color(), linestyle=':', linewidth=4)
+                if late_integral_success:
+                    integrand_ax.plot(t_fit_late/rescale_x, late_fit_func_real(t_fit_late, *late_popt), color=line[0].get_color(), linestyle=':', linewidth=4)
             
             
             
@@ -403,25 +417,29 @@ def go(file, ax, plateau_source, legend_fontsize=8, title=None):
     if RESCALE_X == RESCALE_X_L2:
         integrand_ax.set_xlabel('$t/L^2$')
     else:
-        integrand_ax.set_xlabel('$t$')
+        integrand_ax.set_xlabel('$t$ (s)')
+    integrand_ax.set_ylabel(r'$C_N{}^2$')
 
     # D_ax.plot(box_sizes/sigma, D_of_Ls,  label=f'')
     # T_ax.plot(box_sizes/sigma, T_of_Ls, label=f'')
     
-    integrand_ax.hlines(NOFIT_CROP_THRESHOLD, *integrand_ax.get_xlim(), label='nofit crop threshold', color='gray')
+    integrand_ax.set_xlim(0.5e-1, 1e6)
+    if show_nofit_cutoff:
+        integrand_ax.hlines(NOFIT_CROP_THRESHOLD, *integrand_ax.get_xlim(), label='nofit crop threshold', color='gray')
 
-    common.save_data(f'visualisation/data/Ds_from_timescaleint_{plateau_source}_{file}',
-             Ds=D_of_Ls, D_uncs=D_of_L_uncs, Ls=box_sizes,
-             particle_diameter=sigma)
-    common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_{plateau_source}_{file}',
-             Ds=D_of_Ls_nofit, D_uncs=D_of_L_uncs_nofit, Ls=box_sizes,
-             particle_diameter=sigma)
-    common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_cropped_{plateau_source}_{file}',
-             Ds=D_of_Ls_nofit2, D_uncs=D_of_L_uncs_nofit2, Ls=box_sizes,
-             particle_diameter=sigma)
-    common.save_data(f'visualisation/data/Ds_from_C_N_simplefit_{plateau_source}_{file}',
-             Ds=D_of_Ls_simplefit, D_uncs=D_of_L_uncs_simplefit, Ls=box_sizes,
-             particle_diameter=sigma)
+    if save_data:
+        common.save_data(f'visualisation/data/Ds_from_timescaleint_{plateau_source}_{file}',
+                Ds=D_of_Ls, D_uncs=D_of_L_uncs, Ls=box_sizes,
+                particle_diameter=sigma)
+        common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_{plateau_source}_{file}',
+                Ds=D_of_Ls_nofit, D_uncs=D_of_L_uncs_nofit, Ls=box_sizes,
+                particle_diameter=sigma)
+        common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_cropped_{plateau_source}_{file}',
+                Ds=D_of_Ls_nofit2, D_uncs=D_of_L_uncs_nofit2, Ls=box_sizes,
+                particle_diameter=sigma)
+        common.save_data(f'visualisation/data/Ds_from_C_N_simplefit_{plateau_source}_{file}',
+                Ds=D_of_Ls_simplefit, D_uncs=D_of_L_uncs_simplefit, Ls=box_sizes,
+                particle_diameter=sigma)
     
 
     # integrand_rescaled_ax.legend()
@@ -436,13 +454,15 @@ def go(file, ax, plateau_source, legend_fontsize=8, title=None):
     # integrand_ax.seintegrand_ylabel(r'$integrand(L)$')
     # integrand_ax.set_ylim(1e-4, 1.1e0)
     # integrand_fig.savefig('figures_png/integrand.png', dpi=300)
-    if title:
+    if title != None: # not if title b/c we want title='' to go down this path
         integrand_ax.set_title(title)
     else:
         integrand_ax.set_title(fr'{file} timescale integrand, $\phi={phi:.3f}$, $\sigma={sigma}$, plateau:{var_label}', fontsize=10)
     
     if not ax_supplied:
         common.save_fig(integ_fig, f'box_counting/figures_png/integrand_{file}.png', dpi=300)
+    if export_destination:
+        common.save_fig(integ_fig, export_destination, hide_metadata=True)
     
     # C_N_ax.semilogx()
     # C_N_ax.semilogy()

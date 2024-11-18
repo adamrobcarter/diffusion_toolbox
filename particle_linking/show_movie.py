@@ -1,37 +1,107 @@
-import common
-import preprocessing.stack_movie
-import particle_detection.show_movie
-import sys
+# import common
+# import preprocessing.stack_movie
+# import particle_detection.show_movie
+# import sys
+# import numpy as np
 
-for file in sys.argv[1:]:
-    try:
-        data_stack = common.load(f'preprocessing/data/stack_{file}.npz')
-        stack      = data_stack['stack']
-        pixel_size = data_stack['pixel_size']
-        time_step  = data_stack['time_step']
-        found_stack = True
-    except FileNotFoundError:
-        found_stack = False
+# for file in sys.argv[1:]:
+#     try:
+#         data_stack = common.load(f'preprocessing/data/stack_{file}.npz')
+#         stack      = data_stack['stack']
+#         pixel_size = data_stack['pixel_size']
+#         found_stack = True
+#     except FileNotFoundError:
+#         found_stack = False
+#         pixel_size = 1
 
-    data_particles = common.load(f'particle_linking/data/trajs_{file}.npz')
-    particles = data_particles['particles']
-    radius    = data_particles['radius']
+#     data_particles = common.load(f'particle_linking/data/trajs_{file}.npz')
+#     particles = data_particles['particles']
+#     time_step = data_particles['time_step']
+#     radius    = data_particles.get('radius', np.zeros(particles.shape[0]))
+#     window_size_x = data_particles['window_size_x']
+#     window_size_y = data_particles['window_size_y']
 
-    # crop
-    stack = stack[:, :500, :500]
+#     # crop
+#     if found_stack:
+#         stack = stack[:, :500, :500]
 
-    stack = stack - stack.mean(axis=0) # remove space background
+#         stack = stack - stack.mean(axis=0) # remove space background
     
-    def add_outlines(timestep, ax):
-        particle_detection.show.add_particle_outlines(ax, pixel_size, particles, radius, timestep)
+#     def add_outlines(timestep, ax):
+#         particle_detection.show.add_particle_outlines(ax, pixel_size, particles, radius, timestep)
 
-    filename = f'movie_linked_{file}'
+#     filename = f'movie_linked_{file}'
 
-    if found_stack:
-        preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"particle_linking/figures_png/{filename}.gif",
-                                                func=add_outlines)
-    else:
-        preprocessing.stack_movie.save_array_movie(time_step=time_step, file=file, outputfilename=f"particle_linking/figures_png/{filename}.gif",
-                                                func=add_outlines, no_stack=True, num_frames=50)
-    # preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}.mp4",
-    #                                            func=add_outlines)
+#     if found_stack:
+#         preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"particle_linking/figures_png/{filename}.gif",
+#                                                 func=add_outlines, window_size_x=window_size_x, window_size_y=window_size_y)
+#     else:
+#         preprocessing.stack_movie.save_array_movie(stack=None, time_step=time_step, file=file, outputfilename=f"particle_linking/figures_png/{filename}.gif",
+#                                                 func=add_outlines, pixel_size=1, window_size_x=window_size_x, window_size_y=window_size_y, num_timesteps_in_data=50)
+#     # preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}.mp4",
+#     #                                            func=add_outlines)
+
+import numpy as np
+import common
+import sys
+import particle_detection.show
+import preprocessing.stack_movie
+
+CROP = 100
+
+if __name__ == '__main__':
+    # SUFFIX = '_nominmass'
+    SUFFIX = ''
+
+    for file in sys.argv[1:]:
+
+        data_particles = common.load(f'particle_linking/data/trajs_{file}{SUFFIX}.npz')
+        particles = data_particles['particles']
+        radius    = data_particles.get('radius')
+        time_step = data_particles['time_step']
+        num_timesteps = particles[:, 2].max() + 1
+        window_size_x = data_particles['window_size_x']
+        window_size_y = data_particles['window_size_y']
+
+        in_crop = (particles[:, 0] < CROP) & (particles[:, 1] < CROP)
+        particles = particles[in_crop, :]
+        window_size_x = CROP
+        window_size_y = CROP
+
+        try:
+            data_stack = common.load(f'preprocessing/data/stack_{file}.npz')
+
+        except FileNotFoundError:
+            num_timesteps = int(particles[:, 2].max() - 1)
+            stack = None
+            pixel_size = 1
+            # radius = np.full(particles.shape[0], 0.002*160)
+
+            no_stack = True
+        
+        else:
+            no_stack = False
+
+            stack = data_stack['stack']
+            pixel_size = data_stack['pixel_size']
+
+            # crop
+            stack = stack[:, :500, :500]
+
+            # stack = common.add_drift_intensity(stack, 1)
+
+            print(stack.shape[1], 'x', stack.shape[2], 'px')
+
+
+            # stack = stack - stack.mean(axis=0) # remove space background
+        
+        def add_outlines(timestep, ax):
+            particle_detection.show.add_particle_outlines(ax, pixel_size, particles, radius, timestep, outline=False)
+
+        filename = f'movie_linked_{file}{SUFFIX}.gif'
+        preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"preprocessing/figures_png/{filename}",
+                                                func=add_outlines, num_timesteps_in_data=num_timesteps,
+                                                window_size_x=window_size_x, window_size_y=window_size_y)
+        # preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}{SUFFIX}.mp4",
+        #                                            func=add_outlines)
+        # save_array_movie(stack_copy, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/{filename}.mp4")

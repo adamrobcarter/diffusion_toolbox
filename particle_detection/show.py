@@ -18,12 +18,14 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=N
     # plt.scatter(particles[particles_at_t, X_INDEX]/pixel_size, particles[particles_at_t, Y_INDEX]/pixel_size, s=50*radius[particles_at_t]**2*pixel_size**2,
     #             facecolors='none', edgecolors='red', alpha=0.5, linewidth=0.8)
 
-    x = particles[particles_at_t, 1]/pixel_size
-    # common.term_hist(x)
-    y = particles[particles_at_t, 0]/pixel_size
-    r = radius[particles_at_t] * np.sqrt(2) # TODO: should this be /pixel_size?
-    r = np.full_like(r, r.mean()) * 2
-    warnings.warn('i disabled showing radius')
+    # x = particles[particles_at_t, 1]/pixel_size
+    # y = particles[particles_at_t, 0]/pixel_size
+    x = particles[particles_at_t, 1]
+    y = particles[particles_at_t, 0]
+
+    # r = radius[particles_at_t] * np.sqrt(2) # TODO: should this be /pixel_size?
+    r = np.full_like(x, 40*pixel_size**2)
+    # warnings.warn('i disabled showing radius')
     if particles.shape[1] == 4:
         id = particles[particles_at_t, 3]
 
@@ -76,8 +78,8 @@ if __name__ == '__main__':
             num_timesteps = int(particles[:, 2].max() - 1)
             stack = np.zeros((num_timesteps, 320, 320))
             pixel_size = 1
-            radius = np.full(particles.shape[0], 0.002*160)
-            radius = np.full(particles.shape[0], 0.2)
+            # radius = np.full(particles.shape[0], 0.002*160)
+            radius = np.full(particles.shape[0], 0.002*160*pixel_size**2/10)
             print()
 
         def add_outlines(timestep, ax):

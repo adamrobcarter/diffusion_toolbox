@@ -34,6 +34,10 @@ timestep_map = {
     '0024_silice4um_sediment': 1,
 }
 
+endframe_map = {
+    'psiche074': 96,
+}
+
 skips = ['0154', '0015', '0016', '0046',
           '0003', '0004', '0005', '0006', '0007', '0008', '0009',
           '0010', '0011', '0012', '0013',
@@ -105,6 +109,10 @@ def preprocess(directory_path, directory_name, destination_filename, destination
             # proj = obj.astype(np.float16)
             # print(proj.shape, proj.dtype, f'{proj.nbytes/1e9:.1f}GB')
 
+    if end := endframe_map.get(destination_filename):
+        proj = proj[:end+1, :, :]
+        print('final frame', end)
+
     # load refs and dark
     with h5py.File(f'{directory_path}/pre_ref.nxs', 'r') as f:
         refA = f['ref_2d'][:]
@@ -164,12 +172,14 @@ def preprocess(directory_path, directory_name, destination_filename, destination
 
 print('WARNING NOT DOING ALL')
 
-files = list(os.scandir('/data2/acarter/psiche/PSICHE_0624'))[88+11+31:]
+files = list(os.scandir('/data2/acarter/psiche/PSICHE_0624'))
+
+do = ['psiche074']
 
 for f in tqdm.tqdm(files):
     try:
         if f.is_dir():
-            print(f.name, f.path)
+            # print(f.name, f.path)
 
             if 'tomo' in f.name.lower():
                 continue
@@ -179,9 +189,17 @@ for f in tqdm.tqdm(files):
 
             internal_name = f'psiche{f.name[1:4]}'
             internal_desc = f.name[5:].replace('_', ' ')
-            print(internal_desc)
+            # print(internal_desc)
+
+            if not (internal_name in do):
+                continue
 
             preprocess(f.path, f.name, internal_name, internal_desc)
+            # f.path: /data2/acarter/psiche/PSICHE_0624/0064_PS3um_Au_exp500ms
+            # f.name: 0064_PS3um_Au_exp500ms
+            # internal_name: psiche064
+            # internal_desc: PS3um Au exp500ms
+            
             # break
     except Exception as err:
         print(f'failed on {f.name}')

@@ -7,6 +7,7 @@ import warnings
 
 DISPLAY_SMALL = False
 INVERSE_COLORS = False
+SHOW_TIMESTEP = True
 
 # HIGHLIGHTS = True # displays 50 frames evenly throughout the stack instead of the first 50
 HIGHLIGHTS = False
@@ -55,7 +56,7 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
 
     figsize = (3, 3)
 
-    no_stack = stack == None
+    no_stack = stack is None
 
     if not no_stack:
         if method == TWOCHANNEL:
@@ -145,6 +146,8 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
         vmin = np.quantile(usedstack, 0.01)
         vmax = np.quantile(usedstack, 0.99)
 
+    print('frames', frames)
+
     def show(index):
         if backwards:
             timestep = frames[-index]
@@ -169,7 +172,10 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
 
             show_single_frame(ax, None, pixel_size, channel=channel, window_size_x=window_size_x, window_size_y=window_size_y)
         
-        time_string = speed_string(time_mult, every_nth_frame*nth_frame)#+f'\ntime = {timestep*time_step*nth_frame:.1f}s'
+        time_string = speed_string(time_mult, every_nth_frame*nth_frame)
+        if SHOW_TIMESTEP:
+            time_string += f'\nframe = {timestep*nth_frame:.0f}'
+            time_string += f'\ntime = {timestep*time_step*nth_frame:.1f}s'
         ax.text(0.95, 0.05, time_string, color=color, transform=ax.transAxes, ha='right', fontsize=10)
 
         ax.text(0.1, 0.9, dataset_name, transform=ax.transAxes, fontsize=15, color=color)
@@ -183,8 +189,9 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
         func(timestep, ax)
 
     if no_stack:
-        num_timesteps = max_num_frames
-        assert num_timesteps > 0
+        # num_timesteps = max_num_frames # cba to work out why this didn't work
+        # assert num_timesteps > 0
+        num_timesteps = len(frames)
     else:
         num_timesteps = usedstack.shape[0]
 
@@ -211,13 +218,13 @@ def show_single_frame(ax, frame, pixel_size, window_size_x, window_size_y, chann
     else:
         cmap = matplotlib.cm.Greys
 
-    if frame != None:
+    if frame is not None:
         ax.imshow(frame, cmap=cmap, interpolation='none', vmin=vmin, vmax=vmax, extent=(0, window_size_x, 0, window_size_y))
     
     ax.set_xlim(0, window_size_x)
     ax.set_ylim(0, window_size_y)
     
-    if frame:
+    if frame is not None:
         color = 'white' if frame.mean()/(frame.max()-frame.min()) < 0.2 else 'black'
     else:
         color = 'gray'
@@ -232,8 +239,10 @@ def go(file, outputfilename, add_drift=False, display_small=False, method=NONE, 
         pixel_size = data['pixel_size']
         time_step  = data['time_step']
         channel    = data.get('channel')
-        window_size_x = data['window_size_x']
-        window_size_y = data['window_size_y']
+        # window_size_x = data['window_size_x']
+        # window_size_y = data['window_size_y']
+        window_size_x = stack.shape[1] * pixel_size
+        window_size_y = stack.shape[2] * pixel_size
 
         if add_drift:
             stack = common.add_drift_intensity(stack, 1)
@@ -266,7 +275,7 @@ def go(file, outputfilename, add_drift=False, display_small=False, method=NONE, 
 if __name__ == '__main__':
     for file in common.files_from_argv('preprocessing/data/', 'stack_'):
         
-        filename = f'stack_movie_{file}'
+        filename = f'preprocessing/stack_movie_{file}'
         if METHOD == REMOVE_BACKGROUND:
             filename += '_bkgrem'
         elif METHOD == DIFF_WITH_ZERO:
@@ -279,6 +288,7 @@ if __name__ == '__main__':
             filename += '_backwards'
         if ADD_DRIFT:
             filename += '_drifted'
+        filename += '.gif'
 
         go(
             file,

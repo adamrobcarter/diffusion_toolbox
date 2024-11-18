@@ -12,7 +12,6 @@ for file in common.files_from_argv('preprocessing/data', 'stack_'):
     data2 = common.load(f'preprocessing/data/corr_shift_{file}.npz')
     corrs = data2['corrs']
 
-
     lost_x = int(corrs[:, 0].max() - corrs[:, 0].min())
     lost_y = int(corrs[:, 1].max() - corrs[:, 1].min())
     

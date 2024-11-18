@@ -76,3 +76,6 @@ def calc(particles):
 
     common.term_hist(all_steps_x)
     common.term_hist(all_steps_y)
+
+    print('x', all_steps_x.mean(), all_steps_x.std())
+    print('y', all_steps_y.mean(), all_steps_y.std())
