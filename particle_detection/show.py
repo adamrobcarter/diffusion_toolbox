@@ -24,7 +24,7 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=N
     y = particles[particles_at_t, 0]
 
     # r = radius[particles_at_t] * np.sqrt(2) # TODO: should this be /pixel_size?
-    r = np.full_like(x, 40*pixel_size**2)
+    r = np.full_like(x, 2**2) # you would lose this problem if u actually showed the radius u numpty
     # warnings.warn('i disabled showing radius')
     if particles.shape[1] == 4:
         id = particles[particles_at_t, 3]
@@ -79,7 +79,7 @@ if __name__ == '__main__':
             stack = np.zeros((num_timesteps, 320, 320))
             pixel_size = 1
             # radius = np.full(particles.shape[0], 0.002*160)
-            radius = np.full(particles.shape[0], 0.002*160*pixel_size**2/10)
+            radius = np.full(particles.shape[0], np.nan)
             print()
 
         def add_outlines(timestep, ax):

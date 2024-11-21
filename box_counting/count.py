@@ -66,8 +66,7 @@ def calc_and_save(box_sizes, sep_sizes, data, particles, output_file_name,
     density = particles.shape[0]/num_timesteps / (window_width * window_height)
     pack_frac = np.pi/4 * density * particle_diameter**2
 
-    if save_data:
-        common.save_data(output_file_name, N2_mean=N2_mean, N2_std=N2_std,
+    output = dict(filename=output_file_name, N2_mean=N2_mean, N2_std=N2_std,
                 box_sizes=box_sizes, sep_sizes=sep_sizes,
                 num_boxes=results.num_boxes, N_mean=results.N_mean, N_var=results.N_var,
                 N_var_mod=results.N_var_mod, N_var_mod_std=results.N_var_mod_std, N_mean_std=results.N_mean_std,
@@ -75,13 +74,16 @@ def calc_and_save(box_sizes, sep_sizes, data, particles, output_file_name,
                 particle_diameter_calced=particle_diameter_calced, computation_time=time.time()-t0,
                 depth_of_field=depth_of_field,
                 box_coords=results.box_coords,
-                pack_frac_given=data.get('pack_frac_given'),
+                pack_frac_given=data.get('pack_frac_given'), max_time_hours=data.get('max_time_hours'),
                 window_size_x=window_size_x, window_size_y=window_size_y, pixel_size=data.get('pixel_size'),
                 **extra_to_save)
+
+    if save_data:
+        common.save_data(**output)
     else:
         print('not saving data')
 
-    return 
+    return output
 
 if __name__ == '__main__':
     for file in common.files_from_argv('particle_detection/data', 'particles_'):

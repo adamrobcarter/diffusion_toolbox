@@ -8,60 +8,60 @@ import tqdm
 # y min max 0.7108168319999999 367.6492512
 # num_timesteps 71997.0
 
-def read_file_skip_timesteps(file, nth_timesteps, max_frames, expected_particles_per_frame):
-    arraysize = 0
-    if max_frames:
-        progress = tqdm.tqdm(total=max_frames)
-    else:
-        progress = tqdm.tqdm()
+# def read_file_skip_timesteps(file, nth_timesteps, max_frames, expected_particles_per_frame):
+#     arraysize = 0
+#     if max_frames:
+#         progress = tqdm.tqdm(total=max_frames)
+#     else:
+#         progress = tqdm.tqdm()
 
-    # num_lines = 0
+#     # num_lines = 0
 
-    with open(file) as f:
-        for line in f:
-            # num_lines += 1
+#     with open(file) as f:
+#         for line in f:
+#             # num_lines += 1
 
-            if nth_timesteps == 1:
-                yield line
+#             if nth_timesteps == 1:
+#                 yield line
 
-                if max_frames == None:
-                    progress.update()
+#                 if max_frames == None:
+#                     progress.update()
 
-                else:
-                    # we can use the density to guess the current frame number
-                    # which will make it quicker as we won't have to parse the data
-                    # actually it doesn't seem to be quicker rip
-                    # t = num_lines / expected_particles_per_frame
+#                 else:
+#                     # we can use the density to guess the current frame number
+#                     # which will make it quicker as we won't have to parse the data
+#                     # actually it doesn't seem to be quicker rip
+#                     # t = num_lines / expected_particles_per_frame
                     
-                    # 4.04it/s by the end
+#                     # 4.04it/s by the end
 
-                    # old option - is this slower?
-                    parts = line.split()
-                    t = int(parts[2])
-                    progress.n = t # don't do progress.refresh here! it's very slow
+#                     # old option - is this slower?
+#                     parts = line.split()
+#                     t = int(parts[2])
+#                     progress.n = t # don't do progress.refresh here! it's very slow
                     
-                    if t > max_frames:
-                        break
+#                     if t > max_frames:
+#                         break
 
-                arraysize += 4 * 4
+#                 arraysize += 4 * 4
             
-            else:
-                parts = line.split()
-                t = int(parts[2])
+#             else:
+#                 parts = line.split()
+#                 t = int(parts[2])
 
-                if t % nth_timesteps == 0:
-                    yield line
-                    arraysize += 4 * 4
+#                 if t % nth_timesteps == 0:
+#                     yield line
+#                     arraysize += 4 * 4
                     
-                if max_frames == None:
-                    progress.update()
-                else:
-                    progress.n = t # don't do progress.refresh here! it's very slow
+#                 if max_frames == None:
+#                     progress.update()
+#                 else:
+#                     progress.n = t # don't do progress.refresh here! it's very slow
                     
-                    if t > max_frames:
-                        break
+#                     if t > max_frames:
+#                         break
 
-            progress.set_description(f'loaded {common.format_bytes(arraysize)}')
+#             progress.set_description(f'loaded {common.format_bytes(arraysize)}')
 
 # def read_file_tqdm(file):
 #     arraysize = 0
@@ -73,22 +73,41 @@ def read_file_skip_timesteps(file, nth_timesteps, max_frames, expected_particles
 #             progress.set_description(f'loaded {common.format_bytes(arraysize)}')
 
 
-def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, nth_timesteps=1, max_frames=None):
+def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_diameter, nth_timestep=1, max_time=None):
     print(f'loading, last modified {common.get_last_modified_time(infile)} ago')
 
-    particle_diameter = 2.79
     density = 4/np.pi * pack_frac_given / particle_diameter**2
     expected_particles_per_frame = density * orig_width**2
+    if max_time:
+        max_frame = max_time * dt
+        max_rows = int((max_frame + 1) * expected_particles_per_frame)
+    else:
+        max_rows = None
 
     t0 = time.time()
     # data = np.loadtxt(infile)
     # data = np.loadtxt(infile, dtype=np.float32)
-    data = np.loadtxt(read_file_skip_timesteps(infile, nth_timesteps, max_frames, expected_particles_per_frame), dtype=np.float32)
-    dt *= nth_timesteps
-    if nth_timesteps > 1: # we gotta readjust the timestep number now we discarded some timesteps
-        data[:, 2] /= nth_timesteps
-    
+    # data = np.loadtxt(read_file_skip_timesteps(infile, nth_timesteps, max_frames, expected_particles_per_frame), dtype=np.float32)
+    if infile.endswith('.txt'):
+        data = np.loadtxt(infile, max_rows=max_rows, dtype=np.float32)
+    elif infile.endswith('.bin'):
+        data = np.fromfile(infile, dtype=np.float32) # there is a parameter to this function for not loading the whole array
+        data = data.reshape((-1, 3))
     t1 = time.time()
+    print(data.shape, data.dtype,  f'loaded {common.format_bytes(data.nbytes)} in {t1-t0:.1f}s at {common.format_bytes(data.nbytes/(t1-t0))}/sec')
+    
+    # discard the non-nth step rows
+    if nth_timestep > 1:
+        print('doing nth-timestep')
+        data = data[data[:, 2] % nth_timestep == 0, :]
+        dt *= nth_timestep
+        # we gotta readjust the timestep number now we discarded some timesteps
+        data[:, 2] /= nth_timestep
+
+    # we should delete the last timestep cause it may be incomplete
+    last_timestep = data[:, 2].max()
+    data = data[data[:, 2] != last_timestep, :]
+    
     print(f'loaded in {t1-t0:.0f}s. shape', data.shape, common.arraysize(data))
     num_timesteps = data[:, 2].max()+1
     print(f'{num_timesteps:.0f} timesteps = {num_timesteps*dt/60/60:.1f} hours')
@@ -102,7 +121,7 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, nth_timestep
     print('avg part per frame', avg_particles_per_frame, 'L^2', orig_width**2)
     pack_frac_calced = np.pi/4 * density * particle_diameter**2
     print(f'pack_frac_calced={pack_frac_calced:.4f}, pack_frac_given={pack_frac_given:.4f}')
-    assert np.isclose(pack_frac_calced, pack_frac_given, rtol=0.1)
+    assert np.isclose(pack_frac_calced, pack_frac_given, rtol=0.1), f'pack frac calced {pack_frac_calced}, given {pack_frac_given}'
 
     # print('removing some timesteps')
     # keep_rows = data[:, 2] % nth_timesteps == 0
@@ -156,14 +175,14 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, nth_timestep
     common.save_data(f'particle_detection/data/particles_{outfile}.npz',
         particles=data,
         time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given,
-        window_size_x=out_width, window_size_y=out_width,
+        window_size_x=out_width, window_size_y=out_width, max_time_hours=round(num_timesteps*dt/60/60, 1),
     )
 
     if data.shape[1] == 4:
         common.save_data(f'particle_linking/data/trajs_{outfile}.npz',
             particles=data,
             time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given,
-            window_size_x=out_width, window_size_y=out_width,
+            window_size_x=out_width, window_size_y=out_width, max_time_hours=round(num_timesteps*dt/60/60, 1),
         )
     
     if data.size > 5e7:
@@ -173,14 +192,14 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, nth_timestep
         common.save_data(f'particle_detection/data/particles_{outfile}_div8.npz',
             particles=data_small,
             time_step=dt, particle_diameter=2.79, pack_frac_given=pack_frac_given,
-            window_size_x=out_width, window_size_y=out_width,
+            window_size_x=out_width, window_size_y=out_width, max_time_hours=round(end_timestep*dt/60/60, 1),
         )
 
         if data.shape[1] == 4:
             common.save_data(f'particle_linking/data/trajs_{outfile}_div8.npz',
                 particles=data_small,
                 time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given,
-                window_size_x=out_width, window_size_y=out_width,
+                window_size_x=out_width, window_size_y=out_width, max_time_hours=round(end_timestep*dt/60/60, 1),
             )
     print()
     
@@ -202,24 +221,33 @@ datas = [
     # (160, 1, 0.01),
     # (160, 4, 0.1),
     # (320, 4, 0.1),
-    # (640, 8, 0.1, '', 1),
+    # (640, 8, 0.1, '', 1, None), # this was the one that was done again
     # (640, 0.5, 0.1, '_short'),
-    # (320, 8, 0.1, '', 1, 24*60*60/8), # this is 24h, the /8 is for the nth_timesteps
-    # (320, 8, 0.01, '', 1, 24*60*60/8),
-    # (640, 8, 0.01, '', 1, 24*60*60/8),
-    # (320, 8, 0.1, '', 1, 24*60*60/8),
-    # (640, 8, 0.1, '', 1, 24*60*60/8),
-    (544, 8, 0.1, '', 1, 24*60*60/8),
-    # (800, 8, 0.02, '', 1, 24*60*60/8),
+    # (320, 8, 0.1, '', 1, 24*60*60), # this is 24h
+    # (320, 8, 0.01, '', 1, 24*60*60),
+    # (640, 8, 0.01, '', 1, 24*60*60),
+    # (320, 8, 0.1, '', 1, 24*60*60),
+    # (640, 8, 0.1, '', 1, 24*60*60),
+    # (544, 8, 0.1, '', 1, 24*60*60),
+    # (544, 0.5, 0.1, '_dt2', 4, 24*60*60),
+    # (800, 8, 0.02, '', 1, 24*60*60),
+    # (320, 0.5, 0.114, '', 1, None, 2.972),
+    # (320, 8, 0.114, '_long', 1, None, 2.972),
 ]
 
-for L, dt, phi, suffix, nth_timestep, max_frames in datas:
+for L, dt, phi, suffix, nth_timestep, max_time, particle_diameter in datas:
     phistr = f'{phi*100:.0f}'.zfill(3)
-    go(f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt', f'sim_nohydro_{phistr}_L{L}{suffix}',  L, L, dt, phi, nth_timestep, max_frames)
+    # go(f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt', f'sim_nohydro_{phistr}_L{L}{suffix}',  L, L, dt, phi, nth_timestep, max_time)
+    go(f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}_s2.972.suspension_phi{phi}_L{L}_s2.972.bin',
+       f'sim_nohydro_{phistr}_L{L}{suffix}',
+       orig_width=L, 
+       out_width=L, 
+       dt=dt, 
+       pack_frac_given=phi, nth_timestep=nth_timestep, max_time=max_time, particle_diameter=particle_diameter)
 
 # go('/data2/acarter/Spectral_Sophie_Boxes/data/spec_softetakt_long_run_dtau_0.025_nsave_2.suspension_phi_0.1_L_1280_modified.txt', 'brennan_hydro_010_L1280', 1280, 1280, 0.5, 0.1, 1)
 # go('/data2/acarter/Spectral_Sophie_Boxes/data/spec_softetakt_long_run_dtau_0.025_nsave_2.suspension_phi_0.1_L_544_modified.txt',  'brennan_hydro_010_L544',   544,  544, 0.5, 0.1, 1)
-# go('/data2/acarter/Spectral_Sophie_Boxes/data/spec_softetakt_long_run_dtau_0.025_nsave_2.suspension_phi_0.02_L_1600_modified.txt', 'brennan_hydro_002_L1600', 1600, 1600, 0.5, 0.02, 1)
+go('/data2/acarter/Spectral_Sophie_Boxes/data/spec_softetakt_long_run_dtau_0.025_nsave_2.suspension_phi_0.02_L_1600_modified.txt', 'brennan_hydro_002_L1600', orig_width=1600, out_width=1600, dt=0.5, pack_frac_given=0.02, particle_diameter=2.79)
 # go('/data2/acarter/Spectral_Sophie_Boxes/data/spec_softetakt_long_run_dtau_0.025_nsave_2.suspension_phi_0.02_L_800_modified.txt',  'brennan_hydro_002_L800',   800,  800, 0.5, 0.02, 1)
 
 

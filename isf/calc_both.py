@@ -6,20 +6,25 @@ import time
 import warnings
 import isf.show_both
 
+def less_than_or_close(a, b):
+    return a <= b or np.isclose(a, b)
+def greater_than_or_close(a, b):
+    return a >= b or np.isclose(a, b)
+
 def setup(F_type, file, d_frames, drift_removed=False, max_K=None):
     if F_type == 'F_s':
         filepath = f"particle_linking/data/trajs_{file}.npz"
     else:
         filepath = f"particle_detection/data/particles_{file}.npz"
     data = common.load(filepath)
-    particles  = data['particles'].astype(np.float32) # rows of x,y,t
-    pixel_size = data.get('pixel_size')
-    width      = data['window_size_x']
-    height     = data['window_size_y']
+    particles     = data['particles'].astype(np.float32) # rows of x,y,t
+    pixel_size    = data.get('pixel_size')
+    window_size_x = data['window_size_x']
+    window_size_y = data['window_size_y']
     assert particles[:, 0].min() >= 0
     assert particles[:, 1].min() >= 0
-    assert particles[:, 0].max() <= width
-    assert particles[:, 1].max() <= height
+    assert less_than_or_close(   particles[:, 0].max(), window_size_x), f'particles[:, 0].max() = {particles[:, 0].max()}, window_size_x={window_size_x}'
+    assert greater_than_or_close(particles[:, 1].max(), window_size_y), f'particles[:, 1].max() = {particles[:, 1].max()}, window_size_y={window_size_y}'
     
     num_timesteps = int(particles[:, 2].max() + 1)
 
@@ -39,7 +44,7 @@ def setup(F_type, file, d_frames, drift_removed=False, max_K=None):
         print('adding drift')
         particles = common.add_drift(particles, 0.05, 0.05)
     
-    min_K = 2*np.pi / np.array(common.get_used_window(file, width, height))
+    min_K = 2*np.pi / np.array(common.get_used_window(file, window_size_x, window_size_y))
     print(f'min k =', min_K)
 
     if not max_K:
@@ -112,7 +117,7 @@ def calc_for_f_type(
         pixel_size=data.get('pixel_size'), pack_frac_given=data.get('pack_frac_given'),
         window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
         NAME=data.get('NAME'), channel=data.get('channel'),
-        num_timesteps=num_timesteps,
+        num_timesteps=num_timesteps, max_time_hours=data.get('max_time_hours'), density=data.get('density'),
     )
 
     if save:

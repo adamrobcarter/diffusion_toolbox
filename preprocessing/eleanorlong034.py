@@ -30,18 +30,20 @@ window_size_x -= 2*EDGE_CROP
 window_size_y -= 2*EDGE_CROP
 print(f'edge crop kept {particles.size/size_before:.3f}')
 
+num_timesteps = int(particles[:, 2].max() + 1)
+max_time_hours = round(num_timesteps * 0.5 / 60 / 60, 1)
+density = particles.shape[0] / (num_timesteps) / (window_size_x*window_size_y)
+
 print('saving')
 common.save_data(f'particle_detection/data/particles_eleanorlong034.npz', particles=particles,
             time_step=0.5, particle_diameter=particle_diameter, pixel_size=PIXEL,
             window_size_x=window_size_x, window_size_y=window_size_y,
-            pack_frac_given=0.342,
-            # num_timesteps=num_timesteps
+            pack_frac_given=0.342, density=density, max_time_hours=max_time_hours,
             )
 # np.save(f'particle_detection/data/particles_eleanorlong.npy', data_param)
 common.save_data(f'particle_linking/data/trajs_eleanorlong034.npz', particles=particles,
          time_step=0.5, particle_diameter=particle_diameter, pixel_size=PIXEL,
             window_size_x=window_size_x, window_size_y=window_size_y,
-            pack_frac_given=0.342,
-         # num_timesteps=num_timesteps
+            pack_frac_given=0.342, density=density, max_time_hours=max_time_hours,
          )
 print('done')

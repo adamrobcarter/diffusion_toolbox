@@ -4,11 +4,7 @@ import numpy as np
 import tqdm
 
 NUM_SPLITS = 10
-SPACINGS = [512.5, 256.5, 128.5, 64.5, 32.5, 16.5, 8.5, 4.5, 2.5, 1.5, 1, 0.5, 0.3, 0.15]
-# SPACINGS = [16.5]
-SPACINGS = [512.5]
-SPACINGS = np.round(np.logspace(np.log10(0.4), np.log10(512.5), 30), decimals=2)
-SPACINGS = np.round(np.logspace(np.log10(0.4), np.log10(512.5), 50), decimals=2)
+SPACINGS = np.round(np.logspace(np.log10(3), np.log10(512.5), 20), decimals=2)*0.288
 # SPACINGS = np.round(np.logspace(np.log10(2.5), np.log10(156.5), 50), decimals=2)
 print(SPACINGS)
 
@@ -26,7 +22,9 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
     # keep = (~x_too_big) & (~y_too_big)
     # particles = particles[keep, :]
 
-    progress = tqdm.tqdm(total=NUM_SPLITS*len(SPACINGS))
+    progress = tqdm.tqdm(total=NUM_SPLITS*len(SPACINGS), desc='overall progress')
+
+    all_output = dict(SPACINGS=SPACINGS, NUM_SPLITS=NUM_SPLITS)
 
     for split_i in range(NUM_SPLITS):
         print()
@@ -38,12 +36,16 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
         t_indexes = (t_low <= particles[:, 2]) & (particles[:, 2] < t_high)
         particles_t = particles[t_indexes, :]
 
-        box_sizes_px = np.array([1, 4, 16, 64, 256])
+        box_sizes = np.array([0.24, 1.2, 6.4, 33])*2.8
 
-        for spacing in SPACINGS:
+        for spacing_i, spacing in enumerate(SPACINGS):
             output_filename = f'box_counting/data/counted_{file}_extra4_qo_split{split_i}_spacing{spacing}.npz'
-            sep_sizes_px = spacing - box_sizes_px
-            box_counting.count.calc_and_save(box_sizes_px, sep_sizes_px, data, particles_t, output_filename)
+            sep_sizes = spacing - box_sizes
+            output = box_counting.count.calc_and_save(box_sizes, sep_sizes, data, particles_t, output_filename,
+                                             save_data=False)
+            for key in output.keys():
+                all_output[f'spacing{spacing_i}_split{split_i}_{key}'] = output[key]
             progress.update()
     
+    common.save_data(f'box_counting/data/quantify_overlap_{file}_{len(SPACINGS)}_{NUM_SPLITS}.npz', **all_output)
     progress.close()

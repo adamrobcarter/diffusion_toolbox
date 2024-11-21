@@ -1,15 +1,17 @@
 import common
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker
 import sys
 import countoscope_theory.structure_factor
 import countoscope_theory.timescaleint
 import scipy.special
 
 SHOW_TWIN_K_AXIS = False
-ERRORBAR_ALPHA = 0.4
+ERRORBAR_ALPHA = 0.2
 LABELS_ON_PLOT = False
 LABELS_ON_PLOT_FONTSIZE = 7
+LEGEND_FONTSIZE = 7
 D0_SOURCE = 'MSD_first'
 # D0_SOURCE = 'MSD_short'
 PREVENT_Y_RESCALING = False
@@ -90,7 +92,7 @@ markers = {
     'boxcounting_first_quad': '_',
     'boxcounting_shorttime': '*',
     'boxcounting_collective': 'x',
-    'timescaleint': '_',
+    'timescaleint': 'o',
     'timescaleint_nofit': 'o',
     'timescaleint_nofit_cropped': 'o',
     'D0Sk': 'o',
@@ -110,12 +112,13 @@ linestyle = {
 
 
 def get_D0(file):
-    file = get_D0_filename(file)
 
-    suffixes = ['_crop', '_trim', '_first', '_smallbins', '_nozero']
+    suffixes = ['_crop', '_trim', '_first', '_smallbins', '_nozero', '_no_overlap', '_long']
     for suffix in suffixes:
         if suffix in file:
             file = file.split(suffix)[0]
+            
+    file = get_D0_filename(file)
             
     data = common.load(f"visualisation/data/Ds_from_{D0_SOURCE}_{file}.npz")
     D_MSD = data["Ds"][0]
@@ -130,8 +133,9 @@ def get_D0_filename(file):
     #     file = 'sim_nohydro_010_L640_short'
 
     if file in ['eleanorlong066', 'sim_nohydro_034_L640', 'sim_nohydro_034_L1280',
-                'sim_nohydro_010_L320', 'sim_nohydro_010_L544', 'sim_nohydro_010_L640',
-                'brennan_hydro_010_L544', 'brennan_hydro_010_L1280']:
+                'sim_nohydro_010_L320', 'sim_nohydro_010_L544', 'sim_nohydro_010_L544_dt2', 'sim_nohydro_010_L640',
+                'brennan_hydro_010_L544', 'brennan_hydro_010_L1280',
+                'sim_nohydro_011_L320', 'sim_nohydro_011_L320_long',]:
         file += '_div8'
     return file
 
@@ -335,7 +339,8 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
 def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, ylim=None,
        output_filename=None, export_destination=None, show_pixel=True,
        show_window=True, show_pack_frac_plateau=False, figsize=DEFAULT_FIGSIZE,
-       label_k_scaling=False, label_pack_frac=False, hide_msd=False, ax=None):
+       label_k_scaling=False, label_pack_frac=False, hide_msd=False, ax=None,
+       legend_fontsize=None):
 
     all_Ds = []
     found_at_least_one_file = False
@@ -481,11 +486,6 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
         [all_Ds.append(D) for D in ys]
 
 
-    if not PLOT_AGAINST_K:
-        if show_pixel:
-            ax.vlines(pixel_size,  min(ys), max(ys), color='gray', linestyle='dotted', label='pixel size')
-        if show_window:
-            ax.vlines(window_size, min(ys), max(ys), color='gray', linestyle='dashed', label='window size (max)')
 
     assert len(all_Ds) > 0, 'no Ds were found at all'
 
@@ -495,20 +495,28 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
 
     if logarithmic_y:
         ax.semilogy()
+        ax.yaxis.set_minor_formatter(matplotlib.ticker.LogFormatter()) # prevent scientific notation on axes
+        ax.yaxis.set_major_formatter(matplotlib.ticker.LogFormatter()) # prevent scientific notation on axes
 
-    if ylim:
-        ax.set_ylim(*ylim)
-    else:
+    if not ylim:
         ylim_expand = 1.2
         if np.nanmax(all_Ds) - np.nanmax(all_Ds) < 0.4:
             ylim_expand = 1.5
-        ymin = np.nanquantile(all_Ds, 0.05)/ylim_expand
-        ymax = np.nanquantile(all_Ds, 1)*ylim_expand
-        ax.set_ylim(ymin, ymax)
+        ylim = (np.nanquantile(all_Ds, 0.05)/ylim_expand, np.nanquantile(all_Ds, 0.95)*ylim_expand)
         # if ylim:
         #     ax.set_ylim(*ylim)
         # ax.set_ylabel('$D/D_0$')
         # ax.set_xticks([])
+    ax.set_ylim(*ylim)
+
+    if not PLOT_AGAINST_K:
+        if show_pixel:
+            ax.vlines(pixel_size,  *ylim, color='gray', linestyle='dotted', label='pixel size')
+        if show_window:
+            ax.vlines(window_size, *ylim, color='gray', linestyle='dashed', label='window size (max)')
+
+
+
     ax.semilogx()
     if PLOT_AGAINST_K:
         
@@ -521,11 +529,10 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
         ax.set_xlabel(r'$L / \sigma$')
     # ax.set_xlabel(r'$k / (2\pi / \sigma)$')
     # ax.semilogy()
-    # ax.legend(fontsize=5, loc='upper left')
 
-    # ax.legend(fontsize=7, loc='lower right')
     if not LABELS_ON_PLOT:
-        ax.legend(fontsize=7)
+        print('legfont', legend_fontsize)
+        ax.legend(fontsize=legend_fontsize)
     # ax.set_title(f'{file}, errorbars not yet all correct')
     # name = '_'.join(used_sources)
     # filename = f'{file}_{name}'
@@ -545,8 +552,8 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
     if not ax_supplied:
         if export_destination:
             common.save_fig(fig, export_destination, hide_metadata=True)
-        if output_filename:
-            common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_{output_filename}.png', dpi=200)
+        # if output_filename:
+        common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_{output_filename}.png', dpi=200)
 
     print()
 
@@ -554,6 +561,7 @@ def get_linestyle(source):
     return linestyle.get(trim_source(source), 'none')
 
 def get_marker(source):
+    print('marker', source, markers.get(trim_source(source)))
     return markers.get(trim_source(source), 'o')
 
 def get_color(source):
@@ -573,7 +581,7 @@ if __name__ == '__main__':
 
         go(file, ['MSD_first',
                 #   'MSD_long',
-                  'D0Sk', 
+                #   'D0Sk', 
                 #   'MSD_short',
                   'D0Sk_theory',
                 #   'dominiguez_theory',
@@ -585,20 +593,24 @@ if __name__ == '__main__':
                 'f_long',
                 'f',
                 'f_first_first',
+                # 'F_s',
+                'F_s_first',
+                # 'F_s_long',
                 #   'boxcounting_shorttime',
                 #     'boxcounting_first_quad',
                     'boxcounting_collective',
                 #   'timescaleint_nofit_cropped_var',
                   'timescaleint_var',
+                  'timescaleint_nmsdfitinter',
                 #   'MSD_centre_of_mass_proximity',
                 'D_of_L_theory',
                 # 'D_of_L_theory_Lh',
-                'NtN0_first',
-                'NtN0_fit',
+                # 'NtN0_first',
+                # 'NtN0_fit',
                 # 'F_s_first',
             ],
             PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, output_filename=filename,
-            ylim=YLIM,
+            ylim=YLIM, legend_fontsize=LEGEND_FONTSIZE
             )
 
         # go(file, ['MSD_short', 'boxcounting_collective', 'timescaleint_nofit', 'timescaleint', 'C_N_simplefit'],

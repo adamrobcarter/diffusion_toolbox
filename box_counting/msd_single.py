@@ -9,12 +9,13 @@ import scipy.integrate
 import matplotlib.cm
 import visualisation.Ds_overlapped
 import scipy.signal
-
+import tqdm
 
 # enums
 RESCALE_Y_VAR_N   = 1
 RESCALE_Y_N       = 2
 RESCALE_Y_PLATEAU = 3
+RESCALE_Y_L2      = 4
 RESCALE_X_L2 = 1
 RESCALE_X_L  = 2
 
@@ -26,7 +27,7 @@ DO_D_FROM_FIRST_POINT = True # idk why you would ever want this false
 PRESENT_SMALL = False
 SHOW_JUST_ONE_BOX = False
 
-LABELS_ON_PLOT = False
+LABELS_ON_PLOT = True
 LABELS_ON_PLOT_Y_SHIFT = 1.4 if SHOW_JUST_ONE_BOX else 1.25
 
 FORCE_HIDE_LEGEND = False
@@ -44,7 +45,7 @@ SHOW_TIMESCALEINT_REPLACEMENT = False
 SHOW_T_SLOPE = False
 
 MAX_BOXES_ON_PLOT = 6
-DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE = False
+DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE = True
 
 REVERSE_PLOT_ORDER = False
 LINESTYLE = '-'
@@ -61,15 +62,7 @@ RESCALE_X = None
 # RESCALE_Y = RESCALE_Y_N
 RESCALE_Y = False
 
-if RESCALE_X and RESCALE_Y:
-    LABELS_ON_PLOT = False
-
 SHORTTIME_FIT_ERROR_THRESH = 0.05 # D_unc/D must be smaller than this for the point to save
-
-figsize = (6, 4.5)
-if PRESENT_SMALL:
-    figsize = (4.5, 4)
-    figsize = (3.5, 3.2)
 
 have_displayed_at_least_one = False
 
@@ -132,7 +125,7 @@ gradax4.loglog()
 
 #         # gradax3.scatter(t, scipy.signal.savgol_filter(np.abs(grad)[1000:], 1000, 3))
     
-def get_plateau(method, nmsd, file, L, phi, sigma, t, var, varmod, display=False):
+def get_plateau(method, nmsd, file, L, phi, sigma, t, var, varmod, D0, display=False):
     if method == 'obs':
         return get_plateau_obs(file, nmsd)
     elif method == 'var':
@@ -142,7 +135,7 @@ def get_plateau(method, nmsd, file, L, phi, sigma, t, var, varmod, display=False
     elif method == 'nmsdfit':
         return get_plateau_nmsd_fit(nmsd, t, var, L)
     elif method == 'nmsdfitinter':
-        return get_plateau_fit_nmsd_inter(file, t, nmsd, phi, sigma, L)
+        return get_plateau_fit_nmsd_inter(file, t, nmsd, phi, sigma, L, D0)
     else:
         assert False
 
@@ -165,29 +158,27 @@ def get_plateau_obs(file, nmsd):
 
     return obs_plat_mean, obs_plat_std
 
-def get_plateau_fit_nmsd_inter(file, t, nmsd, phi, sigma, L):
-    if file.startswith('eleanorlong001') or file == 'eleanor0.01':
-        D0 = 0.042
-    elif file.startswith('eleanorlong034'):
-        D0 = 0.031
-    else:
-        raise Exception()
-    
-    obs_plat_mean, obs_plat_mean_unc = get_plateau_obs(file, nmsd) # used for p0 for the optimisation
+def get_plateau_fit_nmsd_inter(file, t, nmsd, phi, sigma, L, D0):
+    # import traceback
+    # traceback.print_stack()
+        
+    obs_plat_mean, _ = get_plateau_obs(file, nmsd) # used for p0 for the optimisation
     
     nmsd_th = countoscope_theory.nmsd.inter_2d(t, D0, 1, L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma))
     nmsd_th_plat = countoscope_theory.nmsd.plateau_inter_2d(1, L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma))
-    nmsd_th /= nmsd_th_plat
-    print('  last nmsd', nmsd_th[-10:])
+    nmsd_th = nmsd_th / nmsd_th_plat
+    
     points = common.exponential_integers(1, t.size-1, t.size//10)
     func = lambda plat : np.sum((plat*nmsd_th[points] - nmsd[points])**2)
     # popt, pcov = scipy.optimize.curve_fit(func, [int(i) for i in np.arange(0, t.size)], nmsd)
     res = scipy.optimize.minimize(func, x0=[obs_plat_mean])
-    # assert res.success
+    if not res.success:
+        print(res.message)
+        if res.message != 'Desired error not necessarily achieved due to precision loss.':
+            raise Exception(res.message)
+        # assert res.x
     plat_optimised = res.x[0]
-    # print('got', popt)
 
-    # print('  plats', obs_plat_mean, plat_optimised, obs_plat_mean/plat_optimised)
     return plat_optimised, 0
 
 
@@ -207,15 +198,21 @@ def get_plateau_nmsd_fit(nmsd, t, var, L):
 
     return popt2[1], np.sqrt(pcov2[1, 1])
 
-def go():
+def go(file, ax, separation_in_label=False,
+       linestyle='none', show_title=False,
+       show_timescaleint_replacement=False, show_variance=False, labels_on_plot=True,
+       rescale_x=None, rescale_y=None):
     # D0_from_fits     = [{}, {}]
     # D0_unc_from_fits = [{}, {}]
     # Dc_from_fits     = [{}, {}]
     # Dc_unc_from_fits = [{}, {}]
 
     LOWTIME_FIT_END = 20
+    
+    if rescale_x and rescale_y:
+        labels_on_plot = False
+        print('I disabled labels on plot as you are rescaling both axes')
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
     # rescaled_fig, rescaled_axs = plt.subplots(2, 1, figsize=(5, 8), squeeze=False)
 
     data = common.load(f'box_counting/data/counted_{file}.npz')
@@ -256,7 +253,7 @@ def go():
     # # t_theory = np.logspace()
     # N2_mean  = N2_mean[:, ::reduce]
     # N2_std   = N2_std [:, ::reduce]
-    
+    D_MSD, _, _ = visualisation.Ds_overlapped.get_D0(file)
 
     Ds_for_saving = []
     D_uncs_for_saving = []
@@ -281,12 +278,12 @@ def go():
 
     display_i = 0
 
-    for box_size_index in iter:
+    for box_size_index in tqdm.tqdm(iter, desc='box sizes'):
         L   = box_sizes[box_size_index]
         sep = sep_sizes[box_size_index]
         
-        L_over_sigma_str = f' ={L/sigma:.2f}σ' if sigma else ''
-        print(f'L={L:.2g}{L_over_sigma_str} ({box_size_index}/{len(box_sizes)})')
+        L_over_sigma_str = f' = {L/sigma:.2f}σ' if sigma else ''
+        print(f'L = {L:.2g}{L_over_sigma_str}')
 
 
         delta_N_sq     = N2_mean[box_size_index, :]
@@ -299,7 +296,8 @@ def go():
         # anomalous[0] = False # don't want to remove point t=0 as it could legit be zero
         # print(anomalous)
         if np.any(anomalous):
-            print(f'found {anomalous.sum()/delta_N_sq.size*100:.3f}% anomalous')
+            if np.sum(anomalous) > 1:
+                print(f'  found {anomalous.sum()/delta_N_sq.size*100:.3f}% anomalous')
             delta_N_sq     = delta_N_sq    [~anomalous]
             delta_N_sq_err = delta_N_sq_err[~anomalous]
             t              = t             [~anomalous]
@@ -337,7 +335,7 @@ def go():
         # }[file]
 
         # fit to whole thing
-        if SHOW_THEORY_FIT:
+        if True: # we calculate the fit even if we don't need to, because we use it for getting the angles for labels_on_plot
             if depth_of_field:
                 N2_theory = lambda t, D, N: common.N2_nointer_3D(t, D, N, L, L, depth_of_field)
                 type_of_fit = 'sDFT fit (no inter, 3D)'
@@ -377,7 +375,8 @@ def go():
         
         # fit to whole thing 2 - replace timescaleint
         def timescaleint_replacement(nmsd):
-            plateau, plateau_unc = get_plateau(plateau_source, nmsd, file, L, phi, sigma, t, var, varmod, display=False)
+            # plateau, plateau_unc = get_plateau(plateau_source, nmsd, file, L, phi, sigma, t, var, varmod, display=False)
+            plateau, plateau_unc = get_plateau_fit_nmsd_inter(file, t, nmsd, phi, sigma, L, D_MSD)
             print(f'  plat unc {plateau_unc/plateau:.3f}')
             N2_theory2 = lambda t, D : plateau * (1 - countoscope_theory.nmsd.famous_f(4*D*t/L**2)**2)
             log_N2_theory2 = lambda t, *args : np.log(N2_theory2(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
@@ -417,41 +416,45 @@ def go():
 
             return D_from_fit2, D_from_fit_unc2, fit_ys
 
-        # tsi_replace_func = timescaleint_replacement
-        tsi_replace_func = timescaleint_replacement_fitplateau
+        tsi_replace_func = timescaleint_replacement
+        # tsi_replace_func = timescaleint_replacement_fitplateau
         Dc, Dc_unc, tsi_replacement_ys = tsi_replace_func(delta_N_sq)
         print(f'  timescaleint replacement D={common.format_val_and_unc(Dc, Dc_unc, latex=False)}')
-        Dc_lower, Dc_unc_lower, _ = tsi_replace_func((delta_N_sq-delta_N_sq_err).clip(min=0.1)) # otherwise we could give negatives
-        Dc_upper, Dc_unc_upper, _ = tsi_replace_func(delta_N_sq+delta_N_sq_err)
+        # Dc_lower, Dc_unc_lower, _ = tsi_replace_func((delta_N_sq-delta_N_sq_err).clip(min=0.1)) # otherwise we could give negatives
+        # Dc_upper, Dc_unc_upper, _ = tsi_replace_func(delta_N_sq+delta_N_sq_err)
         # Dc_unc_final = max(Dc_unc, abs(Dc-Dc_lower), abs(Dc-Dc_upper))
-        Dc_unc_final = Dc_unc # errors are way overestimated with the above line
+        Dc_unc_final = Dc_unc # errors are way overestimated with the above lines
         print(f'  final Dc unc {Dc_unc_final/Dc:.3f}')
 
         Ds_for_saving_collective.append(Dc)
         D_uncs_for_saving_collective.append(Dc_unc_final)
         Ls_for_saving_collective.append(L)
         
-        if RESCALE_Y:
-            if RESCALE_Y == RESCALE_Y_N:
-                rescale = N_mean[box_size_index]
-            elif RESCALE_Y == RESCALE_Y_VAR_N:
-                rescale = N_var[box_size_index]
-            elif RESCALE_Y == RESCALE_Y_PLATEAU:
-                rescale = get_plateau(delta_N_sq, file, L, phi, sigma, t=t_all)[0]
-            delta_N_sq       /= rescale
-            delta_N_sq_err   /= rescale
-            if SHOW_THEORY_FIT:
-                N2_theory_points    /= rescale
-                N2_theory_points_Lh /= rescale
+        if rescale_y:
+            rescale_y_value = 1
+            if rescale_y == RESCALE_Y_N:
+                rescale_y_value = N_mean[box_size_index]
+            elif rescale_y == RESCALE_Y_VAR_N:
+                rescale_y_value = N_var[box_size_index]
+            elif rescale_y == RESCALE_Y_PLATEAU:
+                rescale_y_value = get_plateau(delta_N_sq, file, L, phi, sigma, D_MSD, t=t_all)[0]
+            elif rescale_y == RESCALE_Y_L2:
+                rescale_y_value = L**2
+            delta_N_sq          /= rescale_y_value
+            delta_N_sq_err      /= rescale_y_value
+            N2_theory_points    /= rescale_y_value
+            N2_theory_points_Lh /= rescale_y_value
+            tsi_replacement_ys  /= rescale_y_value
 
-        if RESCALE_X:
-            if RESCALE_X == RESCALE_X_L2:
-                t /= L**2
-            elif RESCALE_X == RESCALE_X_L:
-                rescale = L**0.3
+        if rescale_x:
+            rescale_x_value = 1
+            if rescale_x == RESCALE_X_L2:
+                rescale_x_value = L**2
+            elif rescale_x == RESCALE_X_L:
+                rescale_x_value = L
                 
-            t_theory /= rescale
-            t        /= rescale
+            t_theory /= rescale_x_value
+            t        /= rescale_x_value
         
         info = fr'L = {L/sigma:.1f}σ,'
         
@@ -522,17 +525,17 @@ def go():
 
             if SHOW_MEAN:
                 ax.hlines(2*N_mean[box_size_index], t.min(), t.max(), color=color, linewidth=1, linestyle='dashdot', label=r'$2 \langle N \rangle$' if box_size_index==0 else None)
-            if SHOW_VARIANCE:
+            if show_variance:
                 ax.hlines(2*N_var [box_size_index], t.min(), t.max(), linestyles='dashed', color='grey', linewidth=1, label=r'$2\mathrm{Var}(N)$' if box_size_index==0 else None)
                 ax.hlines(2*N_var_mod[box_size_index], t.min(), t.max(), linestyles='dotted', color='grey', linewidth=1, label=r'$2\mathrm{Var*}(N)$' if box_size_index==0 else None)
 
 
-            if not RESCALE_Y and SHOW_THEORY_FIT:
+            if not rescale_y and SHOW_THEORY_FIT:
                 ax.plot(t_theory[1:], N2_theory_points[1:], color='gray', linewidth=1, label=type_of_fit if box_size_index==0 else None)
                 ax.plot(t_theory[1:], N2_theory_points_Lh[1:], color='white', linewidth=1, label=type_of_fit if box_size_index==0 else None)
             # label += fr', $D_\mathrm{{fit}}={popt[0]:.3g}\pm {np.sqrt(pcov[0][0]):.3g} \mathrm{{\mu m^2/s}}$'
 
-            if (RESCALE_X or RESCALE_Y): # remove and False in future please
+            if (rescale_x or rescale_y): # remove and False in future please
                 markersize = 2
             else:
                 if PRESENT_SMALL:
@@ -541,32 +544,35 @@ def go():
                     markersize = 3
 
             # actual data
-            if LABELS_ON_PLOT:
+            if labels_on_plot:
                 label = label='observations' if box_size_index==0 else ''
             else:
                 if sigma and not np.isnan(sigma):
                     label = rf'$L={L/sigma:.2g}\sigma$'
-                    label += f', $s={sep/sigma:.2g}\sigma$'
+                    if separation_in_label:
+                        label += f', $s={sep/sigma:.2g}\sigma$'
                 else:
                     label = rf'$L={L:.2g}$'
-                    label += f', $s={sep:.2g}$'
+                    if separation_in_label:
+                        label += f', $s={sep:.2g}$'
             if SHOW_D_IN_LEGEND:
                 label += fr', $D_\mathrm{{short\:fit}}={common.format_val_and_unc(D_from_fit, D_from_fit_unc, 2)} \mathrm{{\mu m^2/s}}$'
             # ±{np.sqrt(pcov[0][0]):.3f}$'
-            print('  ', delta_N_sq.size, common.nanfrac(delta_N_sq))
+            print('  dN2s', delta_N_sq.size, common.nanfrac(delta_N_sq))
 
             if DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE and delta_N_sq.size > 1000:
                 points_to_plot = common.exponential_integers(1, delta_N_sq.size-1, 500)
             else:
                 points_to_plot = np.index_exp[1:] # this is basically a functional way of writing points_to_plot = [1:]
             
-            exp_plot = ax.plot(t[points_to_plot], delta_N_sq[points_to_plot], label=label, linestyle=LINESTYLE, marker='o', markersize=markersize, zorder=-1, color=color)
+            print('markersize', markersize)
+            exp_plot = ax.plot(t[points_to_plot], delta_N_sq[points_to_plot], label=label, linestyle=linestyle, marker='o', markersize=markersize, zorder=-1, color=color)
             # exp_plot = ax.errorbar(t[1:], delta_N_sq[1:], yerr=delta_N_sq_err[1:]/np.sqrt(num_of_boxes[box_size_index]), label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
             # exp_plot = ax.errorbar(t[1:], delta_N_sq[1:], yerr=delta_N_sq_err[1:], label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
         
-            if LABELS_ON_PLOT:
+            if labels_on_plot:
                 t_index_for_text = int(t_theory.size // 1.6)
-                angle = np.tan(np.gradient(N2_theory_points, t_theory)[t_index_for_text]) * 180/np.pi
+                angle = np.arctan(np.gradient(N2_theory_points, t_theory)[t_index_for_text]) * 180/np.pi
                 # plt.scatter(t_theory[t_index_for_text], N2_theory_points[t_index_for_text])
                 
                 if sigma and not np.isnan(sigma):
@@ -605,8 +611,8 @@ def go():
                 ax.plot([x1, x2], [y1, y2], color=common.FIT_COLOR)
                 ax.text(x2, y1, '$t^{1/2}$', ha='right', color=common.FIT_COLOR)
 
-            if SHOW_TIMESCALEINT_REPLACEMENT:
-                ax.plot(t_theory, tsi_replacement_ys, color=common.FIT_COLOR, linewidth=1, label='sDFT fit (t.s.i replace.)' if box_size_index==0 else '')
+            if show_timescaleint_replacement:
+                ax.plot(t_theory, tsi_replacement_ys, color=common.FIT_COLOR, linewidth=1, label='sDFT fit' if box_size_index==0 else '')
 
 
             if SHOW_PLATEAUS_THEORY:
@@ -615,7 +621,7 @@ def go():
                     t[0], t[-1], linestyle='dotted', color=color, label='sDFT plateau' if box_size_index==0 else None)
 
             if SHOW_PLATEAUS_OBS:
-                plat, plat_std = get_plateau(nmsd=N2_mean[box_size_index, :], file=file, L=L, phi=phi, sigma=sigma, t=t_all)
+                plat, plat_std = get_plateau(nmsd=N2_mean[box_size_index, :], file=file, L=L, phi=phi, sigma=sigma, D0=D_MSD, t=t_all)
                 ax.hlines(plat, t[0], t[-1], linestyle='dotted', color='grey', label='obs plat' if box_size_index==0 else None)
     
                 if SHOW_PLATEAU_OBS_AREA:
@@ -623,25 +629,27 @@ def go():
 
     assert have_displayed_at_least_one, 'display was false for all L'
 
-    if not RESCALE_X and not FORCE_HIDE_LEGEND:
+    if not rescale_x and not FORCE_HIDE_LEGEND:
         ax.legend(fontsize=6 if not PRESENT_SMALL else 6, loc=LEGEND_LOCATION)
     if not LINEAR_Y:
         ax.semilogy()
     ax.semilogx()
-    if RESCALE_X == RESCALE_X_L:
+    if rescale_x == RESCALE_X_L:
         xlabel = '$\Delta t/L$'
-    elif RESCALE_X == RESCALE_X_L2:
+    elif rescale_x == RESCALE_X_L2:
         xlabel = '$\Delta t/L^2$'
     else:
         xlabel = '$\Delta t$ ($\mathrm{s}$)'
-    if RESCALE_Y == False:
+    if rescale_y == False:
         ylabel = r'$\langle \Delta N^2(\Delta t) \rangle$ ($\mathrm{\mu m^2}$)'
-    elif RESCALE_Y == RESCALE_Y_N:
+    elif rescale_y == RESCALE_Y_N:
         ylabel = r'$\Delta N^2(\Delta t)/ \langle N\rangle$'
-    elif RESCALE_Y == RESCALE_Y_VAR_N:
+    elif rescale_y == RESCALE_Y_VAR_N:
         ylabel = r'$\Delta N^2(\Delta t)/ Var(N)$'
-    elif RESCALE_Y == RESCALE_Y_PLATEAU:
+    elif rescale_y == RESCALE_Y_PLATEAU:
         ylabel = r'$\Delta N^2(\Delta t)/ \mathrm{plateau}$'
+    elif rescale_y == RESCALE_Y_L2:
+        ylabel = r'$\Delta N^2(\Delta t)/ L^2$'
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
 
@@ -654,7 +662,7 @@ def go():
     if sigma_calced := data.get('particle_diameter_calced'):
         title += f', $\sigma_\mathrm{{calc}}={sigma_calced:.3f}\mathrm{{\mu m}}$'
         # print('sigma calced hidden from legend')
-    if not PRESENT_SMALL:
+    if show_title:
         ax.set_title(title)
 
     filename = f'nmsd_'
@@ -670,32 +678,52 @@ def go():
     #     filename += f'shorttime_'
     # if SHOW_TIMESCALEINT_REPLACEMENT:
     #     filename += f'timescaleintreplace_'
-    filename += f'{file}'
-    if LINEAR_Y:
-        filename += '_liny'
+    # filename += f'{file}'
+    # if LINEAR_Y:
+    #     filename += '_liny'
 
     # common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/{filename}.pdf', hide_metadata=True)
-    common.save_fig(fig, f'box_counting/figures_png/{filename}.png', dpi=200)
+    # common.save_fig(fig, f'box_counting/figures_png/{filename}.png', dpi=200)
+    # if export_destination:
+    #     common.save_fig(fig, export_destination, hide_metadata=True)
 
     common.save_data(f'visualisation/data/Ds_from_boxcounting_{file}',
             Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, Ls=Ls_for_saving,
             particle_diameter=sigma,
-            pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'))
+            pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'), max_time_hours=data.get('max_time_hours'))
     common.save_data(f'visualisation/data/Ds_from_boxcounting_shorttime_{file}',
             Ds=Ds_shorttime_for_saving, D_uncs=D_uncs_shorttime_for_saving, Ls=Ls_shorttime_for_saving,
             particle_diameter=sigma,
-            pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'))
+            pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'), max_time_hours=data.get('max_time_hours'))
     common.save_data(f'visualisation/data/Ds_from_boxcounting_first_quad_{file}',
             Ds=Ds_first_quad_for_saving, D_uncs=D_uncs_first_quad_for_saving, Ls=Ls_first_quad_for_saving,
             particle_diameter=sigma,
-            pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'))
+            pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'), max_time_hours=data.get('max_time_hours'))
     common.save_data(f'visualisation/data/Ds_from_boxcounting_collective_{file}',
             Ds=Ds_for_saving_collective, D_uncs=D_uncs_for_saving_collective, Ls=Ls_for_saving_collective,
             particle_diameter=sigma,
-            pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'))
+            pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'), max_time_hours=data.get('max_time_hours'))
         
 # common.save_fig(gradfig, 'box_counting/figures_png/grad.png')
 
 if __name__ == '__main__':
     for file in common.files_from_argv('box_counting/data/', 'counted_'):
-        go(file)
+        
+        figsize = (6, 4.5)
+        if PRESENT_SMALL:
+            figsize = (4.5, 4)
+            figsize = (3.5, 3.2)
+            
+        fig, ax = plt.subplots(1, 1, figsize=figsize)
+            
+        go(file,
+           ax=ax,
+           linestyle=LINESTYLE,
+           show_variance=SHOW_VARIANCE,
+           show_timescaleint_replacement=SHOW_TIMESCALEINT_REPLACEMENT,
+           show_title=not PRESENT_SMALL,
+           labels_on_plot=LABELS_ON_PLOT,
+           rescale_x=RESCALE_X, rescale_y=RESCALE_Y
+        )
+        
+        common.save_fig(fig, f'box_counting/figures_png/nmsd_{file}.png', dpi=200)

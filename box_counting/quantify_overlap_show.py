@@ -4,12 +4,6 @@ import sys
 import numpy as np
 import matplotlib.cm
 
-NUM_SPLITS = 30
-NUM_SPLITS = 10
-# NUM_SPLITS = 7
-SPACINGS =  [100.5, 30.5, 10.5, 3.5]
-SPACINGS = [512.5, 256.5, 128.5, 64.5, 32.5, 16.5, 8.5, 4.5, 2.5, 1.5, 0.5]
-SPACINGS = np.round(np.logspace(np.log10(0.6), np.log10(512.5), 30), decimals=2)
 # SPACINGS = np.round(np.logspace(np.log10(2.5), np.log10(156.5), 50), decimals=2) # extra4
 
 # on the alice0.02/34/66, need to check that the splits have the same time length!
@@ -19,21 +13,17 @@ PERIMETER = 0
 NUM_BOXES = 1
 SEP = 2
 TOTAL_AREA = 3
-X_AXIS = PERIMETER
+X_AXIS = NUM_BOXES
 
-for file in sys.argv[1:]:
+SHOW_SLOPE = False
 
-    datas = []
+def go(file, ax):
+    data = common.load(f'box_counting/data/quantify_overlap_{file}.npz')
+    spacings   = data['SPACINGS']
+    num_splits = data['NUM_SPLITS']
+    sigma      = data['spacing0_split0_particle_diameter']
 
-    for spacing_i, spacing in enumerate(SPACINGS):
-
-        datas.append([])
-
-        for split in range(NUM_SPLITS):
-            datas[spacing_i].append(common.load(f'box_counting/data/counted_{file}_qo_split{split}_spacing{spacing}.npz'))
-            
-
-    fig, axs = plt.subplots(1, 2, figsize=(6, 3))
+    # fig, axs = plt.subplots(1, 2, figsize=(6, 3))
 
     std_devs = []
     num_boxes = []
@@ -42,35 +32,36 @@ for file in sys.argv[1:]:
 
     ax_i = 0
 
-    for spacing_i, spacing in enumerate(SPACINGS):
+    for spacing_i, spacing in enumerate(spacings):
 
 
-        print(f'spacing = {spacing}')
+        # print(f'spacing = {spacing}')
 
         N2_means = []
 
-        plot = spacing_i in [2, 7]
-        print('#################', plot, ax_i, spacing_i)
-        ax = axs[ax_i] if plot else None
-        ax_i += 1 if plot else 0
+        # plot = spacing_i in [2, 7]
+        # # print('#################', plot, ax_i, spacing_i)
+        # ax = axs[ax_i] if plot else None
+        # ax_i += 1 if plot else 0
 
-        for split_i, split in enumerate(range(NUM_SPLITS)):
+        for split_i, split in enumerate(range(num_splits)):
             # data = common.load(f'box_counting/data/counted_{file}_qo_split{split}_spacing{spacing}.npz')
-            data = datas[spacing_i][split_i]
-            N2_mean        = data['N2_mean']
+            # data = data[spacing_i][split_i]
+            key = f'spacing{spacing_i}_split{split_i}'
+            N2_mean        = data[f'{key}_N2_mean']
             N2_means.append(N2_mean)
-            N2_std         = data['N2_std']
-            phi            = data['pack_frac']
-            sigma          = data['particle_diameter']
-            time_step      = data['time_step']
-            box_sizes      = data['box_sizes']
-            sep_sizes      = data['sep_sizes']
+            N2_std         = data[f'{key}_N2_std']
+            phi            = data[f'{key}_pack_frac']
+            sigma          = data[f'{key}_particle_diameter']
+            time_step      = data[f'{key}_time_step']
+            box_sizes      = data[f'{key}_box_sizes']
+            sep_sizes      = data[f'{key}_sep_sizes']
+            num_of_boxes   = data[f'{key}_num_boxes']
             
             # N_mean    = N_stats[:, 1]
             # N_var     = N_stats[:, 2]
-            # num_of_boxes = data['num_boxes']
-            num_of_boxes = data['N_stats'][:, 5]
-            ax.set_title(f'{np.mean(num_of_boxes):.0f} boxes') if plot else None
+            # num_of_boxes = data[f'{key}_num_boxes']
+            # ax.set_title(f'{np.mean(num_of_boxes):.0f} boxes') if plot else None
 
             num_timesteps = N2_mean.shape[1]
             num_box_sizes = N2_mean.shape[0]
@@ -99,9 +90,9 @@ for file in sys.argv[1:]:
 
                 color =  matplotlib.cm.afmhot(np.interp(box_size_index, (0, len(box_sizes)), (0.2, 0.75)))
                 # color = matplotlib.cm.tab10(box_size_index)
-                ax.plot(t[1:], delta_N_sq[1:], linestyle='none', marker='o', markersize=1, color=color) if plot else None
+                # ax.plot(t[1:], delta_N_sq[1:], linestyle='none', marker='o', markersize=1, color=color) if plot else None
 
-        [print(a.shape) for a in N2_means]
+        # [print(a.shape) for a in N2_means]
         N2_means = [a[:, :7198] for a in N2_means]
         N2_means_from_diff_splits_combined = np.stack(N2_means, axis=2)
         # ^ axes are box x timestep x split
@@ -115,12 +106,13 @@ for file in sys.argv[1:]:
             # N2_stds /= N2_at_this_box.mean(axis=1)
             N2_stds =  np.nanstd (N2_at_this_box, axis=1) # axis 1 is now split
             N2_stds /= np.nanmean(N2_at_this_box, axis=1)
+            N2_stds /= np.sqrt(num_splits)
             # avg_std = N2_std.mean() # only remaining axis is timestamp
             # avg_std = N2_stds[100]
-            print('N2_stds', common.nanfrac(N2_stds))
+            # print('N2_stds', common.nanfrac(N2_stds))
             avg_std = np.median(N2_stds)
             # print(avg_std)
-            print(f'L={box_sizes[box_size_index]}, {avg_std:.5f}')
+            # print(f'L={box_sizes[box_size_index]}, {avg_std:.5f}')
 
             std_devs_at_spacing.append(avg_std)
 
@@ -128,8 +120,8 @@ for file in sys.argv[1:]:
         num_boxes.append(num_of_boxes)
         seps.append(sep_sizes)
 
-        ax.loglog() if plot else None
-    common.save_fig(fig, f'box_counting/figures_png/quantify_overlap_{file}.png', dpi=200)
+        # ax.loglog() if plot else None
+    # common.save_fig(fig, f'box_counting/figures_png/quantify_overlap_{file}.png', dpi=200)
 
     
     std_devs  = np.array(std_devs)
@@ -141,11 +133,10 @@ for file in sys.argv[1:]:
     # area_fraction = total_area / ()
     total_perim = num_boxes * box_sizes * 4
 
-    fig_summary, ax_summary = plt.subplots(1, 1)
-
+    
     for box_size_index in range(num_box_sizes):
-        print(num_boxes.shape)
-        print(std_devs[:, box_size_index].shape)
+        # print(num_boxes.shape)
+        # print(std_devs[:, box_size_index].shape)
         # color = matplotlib.cm.afmhot((box_size_index+1)/(len(box_sizes)+5))
         color =  matplotlib.cm.afmhot(np.interp(box_size_index, (0, len(box_sizes)), (0.15, 0.75)))
         # x = num_boxes[:, box_size_index]
@@ -160,38 +151,53 @@ for file in sys.argv[1:]:
             x = total_area[:, box_size_index]
         else:
             raise
-        ax_summary.scatter(x, std_devs[:, box_size_index],
-                           label=fr'${box_sizes[box_size_index]}\mathrm{{\mu m}}$',
-                           color=color)
+        # ax_summary.scatter(x, std_devs[:, box_size_index],
+        #                    label=fr'${box_sizes[box_size_index]}\mathrm{{\mu m}}$',
+        #                    color=color)
+        ax.plot(x, std_devs[:, box_size_index],
+                        marker='o',
+                        label=fr'$L={box_sizes[box_size_index]/sigma:.2g}σ$',
+                        color=color)
 
     
     if X_AXIS == PERIMETER:
-        ax_summary.set_xlabel('total perimeter ($\mathrm{\mu m}$)')
+        ax.set_xlabel('total perimeter ($\mathrm{\mu m}$)')
     elif X_AXIS == NUM_BOXES:
-        ax_summary.set_xlabel('number of boxes')
+        ax.set_xlabel('number of boxes')
     elif X_AXIS == SEP:
-        ax_summary.set_xlabel('sep ($\mathrm{\mu m}$)')
+        ax.set_xlabel('sep ($\mathrm{\mu m}$)')
     elif X_AXIS == TOTAL_AREA:
         total_area[:, box_size_index]
-        ax_summary.set_xlabel('total area ($\mathrm{\mu m^2}$)')
-    ax_summary.legend()
+        ax.set_xlabel('total area ($\mathrm{\mu m^2}$)')
+    ax.legend()
+    ax.set_ylabel(r'error on $\langle N^2(t) \rangle$')
     
-    common.save_fig(fig_summary, f'box_counting/figures_png/quantify_overlap_summary_{file}.png')
+    # common.save_fig(fig_summary, f'box_counting/figures_png/quantify_overlap_summary_{file}.png')
 
-    ax_summary.semilogy()
+    ax.semilogy()
     # func = lambda x, m, c: m*x + c
     # log_func = lambda x, m, c: np.log10(func(x, m, c))
     # popt, pcov = scipy.optimize.curve_fit(log_func, np.log10())
     if X_AXIS is not SEP:
-        ax_summary.semilogx()
-        x_ind = np.logspace(0.7, 2.5)
-        m = -1/2
-        c = -0.5
-        y_ind = 10**(m * np.log10(x_ind) + c)
-        ax_summary.plot(x_ind, y_ind, color='black', linewidth=2)
-        print(y_ind)
-        ax_summary.text(0.3e2, 2e-2, r'$n^{-\frac{1}{2}}$', fontsize=14)
+        ax.semilogx()
 
-    common.save_fig(fig_summary, f'box_counting/figures_png/quantify_overlap_summary_{file}_logy.png')
-    common.save_fig(fig_summary, f'/home/acarter/presentations/countoscope_may/quantify_overlap_perimeter.png')
+        if SHOW_SLOPE:
+            x_ind = np.logspace(0.7, 2.5)
+            m = -1/2
+            c = -0.5
+            y_ind = 10**(m * np.log10(x_ind) + c)
+            ax.plot(x_ind, y_ind, color='black', linewidth=2)
+            print(y_ind)
+            ax.text(0.3e2, 2e-2, r'$n^{-\frac{1}{2}}$', fontsize=14)
+
+
+
+if __name__ == '__main__':
+        
+    for file in sys.argv[1:]:
+        fig, ax = plt.subplots(1, 1)
+
+        go(file, ax)
+        
+        common.save_fig(fig, f'box_counting/figures_png/quantify_overlap_summary_{file}_logy.png')
     

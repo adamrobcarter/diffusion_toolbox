@@ -59,7 +59,7 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
 
         t_index_for_text = int(t_theory.size * (3-graph_i) / 4)
         print(np.gradient(theory_curve, t_theory)[t_index_for_text])
-        angle = np.tan(np.gradient(theory_curve, t_theory)[t_index_for_text]) * 180/np.pi
+        angle = np.arctan(np.gradient(theory_curve, t_theory)[t_index_for_text]) * 180/np.pi
         # angle = 0
         print(angle)
         # angle = 89

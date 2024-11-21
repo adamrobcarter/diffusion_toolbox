@@ -89,6 +89,7 @@ def go(file, export_destination=None):
     # ax.semilogy()
     # ax.set_ylim(0.05, 10000)
     ax.set_ylim(0, 2)
+    ax.set_ylim(0.4, 1.2)
 
     # ax.text(0.7, 0.1, f'$\phi={file[-4:]}$', transform=ax.transAxes)
 

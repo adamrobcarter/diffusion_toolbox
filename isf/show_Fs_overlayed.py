@@ -11,11 +11,8 @@ subplot_i = 0
 PRESENT_SMALL = False
 LOGARITHMIC_Y = False
 
-figsize = (5, 4)
-if PRESENT_SMALL:
-    figsize = (3.5, 3.2)
 
-def go(file, SHOW_FIT=False, export_destination=None):
+def go(file, ax, target_ks, SHOW_FIT=False):
     d = common.load(f"isf/data/F_{file}.npz")
     t         = d["t"]
     F_all     = d["F"]
@@ -45,11 +42,7 @@ def go(file, SHOW_FIT=False, export_destination=None):
 
         # num_ks = k_all.shape[1]
 
-        target_ks = (0.001, 0.14, 0.5, 1.3, 2, 4, 8)
-        if PRESENT_SMALL:
-            target_ks = (0.2, 0.8, 2.4, 4.8)
 
-        fig, ax = plt.subplots(1, 1, figsize=figsize)
 
         # top_axes[0].plot(k_all[0, :], F0_all, color='black')
         # top_axes[0].semilogx()
@@ -170,7 +163,7 @@ def go(file, SHOW_FIT=False, export_destination=None):
 
             t_index_for_text = np.argmax(f<0.5)
 
-            angle = np.tan(np.gradient(theory_curve, t_th)[t_index_for_text]) * 180/np.pi
+            angle = np.arctan(np.gradient(theory_curve, t_th)[t_index_for_text]) * 180/np.pi
             # L_label = rf'$k={k[k_index]:.1f}\mathrm{{\mu m}}^{{-1}}$'
             ax.text(t_th[t_index_for_text+0], theory_curve[t_index_for_text+0], label,
                     horizontalalignment='center', color=color, fontsize=9,
@@ -184,23 +177,29 @@ def go(file, SHOW_FIT=False, export_destination=None):
         else:
             ax.set_ylim(-0.05, 1.05)
 
-        if not PRESENT_SMALL:
-            ax.set_title(f'$F_s(\Delta t)$, {file}')
         ax.set_xlabel('$\Delta t$ (s)')
         ylabel = '$F_s(k, \Delta t)$' if type == 'Fs' else '$f(k, \Delta t)$' if type == 'f' else None
         ax.set_ylabel(ylabel)
 
-        fileprefix = 'fkt' if type == 'f' else 'Fs'
-        filename = f'{fileprefix}_decay_overlayed_{file}'
-        if SHOW_FIT:
-            filename += '_fit'
 
-        # common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/{fileprefix}_{file}.png', dpi=300, hide_metadata=True)
-        if export_destination:
-            common.save_fig(fig, export_destination, hide_metadata=True)
-        common.save_fig(fig, f'isf/figures_png/{filename}.png', dpi=300)
 
         
 if __name__ == '__main__':
     for file in common.files_from_argv("isf/data/", "F_"):
-        go(file)
+        
+        figsize = (5, 4)
+        if PRESENT_SMALL:
+            figsize = (3.5, 3.2)
+        fig, ax = plt.subplots(1, 1, figsize=figsize)
+        
+        target_ks = (0.001, 0.14, 0.5, 1.3, 2, 4, 8)
+        if PRESENT_SMALL:
+            target_ks = (0.2, 0.8, 2.4, 4.8)
+
+        go(file, ax, target_ks=target_ks)
+
+        if not PRESENT_SMALL:
+            ax.set_title(f'$F_s(\Delta t)$, {file}')
+
+        filename = f'f_decay_overlayed_{file}'
+        common.save_fig(fig, f'isf/figures_png/{filename}.png', dpi=300)

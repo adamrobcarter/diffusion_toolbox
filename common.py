@@ -74,12 +74,16 @@ def load(filename):
     #     data = np.load(f'/media/com-psiche/Sans titre/psiche_export1_npzFiles/{psiche}', allow_pickle=True)
 
     if filename.endswith('.npz'):
-        for key in data.keys():
-            if data[key].shape: # array
-                print(f'  loaded {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} shape={data[key].shape}, size={arraysize(data[key])}')
-            else: # single value
-                if data[key] != None:
-                    print(f'  loaded {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} value={format_value_for_save_load(data[key])}')
+        keys = data.keys()
+        if len(keys) > 50:
+            print(f'  loaded {len(keys)} key-value pairs')
+        else:
+            for key in keys:
+                if data[key].shape: # array
+                    print(f'  loaded {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} shape={data[key].shape}, size={arraysize(data[key])}')
+                else: # single value
+                    if data[key] != None:
+                        print(f'  loaded {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} value={format_value_for_save_load(data[key])}')
     else:
         print(f'  loaded, dtype={data.dtype}, shape={data.shape}, size={arraysize(data)}')
         
@@ -241,13 +245,21 @@ def save_fig(fig, path, dpi=100, only_plot=False, hide_metadata=False):
 
 def add_scale_bar(ax, pixel_size, color='black'):
     image_width = ax.get_xlim()[1] - ax.get_xlim()[0]
-    target_scale_bar_length = image_width * pixel_size / 10
+    if pixel_size:
+        target_scale_bar_length = image_width * pixel_size / 10
+    else:
+        target_scale_bar_length = image_width / 10
     possible_scale_bar_lengths = (0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000)
 
     takeClosest = lambda num,collection:min(collection,key=lambda x:abs(x-num))
     scale_bar_length = takeClosest(target_scale_bar_length, possible_scale_bar_lengths)
 
-    asb = AnchoredSizeBar(ax.transData, scale_bar_length/pixel_size,
+    if pixel_size:
+        scale_bar_length_ax = scale_bar_length/pixel_size
+    else:
+        scale_bar_length_ax = scale_bar_length
+
+    asb = AnchoredSizeBar(ax.transData, scale_bar_length_ax,
                           rf"${scale_bar_length}\mathrm{{\mu m}}$",
                           loc='lower left', pad=0.1, borderpad=0.5, sep=5,
                           frameon=False, color=color)
@@ -728,7 +740,7 @@ def colormap(value, min=0, max=1):
     if PLOT_COLOR == 'black':
         return matplotlib.cm.afmhot(np.interp(value, (min, max), (0.25, 0.85)))
     else:
-        return matplotlib.cm.afmhot(np.interp(value, (min, max), (0.2, 0.8)))
+        return matplotlib.cm.afmhot(np.interp(value, (min, max), (0.2, 0.77)))
 
 def colormap_colorbar(min=0, max=1):
     cmap = matplotlib.cm.afmhot

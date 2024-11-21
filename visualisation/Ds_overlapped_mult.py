@@ -1,6 +1,7 @@
 import common
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker
 import sys
 import visualisation.Ds_overlapped
 
@@ -10,6 +11,7 @@ PRESENT_SMALL = False
 DISCRETE_COLORS = False
 
 ERRORBAR_ALPHA = 0.1
+LEGEND_FONTSIZE = 5
 
 source_names = {
     'DDM': 'DDM',
@@ -81,14 +83,21 @@ markers = {
     'timescaleint_nofit_cropped_var': '*',
     'D0Sk': 'o',
     'C_N_simplefit': '|',
+    'D_of_L_theory': 'none'
+}
+
+linestyles = {
+    'D0Sk_theory': '-',
+    'D_of_L_theory': '-',
+    'D_of_L_theory_Lh': '-',
+    'dominiguez_theory': '-',
 }
 
 def show_one_file(
         i, file, sources, PLOT_AGAINST_K, TWO_PI, logarithmic_y,
-        fix_axes, filename, fig, ax,
-        export_destination=None,
+        fix_axes, ax,
         show_pixel=True, show_window=True, crop_end=None, num_files=0,
-        allow_rescale_y=True
+        allow_rescale_y=True, linestyle=None, discrete_colors=True,
     ):
 
     all_Ds = []
@@ -106,7 +115,7 @@ def show_one_file(
 
     used_sources = []
 
-    if DISCRETE_COLORS:
+    if discrete_colors:
         color = ['tab:blue', 'tab:orange', 'tab:green'][i]
     else:
         color = common.colormap(i, 0, num_files)
@@ -161,6 +170,7 @@ def show_one_file(
     assert sum([len(x) for x in xs.values()]) > 0, f'xs was empty for {file}'
     xmin = min([min(x) for x in xs.values() if len(x)>0]) / rescale_x
     xmax = max([max(x) for x in xs.values() if len(x)>0]) / rescale_x
+    ax.set_xlim(xmin, xmax)
 
     # if pack_frac_calced:
     #     pack_frac = pack_frac_calced
@@ -195,7 +205,7 @@ def show_one_file(
 
         else:
             x_this = xs[source]
-            print('x mult', x_this[1:]-x_this[:-1])
+            # print('x mult', x_this[1:]-x_this[:-1])
             if crop_end:
                 print('cropping', crop_end)
                 x_this = x_this[:crop_end]
@@ -204,10 +214,20 @@ def show_one_file(
                     yerrs = yerrs [:, :crop_end]
                 else:
                     yerrs  = yerrs [:crop_end]
-                    
-            ax.plot(x_this, ys, linestyle='none', marker=markers.get(source, '.'), markersize=4, color=color, label=source_label)
-            ax.errorbar(x_this, ys, yerr=yerrs, linestyle='none', marker='none', alpha=ERRORBAR_ALPHA, color=color)
+            zorder = -1 if 'theory' in source else 0
+            if linestyle:
+                use_linestyle = linestyle
+            else:
+                use_linestyle = linestyles.get(source, 'none')
+            print(source, 'linestyles', use_linestyle, linestyles.get(source), linestyle)
+            ax.plot(x_this, ys, linestyle=use_linestyle, marker=markers.get(source, '.'), markersize=4, color=color, label=source_label, zorder=zorder)
+            ax.errorbar(x_this, ys, yerr=yerrs, linestyle='none', marker='none', alpha=ERRORBAR_ALPHA, color=color, zorder=zorder)
             # print(xs[source], ys)
+
+            log_y = np.log10(ys)
+            err = np.sum((log_y[1:]-log_y[:-1])**2)
+            print('sum err', file, err)
+
         # assert not np.any(np.isnan(Ds)), 'nan was found in Ds'
         [all_Ds.append(D) for D in ys]
 
@@ -220,30 +240,27 @@ def show_one_file(
 
     assert len(all_Ds) > 0, 'no Ds were found at all'
     all_Ds = np.array(all_Ds)
-    print(all_Ds)
+    # print(all_Ds)
 
     if logarithmic_y:
         ax.semilogy()
+        ax.yaxis.set_minor_formatter(matplotlib.ticker.LogFormatter()) # prevent scientific notation on axes
+        ax.yaxis.set_major_formatter(matplotlib.ticker.LogFormatter()) # prevent scientific notation on axes
 
     ylim_expand = 1.5
     if np.nanmax(all_Ds) - np.nanmax(all_Ds) < 0.4:
         ylim_expand = 1.5
     ymin = max(0.01, np.nanmin(all_Ds[all_Ds > 0])/ylim_expand)
-    ymax = np.nanmax(all_Ds)*ylim_expand*1.2
-    print('yminmaxre', ymin, ymax, rescale_y)
+    ymax = np.nanquantile(all_Ds, 0.95)*ylim_expand*1.2
     if 'MSD_short' in used_sources:
         ymin = 0.3
     ax.set_ylim(ymin, ymax)
-    print('yminmaxre', ymin, ymax, rescale_y)
     if fix_axes:
         # ax.set_ylim(0.1, 5)
         pass
-    # ax.set_ylim(0.03, 0.1)
-    # ax.set_ylabel('$D/D_0$')
-    # ax.set_xticks([])
+    
     ax.semilogx()
     if PLOT_AGAINST_K:
-        
 
         if SHOW_TWIN_K_AXIS:
             realspace_ax = ax.secondary_xaxis('top', functions=(lambda k: 2*np.pi/k, lambda r: 2*np.pi/r))
@@ -255,47 +272,50 @@ def show_one_file(
 
 
 
-def go(files, sources, figsize=None, export_destination=None, plot_against_k=False):
-    if figsize == None:
-        if PRESENT_SMALL:
-            figsize = (3.2, 2.8)
-            figsize = (4, 3)
-        else:
-            figsize = (5, 4)
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
+def go(files, ax, sources, plot_against_k=False, linestyle=None, legend_fontsize=None,
+       discrete_colors=False, logarithmic_y=False):
 
     for i, file in enumerate(files):
 
-        filename = file
-
         show_one_file(
             i, file, sources,
-            PLOT_AGAINST_K=plot_against_k, TWO_PI=True, logarithmic_y=True, fix_axes=False,
-            fig=fig, ax=ax, filename=filename, show_window=False, show_pixel=False,
+            PLOT_AGAINST_K=plot_against_k, TWO_PI=True, logarithmic_y=logarithmic_y, fix_axes=False,
+            ax=ax, show_window=False, show_pixel=False,
             num_files=len(files),
-            allow_rescale_y=True
+            allow_rescale_y=True, linestyle=linestyle, discrete_colors=discrete_colors,
         )
 
-    ax.legend(fontsize=5, loc='upper left' if not plot_against_k else 'upper right')
+    ax.legend(fontsize=legend_fontsize, loc='upper left' if not plot_against_k else 'upper right')
     
-    if export_destination:
-        common.save_fig(fig, export_destination, hide_metadata=True)
-    filenames = '_'.join(files)
-    common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_mult_{filenames}.png', dpi=200)
-
     
 if __name__ == '__main__':
+    
+    if PRESENT_SMALL:
+        figsize = (3.2, 2.8)
+        figsize = (4, 3)
+    else:
+        figsize = (5, 4)
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+
+    files = common.files_from_argv('isf/data/', 'F_first_')
     go(
-        common.files_from_argv('isf/data/', 'F_first_'),
+        files,
+        ax,
         sources = [
                 'f_first_first',
-                # 'f_first',
+                'f_first',
                 # 'f_short',
                 # 'f',
                 # 'f_long',
                 'MSD_first',
                 # 'boxcounting_collective',
                 # 'timescaleint_var',
+                'timescaleint_nmsdfitinter'
                 # 'timescaleint_nofit_cropped_var'
-            ]
+            ],
+        linestyle='none',
+        legend_fontsize=LEGEND_FONTSIZE,
+        discrete_colors=DISCRETE_COLORS,
     )
+    filenames = '_'.join(files)
+    common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_mult_{filenames}.png', dpi=200)

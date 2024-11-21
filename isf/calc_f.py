@@ -115,6 +115,9 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
     #     max_time_origins /= 4
     # if 'cropsquare' in file:
     #     max_time_origins *= 2
+
+    if file.startswith('sim_nohydro_011_L320'):
+        max_time_origins = 1000
     
     isf.calc_both.calc_for_f_type(
         file,

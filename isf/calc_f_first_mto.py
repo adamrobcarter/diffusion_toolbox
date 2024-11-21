@@ -39,5 +39,5 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
             max_time_origins=max_time_origins,
             d_frames=[0, 1],
             file_prefix = 'first_',
-            file_suffix = f'_mti{max_time_origins}'
+            file_suffix = f'_mto{max_time_origins}'
         )
