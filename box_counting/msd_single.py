@@ -34,9 +34,9 @@ FORCE_HIDE_LEGEND = False
 SHOW_D_IN_LEGEND = False
 LEGEND_LOCATION = 'upper left'
 
-SHOW_THEORY_FIT = False
+SHOW_THEORY_FIT = True
 SHOW_PLATEAUS_THEORY = False
-SHOW_VARIANCE = True
+SHOW_VARIANCE = False
 SHOW_MEAN = False
 SHOW_PLATEAUS_OBS = False
 SHOW_PLATEAU_OBS_AREA = False
@@ -48,7 +48,7 @@ MAX_BOXES_ON_PLOT = 6
 DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE = True
 
 REVERSE_PLOT_ORDER = False
-LINESTYLE = '-'
+LINESTYLE = 'none'
 
 # if SHOW_JUST_ONE_BOX:
     # LABELS_ON_PLOT = False
@@ -60,7 +60,8 @@ RESCALE_X = None
 # RESCALE_Y = RESCALE_Y_VAR_N
 # RESCALE_Y = RESCALE_Y_PLATEAU
 # RESCALE_Y = RESCALE_Y_N
-RESCALE_Y = False
+# RESCALE_Y = RESCALE_Y_L2
+RESCALE_Y = None
 
 SHORTTIME_FIT_ERROR_THRESH = 0.05 # D_unc/D must be smaller than this for the point to save
 
@@ -125,7 +126,7 @@ gradax4.loglog()
 
 #         # gradax3.scatter(t, scipy.signal.savgol_filter(np.abs(grad)[1000:], 1000, 3))
     
-def get_plateau(method, nmsd, file, L, phi, sigma, t, var, varmod, D0, display=False):
+def get_plateau(method, nmsd, file, L, phi, sigma, t, var, varmod, D0, N_mean, display=False):
     if method == 'obs':
         return get_plateau_obs(file, nmsd)
     elif method == 'var':
@@ -136,6 +137,8 @@ def get_plateau(method, nmsd, file, L, phi, sigma, t, var, varmod, D0, display=F
         return get_plateau_nmsd_fit(nmsd, t, var, L)
     elif method == 'nmsdfitinter':
         return get_plateau_fit_nmsd_inter(file, t, nmsd, phi, sigma, L, D0)
+    elif method == 'sDFT':
+        return countoscope_theory.nmsd.plateau_inter_2d(N_mean, L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma)), 0
     else:
         assert False
 
@@ -168,7 +171,8 @@ def get_plateau_fit_nmsd_inter(file, t, nmsd, phi, sigma, L, D0):
     nmsd_th_plat = countoscope_theory.nmsd.plateau_inter_2d(1, L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma))
     nmsd_th = nmsd_th / nmsd_th_plat
     
-    points = common.exponential_integers(1, t.size-1, t.size//10)
+    # points = common.exponential_integers(1, t.size-1, t.size//10)
+    points = common.exponential_indices(t, num=t.size//10)
     func = lambda plat : np.sum((plat*nmsd_th[points] - nmsd[points])**2)
     # popt, pcov = scipy.optimize.curve_fit(func, [int(i) for i in np.arange(0, t.size)], nmsd)
     res = scipy.optimize.minimize(func, x0=[obs_plat_mean])
@@ -186,10 +190,10 @@ def get_plateau_nmsd_fit(nmsd, t, var, L):
     N2_theory2 = lambda t, D, plateau : plateau * (1 - countoscope_theory.nmsd.famous_f(4*D*t/L**2)**2)
     log_N2_theory2 = lambda t, *args : np.log(N2_theory2(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
     
-    fitting_points2 = common.exponential_integers(1, t.size//2)
+    fitting_points23 = common.exponential_indices(t[1:], num=500)
     # p0 = (0.05, N_mean[box_size_index])
     p02 = [0.05, 2*var]
-    popt2, pcov2 = scipy.optimize.curve_fit(log_N2_theory2, t[fitting_points2], np.log(nmsd[fitting_points2]), p0=p02, maxfev=2000)
+    popt2, pcov2 = scipy.optimize.curve_fit(log_N2_theory2, t[fitting_points23], np.log(nmsd[fitting_points23]), p0=p02, maxfev=2000)
     # ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1, label='sDFT (no inter.)' if box_size_index==0 else None)
     # D_from_fit2 = popt2[0]
     # D_from_fit_unc2 = np.sqrt(pcov2[0][0])
@@ -201,7 +205,9 @@ def get_plateau_nmsd_fit(nmsd, t, var, L):
 def go(file, ax, separation_in_label=False,
        linestyle='none', show_title=False,
        show_timescaleint_replacement=False, show_variance=False, labels_on_plot=True,
-       rescale_x=None, rescale_y=None):
+       rescale_x=None, rescale_y=None, legend_fontsize=7, legend_location=LEGEND_LOCATION,
+       box_size_indices=None, show_nointer_theory_limits=False, max_boxes_on_plot=MAX_BOXES_ON_PLOT,
+       timescaleint_replacement_plateau_source='var'):
     # D0_from_fits     = [{}, {}]
     # D0_unc_from_fits = [{}, {}]
     # Dc_from_fits     = [{}, {}]
@@ -237,22 +243,9 @@ def go(file, ax, separation_in_label=False,
     # num_of_boxes = data['num_boxes']
     sep_sizes    = data['sep_sizes']
 
-    print('L/sigma', box_sizes/sigma)
-
     num_timesteps = N2_mean.shape[1]
-    num_boxes     = N2_mean.shape[0]
-    t_all = np.arange(0, num_timesteps) * time_step
+    t_all = data.get('t', np.arange(0, num_timesteps) * time_step)
 
-    # start_index, end_index = get_plateau_range(file)
-    # if not LINEAR_Y:
-    #     ax.vlines(t_all[start_index], 1e-3, 1e3, alpha=0.5)
-    #     ax.vlines(t_all[end_index], 1e-3, 1e3, alpha=0.5)
-
-    # reduce = 1
-    # t        = t      [::reduce]
-    # # t_theory = np.logspace()
-    # N2_mean  = N2_mean[:, ::reduce]
-    # N2_std   = N2_std [:, ::reduce]
     D_MSD, _, _ = visualisation.Ds_overlapped.get_D0(file)
 
     Ds_for_saving = []
@@ -301,7 +294,8 @@ def go(file, ax, separation_in_label=False,
             delta_N_sq     = delta_N_sq    [~anomalous]
             delta_N_sq_err = delta_N_sq_err[~anomalous]
             t              = t             [~anomalous]
-        assert anomalous.sum()/delta_N_sq.size < 0.8
+
+        # assert anomalous.sum()/delta_N_sq.size < 0.8
 
         nmsd_nan = common.nanfrac(delta_N_sq)
         if nmsd_nan: print('nmsd nanfrac', nmsd_nan)
@@ -356,7 +350,7 @@ def go(file, ax, separation_in_label=False,
             log_N2_theory = lambda t, *args : np.log(N2_theory(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
             log_N2_theory_Lh = lambda t, *args : np.log(N2_theory_Lh(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
             
-            fitting_points = common.exponential_integers(1, t.size//2)
+            fitting_points = common.exponential_indices(t, num=500)
             # p0 = (0.05, N_mean[box_size_index])
             p0 = [0.05]
             popt, pcov = scipy.optimize.curve_fit(log_N2_theory, t[fitting_points], np.log(delta_N_sq[fitting_points]), p0=p0, maxfev=2000)
@@ -372,42 +366,71 @@ def go(file, ax, separation_in_label=False,
             N2_theory_points_Lh = N2_theory_Lh(t_theory, *popt_Lh)
             # print('  plats', get_plateau(N2_mean[box_size_index, :], file, L, phi, sigma, t=t_all)[0], N2_theory_points[-1])
 
+
         
-        # fit to whole thing 2 - replace timescaleint
-        def timescaleint_replacement(nmsd):
-            # plateau, plateau_unc = get_plateau(plateau_source, nmsd, file, L, phi, sigma, t, var, varmod, display=False)
-            plateau, plateau_unc = get_plateau_fit_nmsd_inter(file, t, nmsd, phi, sigma, L, D_MSD)
-            print(f'  plat unc {plateau_unc/plateau:.3f}')
-            N2_theory2 = lambda t, D : plateau * (1 - countoscope_theory.nmsd.famous_f(4*D*t/L**2)**2)
-            log_N2_theory2 = lambda t, *args : np.log(N2_theory2(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
+        # # fit to whole thing 2 - replace timescaleint
+        # def timescaleint_replacement(nmsd):
+        #     # plateau, plateau_unc = get_plateau(plateau_source, nmsd, file, L, phi, sigma, t, var, varmod, display=False)
+        #     plateau, plateau_unc = get_plateau(timescaleint_replacement_plateau_source, nmsd, file, L, phi, sigma, t, N_var[box_size_index], N_var_mod[box_size_index], N_mean[box_size_index], D_MSD)
+        #     # plateau, plateau_unc = get_plateau_fit_nmsd_inter(file, t, nmsd, phi, sigma, L, D_MSD)
+        #     print(f'  plat = {common.format_val_and_unc(plateau, plateau_unc, latex=False)}')
+        #     N2_theory2 = lambda t, D : plateau * (1 - countoscope_theory.nmsd.famous_f(4*D*t/L**2)**2)
+        #     log_N2_theory2 = lambda t, *args : np.log(N2_theory2(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
             
-            fitting_points2 = common.exponential_integers(1, t.size//2)
-            # p0 = (0.05, N_mean[box_size_index])
-            p02 = [0.05]
-            popt2, pcov2 = scipy.optimize.curve_fit(log_N2_theory2, t[fitting_points2], np.log(nmsd[fitting_points2]), p0=p02, maxfev=2000)
-            # ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1, label='sDFT (no inter.)' if box_size_index==0 else None)
-            D_from_fit2 = popt2[0]
-            D_from_fit_unc2 = np.sqrt(pcov2[0][0])
+        #     fitting_points2 = common.exponential_indices(t, num=100)
+        #     # p0 = (0.05, N_mean[box_size_index])
+        #     p02 = [0.05]
+        #     # if file == 'eleanorlong010' and L > 6:
+        #     #     p02 = [0.09]
+        #     print('dtype', np.log(nmsd).dtype)
+        #     print('dtype', np.log(t).dtype)
+        #     print('dtype', log_N2_theory2(t, 0.05).dtype)
+        #     popt2, pcov2, infodict, mesg, ier = scipy.optimize.curve_fit(log_N2_theory2, t[fitting_points2], np.log(nmsd[fitting_points2]), p0=p02, maxfev=2000, full_output=True)
+        #     print('mesg', mesg)
+        #     print(infodict)
+        #     print(ier)
+        #     # ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1, label='sDFT (no inter.)' if box_size_index==0 else None)
+        #     D_from_fit2 = popt2[0]
+        #     D_from_fit_unc2 = np.sqrt(pcov2[0][0])
 
-            if D_from_fit_unc2/D_from_fit2 < plateau_unc/plateau:
-                D_from_fit_unc2 = D_from_fit2 * plateau_unc/plateau
-                # print(f'  increased error to {plateau_unc/plateau:.3f}')
+        #     if D_from_fit_unc2/D_from_fit2 < plateau_unc/plateau:
+        #         D_from_fit_unc2 = D_from_fit2 * plateau_unc/plateau
+        #         # print(f'  increased error to {plateau_unc/plateau:.3f}')
 
-            fit_ys = N2_theory2(t_theory, *popt2)
+        #     if popt2[0] == p02[0]:
+        #         print('  tsi replacement fit failed')
+        #         # raise Exception('tsi replacement fit failed')
+        #         # D_from_fit2 = np.nan
 
-            return D_from_fit2, D_from_fit_unc2, fit_ys
-        def timescaleint_replacement_fitplateau(nmsd):
-            assert np.isnan(nmsd).sum() == 0, 'nan found in nmsd'
-            assert np.sum(nmsd < 0) == 0, 'negatives found in nmsd'
-            assert np.sum(nmsd == 0) == 0, 'zeros found in nmsd'
+        #     fit_ys = N2_theory2(t_theory, *popt2)
+
+        #     return D_from_fit2, D_from_fit_unc2, fit_ys
+        
+
+        plateau, plateau_unc = get_plateau(timescaleint_replacement_plateau_source, delta_N_sq, file, L, phi, sigma, t, N_var[box_size_index], N_var_mod[box_size_index], N_mean[box_size_index], D_MSD)
+            
+        fitting_points2 = common.exponential_indices(t, num=100)
+        # fitting_points2
+
+        N2_theory2 = lambda t, D, plateau : plateau * (1 - countoscope_theory.nmsd.famous_f(4*D*t/L**2)**2)
+        log_N2_theory2 = lambda t, *args : np.log(N2_theory2(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
+            
+
+        def timescaleint_replacement_fitplateau():
+            assert np.isnan(delta_N_sq).sum() == 0, 'nan found in nmsd'
+            assert np.sum(delta_N_sq < 0) == 0, 'negatives found in nmsd'
+            assert np.sum(delta_N_sq == 0) == 0, 'zeros found in nmsd'
 
             N2_theory2 = lambda t, D, plateau : plateau * (1 - countoscope_theory.nmsd.famous_f(4*D*t/L**2)**2)
             log_N2_theory2 = lambda t, *args : np.log(N2_theory2(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
             
-            fitting_points2 = common.exponential_integers(1, t.size//2)
+            fitting_points22 = common.exponential_indices(t[1:], num=100)
             # p0 = (0.05, N_mean[box_size_index])
             p02 = [0.05, 2*N_var[box_size_index]]
-            popt2, pcov2 = scipy.optimize.curve_fit(log_N2_theory2, t[fitting_points2], np.log(nmsd[fitting_points2]), p0=p02, maxfev=2000)
+            
+            assert np.isfinite(t[fitting_points22]).all()
+            assert np.isfinite(np.log(delta_N_sq[fitting_points22])).all()
+            popt2, pcov2 = scipy.optimize.curve_fit(log_N2_theory2, t[fitting_points22], np.log(delta_N_sq[fitting_points22]), p0=p02, maxfev=2000)
             # ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1, label='sDFT (no inter.)' if box_size_index==0 else None)
             D_from_fit2 = popt2[0]
             D_from_fit_unc2 = np.sqrt(pcov2[0][0])
@@ -415,10 +438,9 @@ def go(file, ax, separation_in_label=False,
             fit_ys = N2_theory2(t_theory, *popt2)
 
             return D_from_fit2, D_from_fit_unc2, fit_ys
-
-        tsi_replace_func = timescaleint_replacement
-        # tsi_replace_func = timescaleint_replacement_fitplateau
-        Dc, Dc_unc, tsi_replacement_ys = tsi_replace_func(delta_N_sq)
+        
+        Dc, Dc_unc, tsi_replacement_ys = timescaleint_replacement_fitplateau()
+        
         print(f'  timescaleint replacement D={common.format_val_and_unc(Dc, Dc_unc, latex=False)}')
         # Dc_lower, Dc_unc_lower, _ = tsi_replace_func((delta_N_sq-delta_N_sq_err).clip(min=0.1)) # otherwise we could give negatives
         # Dc_upper, Dc_unc_upper, _ = tsi_replace_func(delta_N_sq+delta_N_sq_err)
@@ -496,26 +518,27 @@ def go(file, ax, separation_in_label=False,
             D_uncs_first_quad_for_saving.append(D_unc_from_first_quad)
             Ls_first_quad_for_saving.append(L)
         
-
-        if len(box_sizes) <= MAX_BOXES_ON_PLOT:
+        if box_size_indices:
+            display = box_size_index in box_size_indices
+        elif SHOW_JUST_ONE_BOX:
+            display = box_size_index == 20
+        elif len(box_sizes) <= max_boxes_on_plot:
             display = True
         else:
-            display = box_size_index % (len(box_sizes) // MAX_BOXES_ON_PLOT) == 0
-
-        if SHOW_JUST_ONE_BOX:
-            display = box_size_index == 20
+            display = box_size_index % (len(box_sizes) // max_boxes_on_plot) == 0
 
         if display:
+            print('box_size_index', box_size_index)
             # get_plateau(nmsd=N2_mean[box_size_index, :], file=file, L=L, phi=phi, sigma=sigma, display=True, t=t_all)
             
             if LINEAR_Y:
                 if display_i != 0:
                     ax = ax.twinx() 
                 yrange = delta_N_sq.max()
-                ylim_range = yrange * MAX_BOXES_ON_PLOT
+                ylim_range = yrange * max_boxes_on_plot
                 OVERLAP = 0.5
                 ylim_start =  - OVERLAP * yrange * display_i
-                ylim_end = yrange * (1 + (MAX_BOXES_ON_PLOT - display_i)*OVERLAP)
+                ylim_end = yrange * (1 + (max_boxes_on_plot - display_i)*OVERLAP)
                 ax.set_ylim(ylim_start, ylim_end)
                 ax.get_yaxis().set_visible(False)
             
@@ -524,15 +547,17 @@ def go(file, ax, separation_in_label=False,
             have_displayed_at_least_one = True
 
             if SHOW_MEAN:
-                ax.hlines(2*N_mean[box_size_index], t.min(), t.max(), color=color, linewidth=1, linestyle='dashdot', label=r'$2 \langle N \rangle$' if box_size_index==0 else None)
+                ax.hlines(2*N_mean[box_size_index]/rescale_y_value, t.min(), t.max(), color=color, linewidth=1, linestyle='dashdot', label=r'$2 \langle N \rangle$' if box_size_index==0 else None)
             if show_variance:
-                ax.hlines(2*N_var [box_size_index], t.min(), t.max(), linestyles='dashed', color='grey', linewidth=1, label=r'$2\mathrm{Var}(N)$' if box_size_index==0 else None)
-                ax.hlines(2*N_var_mod[box_size_index], t.min(), t.max(), linestyles='dotted', color='grey', linewidth=1, label=r'$2\mathrm{Var*}(N)$' if box_size_index==0 else None)
+                ax.hlines(2*N_var [box_size_index]/rescale_y_value, t.min(), t.max(), linestyles='dashed', color='grey', linewidth=1, label=r'$2\mathrm{Var}(N)$' if box_size_index==0 else None)
+                ax.hlines(2*N_var_mod[box_size_index]/rescale_y_value, t.min(), t.max(), linestyles='dotted', color='grey', linewidth=1, label=r'$2\mathrm{Var*}(N)$' if box_size_index==0 else None)
 
 
             if not rescale_y and SHOW_THEORY_FIT:
                 ax.plot(t_theory[1:], N2_theory_points[1:], color='gray', linewidth=1, label=type_of_fit if box_size_index==0 else None)
                 ax.plot(t_theory[1:], N2_theory_points_Lh[1:], color='white', linewidth=1, label=type_of_fit if box_size_index==0 else None)
+            
+            
             # label += fr', $D_\mathrm{{fit}}={popt[0]:.3g}\pm {np.sqrt(pcov[0][0]):.3g} \mathrm{{\mu m^2/s}}$'
 
             if (rescale_x or rescale_y): # remove and False in future please
@@ -561,11 +586,11 @@ def go(file, ax, separation_in_label=False,
             print('  dN2s', delta_N_sq.size, common.nanfrac(delta_N_sq))
 
             if DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE and delta_N_sq.size > 1000:
-                points_to_plot = common.exponential_integers(1, delta_N_sq.size-1, 500)
+                print('tt', t)
+                points_to_plot = common.exponential_indices(t, 500)
             else:
                 points_to_plot = np.index_exp[1:] # this is basically a functional way of writing points_to_plot = [1:]
             
-            print('markersize', markersize)
             exp_plot = ax.plot(t[points_to_plot], delta_N_sq[points_to_plot], label=label, linestyle=linestyle, marker='o', markersize=markersize, zorder=-1, color=color)
             # exp_plot = ax.errorbar(t[1:], delta_N_sq[1:], yerr=delta_N_sq_err[1:]/np.sqrt(num_of_boxes[box_size_index]), label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
             # exp_plot = ax.errorbar(t[1:], delta_N_sq[1:], yerr=delta_N_sq_err[1:], label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
@@ -627,20 +652,41 @@ def go(file, ax, separation_in_label=False,
                 if SHOW_PLATEAU_OBS_AREA:
                     ax.fill_between((t[0], t[-1]), [plat-plat_std]*2, [plat+plat_std]*2, facecolor='gray', alpha=0.5)
 
+    if show_nointer_theory_limits:
+        assert rescale_x == RESCALE_X_L2
+        t_theory_limits_over_L2 = np.logspace(-2, 3)
+        L_low = 0.01
+        print('pack frac', data['pack_frac'])
+        Dc = D_MSD * (1 + data['pack_frac']) / (1 - data['pack_frac'])**3
+        print('Dc/D_MSD', Dc/D_MSD)
+        L_high = 1000
+        for L, D in ((L_low, D_MSD), (L_high, Dc)):
+        # for L, D in ((L_high, Dc),):
+            t_theory_limits = t_theory_limits_over_L2 * L**2
+            # N_mean_low = data['density'] * L_low
+            N_mean = 0.01643333546467505 * L**2
+            plateau_over_2 = 1/2 * countoscope_theory.nmsd.plateau_inter_2d(N_mean, L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma))
+            print('we', D, N_mean, L_low)
+            nmsd_limit = countoscope_theory.nmsd.nointer_2d(t_theory_limits, D, plateau_over_2, L)
+            ax.plot(t_theory_limits_over_L2[1:], nmsd_limit[1:]/L**2, color='green', linewidth=1, linestyle='dashed', label=None)                
+            print('t', t_theory_limits_over_L2[1:])
+            print('N', nmsd_limit[1:])
+
     assert have_displayed_at_least_one, 'display was false for all L'
 
-    if not rescale_x and not FORCE_HIDE_LEGEND:
-        ax.legend(fontsize=6 if not PRESENT_SMALL else 6, loc=LEGEND_LOCATION)
+    if rescale_x and not FORCE_HIDE_LEGEND:
+        legend = ax.legend(fontsize=legend_fontsize, loc=legend_location)
+        common.set_legend_handle_size(legend)
     if not LINEAR_Y:
         ax.semilogy()
     ax.semilogx()
     if rescale_x == RESCALE_X_L:
         xlabel = '$\Delta t/L$'
     elif rescale_x == RESCALE_X_L2:
-        xlabel = '$\Delta t/L^2$'
+        xlabel = '$\Delta t/L^2$ ($\mathrm{s/\mu m^2}$)'
     else:
         xlabel = '$\Delta t$ ($\mathrm{s}$)'
-    if rescale_y == False:
+    if rescale_y == None:
         ylabel = r'$\langle \Delta N^2(\Delta t) \rangle$ ($\mathrm{\mu m^2}$)'
     elif rescale_y == RESCALE_Y_N:
         ylabel = r'$\Delta N^2(\Delta t)/ \langle N\rangle$'
@@ -649,7 +695,7 @@ def go(file, ax, separation_in_label=False,
     elif rescale_y == RESCALE_Y_PLATEAU:
         ylabel = r'$\Delta N^2(\Delta t)/ \mathrm{plateau}$'
     elif rescale_y == RESCALE_Y_L2:
-        ylabel = r'$\Delta N^2(\Delta t)/ L^2$'
+        ylabel = r'$\Delta N^2(\Delta t)/ L^2$ ($\mathrm{\mu m^{-1}}$)'
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
 
@@ -699,7 +745,7 @@ def go(file, ax, separation_in_label=False,
             Ds=Ds_first_quad_for_saving, D_uncs=D_uncs_first_quad_for_saving, Ls=Ls_first_quad_for_saving,
             particle_diameter=sigma,
             pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'), max_time_hours=data.get('max_time_hours'))
-    common.save_data(f'visualisation/data/Ds_from_boxcounting_collective_{file}',
+    common.save_data(f'visualisation/data/Ds_from_boxcounting_collective_{timescaleint_replacement_plateau_source}_{file}',
             Ds=Ds_for_saving_collective, D_uncs=D_uncs_for_saving_collective, Ls=Ls_for_saving_collective,
             particle_diameter=sigma,
             pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'), max_time_hours=data.get('max_time_hours'))
@@ -723,7 +769,13 @@ if __name__ == '__main__':
            show_timescaleint_replacement=SHOW_TIMESCALEINT_REPLACEMENT,
            show_title=not PRESENT_SMALL,
            labels_on_plot=LABELS_ON_PLOT,
-           rescale_x=RESCALE_X, rescale_y=RESCALE_Y
+           rescale_x=RESCALE_X, rescale_y=RESCALE_Y,
+           max_boxes_on_plot=MAX_BOXES_ON_PLOT,
         )
+
+        ax.set_ylim(1e-3, 5e2)
+        if RESCALE_X == RESCALE_X_L2 and RESCALE_Y == RESCALE_Y_L2:
+            ax.set_ylim(3e-3, 0.7e-1)
+            ax.set_xlim(1e-2, 1e4)
         
         common.save_fig(fig, f'box_counting/figures_png/nmsd_{file}.png', dpi=200)

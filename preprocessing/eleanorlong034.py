@@ -31,7 +31,7 @@ window_size_y -= 2*EDGE_CROP
 print(f'edge crop kept {particles.size/size_before:.3f}')
 
 num_timesteps = int(particles[:, 2].max() + 1)
-max_time_hours = round(num_timesteps * 0.5 / 60 / 60, 1)
+max_time_hours = round(num_timesteps * 0.5 / 60 / 60, 2)
 density = particles.shape[0] / (num_timesteps) / (window_size_x*window_size_y)
 
 print('saving')

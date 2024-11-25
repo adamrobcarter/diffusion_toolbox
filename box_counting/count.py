@@ -61,19 +61,20 @@ def calc_and_save(box_sizes, sep_sizes, data, particles, output_file_name,
  
 
     # also let's calc the packing fraction now as it'll be useful in the future
-    window_width  = window_size_x if window_size_x else particles[:, 0].max() - particles[:, 0].min()
-    window_height = window_size_y if window_size_y else particles[:, 1].max() - particles[:, 1].min()
-    density = particles.shape[0]/num_timesteps / (window_width * window_height)
-    pack_frac = np.pi/4 * density * particle_diameter**2
+    # window_width  = window_size_x if window_size_x else particles[:, 0].max() - particles[:, 0].min()
+    # window_height = window_size_y if window_size_y else particles[:, 1].max() - particles[:, 1].min()
+    # density = particles.shape[0]/num_timesteps / (window_size_x * window_size_y)
+    # pack_frac = np.pi/4 * density * particle_diameter**2
 
     output = dict(filename=output_file_name, N2_mean=N2_mean, N2_std=N2_std,
                 box_sizes=box_sizes, sep_sizes=sep_sizes,
                 num_boxes=results.num_boxes, N_mean=results.N_mean, N_var=results.N_var,
                 N_var_mod=results.N_var_mod, N_var_mod_std=results.N_var_mod_std, N_mean_std=results.N_mean_std,
-                time_step=time_step, pack_frac=pack_frac, particle_diameter=particle_diameter,
+                time_step=time_step, particle_diameter=particle_diameter,
                 particle_diameter_calced=particle_diameter_calced, computation_time=time.time()-t0,
                 depth_of_field=depth_of_field,
                 box_coords=results.box_coords,
+                pack_frac=data.get('pack_frac'), density=data.get('density'),
                 pack_frac_given=data.get('pack_frac_given'), max_time_hours=data.get('max_time_hours'),
                 window_size_x=window_size_x, window_size_y=window_size_y, pixel_size=data.get('pixel_size'),
                 **extra_to_save)
@@ -101,7 +102,7 @@ if __name__ == '__main__':
 
         if file.startswith('eleanorlong'):
             pixel_size    = data['pixel_size']
-            box_sizes = np.logspace(np.log10(pixel_size), np.log10(0.9*window_size), num_boxes) # N was 35, but 70 for eleanorlong066
+            box_sizes = np.logspace(np.log10(pixel_size/2), np.log10(0.9*window_size), num_boxes) # N was 35, but 70 for eleanorlong066
             # print('aaaa', 0.8*window_size/pixel_size)
             # box_sizes_px = np.array([0.9*window_size/pixel_size])
             # sep_sizes = 17 - box_sizes
@@ -110,7 +111,7 @@ if __name__ == '__main__':
 
         elif file.startswith('brennan'):
 
-            box_sizes = np.logspace(np.log10(0.288), np.log10(0.9*window_size), num_boxes)
+            box_sizes = np.logspace(np.log10(0.288/2), np.log10(0.9*window_size), num_boxes)
             sep_sizes = 17 - box_sizes # moremoreoverlap
 
         elif file.startswith('marine'):
@@ -121,7 +122,7 @@ if __name__ == '__main__':
             sep_sizes_px = 7 - box_sizes_px
 
         elif file.startswith('sim_'):
-            box_sizes = np.logspace(np.log10(0.288), np.log10(0.9*window_size), 35)
+            box_sizes = np.logspace(np.log10(0.288/2), np.log10(0.9*window_size), 35)
             sep_sizes = 7 - box_sizes # moremoreoverlap
 
         else:

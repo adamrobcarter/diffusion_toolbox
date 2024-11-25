@@ -58,7 +58,7 @@ colors = {
     'D0Sk': 'tab:red',
 }
 
-markers = {
+marker_index = {
     'DDM_short': '*',
     'f_short': 'x',
     'DDM_long': '*',
@@ -83,7 +83,8 @@ markers = {
     'timescaleint_nofit_cropped_var': '*',
     'D0Sk': 'o',
     'C_N_simplefit': '|',
-    'D_of_L_theory': 'none'
+    'D_of_L_theory': 'none',
+    'D0Sk_theory': 'none',
 }
 
 linestyles = {
@@ -98,7 +99,10 @@ def show_one_file(
         fix_axes, ax,
         show_pixel=True, show_window=True, crop_end=None, num_files=0,
         allow_rescale_y=True, linestyle=None, discrete_colors=True,
+        theory_color=None, file_label=None, errorbar_alpha=ERRORBAR_ALPHA,
+        markers=None,
     ):
+    print('errorbar alpha', errorbar_alpha)
 
     all_Ds = []
         
@@ -114,16 +118,16 @@ def show_one_file(
     D_uncs = {}
 
     used_sources = []
+    
+    file_label = file_label if file_label else file
 
-    if discrete_colors:
-        color = ['tab:blue', 'tab:orange', 'tab:green'][i]
-    else:
-        color = common.colormap(i, 0, num_files)
+    
+    D_MSD, sigma, phi = visualisation.Ds_overlapped.get_D0(file)
 
     # get all the data
     for source in sources:
         try:
-            xs[source], Ds[source], D_uncs[source], pixel_size_temp, window_size_temp, pack_frac_given_temp, pack_frac_calced_temp, diameter_temp = visualisation.Ds_overlapped.get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI)
+            xs[source], Ds[source], D_uncs[source], pixel_size_temp, window_size_temp, pack_frac_given_temp, pack_frac_calced_temp, diameter_temp = visualisation.Ds_overlapped.get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD=D_MSD, sigma=sigma, phi=phi)
         
             if pixel_size_temp:       pixel_size       = pixel_size_temp
             if window_size_temp:      window_size      = window_size_temp
@@ -138,9 +142,8 @@ def show_one_file(
 
     if allow_rescale_y:
         try:
-            D_MSD, _, _ = visualisation.Ds_overlapped.get_D0(file)
             rescale_y = D_MSD
-            ax.set_ylabel(r'$D/D_{MSD}$')
+            ax.set_ylabel(r'$D/D_\mathrm{self}$')
             no_rescale = False
         except FileNotFoundError as err:
             no_rescale = True
@@ -185,7 +188,11 @@ def show_one_file(
 
     # do the actual plotting
     for source in used_sources:
-        source_label = f'{file} {source_names.get(source, source)}'# if not source.startswith('MSD') else None
+        source_i = sources.index(source)
+        if len(used_sources) == 1:
+            source_label = file_label
+        else:
+            source_label = f'{file_label} {source_names.get(source, source)}'# if not source.startswith('MSD') else None
         # phi = int(file[-3:]) / 100
         # print(phi)
         # source_label = fr'$\phi={phi:.2f}$'
@@ -193,6 +200,12 @@ def show_one_file(
 
         xs[source] /= rescale_x
 
+        if discrete_colors:
+            color = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red'][i]
+        else:
+            color = common.colormap(i, 0, num_files)
+        if 'theory' in source and theory_color:
+            color = theory_color
 
         # color = colors[source]f
         ys = Ds[source] / rescale_y
@@ -201,7 +214,7 @@ def show_one_file(
         if source in ['MSD_short', 'MSD_first']:
             ax.hlines(ys[0], xmin, xmax, color=color, linestyle='dotted', label=source_label)
             print('MSD errors hacked')
-            ax.fill_between(ax.get_xlim(), ys[0]*0.97, ys[0]*1.03, facecolor=color, alpha=ERRORBAR_ALPHA)
+            ax.fill_between(ax.get_xlim(), ys[0]*0.97, ys[0]*1.03, facecolor=color, alpha=errorbar_alpha)
 
         else:
             x_this = xs[source]
@@ -219,9 +232,16 @@ def show_one_file(
                 use_linestyle = linestyle
             else:
                 use_linestyle = linestyles.get(source, 'none')
-            print(source, 'linestyles', use_linestyle, linestyles.get(source), linestyle)
-            ax.plot(x_this, ys, linestyle=use_linestyle, marker=markers.get(source, '.'), markersize=4, color=color, label=source_label, zorder=zorder)
-            ax.errorbar(x_this, ys, yerr=yerrs, linestyle='none', marker='none', alpha=ERRORBAR_ALPHA, color=color, zorder=zorder)
+            if type(markers) == list:
+                marker = markers[source_i]
+            elif type(markers) == str:
+                marker = markers
+            else:
+                marker = marker_index.get(source, '.')
+            print(source, 'linestyles', use_linestyle, 'marker', marker)
+            print(file, source, 'plotting', ys.size, ys)
+            ax.plot(x_this, ys, linestyle=use_linestyle, marker=marker, markersize=4, color=color, label=source_label, zorder=zorder)
+            ax.errorbar(x_this, ys, yerr=yerrs, linestyle='none', marker='none', alpha=errorbar_alpha, color=color, zorder=zorder)
             # print(xs[source], ys)
 
             log_y = np.log10(ys)
@@ -273,9 +293,22 @@ def show_one_file(
 
 
 def go(files, ax, sources, plot_against_k=False, linestyle=None, legend_fontsize=None,
-       discrete_colors=False, logarithmic_y=False):
+       discrete_colors=False, logarithmic_y=False, theory_color=None, file_labels=None,
+       errorbar_alpha=ERRORBAR_ALPHA, markers=None):
 
     for i, file in enumerate(files):
+        if file_labels:
+            file_label = file_labels[i]
+        else:
+            file_label = None
+        print('file label', file_label)
+
+        if type(markers) == str:
+            marker = markers
+        elif type(markers) == list:
+            marker = markers[i]
+        else:
+            marker = None
 
         show_one_file(
             i, file, sources,
@@ -283,6 +316,8 @@ def go(files, ax, sources, plot_against_k=False, linestyle=None, legend_fontsize
             ax=ax, show_window=False, show_pixel=False,
             num_files=len(files),
             allow_rescale_y=True, linestyle=linestyle, discrete_colors=discrete_colors,
+            theory_color=theory_color, file_label=file_label, errorbar_alpha=errorbar_alpha,
+            markers=marker,
         )
 
     ax.legend(fontsize=legend_fontsize, loc='upper left' if not plot_against_k else 'upper right')

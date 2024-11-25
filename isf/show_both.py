@@ -718,33 +718,33 @@ def show_single_F_type(
         common.save_data(f'visualisation/data/Ds_from_{Ftype}_first_{file}',
                     Ds=Ds_for_saving_first, D_uncs=D_uncs_for_saving_first, ks=ks_for_saving_first,
                     particle_diameter=particle_diameter,
-                    pixel_size=d.get('pixel_size'),
+                    pixel_size=d.get('pixel_size'), max_time_hours=d.get('max_time_hours'),
                     channel=d.get('channel'), NAME=d.get('NAME'))
         if Ftype != 'f_first':
             common.save_data(f'visualisation/data/Ds_from_{Ftype}_{file}',
                         Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, ks=ks_for_saving,
                         particle_diameter=particle_diameter,
-                        pixel_size=d.get('pixel_size'),
+                        pixel_size=d.get('pixel_size'), max_time_hours=d.get('max_time_hours'),
                         channel=d.get('channel'), NAME=d.get('NAME'))
             common.save_data(f'visualisation/data/Ds_from_{Ftype}_short_{file}',
                         Ds=Ds_for_saving_short, D_uncs=D_uncs_for_saving_short, ks=ks_for_saving_short,
                         particle_diameter=particle_diameter,
-                        pixel_size=d.get('pixel_size'),
+                        pixel_size=d.get('pixel_size'), max_time_hours=d.get('max_time_hours'),
                         channel=d.get('channel'), NAME=d.get('NAME'))
             common.save_data(f'visualisation/data/Ds_from_{Ftype}_long_{file}',
                         Ds=Ds_for_saving_long, D_uncs=D_uncs_for_saving_long, ks=ks_for_saving_long,
                         particle_diameter=particle_diameter,
-                        pixel_size=d.get('pixel_size'),
+                        pixel_size=d.get('pixel_size'), max_time_hours=d.get('max_time_hours'),
                         channel=d.get('channel'), NAME=d.get('NAME'))
             common.save_data(f'visualisation/data/Ds_from_{Ftype}_D1_{file}',
                         Ds=Ds_for_saving_D1, D_uncs=D_uncs_for_saving_D1, ks=ks_for_saving_D1,
                         particle_diameter=particle_diameter,
-                        pixel_size=d.get('pixel_size'),
+                        pixel_size=d.get('pixel_size'), max_time_hours=d.get('max_time_hours'),
                         channel=d.get('channel'), NAME=d.get('NAME'))
             common.save_data(f'visualisation/data/Ds_from_{Ftype}_D2_{file}',
                         Ds=Ds_for_saving_D2, D_uncs=D_uncs_for_saving_D2, ks=ks_for_saving_D2,
                         particle_diameter=particle_diameter,
-                        pixel_size=d.get('pixel_size'),
+                        pixel_size=d.get('pixel_size'), max_time_hours=d.get('max_time_hours'),
                         channel=d.get('channel'), NAME=d.get('NAME'))
 
 if __name__ == '__main__':

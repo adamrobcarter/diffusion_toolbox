@@ -28,7 +28,7 @@ for file in common.files_from_argv('MSD/data', 'msd_centre_of_mass_'):
         ax.errorbar(t, msd*groupsize, yerr=msd_unc*groupsize, marker='.', markersize=5, linestyle=':', color=color, label=label)
         # ax.fill_between(t[1:], msd[1:]-msd_unc[1:], msd[1:]+msd_unc[1:], alpha=0.2)
 
-        # fitting_points = common.exponential_integers(1, t.size-1)
+        # fitting_points = common.exponential_indices(t)
         # func = lambda t, D, c: 4*D*t**c
         # log_func = lambda t, D, c: np.log10(func(t, D, c))
         # if common.nanfrac(msd[fitting_points]):

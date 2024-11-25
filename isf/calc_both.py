@@ -23,8 +23,8 @@ def setup(F_type, file, d_frames, drift_removed=False, max_K=None):
     window_size_y = data['window_size_y']
     assert particles[:, 0].min() >= 0
     assert particles[:, 1].min() >= 0
-    assert less_than_or_close(   particles[:, 0].max(), window_size_x), f'particles[:, 0].max() = {particles[:, 0].max()}, window_size_x={window_size_x}'
-    assert greater_than_or_close(particles[:, 1].max(), window_size_y), f'particles[:, 1].max() = {particles[:, 1].max()}, window_size_y={window_size_y}'
+    assert less_than_or_close(particles[:, 0].max(), window_size_x), f'particles[:, 0].max() = {particles[:, 0].max()}, window_size_x={window_size_x}'
+    assert less_than_or_close(particles[:, 1].max(), window_size_y), f'particles[:, 1].max() = {particles[:, 1].max()}, window_size_y={window_size_y}'
     
     num_timesteps = int(particles[:, 2].max() + 1)
 

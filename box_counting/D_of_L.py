@@ -10,14 +10,15 @@ import matplotlib.cm
 import box_counting.msd_single
 import visualisation.Ds_overlapped
 
-SHOW_THEORY = True
-SHOW_TIMESCALEINTEGRAL_FIT = True
+SHOW_THEORY = False
+SHOW_TIMESCALEINTEGRAL_FIT = False
 DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE = True
+SHOW_LEGEND = True
 
-LATE_CN_ALPHA = 0.2
+LATE_CN_ALPHA = 0.08
 LABELS_ON_PLOT = False
 LABELS_ON_PLOT_Y_SHIFT = 1.2
-LABELS_ON_PLOT_X_SHIFT = 1.2
+LABELS_ON_PLOT_X_SHIFT = 1.3
 
 MAX_NUM_BOXES = 10
 
@@ -27,7 +28,7 @@ NOFIT_CROP_THRESHOLD = 1e-4
 
 RESCALE_X_L2 = 1
 # RESCALE_X = RESCALE_X_L2
-RESCALE_X = 0
+RESCALE_X = None
 
 # PLATEAU_SOURCE = 'var'
 PLATEAU_SOURCE = 'nmsdfitinter'
@@ -98,7 +99,7 @@ def do_late_integral(t, L, T_integrand, M2_index, M1_index):
     # what is real? is the other one log space or something?
     t_end = t.max()*1000
     t_fit_late = np.logspace(np.log10(t[M1_index]), np.log10(t_end))
-    # print('a, b', late_popt, t[M2_index], t_end)
+    
     assert np.all(late_fit_func_real(t_fit_late, *late_popt) > 0), f'some of late_fit_func_real were negative for L={L}'
     assert np.all(late_fit_func_real([t[M2_index], t_end], *late_popt) > 0), f'some of late_fit_func_real were negative for L={L}'
     assert np.all(late_fit_func_real(np.logspace(np.log10(t[M2_index]), np.log10(t_end), 1000), *late_popt) > 0), f'some of late_fit_func_real were negative for L={L}'
@@ -106,8 +107,6 @@ def do_late_integral(t, L, T_integrand, M2_index, M1_index):
     assert t[M2_index] < t_end
     p     = scipy.integrate.quad(late_fit_func_real, t[M2_index], t_end, args=(a, b), full_output=True)
     late_integral = p[0]
-    # print('p')
-    # print(p)
     # assert np.all(late_fit_func_real(p[2]['alist'], *late_popt) > 0)
     # assert np.all(late_fit_func_real(p[2]['blist'], *late_popt) > 0)
     late_integral_00 = scipy.integrate.quad(late_fit_func_real, t[M2_index], t_end, args=(a+a_unc, b+b_unc))[0]
@@ -127,13 +126,13 @@ def do_late_integral(t, L, T_integrand, M2_index, M1_index):
 
     if late_integral < 0:
         late_integral = 0
-        print('TURNED OFF NEGATIVE INTEGRAL')
+        print('  TURNED OFF NEGATIVE INTEGRAL')
     if int_min < 0:
         int_min = 0
-        print('TURNED OFF NEGATIVE INTEGRAL')
+        print('  TURNED OFF NEGATIVE INTEGRAL')
     if int_max < 0:
         int_max = 0
-        print('TURNED OFF NEGATIVE INTEGRAL')
+        print('  TURNED OFF NEGATIVE INTEGRAL')
     assert late_integral >= 0, f'late_integral = {late_integral}, late_fit_func_real(t[M2_index]) = {late_fit_func_real(t[M2_index], *late_popt)}, late_fit_func_real(t_end) = {late_fit_func_real(t_end, *late_popt)}'
 
     return late_integral, int_min, int_max, late_popt, late_fit_func_real, t_fit_late
@@ -200,7 +199,7 @@ def C_N_simplefit(t, C_N_over_VarN, C_N_over_VarN_unc, L):
     
     func = lambda t, D : countoscope_theory.nmsd.famous_f(4*D*t/L**2)**2
 
-    fitting_points = common.exponential_integers(1, t.size//2)
+    fitting_points = common.exponential_indices(t, num=100)
     p0 = [0.05]
     popt, pcov = scipy.optimize.curve_fit(func, t[fitting_points], C_N_over_VarN[fitting_points], sigma=C_N_over_VarN_unc[fitting_points], p0=p0, maxfev=2000)
     
@@ -212,9 +211,9 @@ def C_N_simplefit(t, C_N_over_VarN, C_N_over_VarN_unc, L):
 def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
        plot_color=None, export_destination=None, sep_in_label=False,
        show_nofit_cutoff=True, show_theory=False, labels_on_plot=True, max_num_boxes=10,
-       show_fits=True, late_C_N_alpha=0.4, labels_on_plot_font_color=None,
+       show_fits=True, late_C_N_alpha=LATE_CN_ALPHA, labels_on_plot_font_color=None,
        show_legend=False, plot_C_N_squared=True, box_size_indices=None,
-       show_slope=False):
+       show_slope=False, show_T_of_L=False, rescale_x=None):
 
     integ_axs = ax
 
@@ -246,7 +245,7 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
 
     num_timesteps = N2_mean.shape[1]
     num_boxes     = N2_mean.shape[0]
-    t = np.arange(0, num_timesteps) * time_step
+    t = data.get('t', np.arange(0, num_timesteps) * time_step)
 
     D_of_Ls     = np.full((num_boxes), np.nan)
     D_of_L_uncs = np.full((2, num_boxes), np.nan)
@@ -275,7 +274,7 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
         # fits etc
         plateau, plateau_std = box_counting.msd_single.get_plateau(
             plateau_source, file=file, nmsd=N2_mean[box_size_index, :], L=L, phi=phi, sigma=sigma, t=t, var=N_var[box_size_index], varmod=N_var_mod[box_size_index],
-            D0=D0,
+            D0=D0, N_mean=N_mean[box_size_index],
         )
         var_label = plateau_source
 
@@ -332,6 +331,10 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
         elif file.startswith('sim_'):
             if file == 'sim_nohydro_010_L640_div8':
                 M2_index = min(int(600 * np.sqrt(L)), t.shape[0]-1)
+            elif file == 'sim_nohydro_011_L320_merged':
+                M2_index = min(int(400 * np.sqrt(L)), t.shape[0]-1)
+            elif file == 'sim_nohydro_011_L320_longer':
+                M2_index = min(int(80 * np.sqrt(L)), t.shape[0]-1)
             else:
                 M2_index = min(int(1800 * np.sqrt(L)), t.shape[0]-1)
             M2_index = max(M2_index, MIN_M2_INDEX)
@@ -345,18 +348,28 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
         # full method
         early_fit_func, early_popt, early_integral, early_integral_min, early_integral_max = do_early_integral(f, t, T_integrand, T_integrand_min, T_integrand_max)
         data_integral, data_integral_min, data_integral_max = do_data_integral(t, T_integrand, T_integrand_min, T_integrand_max, M2_index)
-        try:
-            late_integral, late_integral_min, late_integral_max, late_popt, late_fit_func_real, t_fit_late = do_late_integral(t, L, T_integrand, M2_index, M1_index)
+        if L < 3:
+            # the late integral fails here cause it's fully in the noise
+            # but it doesn't matter for small boxes cause the noise is so low
+            late_integral, late_integral_min, late_integral_max = 0, 0, 0
+            plot_late_integral_fit = False
+        
+        else:
+        
+            try:
+                late_integral, late_integral_min, late_integral_max, late_popt, late_fit_func_real, t_fit_late = do_late_integral(t, L, T_integrand, M2_index, M1_index)
 
-            print(f'  late integral contribution {late_integral/(early_integral+data_integral+late_integral):.3f}')
+                print(f'  late integral contribution {late_integral/(early_integral+data_integral+late_integral):.3f}')
+                plot_late_integral_fit = True
 
-            D_of_L, D_of_L_min, D_of_L_max = get_D_from_integral_contributions(L, early_integral, early_integral_min, early_integral_max, data_integral, data_integral_min, data_integral_max, late_integral, late_integral_min, late_integral_max)
-            print(f'  final uncs {D_of_L_min/D_of_L:.3f} {D_of_L_max/D_of_L:.3f}')
-            D_of_Ls[box_size_index] = D_of_L
-            D_of_L_uncs[:, box_size_index] = [D_of_L - D_of_L_min, D_of_L_max - D_of_L]
-            late_integral_success = True
-        except PositiveSlopeInTimescaleIntegralFitException:
-            late_integral_success = False
+            except PositiveSlopeInTimescaleIntegralFitException:
+                print('  full timescale integral failed')
+                plot_late_integral_fit = False
+
+        D_of_L, D_of_L_min, D_of_L_max = get_D_from_integral_contributions(L, early_integral, early_integral_min, early_integral_max, data_integral, data_integral_min, data_integral_max, late_integral, late_integral_min, late_integral_max)
+        print(f'  final uncs {D_of_L_min/D_of_L:.3f} {D_of_L_max/D_of_L:.3f}')
+        D_of_Ls[box_size_index] = D_of_L
+        D_of_L_uncs[:, box_size_index] = [D_of_L - D_of_L_min, D_of_L_max - D_of_L]
         
         # nofit method
         data_integral_full, data_integral_full_min, data_integral_full_max = do_data_integral(t, T_integrand, T_integrand_min, T_integrand_max, -1)
@@ -367,7 +380,6 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
         
         # nofit2 method
         stop_point = np.argmax(T_integrand < NOFIT_CROP_THRESHOLD)
-        print("T integrand shape", T_integrand.shape, stop_point)
         data_integral_full2, data_integral_full2_min, data_integral_full2_max = do_data_integral(t[:stop_point], T_integrand[:stop_point], T_integrand_min[:stop_point], T_integrand_max[:stop_point], -1)
 
         D_of_L_nofit2, D_of_L_min_nofit2, D_of_L_max_nofit2 = get_D_from_integral_contributions(L, early_integral, early_integral_min, early_integral_max, data_integral_full2, data_integral_full2_min, data_integral_full2_max, 0, 0, 0)
@@ -394,16 +406,13 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
         if display:
 
             integrand_ax = integ_axs
-
-            # print(f'early data late {early_integral:.1f}, {data_integral:.1f}, {late_integral:.1f}')
-            # print('ratio', late_integral/late_integral1)
             # N2_func_full = lambda t, D0: 2 * N_mean[box_size_index] * (1 - f(4*D0*t/L**2) * f(4*D0*t/L**2)) # countoscope eq. 2, countoscope overleaf doc
             # t_C_N_theory = np.logspace(-2, 5, 200)
 
-            if RESCALE_X == RESCALE_X_L2:
-                rescale_x = L**2
+            if rescale_x == RESCALE_X_L2:
+                rescale_x_value = L**2
             else:
-                rescale_x = 1
+                rescale_x_value = 1
 
             color = plot_color if plot_color else common.colormap(box_size_index, 0, len(box_sizes))
             
@@ -420,25 +429,25 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
 
             # plot actual data
             if DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE and T_integrand.size > 1000:
-                points_to_plot = common.exponential_integers(1, T_integrand.size-1, 1000)
+                points_to_plot = common.exponential_indices(t, num=1000)
             else:
                 points_to_plot = np.index_exp[1:] # this is basically a functional way of writing points_to_plot = [1:]
             plot_solid = points_to_plot[points_to_plot <= M2_index]
             plot_alpha = points_to_plot[points_to_plot >  M2_index]
 
             if plot_C_N_squared:
-                integrand_ax.plot(t[plot_solid]/rescale_x, T_integrand[plot_solid], color=color, zorder=5, linestyle='none', marker='o', markersize=2, label=label)
-                integrand_ax.plot(t[plot_alpha]/rescale_x, T_integrand[plot_alpha],  color=color, zorder=4, linestyle='none', marker='o', markersize=2, alpha=late_C_N_alpha)
+                integrand_ax.plot(t[plot_solid]/rescale_x_value, T_integrand[plot_solid], color=color, zorder=5, linestyle='none', marker='o', markersize=2, label=label)
+                integrand_ax.plot(t[plot_alpha]/rescale_x_value, T_integrand[plot_alpha],  color=color, zorder=4, linestyle='none', marker='o', markersize=2, alpha=late_C_N_alpha)
             else:
-                integrand_ax.plot(t[points_to_plot]/rescale_x, C_N_over_plateau[points_to_plot], color=color, zorder=5, linestyle='none', marker='o', markersize=2, label=label)
+                integrand_ax.plot(t[points_to_plot]/rescale_x_value, C_N_over_plateau[points_to_plot], color=color, zorder=5, linestyle='none', marker='o', markersize=2, label=label)
                 
             # integrand_rescaled_ax.plot(t[1:]/L**2, T_integrand[1:])
             
             t_fit_early = np.logspace(-2, np.log10(t[1]))
             if show_fits:
-                integrand_ax.plot(t_fit_early/rescale_x, early_fit_func(t_fit_early, *early_popt), color=color, linestyle=':')
-                if late_integral_success:
-                    integrand_ax.plot(t_fit_late/rescale_x, late_fit_func_real(t_fit_late, *late_popt), color=color, linestyle=':', linewidth=4)
+                integrand_ax.plot(t_fit_early/rescale_x_value, early_fit_func(t_fit_early, *early_popt), color=color, linestyle=':')
+                if plot_late_integral_fit:
+                    integrand_ax.plot(t_fit_late/rescale_x_value, late_fit_func_real(t_fit_late, *late_popt), color=color, linestyle=':', linewidth=4)
             
             
             # full sDFT (provided D0)
@@ -450,14 +459,14 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
             integrand_fit = full_theory_integrand(t_theory, D0)
 
             if show_theory:
-                integrand_ax.plot(t_theory/rescale_x, integrand_fit, color='black', linewidth=1, label='sDFT inter. (no fit)' if box_size_index==0 else None)
+                integrand_ax.plot(t_theory/rescale_x_value, integrand_fit, color='black', linewidth=1, label='sDFT inter. (no fit)' if box_size_index==0 else None)
 
             # this plots a straight line where we'll put the labels
-            tt = t/rescale_x
+            tt = t/rescale_x_value
             c = 3e-3
             m = 0.5
             label_line = c*tt**m
-            integrand_ax.plot(tt, label_line)
+            # integrand_ax.plot(tt, label_line)
 
             # labels on plot
             if labels_on_plot:
@@ -489,10 +498,14 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
                     zorder=10,
                 )
 
+            if show_T_of_L:
+                T_of_L = countoscope_theory.timescaleint.T_of_L([L], D0, phi, sigma)
+                integrand_ax.vlines(T_of_L, *integrand_ax.get_ylim(), color=color)
+
     if show_slope:
         slope = -1
-        x1, y1 = 1e0, 1e-2
-        slope_line_size = 10
+        x1, y1 = 1.5e0, 3e-2
+        slope_line_size = 12
         x2, y2 = x1*slope_line_size, y1*slope_line_size**slope
         ax.plot([x1, x2], [y1, y2], color=common.FIT_COLOR)
         ax.text(x1, y2, f'$t^{{{slope}}}$', ha='left', va='center', color=common.FIT_COLOR)
@@ -500,7 +513,7 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
     if show_legend:
         integrand_ax.legend(fontsize=legend_fontsize)
     integrand_ax.loglog()
-    if RESCALE_X == RESCALE_X_L2:
+    if rescale_x == RESCALE_X_L2:
         integrand_ax.set_xlabel('$t/L^2$')
     else:
         integrand_ax.set_xlabel('$t$ (s)')
@@ -510,7 +523,7 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
         integrand_ax.set_ylim(1e-5, 1.2e0)
     else:
         integrand_ax.set_ylabel(r'$C_N(\Delta t)$')
-        integrand_ax.set_ylim(1e-4, 1.2e0)
+        integrand_ax.set_ylim(5e-4, 1.2e0)
     
     if show_nofit_cutoff:
         integrand_ax.hlines(NOFIT_CROP_THRESHOLD, *integrand_ax.get_xlim(), label='nofit crop threshold', color='gray')
@@ -518,23 +531,23 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
     if save_data:
         common.save_data(f'visualisation/data/Ds_from_timescaleint_{plateau_source}_{file}',
                 Ds=D_of_Ls, D_uncs=D_of_L_uncs, Ls=box_sizes,
-                particle_diameter=sigma)
+                particle_diameter=sigma, max_time_hours=data.get('max_time_hours'),)
         common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_{plateau_source}_{file}',
                 Ds=D_of_Ls_nofit, D_uncs=D_of_L_uncs_nofit, Ls=box_sizes,
-                particle_diameter=sigma)
+                particle_diameter=sigma, max_time_hours=data.get('max_time_hours'),)
         common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_cropped_{plateau_source}_{file}',
                 Ds=D_of_Ls_nofit2, D_uncs=D_of_L_uncs_nofit2, Ls=box_sizes,
-                particle_diameter=sigma)
+                particle_diameter=sigma, max_time_hours=data.get('max_time_hours'),)
         common.save_data(f'visualisation/data/Ds_from_C_N_simplefit_{plateau_source}_{file}',
                 Ds=D_of_Ls_simplefit, D_uncs=D_of_L_uncs_simplefit, Ls=box_sizes,
-                particle_diameter=sigma)
+                particle_diameter=sigma, max_time_hours=data.get('max_time_hours'),)
     
 
     if title != None: # not if title b/c we want title='' to go down this path
         integrand_ax.set_title(title)
     else:
         integrand_ax.set_title(fr'{file} timescale integrand, $\phi={phi:.3f}$, $\sigma={sigma}$, plateau:{var_label}', fontsize=10)
-    
+
 
 if __name__ == '__main__':  
     for file in common.files_from_argv('box_counting/data', 'counted_'):
@@ -542,8 +555,13 @@ if __name__ == '__main__':
 
         go(file, ax=integ_axs, plateau_source=PLATEAU_SOURCE, show_theory=SHOW_THEORY,
            labels_on_plot=LABELS_ON_PLOT, max_num_boxes=MAX_NUM_BOXES, show_fits=SHOW_TIMESCALEINTEGRAL_FIT,
-           late_C_N_alpha=LATE_CN_ALPHA, save_data=True)
+           save_data=True, show_legend=SHOW_LEGEND, rescale_x=RESCALE_X)
         
         integ_axs.set_xlim(0.5e-1, 1e6)
+
+        if RESCALE_X == RESCALE_X_L2:
+            integ_axs.set_xlim(0.5e-1, 1e3)
+            integ_axs.set_ylim(1e-3, 1)
+
         
         common.save_fig(integ_fig, f'box_counting/figures_png/integrand_{file}.png', dpi=300)

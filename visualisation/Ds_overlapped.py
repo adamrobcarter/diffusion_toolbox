@@ -8,7 +8,7 @@ import countoscope_theory.timescaleint
 import scipy.special
 
 SHOW_TWIN_K_AXIS = False
-ERRORBAR_ALPHA = 0.2
+ERRORBAR_ALPHA = 0.4
 LABELS_ON_PLOT = False
 LABELS_ON_PLOT_FONTSIZE = 7
 LEGEND_FONTSIZE = 7
@@ -112,8 +112,8 @@ linestyle = {
 
 
 def get_D0(file):
-
-    suffixes = ['_crop', '_trim', '_first', '_smallbins', '_nozero', '_no_overlap', '_long']
+    # we don't do these ones in get_D0_filename cause sometimes we might want to compare these ones
+    suffixes = ['_crop', '_trim', '_first', '_smallbins', '_nozero', '_no_overlap', '_long', '_longer']
     for suffix in suffixes:
         if suffix in file:
             file = file.split(suffix)[0]
@@ -123,14 +123,21 @@ def get_D0(file):
     data = common.load(f"visualisation/data/Ds_from_{D0_SOURCE}_{file}.npz")
     D_MSD = data["Ds"][0]
     sigma = data['particle_diameter']
-    phi = data['pack_frac_given']
+    if 'pack_frac' in data:
+        phi = data['pack_frac']
+    else:
+        print('using pack frac *given*')
+        phi = data['pack_frac_given']
+
     print(f'D_MSD = {D_MSD}')
     return D_MSD, sigma, phi
 
 def get_D0_filename(file):
 
-    # if file == 'sim_nohydro_010_L640':
-    #     file = 'sim_nohydro_010_L640_short'
+    suffixes = ['_merged'] # these are ones we will never want to compare
+    for suffix in suffixes:
+        if suffix in file:
+            file = file.split(suffix)[0]
 
     if file in ['eleanorlong066', 'sim_nohydro_034_L640', 'sim_nohydro_034_L1280',
                 'sim_nohydro_010_L320', 'sim_nohydro_010_L544', 'sim_nohydro_010_L544_dt2', 'sim_nohydro_010_L640',
@@ -139,7 +146,7 @@ def get_D0_filename(file):
         file += '_div8'
     return file
 
-def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
+def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
     data = None
 
     if source == 'D0Sk':
@@ -148,10 +155,6 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
         F                 = data["F"] # (num timesteps) x (num k bins)
         F_unc             = data['F_unc']
         k                 = data["k"]
-        # particle_diameter = data.get('particle_diameter', 1)
-        
-
-        D_MSD, sigma, phi = get_D0(file)
 
         S = F[0, :]
         S_unc = F_unc[0, :]
@@ -173,8 +176,6 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
 
     elif source == 'D0Sk_theory':
         
-        D_MSD, sigma, phi = get_D0(file)
-        
         L = np.logspace(np.log10(sigma*1e-1), np.log10(sigma*3e1), 100)
         L = L[::-1] # so that it's the same order as the others
         k = 2*np.pi/L
@@ -194,9 +195,8 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
         D_uncs = np.zeros_like(Ds)
 
     elif source == 'D_of_L_theory':
-        D_MSD, sigma, phi = get_D0(file)
 
-        L = np.logspace(np.log10(sigma*1e-1), np.log10(sigma*5e1), 100)
+        L = np.logspace(np.log10(sigma*0.5e-1), np.log10(sigma*5e1), 100)
         L = L[::-1] # so that it's the same order as the others
         D = countoscope_theory.timescaleint.D_of_L(L, D_MSD, phi, sigma)
 
@@ -205,9 +205,8 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
         D_uncs = np.zeros_like(Ds)
 
     elif source == 'D_of_L_theory_Lh':
-        D_MSD, sigma, phi = get_D0(file)
 
-        L = np.logspace(np.log10(sigma*1e-1), np.log10(sigma*5e1), 100)
+        L = np.logspace(np.log10(sigma*0.5e-1), np.log10(sigma*5e1), 100)
         L = L[::-1] # so that it's the same order as the others
         D = countoscope_theory.timescaleint.D_of_L_Lh(L, 1, phi, sigma)
 
@@ -216,8 +215,6 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
         D_uncs = np.zeros_like(Ds)
 
     elif source == 'dominiguez_theory':
-        # assert '034' in file
-        D_MSD, sigma, phi = get_D0(file)
         # xs = np.logspace()
         k = np.logspace(-2, 0.5)
         # L = 2*np.pi/k
@@ -234,7 +231,6 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
         D_uncs = np.zeros_like(Ds)
 
     elif source == 'panzuela_theory':
-        D_MSD, sigma, phi = get_D0(file)
 
         L = np.logspace(-1, 2, 200)
         k = 1/L
@@ -281,8 +277,26 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI):
 
         elif source.startswith('boxcounting') or source.startswith('timescaleint') or source.startswith('C_N') or source.startswith('NtN0'):
             xs = data['Ls']
-            if PLOT_AGAINST_K:
-                raise
+            T_of_L = countoscope_theory.timescaleint.T_of_L(xs, D_MSD, phi, sigma)
+            print('L', xs)
+            print('T', T_of_L)
+            max_time = data['max_time_hours'] * 60 * 60
+            print('max time', max_time)
+            print(10 * T_of_L < max_time)
+
+            num_before = xs.size
+            xs     = xs    [   10 * T_of_L < max_time]
+            Ds     = Ds    [   10 * T_of_L < max_time]
+            print(D_uncs.shape)
+            if len(D_uncs.shape) == 1:
+                D_uncs = D_uncs[10 * T_of_L < max_time]
+            else:
+                D_uncs = D_uncs[:, 10 * T_of_L < max_time]
+            assert xs.size, 'we dropped all points'
+            print(xs)
+            print(f'kept L<{xs[-1]/sigma:.2g}σ ({xs.size/num_before:.2f})')
+            
+            assert not PLOT_AGAINST_K
 
         elif source.startswith('MSD_centre_of_mass'):
             xs = np.sqrt(data['Ns'] / data['density'])
@@ -361,10 +375,14 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
 
     used_sources = []
 
+    D_MSD, sigma, phi = get_D0(file)
+
     # get all the data
     for source in sources:
         try:
-            xs[source], Ds[source], D_uncs[source], pixel_size_temp, window_size_temp, pack_frac_given_temp, pack_frac_calced_temp, diameter_temp = get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI)
+            xs[source], Ds[source], D_uncs[source], pixel_size_temp, window_size_temp, \
+                pack_frac_given_temp, pack_frac_calced_temp, diameter_temp = \
+                get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma)
         
             if pixel_size_temp:       pixel_size       = pixel_size_temp
             if window_size_temp:      window_size      = window_size_temp
@@ -381,7 +399,7 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
     assert found_at_least_one_file
 
     if D0_SOURCE in used_sources and not PREVENT_Y_RESCALING:
-        ax.set_ylabel('$D/D_{{MSD}}$')
+        ax.set_ylabel(r'$D/D_\mathrm{self}$')
         rescale_y = Ds[D0_SOURCE][0]
     else:
         ax.set_ylabel('$D$ ($\mathrm{\mu m^2/s}$)')
@@ -413,7 +431,6 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
         pack_frac = None
     if pack_frac:
         if show_pack_frac_plateau:
-            D_MSD, _, _ = get_D0(file)
             x = (1+pack_frac)/(1-pack_frac)**3 * D_MSD
             Dc_theory_color = 'gray'
             Dc_theory_label = r'$(1+\phi)/(1-\phi)^3$' if not LABELS_ON_PLOT else None
@@ -450,6 +467,8 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
 
         else:
             # print('ys', source, ys)
+            print('for', file, source, 'plotting', xs[source].shape)
+            print('getting marker', file, source, get_marker(source))
             ax.plot(xs[source], ys, linestyle=get_linestyle(source), marker=get_marker(source), markersize=4, color=color,
                 label=plot_label, zorder=zorder)
             ax.errorbar(xs[source], ys, yerr=yerrs, linestyle='none', marker='none', alpha=ERRORBAR_ALPHA, color=color)
@@ -481,7 +500,7 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
             print(source, 'all errors zero')
 
 
-
+        print('Ds', file, source, ys)
         # assert not np.any(np.isnan(Ds)), 'nan was found in Ds'
         [all_Ds.append(D) for D in ys]
 
@@ -531,7 +550,6 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
     # ax.semilogy()
 
     if not LABELS_ON_PLOT:
-        print('legfont', legend_fontsize)
         ax.legend(fontsize=legend_fontsize)
     # ax.set_title(f'{file}, errorbars not yet all correct')
     # name = '_'.join(used_sources)
@@ -542,12 +560,6 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
     if label_k_scaling:
         k_scaling = r'$k \rightarrow L = 2\pi/k$' if TWO_PI else r'$k \rightarrow L = 1/k$'
         ax.text(0.12, 0.8, k_scaling, transform=ax.transAxes)
-
-    # if file == 'eleanorlong066':
-    #     D0 = 0.015
-    #     ax.hlines(D0, *ax.get_xlim())
-    #     s = (1+0.66)/(1-0.66)**3
-    #     ax.hlines(D0*s, *ax.get_xlim())
     
     if not ax_supplied:
         if export_destination:
@@ -561,13 +573,13 @@ def get_linestyle(source):
     return linestyle.get(trim_source(source), 'none')
 
 def get_marker(source):
-    print('marker', source, markers.get(trim_source(source)))
+    print('marker', source, trim_source(source), markers.get(trim_source(source)))
     return markers.get(trim_source(source), 'o')
 
 def get_color(source):
     return colors.get(trim_source(source), common.FIT_COLOR)
 
-suffixes = ['_obs', '_nmsdfitinter', '_nmsdfit', '_var', '_varmod']
+suffixes = ['_obs', '_nmsdfitinter', '_nmsdfit', '_var', '_varmod', '_sDFT']
 
 def trim_source(source):
     for suffix in suffixes:
@@ -600,7 +612,7 @@ if __name__ == '__main__':
                 #     'boxcounting_first_quad',
                     'boxcounting_collective',
                 #   'timescaleint_nofit_cropped_var',
-                  'timescaleint_var',
+                #   'timescaleint_var',
                   'timescaleint_nmsdfitinter',
                 #   'MSD_centre_of_mass_proximity',
                 'D_of_L_theory',

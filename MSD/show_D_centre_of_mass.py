@@ -82,7 +82,7 @@ for file in common.files_from_argv('MSD/data', 'msd_centre_of_mass_'):
 #         # ax.plot(t[1:], np.gradient(msd[1:], t[1:])/4, color=color, marker='.', markersize=3, linestyle=r'none', label=rf'g={groupsize} $1/4 \cdot \mathrm{d}\langle r^2 \rangle/\mathrm{d}t$')
 #         # ax.fill_between(t[1:], msd[1:]-msd_unc[1:], msd[1:]+msd_unc[1:], alpha=0.2)
 
-#         fitting_points = common.exponential_integers(1, t.size-1)
+#         fitting_points = common.exponential_indices(t)
 
 #         func = lambda t, D: 4*D*t
 #         popt, pcov = scipy.optimize.curve_fit(func, t[fitting_points], msd[fitting_points])

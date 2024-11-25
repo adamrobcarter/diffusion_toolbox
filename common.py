@@ -446,6 +446,9 @@ def numba_p_assert(condition, message):
         print('Assertion failed: ', message)
 
 def exponential_integers(mini, maxi, num=50):
+    warnings.warn('this is deprecated, use exponential_indices')
+
+
     # note: i might return less than num - if the integers are closely spaced I will remove duplicates
     assert mini < maxi, f'I got min={mini}, max={maxi}'
     assert isinstance(num, (int, np.integer)), 'num must be an integer'
@@ -455,6 +458,28 @@ def exponential_integers(mini, maxi, num=50):
     # print('minmax', min, max)
     integers = np.unique(np.round(10**np.linspace(np.log10(mini), np.log10(maxi), num)).astype('int'))
     return integers
+
+def exponential_indices(t, num=100):
+    assert num > 0
+    # this is as above but it will work for indexing time arrays
+    # even if the time interval is not constant
+
+    if t[0] == 0:
+        t = t[1:]
+    #     ratio = (t[-1]/t[1]) ** (1/num)
+    # else:
+    ratio = (t[-1]//t[0]) ** (1/num)
+
+    points = [1]
+    last_t = t[1]
+    for t_index in range(1, t.size):
+        if t[t_index] > last_t * ratio:
+            points.append(t_index)
+            last_t = last_t * ratio
+
+    assert 0.75 < len(points)/num < 2, f'fraction given = {len(points)/num} (ratio={ratio})' # check that we gave roughly the right number of points
+
+    return np.array(points)
 
 def add_drift(particles, drift_x, drift_y):
     # drift should be per frame, particles should be rows of x,y,t
@@ -871,3 +896,7 @@ def get_used_window(file, window_size_x, window_size_y):
     # these ensure when we do f(k, t) we have the proper periodic conditions
 
     return x, y
+
+def set_legend_handle_size(legend):
+    for handle in legend.legend_handles:
+        handle.set_markersize(6.0)

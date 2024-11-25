@@ -21,12 +21,8 @@ if __name__ == '__main__':
 
         if file.startswith('eleanorlong'):
             pixel_size    = data['pixel_size']
-            box_sizes = np.logspace(np.log10(pixel_size), np.log10(0.9*window_size), num_boxes) # N was 35, but 70 for eleanorlong066
-            # print('aaaa', 0.8*window_size/pixel_size)
-            # box_sizes_px = np.array([0.9*window_size/pixel_size])
-            # sep_sizes = 17 - box_sizes
-            # sep_sizes = 9 - box_sizes # moreoverlap
-            sep_sizes = 7 - box_sizes # moremoreoverlap
+            box_sizes = np.logspace(np.log10(pixel_size/2), np.log10(0.9*window_size), num_boxes) # N was 35, but 70 for eleanorlong066
+
 
         elif file.startswith('brennan'):
 

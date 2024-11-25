@@ -69,32 +69,39 @@ def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LON
     if export_destination:
         common.save_fig(fig, export_destination, hide_metadata=True)
     common.save_fig(fig, f'MSD/figures_png/{filename}.png')
+
+
+    metadata = dict(
+        particle_diameter=data.get('particle_diameter'),
+        pack_frac_given  =data.get('pack_frac_given'),
+        pack_frac        =data.get('pack_frac'),
+        pixel_size       =data.get('pixel_size'),
+        window_size_x    =data.get('window_size_x'),
+        window_size_y    =data.get('window_size_y')
+    )
+
     common.save_data(f'visualisation/data/Ds_from_MSD_{file}',
         Ds=[fits['full']['D']], D_uncs=[fits['full']['D_unc']], labels=[''],
-        particle_diameter=data.get('particle_diameter'), pack_frac_given=data.get('pack_frac_given'),
-        pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
+        **metadata
     )
     common.save_data(f'visualisation/data/Ds_from_MSD_short_{file}',
         Ds=[fits['short']['D']], D_uncs=[fits['short']['D_unc']], labels=[''],
-        particle_diameter=data.get('particle_diameter'), pack_frac_given=data.get('pack_frac_given'),
-        pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
+        **metadata
     )
     if t.size > 100:
         common.save_data(f'visualisation/data/Ds_from_MSD_long_{file}',
             Ds=[fits['long']['D']], D_uncs=[fits['long']['D_unc']], labels=[''],
-            particle_diameter=data.get('particle_diameter'), pack_frac_given=data.get('pack_frac_given'),
-            pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
+        **metadata
         )
     common.save_data(f'visualisation/data/Ds_from_MSD_first_{file}',
         Ds=[fits['first']['D']], D_uncs=[fits['first']['D_unc']], labels=[''],
-        particle_diameter=data.get('particle_diameter'), pack_frac_given=data.get('pack_frac_given'),
-        pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
+        **metadata
     )
 
 def fit_msd(t, msd, msd_unc):
     ret = {}
 
-    fitting_points = common.exponential_integers(1, t.size-1)
+    fitting_points = common.exponential_indices(t)
     func = lambda t, D: 4*D*t
     popt, pcov = scipy.optimize.curve_fit(func, t[fitting_points], msd[fitting_points])
 

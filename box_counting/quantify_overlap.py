@@ -47,5 +47,5 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
                 all_output[f'spacing{spacing_i}_split{split_i}_{key}'] = output[key]
             progress.update()
     
-    common.save_data(f'box_counting/data/quantify_overlap_{file}_{len(SPACINGS)}_{NUM_SPLITS}.npz', **all_output)
+        common.save_data(f'box_counting/data/quantify_overlap_{file}_{len(SPACINGS)}_{NUM_SPLITS}.npz', **all_output)
     progress.close()

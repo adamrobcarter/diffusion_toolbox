@@ -80,7 +80,7 @@ def go(file, ax, target_ks, SHOW_FIT=False):
             # S[S < 0.02] = np.nan
             # S_s[S_s < 0.02] = np.nan
 
-            label = fr"$k={k:.2f}\mathrm{{\mu m}}^{{-1}}$"
+            label = fr"$k={k:.2g}\mathrm{{\mu m}}^{{-1}}$"
             # LABEL += "($L\approx{2*np.pi/k:.1f}\mathrm{{\mu m}}$)"
 
             if np.isnan(f).sum() == f.size:
@@ -155,21 +155,34 @@ def go(file, ax, target_ks, SHOW_FIT=False):
             offscreen = f <= 0
             print(f'offscreen: {offscreen.sum()/offscreen.size}')
 
+            
+
             if LOGARITHMIC_Y:
                 t_index_for_text = int(t_th.size * (3-graph_i) / 4)
             else:
                 t_index_for_text = int(350 / (k_index+10))
-            t_index_for_text = min(t_index_for_text, t_th.size-1)
+                
+                # this plots a straight line where we'll put the labels
+                tt = t_th
+                c = 0.35
+                m = 0.25
+                label_line = m * np.log10(tt) + c
+                # ax.plot(tt, label_line)
 
-            t_index_for_text = np.argmax(f<0.5)
+                # t_index_for_text = np.argmax(F_for_plot < label_line)
+                t_index_for_text = np.argmax(theory_curve < label_line)
+
+            # t_index_for_text = min(t_index_for_text, t_th.size-1)
+
+            # t_index_for_text = np.argmax(f<0.5)
 
             angle = np.arctan(np.gradient(theory_curve, t_th)[t_index_for_text]) * 180/np.pi
             # L_label = rf'$k={k[k_index]:.1f}\mathrm{{\mu m}}^{{-1}}$'
-            ax.text(t_th[t_index_for_text+0], theory_curve[t_index_for_text+0], label,
+            ax.text(t_th[t_index_for_text]*1.1, theory_curve[t_index_for_text]+0.03, label,
                     horizontalalignment='center', color=color, fontsize=9,
                     transform_rotates_text=True, rotation=angle, rotation_mode='anchor')
 
-        ax.legend(fontsize=7)
+        # ax.legend(fontsize=7)
         ax.semilogx()
         if LOGARITHMIC_Y:
             ax.semilogy()

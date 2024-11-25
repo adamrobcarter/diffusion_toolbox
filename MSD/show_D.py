@@ -33,7 +33,7 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
     # ax.plot(t[100+50:END-49], D_smooth[100:END], marker='.', markersize=3, linestyle=r'none')
     
 
-    fitting_points = common.exponential_integers(1, t.size-1)
+    fitting_points = common.exponential_indices(t)
 
     func = lambda t, D: 4*D*t
     popt, pcov = scipy.optimize.curve_fit(func, t[fitting_points], msd[fitting_points])

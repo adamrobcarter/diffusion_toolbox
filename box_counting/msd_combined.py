@@ -124,7 +124,7 @@ def go(files, ax, target_num_box_sizes=None, box_size_indices=None, legend_num_b
                 else:
                     N2_theory = lambda t, D, N: common.N2_nointer_2D(t, D, N, L, L)
                 # fitting_points = np.unique(np.round(10**np.linspace(0, np.log10(t.max()/2))).astype('int'))
-                fitting_points = common.exponential_integers(1, t.size) - 1
+                fitting_points = common.exponential_indices(t)
                 # print(fitting_points)
                 popt, pcov = scipy.optimize.curve_fit(N2_theory, t[fitting_points], delta_N_sq[fitting_points], maxfev=2000)
                 
@@ -178,7 +178,6 @@ def go(files, ax, target_num_box_sizes=None, box_size_indices=None, legend_num_b
                 good = delta_N_sq > 1e-7
                 good[0] = False
 
-                print('markersize', markersize)
                 if DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE and delta_N_sq.size > 1000:
                     points_to_plot = common.exponential_integers(1, delta_N_sq.size-1, 500)
                 else:
@@ -214,14 +213,14 @@ def go(files, ax, target_num_box_sizes=None, box_size_indices=None, legend_num_b
     # legend = ax.legend(fontsize=4, loc='upper right')
     if show_legend:
         legend = ax.legend(fontsize=8, loc='upper center')
-        for handle in legend.legend_handles:
-            handle.set_markersize(6.0)
+        common.set_legend_handle_size(legend)
     ax.semilogy()
     ax.semilogx()
     xlabel = '$\Delta t/L^2$' if collapse_x else '$\Delta t$'
     ylabel = r'$\Delta N^2(\Delta t) / L^2$' if collapse_y else '$\Delta N^2(\Delta t)$'
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
+
     # ax.set_title(', '.join(titles))
     # ax.set_title(titles[0])
 

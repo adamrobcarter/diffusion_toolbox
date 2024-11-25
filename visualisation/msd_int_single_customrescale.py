@@ -91,7 +91,7 @@ for file in sys.argv[1:]:
         N2_theory = lambda t, D: 2 * N * (1 - common.famous_f(4*D*t/L**2)**2) # countoscope eq. 2
         # ax.plot(t_theory, N2_theory(t_theory, popt[0]), color='black', linewidth=1)
 
-        fitting_points = common.exponential_integers(1, t.shape[0]-1)
+        fitting_points = common.exponential_indices(t)
         popt, pcov = scipy.optimize.curve_fit(N2_theory, t[fitting_points], intensity_diff[fitting_points]/intensity_factor)
         ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1)
         label += fr', $D_\mathrm{{fit}}={popt[0]:.3f}$'

@@ -174,15 +174,15 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
 
     common.save_data(f'particle_detection/data/particles_{outfile}.npz',
         particles=data,
-        time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given,
-        window_size_x=out_width, window_size_y=out_width, max_time_hours=round(num_timesteps*dt/60/60, 1),
+        time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
+        window_size_x=out_width, window_size_y=out_width, max_time_hours=round(num_timesteps*dt/60/60, 2),
     )
 
     if data.shape[1] == 4:
         common.save_data(f'particle_linking/data/trajs_{outfile}.npz',
             particles=data,
-            time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given,
-            window_size_x=out_width, window_size_y=out_width, max_time_hours=round(num_timesteps*dt/60/60, 1),
+            time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
+            window_size_x=out_width, window_size_y=out_width, max_time_hours=round(num_timesteps*dt/60/60, 2),
         )
     
     if data.size > 5e7:
@@ -191,15 +191,15 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
 
         common.save_data(f'particle_detection/data/particles_{outfile}_div8.npz',
             particles=data_small,
-            time_step=dt, particle_diameter=2.79, pack_frac_given=pack_frac_given,
-            window_size_x=out_width, window_size_y=out_width, max_time_hours=round(end_timestep*dt/60/60, 1),
+            time_step=dt, particle_diameter=2.79, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
+            window_size_x=out_width, window_size_y=out_width, max_time_hours=round(end_timestep*dt/60/60, 2),
         )
 
         if data.shape[1] == 4:
             common.save_data(f'particle_linking/data/trajs_{outfile}_div8.npz',
                 particles=data_small,
-                time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given,
-                window_size_x=out_width, window_size_y=out_width, max_time_hours=round(end_timestep*dt/60/60, 1),
+                time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
+                window_size_x=out_width, window_size_y=out_width, max_time_hours=round(end_timestep*dt/60/60, 2),
             )
     print()
     
@@ -233,6 +233,7 @@ datas = [
     # (800, 8, 0.02, '', 1, 24*60*60),
     # (320, 0.5, 0.114, '', 1, None, 2.972),
     # (320, 8, 0.114, '_long', 1, None, 2.972),
+    (320, 16, 0.114, '_longer', 1, None, 2.972),
 ]
 
 for L, dt, phi, suffix, nth_timestep, max_time, particle_diameter in datas:
@@ -247,7 +248,7 @@ for L, dt, phi, suffix, nth_timestep, max_time, particle_diameter in datas:
 
 # go('/data2/acarter/Spectral_Sophie_Boxes/data/spec_softetakt_long_run_dtau_0.025_nsave_2.suspension_phi_0.1_L_1280_modified.txt', 'brennan_hydro_010_L1280', 1280, 1280, 0.5, 0.1, 1)
 # go('/data2/acarter/Spectral_Sophie_Boxes/data/spec_softetakt_long_run_dtau_0.025_nsave_2.suspension_phi_0.1_L_544_modified.txt',  'brennan_hydro_010_L544',   544,  544, 0.5, 0.1, 1)
-go('/data2/acarter/Spectral_Sophie_Boxes/data/spec_softetakt_long_run_dtau_0.025_nsave_2.suspension_phi_0.02_L_1600_modified.txt', 'brennan_hydro_002_L1600', orig_width=1600, out_width=1600, dt=0.5, pack_frac_given=0.02, particle_diameter=2.79)
+# go('/data2/acarter/Spectral_Sophie_Boxes/data/spec_softetakt_long_run_dtau_0.025_nsave_2.suspension_phi_0.02_L_1600_modified.txt', 'brennan_hydro_002_L1600', orig_width=1600, out_width=1600, dt=0.5, pack_frac_given=0.02, particle_diameter=2.79)
 # go('/data2/acarter/Spectral_Sophie_Boxes/data/spec_softetakt_long_run_dtau_0.025_nsave_2.suspension_phi_0.02_L_800_modified.txt',  'brennan_hydro_002_L800',   800,  800, 0.5, 0.02, 1)
 
 
