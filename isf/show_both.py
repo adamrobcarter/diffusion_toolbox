@@ -200,6 +200,8 @@ def show_single_F_type(
                 D_unc_first = 1 / (k**2 * t[first_index]) * f_unc[first_index] / f[first_index]
                 # print(f'  first D={D_first:.3g}')
                 assert D_unc_first >= 0, f'D_unc_first={D_unc_first:.3f} = 1 / ({k:.3f}**2 * {t[first_index]:.3f} * {f[first_index]:.3f}) * {f_unc[first_index]:.3f}'
+                print(f'f rel err {f_unc[first_index]/f[first_index]:.4f}, D rel err {D_unc_first/D_first}')
+                print(f'D(f)={D_first:.3f}, D(f+df)={-1 / (k**2 * t[first_index]) * np.log(f[first_index]+f_unc[first_index]):.3f}, D(f-df)={-1 / (k**2 * t[first_index]) * np.log(f[first_index]-f_unc[first_index]):.3f}')
                 Ds_for_saving_first    .append(D_first)
                 D_uncs_for_saving_first.append(D_unc_first)
                 ks_for_saving_first    .append(k)
@@ -327,7 +329,7 @@ def show_single_F_type(
             
                 ax.set_ylim(end_plot_y , 1.01)
                     # ax.set_xlim(0, 1/k**2 * 100)
-                ax.set_xlim(-end_plot_time/50, end_plot_time)
+                ax.set_xlim(-end_plot_time/50, end_plot_time/ 5)
 
             # ax.set_ylim(min(max(func(t[np.argmax(f_bad[1:])], *f_popt), 1e-3), 9.9e-1), 1.01)
             # ax.set_ylim(1e-3, 1.1)

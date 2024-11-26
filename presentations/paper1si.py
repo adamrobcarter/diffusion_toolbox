@@ -45,48 +45,70 @@ def show_png(ax, file):
 SI_SINGLE_FIGSIZE = (4, 3.5)
 
 # ###################################################
-fig, ax = plt.subplots(1, 1, figsize=SI_SINGLE_FIGSIZE)
-files = ['eleanorlong001_trim1.0', 'eleanorlong001_trim0.5', 'eleanorlong001_trim0.25', 'eleanorlong001_trim0.125', 'eleanorlong001_trim0.0625']
-times = [str(common.load(f'visualisation/data/Ds_from_f_first_first_{file}.npz')['max_time_hours']) + ' hours' for file in files]
+# fig, ax = plt.subplots(1, 1, figsize=SI_SINGLE_FIGSIZE)
+# files = ['eleanorlong001_trim1.0', 'eleanorlong001_trim0.5', 'eleanorlong001_trim0.25', 'eleanorlong001_trim0.125', 'eleanorlong001_trim0.0625']
+# times = [str(common.load(f'visualisation/data/Ds_from_f_first_first_{file}.npz')['max_time_hours']) + ' hours' for file in files]
 
-visualisation.Ds_overlapped_mult.go(
-    files,
-    sources=['MSD_first', 'f_first_first'],
+# visualisation.Ds_overlapped_mult.go(
+#     files,
+#     sources=['MSD_first', 'f_first_first'],
+#     ax=ax,
+#     logarithmic_y=True,
+#     plot_against_k=True,
+#     legend_fontsize=7,
+#     # linestyle='-',
+#     file_labels=times,
+#     errorbar_alpha=0,
+# )
+# common.save_fig(fig, f'{path}/si_f_divergence_movie_length.png', hide_metadata=True)
+# common.save_fig(fig, f'{path}/si_f_divergence_movie_length.pdf', hide_metadata=True)
+
+# # ###################################################
+# fig, ax = plt.subplots(1, 1, figsize=SI_SINGLE_FIGSIZE)
+
+# box_counting.msd_single.go(
+#     'eleanorlong001',
+#     ax,
+#     rescale_x=box_counting.msd_single.RESCALE_X_L2,
+#     rescale_y=box_counting.msd_single.RESCALE_Y_L2
+# )
+# ax.set_ylim(1e-3*0.3, 0.7e-1*0.3)
+# ax.set_xlim(1e-3, 1e5)
+# common.save_fig(fig, f'{path}/si_nmsd_lowdensity.png', hide_metadata=True)
+# common.save_fig(fig, f'{path}/si_nmsd_lowdensity.pdf', hide_metadata=True)
+
+# # ###################################################
+# fig, ax = plt.subplots(1, 1, figsize=SI_SINGLE_FIGSIZE)
+
+# box_counting.msd_single.go(
+#     'eleanorlong010',
+#     ax,
+#     rescale_x=box_counting.msd_single.RESCALE_X_L2,
+#     rescale_y=box_counting.msd_single.RESCALE_Y_L2
+# )
+# ax.set_ylim(1e-3, 0.7e-1)
+# ax.set_xlim(1e-3, 1e5)
+# common.save_fig(fig, f'{path}/si_nmsd_highdensity.png', hide_metadata=True)
+# common.save_fig(fig, f'{path}/si_nmsd_highdensity.pdf', hide_metadata=True)
+
+# ###################################################
+fig, ax = plt.subplots(1, 1, figsize=SI_SINGLE_FIGSIZE)
+
+# visualisation.Ds_overlapped_mult.go(
+#     ['sim_nohydro_011_L320', 'sim_nohydro_011_L320_longer'],
+#     ax,
+#     ['f_first_first', 'f_long'],
+#     # PLOT_AGAINST_K=True,
+#     logarithmic_y=False,
+#     plot_against_k=True,
+# )
+visualisation.Ds_overlapped.go(
+    'sim_nohydro_011_L320',
+    ['f_first_first', 'f_long'],
     ax=ax,
-    logarithmic_y=True,
+    # PLOT_AGAINST_K=True,
+    logarithmic_y=False,
     plot_against_k=True,
-    legend_fontsize=7,
-    # linestyle='-',
-    file_labels=times,
-    errorbar_alpha=0,
 )
-common.save_fig(fig, f'{path}/si_f_divergence_movie_length.png', hide_metadata=True)
-common.save_fig(fig, f'{path}/si_f_divergence_movie_length.pdf', hide_metadata=True)
-
-# ###################################################
-fig, ax = plt.subplots(1, 1, figsize=SI_SINGLE_FIGSIZE)
-
-box_counting.msd_single.go(
-    'eleanorlong001',
-    ax,
-    rescale_x=box_counting.msd_single.RESCALE_X_L2,
-    rescale_y=box_counting.msd_single.RESCALE_Y_L2
-)
-ax.set_ylim(1e-3*0.3, 0.7e-1*0.3)
-ax.set_xlim(1e-3, 1e5)
-common.save_fig(fig, f'{path}/si_nmsd_lowdensity.png', hide_metadata=True)
-common.save_fig(fig, f'{path}/si_nmsd_lowdensity.pdf', hide_metadata=True)
-
-# ###################################################
-fig, ax = plt.subplots(1, 1, figsize=SI_SINGLE_FIGSIZE)
-
-box_counting.msd_single.go(
-    'eleanorlong010',
-    ax,
-    rescale_x=box_counting.msd_single.RESCALE_X_L2,
-    rescale_y=box_counting.msd_single.RESCALE_Y_L2
-)
-ax.set_ylim(1e-3, 0.7e-1)
-ax.set_xlim(1e-3, 1e5)
-common.save_fig(fig, f'{path}/si_nmsd_highdensity.png', hide_metadata=True)
-common.save_fig(fig, f'{path}/si_nmsd_highdensity.pdf', hide_metadata=True)
+common.save_fig(fig, f'{path}/si_fkt_short_long.png', hide_metadata=True)
+common.save_fig(fig, f'{path}/si_fkt_short_long.pdf', hide_metadata=True)

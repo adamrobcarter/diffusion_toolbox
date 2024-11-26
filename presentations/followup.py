@@ -30,14 +30,14 @@ visualisation.Ds_overlapped.go(
     ['f_short'],
     export_destination=path+'Ds_overlapped_eleanorlong034_f_short.pdf',
     figsize=figsize_Ds_overlapped_big,
-    PLOT_AGAINST_K=True,
+    plot_against_k=True,
 )
 visualisation.Ds_overlapped.go(
     'eleanorlong034',
     ['f_short', 'MSD_first'],
     export_destination=path+'Ds_overlapped_eleanorlong034_f_short_MSD.pdf',
     figsize=figsize_Ds_overlapped_big,
-    PLOT_AGAINST_K=True,
+    plot_against_k=True,
 )
 
 preprocessing.stack_movie.go(

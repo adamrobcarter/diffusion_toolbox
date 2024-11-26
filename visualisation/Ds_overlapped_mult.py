@@ -173,7 +173,8 @@ def show_one_file(
     assert sum([len(x) for x in xs.values()]) > 0, f'xs was empty for {file}'
     xmin = min([min(x) for x in xs.values() if len(x)>0]) / rescale_x
     xmax = max([max(x) for x in xs.values() if len(x)>0]) / rescale_x
-    ax.set_xlim(xmin, xmax)
+    print('xlim', xmin, xmax)
+    # ax.set_xlim(xmin, xmax)
 
     # if pack_frac_calced:
     #     pack_frac = pack_frac_calced
@@ -288,8 +289,6 @@ def show_one_file(
             realspace_ax.set_xlabel(r'$2\pi/k / \sigma$')
     else:
         ax.set_xlabel(r'$L / \sigma$')
-
-
 
 
 def go(files, ax, sources, plot_against_k=False, linestyle=None, legend_fontsize=None,

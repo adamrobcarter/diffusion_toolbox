@@ -38,7 +38,7 @@ import visualisation.Ds_overlapped
 # )
 visualisation.Ds_overlapped.go('eleanorlong034',
     ['MSD_short', 'boxcounting_collective', 'f_short', 'boxcounting_shorttime'],#, 'timescaleint_nofit', 'timescaleint'],
-    PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, ylim=(0.5, 36),
+    plot_against_k=False, TWO_PI=True, logarithmic_y=True, ylim=(0.5, 36),
     show_window=False, show_pixel=False, show_pack_frac_plateau=False, label_k_scaling=True,
     label_pack_frac=False,
     export_destination=path+'Ds_boxcounting_and_f.png',

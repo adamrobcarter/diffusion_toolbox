@@ -212,6 +212,10 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
 
 # go('/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L1280_dt4.suspension_phi_0.34_L_1280_modified.txt', 'sim_nohydro_034_L1280', 1280, 1280, 4)
 # go('/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L640_dt1.suspension_phi_0.34_L_640_modified.txt',   'sim_nohydro_034_L640',  640,  640,  1)
+go('raw_data/brennan/spec_softetakt_dt_0.25_nsave_2.suspension_phi_0.016_L_320_modified.txt', 'brennan_hydro_002_L320', 320, 320, 0.5, 0.016, 2.972)
+go('raw_data/brennan/spec_softetakt_dt_0.25_nsave_2.suspension_phi_0.016_L_640_modified.txt', 'brennan_hydro_002_L640', 640, 640, 0.5, 0.016, 2.972)
+
+
 
 datas = [
     # L  dt  phi

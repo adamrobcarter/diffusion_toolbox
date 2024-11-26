@@ -1,4 +1,5 @@
 import os, sys
+import scipy.optimize
 import tifffile
 import numpy as np
 import datetime, math
@@ -900,3 +901,17 @@ def get_used_window(file, window_size_x, window_size_y):
 def set_legend_handle_size(legend):
     for handle in legend.legend_handles:
         handle.set_markersize(6.0)
+
+def curve_fit(func, x, y, p0=None, sigma=None, absolute_sigma=None):
+    popt, pcov, infodict, mesg, ier = scipy.optimize.curve_fit(
+        func,
+        x,
+        y, 
+        p0=p0,
+        sigma=sigma,
+        absolute_sigma=absolute_sigma,
+        check_finite=True,
+        full_output=True,
+    )
+    print('fit', mesg)
+    return popt, np.diag(np.sqrt(pcov))

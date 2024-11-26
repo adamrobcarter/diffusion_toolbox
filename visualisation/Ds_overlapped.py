@@ -350,7 +350,7 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
     return xs, Ds, D_uncs, pixel_size, window_size, pack_frac_given, pack_frac_calced, diameter
 
 
-def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, ylim=None,
+def go(file, sources, plot_against_k=False, TWO_PI=True, logarithmic_y=True, ylim=None,
        output_filename=None, export_destination=None, show_pixel=True,
        show_window=True, show_pack_frac_plateau=False, figsize=DEFAULT_FIGSIZE,
        label_k_scaling=False, label_pack_frac=False, hide_msd=False, ax=None,
@@ -382,7 +382,7 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
         try:
             xs[source], Ds[source], D_uncs[source], pixel_size_temp, window_size_temp, \
                 pack_frac_given_temp, pack_frac_calced_temp, diameter_temp = \
-                get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma)
+                get_L_and_D(source, file, plot_against_k, TWO_PI, D_MSD, phi, sigma)
         
             if pixel_size_temp:       pixel_size       = pixel_size_temp
             if window_size_temp:      window_size      = window_size_temp
@@ -406,7 +406,7 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
         rescale_y = 1
 
     if diameter and not np.isnan(diameter):
-        if PLOT_AGAINST_K:
+        if plot_against_k:
             rescale_x = 1/diameter
             ax.set_xlabel(r'$k \sigma$')
         else:
@@ -414,7 +414,7 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
             ax.set_xlabel(r'$L/\sigma$')
     else:
         rescale_x = 1
-        if PLOT_AGAINST_K:
+        if plot_against_k:
             ax.set_xlabel(r'$k$')
         else:
             ax.set_xlabel(r'$L$')
@@ -480,7 +480,7 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
             #         ha = 'left' if PLOT_AGAINST_K else 'right'
             #         ax.text(xpos, ys[0]/1.2, source_label, ha=ha, va='top', color=colors[source], fontsize=LABELS_ON_PLOT_FONTSIZE)
 
-            offset = len(ys) // 6 if PLOT_AGAINST_K else -len(ys) // 6
+            offset = len(ys) // 6 if plot_against_k else -len(ys) // 6
             if source == 'D_of_L_theory':
                 offset = int(len(ys) * 0.6)
             if source == 'D0Sk_theory':
@@ -489,8 +489,8 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
                 offset = -len(ys) // 3
             xpos = xs[source][offset] * 1.2
             ypos = ys[offset]*1.2
-            ha = 'left' if PLOT_AGAINST_K else 'right'
-            if source == 'f_short' and PLOT_AGAINST_K == False:
+            ha = 'left' if plot_against_k else 'right'
+            if source == 'f_short' and plot_against_k == False:
                 xpos = xs[source][5] * 1.5
                 ypos = ys[5]*1.2
                 ha = 'left'
@@ -528,7 +528,7 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
         # ax.set_xticks([])
     ax.set_ylim(*ylim)
 
-    if not PLOT_AGAINST_K:
+    if not plot_against_k:
         if show_pixel:
             ax.vlines(pixel_size,  *ylim, color='gray', linestyle='dotted', label='pixel size')
         if show_window:
@@ -537,7 +537,7 @@ def go(file, sources, PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, yli
 
 
     ax.semilogx()
-    if PLOT_AGAINST_K:
+    if plot_against_k:
         
 
         if SHOW_TWIN_K_AXIS:
@@ -621,7 +621,7 @@ if __name__ == '__main__':
                 # 'NtN0_fit',
                 # 'F_s_first',
             ],
-            PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True, output_filename=filename,
+            plot_against_k=False, TWO_PI=True, logarithmic_y=True, output_filename=filename,
             ylim=YLIM, legend_fontsize=LEGEND_FONTSIZE
             )
 
