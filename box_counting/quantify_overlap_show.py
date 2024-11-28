@@ -170,7 +170,7 @@ def go(file, ax):
         total_area[:, box_size_index]
         ax.set_xlabel('total area ($\mathrm{\mu m^2}$)')
     ax.legend()
-    ax.set_ylabel(r'error on $\langle N^2(t) \rangle$')
+    ax.set_ylabel(r'error on $\langle \Delta N^2(t) \rangle$')
     
     # common.save_fig(fig_summary, f'box_counting/figures_png/quantify_overlap_summary_{file}.png')
 

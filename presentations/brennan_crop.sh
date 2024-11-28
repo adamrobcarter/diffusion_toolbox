@@ -1,0 +1,9 @@
+python -m preprocessing.brennan
+python -m particle_detection.crop_abs brennan_hydro_002_L640
+
+python -m particle_linking.link brennnan_hydro_002_L320_div8 brennan_hydro_002_L640_div8
+python -m MSD.calc brennan_hydro_002_L320_div8 brennan_hydro_002_L640_div8
+python -m MSD.show brennan_hydro_002_L320_div8 brennan_hydro_002_L640_div8
+
+python -m isf.calc_f_first brennan_hydro_002_L640 brennan_hydro_002_L640_crop320
+python -m isf.show_f_first brennan_hydro_002_L640 brennan_hydro_002_L640_crop320

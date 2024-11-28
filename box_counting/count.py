@@ -102,17 +102,12 @@ if __name__ == '__main__':
 
         if file.startswith('eleanorlong'):
             pixel_size    = data['pixel_size']
-            box_sizes = np.logspace(np.log10(pixel_size/2), np.log10(0.9*window_size), num_boxes) # N was 35, but 70 for eleanorlong066
+            box_sizes = np.logspace(np.log10(0.288/2), np.log10(0.9*288), num_boxes) # N was 35, but 70 for eleanorlong066
             # print('aaaa', 0.8*window_size/pixel_size)
             # box_sizes_px = np.array([0.9*window_size/pixel_size])
             # sep_sizes = 17 - box_sizes
             # sep_sizes = 9 - box_sizes # moreoverlap
             sep_sizes = 7 - box_sizes # moremoreoverlap
-
-        elif file.startswith('brennan'):
-
-            box_sizes = np.logspace(np.log10(0.288/2), np.log10(0.9*window_size), num_boxes)
-            sep_sizes = 17 - box_sizes # moremoreoverlap
 
         elif file.startswith('marine'):
             box_sizes = np.logspace(np.log10(0.2), np.log10(0.9*window_size), 10)
@@ -121,13 +116,15 @@ if __name__ == '__main__':
             box_sizes_px = np.array([1,  2,  4,  8,  16,  32])
             sep_sizes_px = 7 - box_sizes_px
 
-        elif file.startswith('sim_'):
-            box_sizes = np.logspace(np.log10(0.288/2), np.log10(0.9*window_size), 35)
+        elif file.startswith('sim_') or file.startswith('brennan'):
+            box_sizes = np.logspace(np.log10(0.288/2), np.log10(0.9*288), num_boxes)
             sep_sizes = 7 - box_sizes # moremoreoverlap
 
         else:
             box_sizes = np.array([1, 2, 4, 8])
             sep_sizes = 100-box_sizes
+
+        print('largest box', box_sizes[-1])
 
 
         output_filename = f'box_counting/data/counted_{file}'

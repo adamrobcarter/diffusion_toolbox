@@ -1,7 +1,7 @@
 import common
 import numpy as np
 
-CROPS = [800]
+CROPS = [320]
 
 for file in common.files_from_argv('particle_detection/data', 'particles_'):
     data = common.load(f'particle_detection/data/particles_{file}.npz')

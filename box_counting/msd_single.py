@@ -68,6 +68,9 @@ SHORTTIME_FIT_ERROR_THRESH = 0.05 # D_unc/D must be smaller than this for the po
 have_displayed_at_least_one = False
 
 def get_plateau_range(file):
+    start_index = -2500
+    end_index   = -1000
+
     if 'eleanorlong' in file: # hacky, pls don't do this
         start_index = -70000
         end_index   = -20000
@@ -207,7 +210,9 @@ def go(file, ax, separation_in_label=False,
        show_timescaleint_replacement=False, show_variance=False, labels_on_plot=True,
        rescale_x=None, rescale_y=None, legend_fontsize=7, legend_location=LEGEND_LOCATION,
        box_size_indices=None, show_nointer_theory_limits=False, max_boxes_on_plot=MAX_BOXES_ON_PLOT,
-       timescaleint_replacement_plateau_source='var'):
+       timescaleint_replacement_plateau_source='var', nointer_theory_limit_labels=[],
+       disable_ylabel=False,
+    ):
     # D0_from_fits     = [{}, {}]
     # D0_unc_from_fits = [{}, {}]
     # Dc_from_fits     = [{}, {}]
@@ -424,9 +429,18 @@ def go(file, ax, separation_in_label=False,
             N2_theory2 = lambda t, D, plateau : plateau * (1 - countoscope_theory.nmsd.famous_f(4*D*t/L**2)**2)
             log_N2_theory2 = lambda t, *args : np.log(N2_theory2(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
             
-            fitting_points22 = common.exponential_indices(t[1:], num=100)
+
+            t_for_fit = t[1:]
+            t_for_fit = t_for_fit[t_for_fit > sigma**2/D_MSD]
+            # t_for_fit2 = t_for_fit[t_for_fit > 3*L**2]
+            # if t_for_fit2.size > 100:
+            #     t_for_fit = t_for_fit2
+
+            fitting_points22 = common.exponential_indices(t_for_fit, num=100)
             # p0 = (0.05, N_mean[box_size_index])
             p02 = [0.05, 2*N_var[box_size_index]]
+
+
             
             assert np.isfinite(t[fitting_points22]).all()
             assert np.isfinite(np.log(delta_N_sq[fitting_points22])).all()
@@ -446,7 +460,7 @@ def go(file, ax, separation_in_label=False,
         # Dc_upper, Dc_unc_upper, _ = tsi_replace_func(delta_N_sq+delta_N_sq_err)
         # Dc_unc_final = max(Dc_unc, abs(Dc-Dc_lower), abs(Dc-Dc_upper))
         Dc_unc_final = Dc_unc # errors are way overestimated with the above lines
-        print(f'  final Dc unc {Dc_unc_final/Dc:.3f}')
+        # print(f'  final Dc unc {Dc_unc_final/Dc:.3f}')
 
         Ds_for_saving_collective.append(Dc)
         D_uncs_for_saving_collective.append(Dc_unc_final)
@@ -474,9 +488,9 @@ def go(file, ax, separation_in_label=False,
                 rescale_x_value = L**2
             elif rescale_x == RESCALE_X_L:
                 rescale_x_value = L
-                
-            t_theory /= rescale_x_value
-            t        /= rescale_x_value
+            
+            t_theory = t_theory / rescale_x_value
+            t        = t        / rescale_x_value
         
         info = fr'L = {L/sigma:.1f}σ,'
         
@@ -586,7 +600,7 @@ def go(file, ax, separation_in_label=False,
             print('  dN2s', delta_N_sq.size, common.nanfrac(delta_N_sq))
 
             if DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE and delta_N_sq.size > 1000:
-                print('tt', t)
+                # print('tt', t)
                 points_to_plot = common.exponential_indices(t, 500)
             else:
                 points_to_plot = np.index_exp[1:] # this is basically a functional way of writing points_to_plot = [1:]
@@ -660,7 +674,7 @@ def go(file, ax, separation_in_label=False,
         Dc = D_MSD * (1 + data['pack_frac']) / (1 - data['pack_frac'])**3
         print('Dc/D_MSD', Dc/D_MSD)
         L_high = 1000
-        for L, D in ((L_low, D_MSD), (L_high, Dc)):
+        for i, L, D, linest in ((0, L_low, D_MSD, 'dotted'), (1, L_high, Dc, 'dashed')):
         # for L, D in ((L_high, Dc),):
             t_theory_limits = t_theory_limits_over_L2 * L**2
             # N_mean_low = data['density'] * L_low
@@ -668,7 +682,7 @@ def go(file, ax, separation_in_label=False,
             plateau_over_2 = 1/2 * countoscope_theory.nmsd.plateau_inter_2d(N_mean, L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma))
             print('we', D, N_mean, L_low)
             nmsd_limit = countoscope_theory.nmsd.nointer_2d(t_theory_limits, D, plateau_over_2, L)
-            ax.plot(t_theory_limits_over_L2[1:], nmsd_limit[1:]/L**2, color='green', linewidth=1, linestyle='dashed', label=None)                
+            ax.plot(t_theory_limits_over_L2[1:], nmsd_limit[1:]/L**2, color='black', linewidth=1, linestyle=linest, label=nointer_theory_limit_labels[i])                
             print('t', t_theory_limits_over_L2[1:])
             print('N', nmsd_limit[1:])
 
@@ -695,9 +709,9 @@ def go(file, ax, separation_in_label=False,
     elif rescale_y == RESCALE_Y_PLATEAU:
         ylabel = r'$\Delta N^2(\Delta t)/ \mathrm{plateau}$'
     elif rescale_y == RESCALE_Y_L2:
-        ylabel = r'$\Delta N^2(\Delta t)/ L^2$ ($\mathrm{\mu m^{-1}}$)'
+        ylabel = r'$\Delta N^2(\Delta t)/ L^2$ ($\mathrm{\mu m^{-2}}$)'
     ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+    if not disable_ylabel: ax.set_ylabel(ylabel)
 
     title = file
     # title = f'Simulated colloids in RCP spheres\n$\phi={phi:.3f}$'
@@ -750,6 +764,7 @@ def go(file, ax, separation_in_label=False,
             particle_diameter=sigma,
             pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'), max_time_hours=data.get('max_time_hours'))
         
+    print('largest box', box_sizes[-1])
 # common.save_fig(gradfig, 'box_counting/figures_png/grad.png')
 
 if __name__ == '__main__':

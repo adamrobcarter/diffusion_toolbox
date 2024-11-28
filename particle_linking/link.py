@@ -34,7 +34,7 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
     if data['pack_frac_given'] > 0.6:
         D = 0.02
     search_range = 10 * np.sqrt(2 * dt * D)
-    adaptive_stop = 3 * np.sqrt(2 * dt * D)
+    adaptive_stop = 2 * np.sqrt(2 * dt * D)
     memory = 1
 
     if file.startswith('eleanor'):

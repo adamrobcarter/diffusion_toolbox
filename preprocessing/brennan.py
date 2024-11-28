@@ -176,6 +176,7 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
         particles=data,
         time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
         window_size_x=out_width, window_size_y=out_width, max_time_hours=round(num_timesteps*dt/60/60, 2),
+            source_file=infile,
     )
 
     if data.shape[1] == 4:
@@ -183,6 +184,7 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
             particles=data,
             time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
             window_size_x=out_width, window_size_y=out_width, max_time_hours=round(num_timesteps*dt/60/60, 2),
+            source_file=infile,
         )
     
     if data.size > 5e7:
@@ -193,6 +195,7 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
             particles=data_small,
             time_step=dt, particle_diameter=2.79, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
             window_size_x=out_width, window_size_y=out_width, max_time_hours=round(end_timestep*dt/60/60, 2),
+            source_file=infile,
         )
 
         if data.shape[1] == 4:
@@ -200,6 +203,7 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
                 particles=data_small,
                 time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
                 window_size_x=out_width, window_size_y=out_width, max_time_hours=round(end_timestep*dt/60/60, 2),
+                source_file=infile,
             )
     print()
     
@@ -212,10 +216,12 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
 
 # go('/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L1280_dt4.suspension_phi_0.34_L_1280_modified.txt', 'sim_nohydro_034_L1280', 1280, 1280, 4)
 # go('/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L640_dt1.suspension_phi_0.34_L_640_modified.txt',   'sim_nohydro_034_L640',  640,  640,  1)
-go('raw_data/brennan/spec_softetakt_dt_0.25_nsave_2.suspension_phi_0.016_L_320_modified.txt', 'brennan_hydro_002_L320', 320, 320, 0.5, 0.016, 2.972)
-go('raw_data/brennan/spec_softetakt_dt_0.25_nsave_2.suspension_phi_0.016_L_640_modified.txt', 'brennan_hydro_002_L640', 640, 640, 0.5, 0.016, 2.972)
 
-
+# from brennnan just before paper
+# go('raw_data/brennan/spec_softetakt_dt_0.25_nsave_2.suspension_phi_0.016_L_320_modified.txt', 'brennan_hydro_002_L320', 320, 320, 0.5, 0.016, 2.972)
+# go('raw_data/brennan/spec_softetakt_dt_0.25_nsave_2.suspension_phi_0.016_L_640_modified.txt', 'brennan_hydro_002_L640', 640, 640, 0.5, 0.016, 2.972)
+# go('raw_data/brennan/spec_softetakt_dt_0.25_nsave_2.suspension_phi_0.114_L_320_modified.txt', 'brennan_hydro_011_L320', 320, 320, 0.5, 0.114, 2.972)
+# go('raw_data/brennan/spec_softetakt_dt_0.25_nsave_64.suspension_phi_0.016_L_320_modified.txt', 'brennan_hydro_002_L320_longer', 320, 320, 16, 0.016, 2.972)
 
 datas = [
     # L  dt  phi
@@ -235,9 +241,15 @@ datas = [
     # (544, 8, 0.1, '', 1, 24*60*60),
     # (544, 0.5, 0.1, '_dt2', 4, 24*60*60),
     # (800, 8, 0.02, '', 1, 24*60*60),
-    # (320, 0.5, 0.114, '', 1, None, 2.972),
     # (320, 8, 0.114, '_long', 1, None, 2.972),
-    (320, 16, 0.114, '_longer', 1, None, 2.972),
+
+    # (320, 0.5, 0.114, '', 1, None, 2.972), # sim_nohydro_011_L320
+    # (320, 0.5, 0.016, '', 1, None, 2.972), # sim_nohydro_002_L320
+    # (320, 16, 0.114, '_longer', 1, None, 2.972), # sim_nohydro_011_L320_longer
+    # (320, 32, 0.114, '_longest', 1, None, 2.972), # sim_nohydro_011_L320_longest
+    # (320, 16, 0.016, '_longer', 1, None, 2.972), # sim_nohydro_002_L320_longer
+    # (640, 0.5, 0.016, '', 1, None, 2.972), # sim_nohydro_002_L640
+    (640, 0.5, 0.114, '', 1, None, 2.972), # sim_nohydro_011_L640
 ]
 
 for L, dt, phi, suffix, nth_timestep, max_time, particle_diameter in datas:

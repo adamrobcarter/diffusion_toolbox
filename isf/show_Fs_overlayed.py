@@ -12,7 +12,7 @@ PRESENT_SMALL = False
 LOGARITHMIC_Y = False
 
 
-def go(file, ax, target_ks, SHOW_FIT=False):
+def go(file, ax, target_ks, SHOW_FIT=False, colormap=common.colormap_cool):
     d = common.load(f"isf/data/F_{file}.npz")
     t         = d["t"]
     F_all     = d["F"]
@@ -50,7 +50,7 @@ def go(file, ax, target_ks, SHOW_FIT=False):
         # top_axes[0].set_title('F(0, k)')
 
         for graph_i in range(len(target_ks)):
-            target_k = target_ks[graph_i]
+            target_k = list(reversed(target_ks))[graph_i] # reversed is for zorder of plots
 
             k_index = np.argmax(k_all[0, :] > target_k)
             k_index_skold = np.argmax(k_skold_all[0, :] > target_k)
@@ -135,7 +135,8 @@ def go(file, ax, target_ks, SHOW_FIT=False):
                 bad_for_plot = f_bad
                 F_unc_for_plot = f_unc
 
-            color = common.colormap_cool(graph_i, 0, len(target_ks))
+            color = colormap(graph_i/len(target_ks))
+            
             ax.errorbar(t_for_plot, F_for_plot, yerr=F_unc_for_plot, linestyle='', alpha=0.3, color=color)
             print(t.shape, f.shape)
 

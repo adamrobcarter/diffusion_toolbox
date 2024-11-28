@@ -12,8 +12,8 @@ DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE = True
 
 titles = []
 
-colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-colors += colors # concat in case we have not enough colors, lazy
+default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+default_colors += default_colors # concat in case we have not enough colors, lazy
 # color_index = 0
 # if sys.argv[1] == 'alice0.02_overlapped3' and sys.argv[2] == 'alice0.02_overlapped':
 #     color_index += 1
@@ -28,7 +28,8 @@ collapse_y = False
 Ds = {}
 D_uncs = {}
 
-def go(files, ax, target_num_box_sizes=None, box_size_indices=None, legend_num_boxes=None, show_legend=False):
+def go(files, ax, target_num_box_sizes=None, box_size_indices=None, legend_num_boxes=None, show_legend=False,
+       colors=default_colors,):
     if legend_num_boxes:
         show_legend = True
     assert target_num_box_sizes != None or box_size_indices != None

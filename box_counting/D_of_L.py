@@ -11,7 +11,7 @@ import box_counting.msd_single
 import visualisation.Ds_overlapped
 
 SHOW_THEORY = False
-SHOW_TIMESCALEINTEGRAL_FIT = False
+SHOW_TIMESCALEINTEGRAL_FIT = True
 DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE = True
 SHOW_LEGEND = True
 
@@ -97,8 +97,10 @@ def do_late_integral(t, L, T_integrand, M2_index, M1_index):
     b_unc = np.sqrt(late_pcov)[1, 1]
     late_fit_func_real = lambda t, a, b: np.exp(0.5 * late_fit_func(np.log(t), a, b))
     # what is real? is the other one log space or something?
-    t_end = t.max()*1000
+    t_end = t.max()*1e9
     t_fit_late = np.logspace(np.log10(t[M1_index]), np.log10(t_end))
+    if late_fit_func_real(t_end, a, b) < 1e-5:
+        warnings.warn(f'late_fit_func_real(t_end, a, b) = late_fit_func_real({t_end}, {a}, {b}) = {late_fit_func_real(t_end, a, b)}')
     
     assert np.all(late_fit_func_real(t_fit_late, *late_popt) > 0), f'some of late_fit_func_real were negative for L={L}'
     assert np.all(late_fit_func_real([t[M2_index], t_end], *late_popt) > 0), f'some of late_fit_func_real were negative for L={L}'
@@ -213,7 +215,8 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
        show_nofit_cutoff=True, show_theory=False, labels_on_plot=True, max_num_boxes=10,
        show_fits=True, late_C_N_alpha=LATE_CN_ALPHA, labels_on_plot_font_color=None,
        show_legend=False, plot_C_N_squared=True, box_size_indices=None,
-       show_slope=False, show_T_of_L=False, rescale_x=None):
+       show_slope=False, show_T_of_L=False, rescale_x=None, colormap=None,
+       disable_ylabel=False):
 
     integ_axs = ax
 
@@ -299,15 +302,18 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
             if file == 'eleanorlong066':
                 M2_index = min(int(2400 * np.sqrt(L)), t.shape[0]-1)
             if file == 'eleanorlong001':
-                M2_index = min(int(2600 * np.sqrt(L)), t.shape[0]-1)
+                if plateau_source == 'var':
+                    M2_index = min(int(5000 * np.sqrt(L)), t.shape[0]-1)
+                elif plateau_source == 'nmsdfitinter':
+                    M2_index = min(int(4000 * np.sqrt(L)), t.shape[0]-1)
+                elif plateau_source == 'nmsdfit':
+                    M2_index = min(int(4000 * np.sqrt(L)), t.shape[0]-1)
+                else:
+                    M2_index = min(int(2600 * np.sqrt(L)), t.shape[0]-1)
+                print('M2_index', M2_index)
             M2_index = max(M2_index, MIN_M2_INDEX)
-            M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
-            if file.startswith('eleanorlong'):
-                # D0 = 0.028
-                pass
-            elif file.startswith('eleanor0.01') or file.startswith('brennan'):
-                # D0 = 0.0416
-                pass
+            M1_index = int(M2_index / 1.2) # t is linear so we can just halve the index to halve the time
+            
         elif file == 'alice0.02':
             M2_index = min(int(60 * L), t.shape[0]-1)
             M2_index = max(M2_index, MIN_M2_INDEX)
@@ -331,8 +337,10 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
         elif file.startswith('sim_'):
             if file == 'sim_nohydro_010_L640_div8':
                 M2_index = min(int(600 * np.sqrt(L)), t.shape[0]-1)
-            elif file == 'sim_nohydro_011_L320_merged':
-                M2_index = min(int(400 * np.sqrt(L)), t.shape[0]-1)
+            elif file == 'sim_nohydro_011_L320_longer_merged': # should this be longer?
+                M2_index = min(int(850 * np.sqrt(L)), t.shape[0]-1)
+            elif file == 'sim_nohydro_002_L320_longer_merged':
+                M2_index = min(int(850 * np.sqrt(L)), t.shape[0]-1)
             elif file == 'sim_nohydro_011_L320_longer':
                 M2_index = min(int(80 * np.sqrt(L)), t.shape[0]-1)
             else:
@@ -380,6 +388,8 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
         
         # nofit2 method
         stop_point = np.argmax(T_integrand < NOFIT_CROP_THRESHOLD)
+        if stop_point == 0: # argmax returns zero if condition not met
+            stop_point = -1
         data_integral_full2, data_integral_full2_min, data_integral_full2_max = do_data_integral(t[:stop_point], T_integrand[:stop_point], T_integrand_min[:stop_point], T_integrand_max[:stop_point], -1)
 
         D_of_L_nofit2, D_of_L_min_nofit2, D_of_L_max_nofit2 = get_D_from_integral_contributions(L, early_integral, early_integral_min, early_integral_max, data_integral_full2, data_integral_full2_min, data_integral_full2_max, 0, 0, 0)
@@ -414,7 +424,12 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
             else:
                 rescale_x_value = 1
 
-            color = plot_color if plot_color else common.colormap(box_size_index, 0, len(box_sizes))
+            if plot_color:
+                color = plot_color
+            elif colormap:
+                color = colormap(box_size_index/len(box_sizes))
+            else:
+                color = common.colormap(box_size_index, 0, len(box_sizes))
             
             sep = sep_sizes[box_size_index]
             if sigma := data.get('particle_diameter'):
@@ -519,10 +534,10 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
         integrand_ax.set_xlabel('$t$ (s)')
 
     if plot_C_N_squared:
-        integrand_ax.set_ylabel(r'$C_N(\Delta t)^2$')
+        if not disable_ylabel: integrand_ax.set_ylabel(r'$C_N(\Delta t)^2$')
         integrand_ax.set_ylim(1e-5, 1.2e0)
     else:
-        integrand_ax.set_ylabel(r'$C_N(\Delta t)$')
+        if not disable_ylabel: integrand_ax.set_ylabel(r'$C_N(\Delta t)$')
         integrand_ax.set_ylim(5e-4, 1.2e0)
     
     if show_nofit_cutoff:
@@ -543,10 +558,10 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
                 particle_diameter=sigma, max_time_hours=data.get('max_time_hours'),)
     
 
-    if title != None: # not if title b/c we want title='' to go down this path
-        integrand_ax.set_title(title)
-    else:
-        integrand_ax.set_title(fr'{file} timescale integrand, $\phi={phi:.3f}$, $\sigma={sigma}$, plateau:{var_label}', fontsize=10)
+    # if title != None: # not if title b/c we want title='' to go down this path
+    #     integrand_ax.set_title(title)
+    # else:
+    #     integrand_ax.set_title(fr'{file} timescale integrand, $\phi={phi:.3f}$, $\sigma={sigma}$, plateau:{var_label}', fontsize=10)
 
 
 if __name__ == '__main__':  

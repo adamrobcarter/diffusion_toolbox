@@ -24,7 +24,7 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
     if file == 'sim_nohydro_010_L544' or file == 'brennan_hydro_010_L544':
         max_time_origins = 4000
         
-    if file.startswith('sim_nohydro_011_L320'):
+    if file.startswith('sim_nohydro_011_L') or file.startswith('brennan_hydro_011_L'):
         max_time_origins = 4000
 
     cores = 16 # increasing this above 16 seems risky. if the program freezes, try reducing this

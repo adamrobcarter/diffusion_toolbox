@@ -27,17 +27,27 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
             ax=axs[0][method_index],
             plateau_source=method,
             legend_fontsize=5,
-            title=f'plateau:{method}',
             save_data=True,
         )
+        axs[0][method_index].set_title(f'plateau:{method}')
+        axs[0][method_index].set_xlim(1e0, 1e6)
         print()
         print('doing Ds_overlapped')
         visualisation.Ds_overlapped.go(
             file,
-            [f'boxcounting_collective_{method}', f'timescaleint_nofit_cropped_{method}', f'timescaleint_{method}', 'MSD_first', 'D_of_L_theory'],
+            [f'boxcounting_collective_{method}',
+              f'timescaleint_nofit_cropped_{method}',
+              f'timescaleint_{method}',
+              'D_of_L_theory'],
             ax=axs[1][method_index],
             ylim=(0.2, 50),
             legend_fontsize=5,
         )
+        axs[1][method_index].set_yscale('linear')
+        if file == 'eleanorlong001':
+            axs[1][method_index].set_ylim(0.9*0.05, 1*0.07)
+        else:
+            axs[1][method_index].set_ylim(0.9*0.04, 3*0.04)
 
-    common.save_fig(fig, f'box_counting/figures_png/plateau_sources_{file}.png', dpi=200)
+        common.save_fig(fig, f'box_counting/figures_png/plateau_sources_{file}.png', dpi=200)
+        # break

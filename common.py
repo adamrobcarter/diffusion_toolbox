@@ -462,6 +462,7 @@ def exponential_integers(mini, maxi, num=50):
 
 def exponential_indices(t, num=100):
     assert num > 0
+    assert len(t) > num, f'len(t) = {len(t)} !> num = {num}'
     # this is as above but it will work for indexing time arrays
     # even if the time interval is not constant
 
@@ -469,7 +470,8 @@ def exponential_indices(t, num=100):
         t = t[1:]
     #     ratio = (t[-1]/t[1]) ** (1/num)
     # else:
-    ratio = (t[-1]//t[0]) ** (1/num)
+    ratio = (t[-1]/t[0]) ** (1/num)
+    assert ratio > 1
 
     points = [1]
     last_t = t[1]
@@ -915,3 +917,10 @@ def curve_fit(func, x, y, p0=None, sigma=None, absolute_sigma=None):
     )
     print('fit', mesg)
     return popt, np.diag(np.sqrt(pcov))
+
+def calc_pack_frac(particles, particle_diameter, window_size_x, window_size_y):
+    num_timesteps = int(particles[:, 2].max() + 1)
+    avg_particles_per_frame = particles.shape[0] / num_timesteps
+    density = avg_particles_per_frame / (window_size_x * window_size_y)
+    print('avg part per frame', avg_particles_per_frame)#, 'L^2', orig_width**2)
+    return np.pi/4 * density * particle_diameter**2

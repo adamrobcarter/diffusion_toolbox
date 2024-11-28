@@ -133,8 +133,9 @@ def get_D0(file):
     return D_MSD, sigma, phi
 
 def get_D0_filename(file):
+    print(f'get_D0_filename({file})')
 
-    suffixes = ['_merged'] # these are ones we will never want to compare
+    suffixes = ['_merged', '_crop1.0'] # these are ones we will never want to compare
     for suffix in suffixes:
         if suffix in file:
             file = file.split(suffix)[0]
@@ -142,7 +143,10 @@ def get_D0_filename(file):
     if file in ['eleanorlong066', 'sim_nohydro_034_L640', 'sim_nohydro_034_L1280',
                 'sim_nohydro_010_L320', 'sim_nohydro_010_L544', 'sim_nohydro_010_L544_dt2', 'sim_nohydro_010_L640',
                 'brennan_hydro_010_L544', 'brennan_hydro_010_L1280',
-                'sim_nohydro_011_L320', 'sim_nohydro_011_L320_long',]:
+                'sim_nohydro_011_L320', 'sim_nohydro_011_L320_long', 'sim_nohydro_011_L320_longer',
+                'sim_nohydro_002_L320', 'sim_nohydro_002_L320_long', 'sim_nohydro_002_L320_longer',
+                'sim_nohydro_002_L640',
+                'brennan_hydro_002_L320', 'brennan_hydro_002_L640', 'brennan_hydro_011_L320']:
         file += '_div8'
     return file
 
@@ -248,15 +252,8 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
             usedfile = get_D0_filename(file)
         data = common.load(f'visualisation/data/Ds_from_{source}_{usedfile}.npz')
 
-
         Ds     = data['Ds']
         D_uncs = data['D_uncs']
-
-        if source.startswith('MSD'):
-            print('loaded', source, Ds)
-
-        # assert np.all(Ds >= 0)
-        # assert np.all(D_uncs >= 0)
 
         if Ds.size == 0:
             print(f'skipping {source} {file}, no Ds found')
@@ -273,27 +270,25 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
                 else:
                     xs = 1 / data['ks']
                     # source_label += ' $1/k$'
-            print(source, 'min f', data['ks'].min(), '2pi/min f', 2*np.pi/data['ks'].min())
 
         elif source.startswith('boxcounting') or source.startswith('timescaleint') or source.startswith('C_N') or source.startswith('NtN0'):
             xs = data['Ls']
-            T_of_L = countoscope_theory.timescaleint.T_of_L(xs, D_MSD, phi, sigma)
-            print('L', xs)
-            print('T', T_of_L)
             max_time = data['max_time_hours'] * 60 * 60
-            print('max time', max_time)
-            print(10 * T_of_L < max_time)
+
+            # max_L = np.sqrt(4 * D_MSD * max_time / 10)
+            # keep = xs < max_L
+            T_of_L = countoscope_theory.timescaleint.T_of_L(xs, D_MSD, phi, sigma)
+            keep = 10 * T_of_L < max_time
 
             num_before = xs.size
-            xs     = xs    [   10 * T_of_L < max_time]
-            Ds     = Ds    [   10 * T_of_L < max_time]
-            print(D_uncs.shape)
+            xs = xs[keep]
+            Ds = Ds[keep]
             if len(D_uncs.shape) == 1:
-                D_uncs = D_uncs[10 * T_of_L < max_time]
+                D_uncs = D_uncs[keep]
             else:
-                D_uncs = D_uncs[:, 10 * T_of_L < max_time]
+                D_uncs = D_uncs[:, keep]
             assert xs.size, 'we dropped all points'
-            print(xs)
+            
             print(f'kept L<{xs[-1]/sigma:.2g}σ ({xs.size/num_before:.2f})')
             
             assert not PLOT_AGAINST_K
@@ -346,6 +341,16 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
         print('all Ds zero!')
     if np.all(D_uncs == 0):
         print('all D_uncs zero!')
+
+    if not ('theory' in source):
+        print('forcing min 3%% errors')
+        errs_too_low = D_uncs/np.abs(Ds) < 0.03
+        if len(D_uncs.shape) == 1:
+            D_uncs[errs_too_low] = 0.03 * np.abs(Ds[errs_too_low])
+        else:
+            print(D_uncs, Ds)
+            print(D_uncs.shape, np.repeat(Ds[:, np.newaxis], 2, axis=1).shape)
+            D_uncs[errs_too_low] = 0.03 * np.repeat(np.abs(Ds)[np.newaxis, :], 2, axis=0)[errs_too_low]
 
     return xs, Ds, D_uncs, pixel_size, window_size, pack_frac_given, pack_frac_calced, diameter
 
@@ -454,9 +459,6 @@ def go(file, sources, plot_against_k=False, TWO_PI=True, logarithmic_y=True, yli
         assert not np.any(np.isnan(xs[source]))
 
         plot_label = source_label if not LABELS_ON_PLOT else None
-        if source == 'D_of_L_theory':
-            print('PLOTTING')
-            # print(xs[source], ys, linestyle.get(source, 'none'))
         zorder = -1 if source.endswith('theory') else None
 
         if source.startswith('MSD'):
@@ -466,10 +468,7 @@ def go(file, sources, plot_against_k=False, TWO_PI=True, logarithmic_y=True, yli
                 ax.fill_between(ax.get_xlim(), ys[0]*0.97, ys[0]*1.03, facecolor=color, alpha=0.5)
 
         else:
-            # print('ys', source, ys)
-            print('for', file, source, 'plotting', xs[source].shape)
-            print('getting marker', file, source, get_marker(source))
-            ax.plot(xs[source], ys, linestyle=get_linestyle(source), marker=get_marker(source), markersize=4, color=color,
+            ax.plot(xs[source], ys, linestyle=get_linestyle(source), marker=get_marker(source), markersize=5, color=color,
                 label=plot_label, zorder=zorder)
             ax.errorbar(xs[source], ys, yerr=yerrs, linestyle='none', marker='none', alpha=ERRORBAR_ALPHA, color=color)
 
@@ -499,11 +498,8 @@ def go(file, sources, plot_against_k=False, TWO_PI=True, logarithmic_y=True, yli
         if np.all(yerrs == 0):
             print(source, 'all errors zero')
 
-
-        print('Ds', file, source, ys)
         # assert not np.any(np.isnan(Ds)), 'nan was found in Ds'
         [all_Ds.append(D) for D in ys]
-
 
 
     assert len(all_Ds) > 0, 'no Ds were found at all'
@@ -573,7 +569,7 @@ def get_linestyle(source):
     return linestyle.get(trim_source(source), 'none')
 
 def get_marker(source):
-    print('marker', source, trim_source(source), markers.get(trim_source(source)))
+    # print('marker', source, trim_source(source), markers.get(trim_source(source)))
     return markers.get(trim_source(source), 'o')
 
 def get_color(source):
@@ -602,20 +598,22 @@ if __name__ == '__main__':
                 #   'f', 'f_short', 'f_long', 
                 #   'f_first',
                 # 'f_short',
-                'f_long',
-                'f',
-                'f_first_first',
+                # 'f_long',
+                # 'f',
+                # 'f_first',
+                # 'f_first_first',
                 # 'F_s',
-                'F_s_first',
+                # 'F_s_first',
                 # 'F_s_long',
                 #   'boxcounting_shorttime',
                 #     'boxcounting_first_quad',
-                    'boxcounting_collective',
-                #   'timescaleint_nofit_cropped_var',
+                    # 'boxcounting_collective_var',
                 #   'timescaleint_var',
                   'timescaleint_nmsdfitinter',
+                #   'timescaleint_nofit_cropped_var',
+                  'timescaleint_nofit_cropped_nmsdfitinter',
                 #   'MSD_centre_of_mass_proximity',
-                'D_of_L_theory',
+                # 'D_of_L_theory',
                 # 'D_of_L_theory_Lh',
                 # 'NtN0_first',
                 # 'NtN0_fit',
