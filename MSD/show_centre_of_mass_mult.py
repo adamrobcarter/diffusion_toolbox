@@ -48,7 +48,7 @@ ax.loglog()
 # ax.set_xlim(t[1]*0.8, t[-1]/0.8)
 
 ax.set_ylabel(r'$N\langle r(t)^2 \rangle$ ($\mathrm{\mu m}$)')
-ax.set_xlabel('$\Delta t$ (s)')
+ax.set_xlabel('$t$ (s)')
 ax.legend()
 
 filename = '_'.join(files)

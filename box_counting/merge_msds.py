@@ -41,6 +41,7 @@ def concat(arr0, arr1):
 t       = concat(t0[np.newaxis, :], t1[np.newaxis, :]).squeeze() # the newaxis is cause concat wants a 2D array, the squeeze reverses it
 N2_mean = concat(data0['N2_mean'],  data1['N2_mean'] )
 N2_std  = concat(data0['N2_std'],   data1['N2_std']  )
+# N_var   = concat(data0['N_var'][np.newaxis, :],   data1['N_var'][np.newaxis, :]  ).squeeze() # the newaxis is cause concat wants a 2D array, the squeeze reverses it
 assert t[1] == data0['time_step']
 assert np.unique(t[1:]-t[:-1])[0] == data0['time_step']
 assert np.unique(t[1:]-t[:-1])[1] == data1['time_step']
@@ -53,14 +54,48 @@ def mean_and_ratio(a0, a1):
 N_mean_ratio, N_mean_avg = mean_and_ratio(data1['N_mean'], data0['N_mean'])
 assert 0.99 < N_mean_ratio < 1.01, f'N_mean_ratio = {N_mean_ratio}'
 
-N_var_ratio, N_var_avg = mean_and_ratio(data1['N_var'], data0['N_var'])
-assert 0.99 < N_var_ratio < 1.05, f'N_var_ratio = {N_var_ratio}'
+# N_var_ratio, N_var_avg = mean_and_ratio(data1['N_var'], data0['N_var'])
+# print('N var ratio', N_var_ratio)
+# assert 0.99 < N_var_ratio < 1.05, f'N_var_ratio = {N_var_ratio}'
 
 N_var_mod_ratio, N_var_mod_avg = mean_and_ratio(data1['N_var_mod'], data0['N_var_mod'])
 assert 0.99 < N_var_mod_ratio < 1.26, f'N_var_mod_ratio = {N_var_mod_ratio}'
 
 # N_var_mod_ratio, N_var_mod_avg = mean_and_ratio(data1['N_var_mod'], data0['N_var_mod'])
 # assert 0.99 < N_var_mod_ratio < 1.01, f'N_var_mod_ratio = {N_var_mod_ratio}'
+
+##############################################
+L_CROSSOVER = 3
+L_long  = data1 ['box_sizes']
+L_short = data0['box_sizes']
+
+assert data1['max_time_hours'] > data0['max_time_hours']
+assert (particle_diameter := data1['particle_diameter']) == data0['particle_diameter']
+
+data1_start_index = np.argmax(L_long  >  L_CROSSOVER)
+data0_end_index  = np.argmax(L_short >= L_CROSSOVER)
+# print(k_long)
+# print
+# print(data1_end_index, data0_start_index)
+assert data0_end_index  > 0
+assert data1_start_index > 0
+assert data0_end_index  < L_short.size
+assert data1_start_index < L_long.size
+
+def concat_L(arr_long, arr_short):
+    if len(arr_short.shape) == 2:
+        d_short = arr_short[:, :data0_end_index]
+        d_long  = arr_long [:, data1_start_index:]
+        return np.concatenate((d_short, d_long), axis=1)
+    else:
+        d_short = arr_short[:data0_end_index]
+        d_long  = arr_long [data1_start_index:]
+        return np.concatenate((d_short, d_long), axis=0)
+
+N_var = concat_L(data1['N_var'], data0['N_var'])
+print(data0['N_var'])
+print(data1['N_var'])
+print(N_var)
 
 dataout = dict(
     t                 = t,
@@ -71,7 +106,7 @@ dataout = dict(
     sep_sizes         = data0['sep_sizes'],
     num_boxes         = data0['num_boxes'],
     N_mean            = N_mean_avg,
-    N_var             = N_var_avg,
+    N_var             = N_var,
     N_var_mod         = N_var_mod_avg,
     N_var_mod_std     = None,
     time_step         = data0['time_step'], # we use data0 because time_step is used for the first point fit

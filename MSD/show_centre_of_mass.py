@@ -65,7 +65,7 @@ for file in common.files_from_argv('MSD/data', 'msd_centre_of_mass_'):
     # ax.set_xlim(t[1]*0.8, t[-1]/0.8)
 
     ax.set_ylabel(r'$N\langle r(t)^2 \rangle$ ($\mathrm{\mu m}$)')
-    ax.set_xlabel('$\Delta t$ (s)')
+    ax.set_xlabel('$t$ (s)')
     ax.legend()
 
     # common.save_fig(fig, f'/home/acarter/presentations/intcha24/figures/msd_{file}.pdf', hide_metadata=True)

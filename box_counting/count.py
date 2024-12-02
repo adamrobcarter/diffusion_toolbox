@@ -4,7 +4,7 @@ import time
 import sys
 import common
 
-def calc_and_save(box_sizes, sep_sizes, data, particles, output_file_name,
+def calc_and_save(box_sizes, sep_sizes, data, output_file_name, particles=None,
                   extra_to_save={}, save_counts=False,
                   save_data=True, skip_processing=False):
     t0 = time.time()
@@ -24,7 +24,11 @@ def calc_and_save(box_sizes, sep_sizes, data, particles, output_file_name,
     window_size_x            = data.get('window_size_x')
     window_size_y            = data.get('window_size_y')
 
-    num_timesteps = int(particles[:, 2].max()) + 1
+    if particles == None:
+        particles = data['particles']
+    print('particles', particles)
+
+    # num_timesteps = int(particles[:, 2].max()) + 1
 
     # if file == 'eleanorlong':
     #     pixel_size = 0.17 # so the boxes are the same size as aliceXXX
@@ -70,6 +74,7 @@ def calc_and_save(box_sizes, sep_sizes, data, particles, output_file_name,
                 box_sizes=box_sizes, sep_sizes=sep_sizes,
                 num_boxes=results.num_boxes, N_mean=results.N_mean, N_var=results.N_var,
                 N_var_mod=results.N_var_mod, N_var_mod_std=results.N_var_mod_std, N_mean_std=results.N_mean_std,
+                N_var_time=results.N_var_time,
                 time_step=time_step, particle_diameter=particle_diameter,
                 particle_diameter_calced=particle_diameter_calced, computation_time=time.time()-t0,
                 depth_of_field=depth_of_field,
@@ -90,7 +95,6 @@ if __name__ == '__main__':
     for file in common.files_from_argv('particle_detection/data', 'particles_'):
 
         data = common.load(f'particle_detection/data/particles_{file}.npz')
-        particles     = data['particles']
         window_size_x = data['window_size_x']
         window_size_y = data['window_size_y']
         
@@ -124,6 +128,10 @@ if __name__ == '__main__':
             box_sizes = np.array([1, 2, 4, 8])
             sep_sizes = 100-box_sizes
 
+            
+        # box_sizes = np.logspace(np.log10(0.288/2), np.log10(0.9*288), num_boxes)[-10:]
+        # sep_sizes = 3-box_sizes
+
         print('largest box', box_sizes[-1])
 
 
@@ -132,7 +140,7 @@ if __name__ == '__main__':
         output_filename += '.npz'
 
         t0 = time.time()
-        calc_and_save(box_sizes, sep_sizes, data, particles,
-            output_filename, save_counts=False,
+        calc_and_save(box_sizes=box_sizes, sep_sizes=sep_sizes, data=data,
+            output_file_name=output_filename, save_counts=False,
             save_data=True)
         print(f'took {time.time()-t0:.0f}s')

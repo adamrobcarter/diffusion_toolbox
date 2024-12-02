@@ -30,8 +30,8 @@ ax.loglog()
 ax.set_ylim(msd[1:].min()*0.6, msd.max()/0.8)
 # ax.set_xlim(t[1]*0.8, t[-1]/0.8)
 
-ax.set_ylabel(r'$\langle r(\Delta t)^2 \rangle$ ($\mathrm{\mu m}$)')
-ax.set_xlabel('$\Delta t$ (s)')
+ax.set_ylabel(r'$\langle r(t)^2 \rangle$ ($\mathrm{\mu m}$)')
+ax.set_xlabel('$t$ (s)')
 
 # common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/msd_nofit_{file}.pdf', hide_metadata=True)
 

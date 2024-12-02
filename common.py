@@ -61,7 +61,7 @@ def intensity_correlation(data1, data2):
 def load(filename):
     t0 = time.time()
 
-    if not filename.endswith('.npz'):
+    if not (filename.endswith('.npz') or filename.endswith('.npy')):
         filename += '.npz'
     diff = get_last_modified_time(filename)
     print(f'loading {filename}, last modified {diff} ago')

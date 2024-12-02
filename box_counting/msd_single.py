@@ -128,13 +128,18 @@ gradax4.loglog()
 #         gradax4.scatter(t[points][:-1], nmsd3, s=1)
 
 #         # gradax3.scatter(t, scipy.signal.savgol_filter(np.abs(grad)[1000:], 1000, 3))
-    
-def get_plateau(method, nmsd, file, L, phi, sigma, t, var, varmod, D0, N_mean, display=False):
+
+PLATEAU_SOURCES = ['var', 'varmod', 'nmsdfit', 'nmsdfitinter', 'sDFT', 'N_mean',
+                   'density', 'var_time', 'cutoff']
+
+def get_plateau(method, nmsd, file, L, phi, sigma, t, var, varmod, D0, N_mean, density, var_time, cutoff_L, cutoff_plat, display=False):
     if method == 'obs':
         return get_plateau_obs(file, nmsd)
     elif method == 'var':
         return 2*var, 0
     elif method == 'varmod':
+        return 2*varmod, 0
+    elif method == 'var_time':
         return 2*varmod, 0
     elif method == 'nmsdfit':
         return get_plateau_nmsd_fit(nmsd, t, var, L)
@@ -142,8 +147,25 @@ def get_plateau(method, nmsd, file, L, phi, sigma, t, var, varmod, D0, N_mean, d
         return get_plateau_fit_nmsd_inter(file, t, nmsd, phi, sigma, L, D0)
     elif method == 'sDFT':
         return countoscope_theory.nmsd.plateau_inter_2d(N_mean, L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma)), 0
+    elif method == 'N_mean':
+        return 2*N_mean, 0
+    elif method == 'density':
+        return 2*density * L**2, 0
+    elif method == 'cutoff':
+        if L > cutoff_L:
+            return cutoff_plat * L**2 / cutoff_L**2, 0
+        else:
+            return var*2, 0
+    elif method == 'target_nofit':
+
+    elif method == 'target_fixexponent'
+
+    # elif method == 'S(k=0)<N>':
+    #     return
     else:
         assert False
+
+
 
 def get_plateau_obs(file, nmsd):
     start_index, end_index = get_plateau_range(file)  
@@ -211,7 +233,7 @@ def go(file, ax, separation_in_label=False,
        rescale_x=None, rescale_y=None, legend_fontsize=7, legend_location=LEGEND_LOCATION,
        box_size_indices=None, show_nointer_theory_limits=False, max_boxes_on_plot=MAX_BOXES_ON_PLOT,
        timescaleint_replacement_plateau_source='var', nointer_theory_limit_labels=[],
-       disable_ylabel=False,
+       disable_ylabel=False, show_second_legend=True,
     ):
     # D0_from_fits     = [{}, {}]
     # D0_unc_from_fits = [{}, {}]
@@ -275,6 +297,8 @@ def go(file, ax, separation_in_label=False,
         iter = range(len(box_sizes))
 
     display_i = 0
+
+    plotted_handles = []
 
     for box_size_index in tqdm.tqdm(iter, desc='box sizes'):
         L   = box_sizes[box_size_index]
@@ -412,13 +436,29 @@ def go(file, ax, separation_in_label=False,
         #     return D_from_fit2, D_from_fit_unc2, fit_ys
         
 
-        plateau, plateau_unc = get_plateau(timescaleint_replacement_plateau_source, delta_N_sq, file, L, phi, sigma, t, N_var[box_size_index], N_var_mod[box_size_index], N_mean[box_size_index], D_MSD)
+        plateau, plateau_unc = get_plateau(
+            timescaleint_replacement_plateau_source, 
+            nmsd=delta_N_sq,
+            file=file,
+            L=L,
+            phi=phi,
+            sigma=sigma,
+            t=t,
+            var=N_var[box_size_index],
+            varmod=N_var_mod[box_size_index],
+            N_mean=N_mean[box_size_index],
+            D0=D_MSD,
+            density=data.get('density', np.nan),
+            var_time=None,
+            cutoff_L=None,
+            cutoff_plat=None
+        )
             
-        fitting_points2 = common.exponential_indices(t, num=100)
-        # fitting_points2
+        # fitting_points2 = common.exponential_indices(t, num=100)
+        # # fitting_points2
 
-        N2_theory2 = lambda t, D, plateau : plateau * (1 - countoscope_theory.nmsd.famous_f(4*D*t/L**2)**2)
-        log_N2_theory2 = lambda t, *args : np.log(N2_theory2(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
+        # N2_theory2 = lambda t, D, plateau : plateau * (1 - countoscope_theory.nmsd.famous_f(4*D*t/L**2)**2)
+        # log_N2_theory2 = lambda t, *args : np.log(N2_theory2(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
             
 
         def timescaleint_replacement_fitplateau():
@@ -453,7 +493,48 @@ def go(file, ax, separation_in_label=False,
 
             return D_from_fit2, D_from_fit_unc2, fit_ys
         
-        Dc, Dc_unc, tsi_replacement_ys = timescaleint_replacement_fitplateau()
+        def timescaleint_replacement():
+            assert np.isnan(delta_N_sq).sum() == 0, 'nan found in nmsd'
+            assert np.sum(delta_N_sq < 0) == 0, 'negatives found in nmsd'
+            assert np.sum(delta_N_sq == 0) == 0, 'zeros found in nmsd'
+
+            N2_theory2 = lambda t, D : plateau * (1 - countoscope_theory.nmsd.famous_f(4*D*t/L**2)**2)
+            log_N2_theory2 = lambda t, *args : np.log(N2_theory2(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
+            
+
+            t_for_fit = t[1:]
+            # t_for_fit = t_for_fit[t_for_fit > sigma**2/D_MSD]
+            tmax1 = t_for_fit.max()
+            # t_for_fit = t_for_fit[t_for_fit < 1e2]
+            tmax2 = t_for_fit.max()
+            # assert tmax2 < tmax1
+            print('t fitting 2', t_for_fit[0], t_for_fit[-1])
+
+            # t_for_fit2 = t_for_fit[t_for_fit > 3*L**2]
+            # if t_for_fit2.size > 100:
+            #     t_for_fit = t_for_fit2
+
+            fitting_points22 = common.exponential_indices(t_for_fit, num=100)
+            # p0 = (0.05, N_mean[box_size_index])
+            assert t[fitting_points22[-1]] < tmax1
+            print('t fitting 2', t[fitting_points22[0]], t[fitting_points22[-1]])
+            p02 = [0.05]
+
+
+            
+            assert np.isfinite(t[fitting_points22]).all()
+            assert np.isfinite(np.log(delta_N_sq[fitting_points22])).all()
+            popt2, pcov2 = scipy.optimize.curve_fit(log_N2_theory2, t[fitting_points22], np.log(delta_N_sq[fitting_points22]), p0=p02, maxfev=2000)
+            # ax.plot(t_theory[1:], N2_theory(t_theory, *popt)[1:], color='black', linewidth=1, label='sDFT (no inter.)' if box_size_index==0 else None)
+            D_from_fit2 = popt2[0]
+            D_from_fit_unc2 = np.sqrt(pcov2[0][0])
+
+            fit_ys = N2_theory2(t_theory, *popt2)
+
+            return D_from_fit2, D_from_fit_unc2, fit_ys
+        
+        # Dc, Dc_unc, tsi_replacement_ys = timescaleint_replacement_fitplateau()
+        Dc, Dc_unc, tsi_replacement_ys = timescaleint_replacement()
         
         print(f'  timescaleint replacement D={common.format_val_and_unc(Dc, Dc_unc, latex=False)}')
         # Dc_lower, Dc_unc_lower, _ = tsi_replace_func((delta_N_sq-delta_N_sq_err).clip(min=0.1)) # otherwise we could give negatives
@@ -605,10 +686,11 @@ def go(file, ax, separation_in_label=False,
             else:
                 points_to_plot = np.index_exp[1:] # this is basically a functional way of writing points_to_plot = [1:]
             
-            exp_plot = ax.plot(t[points_to_plot], delta_N_sq[points_to_plot], label=label, linestyle=linestyle, marker='o', markersize=markersize, zorder=-1, color=color)
+            exp_plot, = ax.plot(t[points_to_plot], delta_N_sq[points_to_plot], label=label, linestyle=linestyle, marker='o', markersize=markersize, zorder=-1, color=color)
             # exp_plot = ax.errorbar(t[1:], delta_N_sq[1:], yerr=delta_N_sq_err[1:]/np.sqrt(num_of_boxes[box_size_index]), label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
             # exp_plot = ax.errorbar(t[1:], delta_N_sq[1:], yerr=delta_N_sq_err[1:], label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
-        
+            plotted_handles.append(exp_plot)
+
             if labels_on_plot:
                 t_index_for_text = int(t_theory.size // 1.6)
                 angle = np.arctan(np.gradient(N2_theory_points, t_theory)[t_index_for_text]) * 180/np.pi
@@ -674,6 +756,7 @@ def go(file, ax, separation_in_label=False,
         Dc = D_MSD * (1 + data['pack_frac']) / (1 - data['pack_frac'])**3
         print('Dc/D_MSD', Dc/D_MSD)
         L_high = 1000
+        handles = []
         for i, L, D, linest in ((0, L_low, D_MSD, 'dotted'), (1, L_high, Dc, 'dashed')):
         # for L, D in ((L_high, Dc),):
             t_theory_limits = t_theory_limits_over_L2 * L**2
@@ -682,34 +765,41 @@ def go(file, ax, separation_in_label=False,
             plateau_over_2 = 1/2 * countoscope_theory.nmsd.plateau_inter_2d(N_mean, L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma))
             print('we', D, N_mean, L_low)
             nmsd_limit = countoscope_theory.nmsd.nointer_2d(t_theory_limits, D, plateau_over_2, L)
-            ax.plot(t_theory_limits_over_L2[1:], nmsd_limit[1:]/L**2, color='black', linewidth=1, linestyle=linest, label=nointer_theory_limit_labels[i])                
+            line, = ax.plot(t_theory_limits_over_L2[1:], nmsd_limit[1:]/L**2, color='black', linewidth=1, linestyle=linest)#, label=nointer_theory_limit_labels[i])                
             print('t', t_theory_limits_over_L2[1:])
             print('N', nmsd_limit[1:])
+            handles.append(line)
+        # legend2 = ax.legend(handles, labels=['a', 'b'])
+        print(handles)
+        if show_second_legend:
+            legend2 = ax.legend(handles=handles, labels=nointer_theory_limit_labels, loc='lower right', bbox_to_anchor=(0, 0, 0.75, 1), fontsize=legend_fontsize)
+            ax.add_artist(legend2)
 
     assert have_displayed_at_least_one, 'display was false for all L'
 
     if rescale_x and not FORCE_HIDE_LEGEND:
-        legend = ax.legend(fontsize=legend_fontsize, loc=legend_location)
+        legend = ax.legend(handles=plotted_handles, fontsize=legend_fontsize, loc=legend_location)
         common.set_legend_handle_size(legend)
+        pass
     if not LINEAR_Y:
         ax.semilogy()
     ax.semilogx()
     if rescale_x == RESCALE_X_L:
-        xlabel = '$\Delta t/L$'
+        xlabel = '$t/L ($\mathrm{s/\mu m})$'
     elif rescale_x == RESCALE_X_L2:
-        xlabel = '$\Delta t/L^2$ ($\mathrm{s/\mu m^2}$)'
+        xlabel = '$t/L^2$ ($\mathrm{s/\mu m^2}$)'
     else:
-        xlabel = '$\Delta t$ ($\mathrm{s}$)'
+        xlabel = '$t$ ($\mathrm{s}$)'
     if rescale_y == None:
-        ylabel = r'$\langle \Delta N^2(\Delta t) \rangle$ ($\mathrm{\mu m^2}$)'
+        ylabel = r'$\langle \Delta N^2(t) \rangle$ ($\mathrm{\mu m^2}$)'
     elif rescale_y == RESCALE_Y_N:
-        ylabel = r'$\Delta N^2(\Delta t)/ \langle N\rangle$'
+        ylabel = r'$\langle \Delta N^2(t) \rangle / \langle N\rangle$'
     elif rescale_y == RESCALE_Y_VAR_N:
-        ylabel = r'$\Delta N^2(\Delta t)/ Var(N)$'
+        ylabel = r'$\langle \Delta N^2(t) \rangle / Var(N)$'
     elif rescale_y == RESCALE_Y_PLATEAU:
-        ylabel = r'$\Delta N^2(\Delta t)/ \mathrm{plateau}$'
+        ylabel = r'$\langle \Delta N^2(t) \rangle / \mathrm{plateau}$'
     elif rescale_y == RESCALE_Y_L2:
-        ylabel = r'$\Delta N^2(\Delta t)/ L^2$ ($\mathrm{\mu m^{-2}}$)'
+        ylabel = r'$\langle \Delta N^2(t) \rangle / L^2$ ($\mathrm{\mu m^{-2}}$)'
     ax.set_xlabel(xlabel)
     if not disable_ylabel: ax.set_ylabel(ylabel)
 

@@ -22,12 +22,12 @@ source_names = {
     'DDM': 'DDM',
     'DDM_short': 'DDM short',
     'DDM_long': 'DDM long',
-    'f': '$f(k, \Delta t)$',
-    'Fs': '$F_s(k, \Delta t)$',
-    'f_short': '$f(k, \Delta t)$ short',
+    'f': '$f(k, t)$',
+    'Fs': '$F_s(k, t)$',
+    'f_short': '$f(k, t)$ short',
     'Fs_short': '$F_s(k, \mathrm{short})$',
-    'f_long': '$f(k, \Delta t)$ long',
-    'f_first': '$f(k, \Delta t)$ first point',
+    'f_long': '$f(k, t)$ long',
+    'f_first': '$f(k, t)$ first point',
     'Fs_long': '$F_s(k, \mathrm{long})$',
     'boxcounting': 'counting full fit',
     'MSD': 'MSD',
@@ -113,7 +113,7 @@ linestyle = {
 
 def get_D0(file):
     # we don't do these ones in get_D0_filename cause sometimes we might want to compare these ones
-    suffixes = ['_crop', '_trim', '_first', '_smallbins', '_nozero', '_no_overlap', '_long', '_longer']
+    suffixes = ['_crop', '_trim', '_first', '_smallbins', '_nozero', '_no_overlap', '_long', '_longer', '_moreoverlap', '_spacing']
     for suffix in suffixes:
         if suffix in file:
             file = file.split(suffix)[0]
@@ -145,7 +145,7 @@ def get_D0_filename(file):
                 'brennan_hydro_010_L544', 'brennan_hydro_010_L1280',
                 'sim_nohydro_011_L320', 'sim_nohydro_011_L320_long', 'sim_nohydro_011_L320_longer',
                 'sim_nohydro_002_L320', 'sim_nohydro_002_L320_long', 'sim_nohydro_002_L320_longer',
-                'sim_nohydro_002_L640',
+                'sim_nohydro_002_L640', 'sim_nohydro_011_L640',
                 'brennan_hydro_002_L320', 'brennan_hydro_002_L640', 'brennan_hydro_011_L320']:
         file += '_div8'
     return file
@@ -180,7 +180,7 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
 
     elif source == 'D0Sk_theory':
         
-        L = np.logspace(np.log10(sigma*1e-1), np.log10(sigma*3e1), 100)
+        L = np.logspace(np.log10(sigma*1e-1), np.log10(sigma*100), 100)
         L = L[::-1] # so that it's the same order as the others
         k = 2*np.pi/L
         S = countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma)
@@ -281,13 +281,13 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
             keep = 10 * T_of_L < max_time
 
             num_before = xs.size
-            xs = xs[keep]
-            Ds = Ds[keep]
-            if len(D_uncs.shape) == 1:
-                D_uncs = D_uncs[keep]
-            else:
-                D_uncs = D_uncs[:, keep]
-            assert xs.size, 'we dropped all points'
+            # xs = xs[keep]
+            # Ds = Ds[keep]
+            # if len(D_uncs.shape) == 1:
+            #     D_uncs = D_uncs[keep]
+            # else:
+            #     D_uncs = D_uncs[:, keep]
+            # assert xs.size, 'we dropped all points'
             
             print(f'kept L<{xs[-1]/sigma:.2g}σ ({xs.size/num_before:.2f})')
             
@@ -575,7 +575,7 @@ def get_marker(source):
 def get_color(source):
     return colors.get(trim_source(source), common.FIT_COLOR)
 
-suffixes = ['_obs', '_nmsdfitinter', '_nmsdfit', '_var', '_varmod', '_sDFT']
+suffixes = ['_obs', '_nmsdfitinter', '_nmsdfit', '_var', '_varmod', '_sDFT', '_N_mean', '_density']
 
 def trim_source(source):
     for suffix in suffixes:
@@ -587,11 +587,12 @@ if __name__ == '__main__':
 
         filename = file
 
-        go(file, ['MSD_first',
+        go(file, [
+            # 'MSD_first',
                 #   'MSD_long',
                 #   'D0Sk', 
                 #   'MSD_short',
-                  'D0Sk_theory',
+                #   'D0Sk_theory',
                 #   'dominiguez_theory',
                 #   'panzuela_theory',
                 #   'f_D1', 'f_D2',
@@ -608,12 +609,17 @@ if __name__ == '__main__':
                 #   'boxcounting_shorttime',
                 #     'boxcounting_first_quad',
                     # 'boxcounting_collective_var',
-                #   'timescaleint_var',
-                  'timescaleint_nmsdfitinter',
-                #   'timescaleint_nofit_cropped_var',
-                  'timescaleint_nofit_cropped_nmsdfitinter',
+                #   'timescaleint_',
+                #   'timescaleint_nmsdfitinter',
+                  'timescaleint_nofit_cropped_var',
+                  'timescaleint_nofit_cropped_sDFT',
+                #   'timescaleint_fixexponent_cutoff',
+                'timescaleint_fixexponent_var',
+                'timescaleint_fixexponent_sDFT',
+                #   'timescaleint_nofit_cropped_noshort_var',
+                #   'timescaleint_nofit_cropped_nmsdfitinter',
                 #   'MSD_centre_of_mass_proximity',
-                # 'D_of_L_theory',
+                'D_of_L_theory',
                 # 'D_of_L_theory_Lh',
                 # 'NtN0_first',
                 # 'NtN0_fit',

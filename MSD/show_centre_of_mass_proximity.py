@@ -68,7 +68,7 @@ for file in common.files_from_argv('MSD/data', 'msd_centre_of_mass_proximity_'):
     ax.loglog()
 
     ax.set_ylabel(r'$L^2\rho\langle r(t)^2 \rangle$ ($\mathrm{\mu m}$)')
-    ax.set_xlabel('$\Delta t$ (s)')
+    ax.set_xlabel('$t$ (s)')
     ax.legend()
 
     ax.set_ylim(0.8e-1, 1e3)

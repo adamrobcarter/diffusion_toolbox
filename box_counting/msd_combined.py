@@ -6,6 +6,8 @@ import scipy.integrate
 import sys
 import matplotlib.cm
 
+# THIS FILE SHOULD JUST CALL MSD_SINGLE MULTIPLE TIMES
+
 TARGET_NUM_BOX_SIZES = 10
 LABELS_ON_PLOT_Y_SHIFT = 1.4
 DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE = True
@@ -175,6 +177,7 @@ def go(files, ax, target_num_box_sizes=None, box_size_indices=None, legend_num_b
                     markersize = 1
                 else:
                     markersize = 2
+                markersize = 3
 
                 good = delta_N_sq > 1e-7
                 good[0] = False
@@ -217,8 +220,8 @@ def go(files, ax, target_num_box_sizes=None, box_size_indices=None, legend_num_b
         common.set_legend_handle_size(legend)
     ax.semilogy()
     ax.semilogx()
-    xlabel = '$\Delta t/L^2$' if collapse_x else '$\Delta t$'
-    ylabel = r'$\Delta N^2(\Delta t) / L^2$' if collapse_y else '$\Delta N^2(\Delta t)$'
+    xlabel = '$t/L^2$' if collapse_x else '$t$ (s)'
+    ylabel = r'$\Delta N^2(t) / L^2$' if collapse_y else '$\Delta N^2(t)$'
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
 

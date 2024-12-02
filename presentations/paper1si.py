@@ -139,7 +139,31 @@ SI_SINGLE_FIGSIZE = (4, 3.5)
 #     ['MSD_first', 'f_first_first',],
 #     logarithmic_y=False,
 #     plot_against_k=True,
+    # colors=[['olivedrab'], ['darkgreen']]
+    # file_labels=['periodic boundary', 'non periodic boundary'],
 # )
 # ax.set_ylim(*DS_OVERLAPPED_YLIM_FKT)
 # common.save_fig(fig, f'{path}/si_no_hydro_f_periodic.png', hide_metadata=True)
 # common.save_fig(fig, f'{path}/si_no_hydro_f_periodic.pdf', hide_metadata=True)
+
+
+########################### high density periodic #################################
+fig, ax = plt.subplots(1, 1, figsize=SI_SINGLE_FIGSIZE)
+visualisation.Ds_overlapped_mult.go(
+    ['sim_nohydro_011_L320', 'sim_nohydro_011_L640_crop320'],
+    sources=[
+        'f_first_first'
+    ],
+    ax=ax,
+    plot_against_k=True,
+    # markers=MARKER_FKT,
+    file_labels=['periodic boundary', 'non periodic boundary'],
+    source_labels=[''],
+    colors=[['olivedrab'], ['darkgreen']]
+)
+ax.set_ylim(*DS_OVERLAPPED_YLIM)
+# ax.yaxis.set_major_locator(ticks_0p5)
+ax.set_xlim(*DS_OVERLAPPED_XLIM_K)
+ax.legend(fontsize=8, loc='upper right', bbox_to_anchor=(1, 0.8)) # puts upper right at specified position
+common.save_fig(fig, f'{path}/si_no_hydro_f_periodic_highdensity.png', hide_metadata=True)
+common.save_fig(fig, f'{path}/si_no_hydro_f_periodic_highdensity.pdf', hide_metadata=True)

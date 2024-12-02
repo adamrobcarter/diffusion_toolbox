@@ -32,6 +32,12 @@ def go(file, ax):
 
     ax_i = 0
 
+    num_box_sizes = data[f'spacing0_split0_N_var'].size
+    N_vars = np.full((len(spacings), num_splits, num_box_sizes), np.nan)
+    areas = np.full((len(spacings), num_box_sizes), np.nan)
+    perims = np.full((len(spacings), num_box_sizes), np.nan)
+    num_boxes = np.full((len(spacings), num_box_sizes), np.nan)
+
     for spacing_i, spacing in enumerate(spacings):
 
 
@@ -44,6 +50,8 @@ def go(file, ax):
         # ax = axs[ax_i] if plot else None
         # ax_i += 1 if plot else 0
 
+
+        
         for split_i, split in enumerate(range(num_splits)):
             # data = common.load(f'box_counting/data/counted_{file}_qo_split{split}_spacing{spacing}.npz')
             # data = data[spacing_i][split_i]
@@ -57,81 +65,89 @@ def go(file, ax):
             box_sizes      = data[f'{key}_box_sizes']
             sep_sizes      = data[f'{key}_sep_sizes']
             num_of_boxes   = data[f'{key}_num_boxes']
+            N_var   = data[f'{key}_N_var']
+
+            N_vars[spacing_i, split_i, :] = N_var
             
             # N_mean    = N_stats[:, 1]
             # N_var     = N_stats[:, 2]
             # num_of_boxes = data[f'{key}_num_boxes']
             # ax.set_title(f'{np.mean(num_of_boxes):.0f} boxes') if plot else None
 
-            num_timesteps = N2_mean.shape[1]
+            # num_timesteps = N2_mean.shape[1]
             num_box_sizes = N2_mean.shape[0]
-            t_all = np.arange(0, num_timesteps) * time_step
+            # t_all = np.arange(0, num_timesteps) * time_step
 
-            for box_size_index in range(0, num_box_sizes, 1):
+            # for box_size_index in range(0, num_box_sizes, 1):
 
-                L = box_sizes[box_size_index]
+            #     L = box_sizes[box_size_index]
 
-                delta_N_sq     = N2_mean[box_size_index, :]
-                delta_N_sq_err = N2_std [box_size_index, :]
-                t = np.copy(t_all)
-                t_theory = np.logspace(np.log10(t_all[1] / 2), np.log10(t_all.max()*2), 100)
+            #     delta_N_sq     = N2_mean[box_size_index, :]
+            #     delta_N_sq_err = N2_std [box_size_index, :]
+            #     t = np.copy(t_all)
+            #     t_theory = np.logspace(np.log10(t_all[1] / 2), np.log10(t_all.max()*2), 100)
 
-                anomalous = delta_N_sq < 1e-14
-                anomalous[0] = False # don't want to remove point t=0 as it could legit be zero
-                if np.any(anomalous):
-                    # print(f'found {anomalous.sum()/delta_N_sq.size*100:.3f}% anomalous')
-                    delta_N_sq     = delta_N_sq    [~anomalous]
-                    delta_N_sq_err = delta_N_sq_err[~anomalous]
-                    t              = t             [~anomalous]
+            #     anomalous = delta_N_sq < 1e-14
+            #     anomalous[0] = False # don't want to remove point t=0 as it could legit be zero
+            #     if np.any(anomalous):
+            #         # print(f'found {anomalous.sum()/delta_N_sq.size*100:.3f}% anomalous')
+            #         delta_N_sq     = delta_N_sq    [~anomalous]
+            #         delta_N_sq_err = delta_N_sq_err[~anomalous]
+            #         t              = t             [~anomalous]
                 
-                # N2_fu
-                label = rf'$L={L:.1f}\mathrm{{\mu m}}$'
-                # label += f', $D={D0:.3f}±{np.sqrt(pcov[0][0]):.3f}$'
+            #     # N2_fu
+            #     label = rf'$L={L:.1f}\mathrm{{\mu m}}$'
+            #     # label += f', $D={D0:.3f}±{np.sqrt(pcov[0][0]):.3f}$'
 
-                color =  matplotlib.cm.afmhot(np.interp(box_size_index, (0, len(box_sizes)), (0.2, 0.75)))
-                # color = matplotlib.cm.tab10(box_size_index)
-                # ax.plot(t[1:], delta_N_sq[1:], linestyle='none', marker='o', markersize=1, color=color) if plot else None
-
-        # [print(a.shape) for a in N2_means]
-        N2_means = [a[:, :7198] for a in N2_means]
-        N2_means_from_diff_splits_combined = np.stack(N2_means, axis=2)
-        # ^ axes are box x timestep x split
-
-        std_devs_at_spacing = []
-
-        for box_size_index in range(0, num_box_sizes):
-            N2_at_this_box = N2_means_from_diff_splits_combined[box_size_index, :, :]
-            # print('N2_at_this_box', common.nanfrac(N2_at_this_box))
-            # N2_stds = N2_at_this_box.std(axis=1) # axis 1 is now split
-            # N2_stds /= N2_at_this_box.mean(axis=1)
-            N2_stds =  np.nanstd (N2_at_this_box, axis=1) # axis 1 is now split
-            N2_stds /= np.nanmean(N2_at_this_box, axis=1)
-            N2_stds /= np.sqrt(num_splits)
-            # avg_std = N2_std.mean() # only remaining axis is timestamp
-            # avg_std = N2_stds[100]
-            # print('N2_stds', common.nanfrac(N2_stds))
-            avg_std = np.median(N2_stds)
-            # print(avg_std)
-            # print(f'L={box_sizes[box_size_index]}, {avg_std:.5f}')
-
-            std_devs_at_spacing.append(avg_std)
-
-        std_devs.append(std_devs_at_spacing)
-        num_boxes.append(num_of_boxes)
-        seps.append(sep_sizes)
-
-        # ax.loglog() if plot else None
-    # common.save_fig(fig, f'box_counting/figures_png/quantify_overlap_{file}.png', dpi=200)
+            #     color =  matplotlib.cm.afmhot(np.interp(box_size_index, (0, len(box_sizes)), (0.2, 0.75)))
+            #     # color = matplotlib.cm.tab10(box_size_index)
+            #     # ax.plot(t[1:], delta_N_sq[1:], linestyle='none', marker='o', markersize=1, color=color) if plot else None
 
     
-    std_devs  = np.array(std_devs)
-    # std_devs is now (num spacings) x (num box sizes)
-    num_boxes = np.array(num_boxes)
-    seps = np.array(seps)
+        std_devs  = np.array(std_devs)
+        # std_devs is now (num spacings) x (num box sizes)
+        num_boxes[spacing_i, :] = num_of_boxes
+        seps = np.array(seps)
 
-    total_area = num_boxes * box_sizes**2
-    # area_fraction = total_area / ()
-    total_perim = num_boxes * box_sizes * 4
+        areas[spacing_i, :] = num_of_boxes * box_sizes**2
+        # area_fraction = total_area / ()
+        perims[spacing_i, :] = num_of_boxes * box_sizes * 4
+
+    N_var_means = N_vars.mean(axis=1) # mean over splits
+    N_var_errs = N_vars.std(axis=1) / num_splits
+
+        # # [print(a.shape) for a in N2_means]
+        # N2_means = [a[:, :7198] for a in N2_means]
+        # N2_means_from_diff_splits_combined = np.stack(N2_means, axis=2)
+        # # ^ axes are box x timestep x split
+
+        # std_devs_at_spacing = []
+
+        # for box_size_index in range(0, num_box_sizes):
+
+        #     N2_at_this_box = N2_means_from_diff_splits_combined[box_size_index, :, :]
+        #     # print('N2_at_this_box', common.nanfrac(N2_at_this_box))
+        #     # N2_stds = N2_at_this_box.std(axis=1) # axis 1 is now split
+        #     # N2_stds /= N2_at_this_box.mean(axis=1)
+        #     N2_stds =  np.nanstd (N2_at_this_box, axis=1) # axis 1 is now split
+        #     N2_stds /= np.nanmean(N2_at_this_box, axis=1)
+        #     N2_stds /= np.sqrt(num_splits)
+        #     # avg_std = N2_std.mean() # only remaining axis is timestamp
+        #     # avg_std = N2_stds[100]
+        #     # print('N2_stds', common.nanfrac(N2_stds))
+        #     avg_std = np.median(N2_stds)
+        #     # print(avg_std)
+        #     # print(f'L={box_sizes[box_size_index]}, {avg_std:.5f}')
+
+        #     std_devs_at_spacing.append(avg_std)
+
+        # std_devs.append(std_devs_at_spacing)
+        # num_boxes.append(num_of_boxes)
+        # seps.append(sep_sizes)
+
+        # ax.loglog() if plot else None
+        # common.save_fig(fig, f'box_counting/figures_png/quantify_overlap_{file}.png', dpi=200)
+
 
     
     for box_size_index in range(num_box_sizes):
@@ -142,19 +158,20 @@ def go(file, ax):
         # x = num_boxes[:, box_size_index]
         # x = total_area[:, box_size_index]
         if X_AXIS == PERIMETER:
-            x = total_perim[:, box_size_index]
+            x = perims
         elif X_AXIS == NUM_BOXES:
             x = num_boxes[:, box_size_index]
         elif X_AXIS == SEP:
             x = seps[:, box_size_index]
         elif X_AXIS == TOTAL_AREA:
-            x = total_area[:, box_size_index]
+            x = areas
         else:
             raise
         # ax_summary.scatter(x, std_devs[:, box_size_index],
         #                    label=fr'${box_sizes[box_size_index]}\mathrm{{\mu m}}$',
         #                    color=color)
-        ax.plot(x, std_devs[:, box_size_index],
+        rescale_y = N_var_means[0, box_size_index]
+        ax.errorbar(x, box_size_index/10 + N_var_means[:, box_size_index]/rescale_y, yerr=N_var_errs[:, box_size_index]/rescale_y,
                         marker='o',
                         markersize=5,
                         label=fr'$L={box_sizes[box_size_index]/sigma:.2g}σ$',
@@ -171,11 +188,12 @@ def go(file, ax):
         total_area[:, box_size_index]
         ax.set_xlabel('total area ($\mathrm{\mu m^2}$)')
     ax.legend()
-    ax.set_ylabel(r'error on $\langle \Delta N^2(t) \rangle$')
+    ax.set_ylabel(r'$Var(N)$')
+    ax.grid()
     
     # common.save_fig(fig_summary, f'box_counting/figures_png/quantify_overlap_summary_{file}.png')
 
-    ax.semilogy()
+    # ax.semilogy()
     # func = lambda x, m, c: m*x + c
     # log_func = lambda x, m, c: np.log10(func(x, m, c))
     # popt, pcov = scipy.optimize.curve_fit(log_func, np.log10())
@@ -200,5 +218,5 @@ if __name__ == '__main__':
 
         go(file, ax)
         
-        common.save_fig(fig, f'box_counting/figures_png/quantify_overlap_summary_{file}_logy.png')
+        common.save_fig(fig, f'box_counting/figures_png/quantify_overlap_var_{file}.png')
     

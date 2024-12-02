@@ -205,6 +205,25 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
                 window_size_x=out_width, window_size_y=out_width, max_time_hours=round(end_timestep*dt/60/60, 2),
                 source_file=infile,
             )
+
+            
+        end_timestep = data[:, 2].max() // 64
+        data_small = data_small[data_small[:, 2] < end_timestep, :]
+
+        common.save_data(f'particle_detection/data/particles_{outfile}_div8.npz',
+            particles=data_small,
+            time_step=dt, particle_diameter=2.79, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
+            window_size_x=out_width, window_size_y=out_width, max_time_hours=round(end_timestep*dt/60/60, 2),
+            source_file=infile,
+        )
+
+        if data.shape[1] == 4:
+            common.save_data(f'particle_linking/data/trajs_{outfile}_div8.npz',
+                particles=data_small,
+                time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
+                window_size_x=out_width, window_size_y=out_width, max_time_hours=round(end_timestep*dt/60/60, 2),
+                source_file=infile,
+            )
     print()
     
 # 0.34
@@ -242,6 +261,8 @@ datas = [
     # (544, 0.5, 0.1, '_dt2', 4, 24*60*60),
     # (800, 8, 0.02, '', 1, 24*60*60),
     # (320, 8, 0.114, '_long', 1, None, 2.972),
+    # (640, 0.5, 0.10, '', 1, None, 2.79),
+    (640, 8, 0.10, '_longer', 2, None, 2.79),
 
     # (320, 0.5, 0.114, '', 1, None, 2.972), # sim_nohydro_011_L320
     # (320, 0.5, 0.016, '', 1, None, 2.972), # sim_nohydro_002_L320
@@ -249,13 +270,17 @@ datas = [
     # (320, 32, 0.114, '_longest', 1, None, 2.972), # sim_nohydro_011_L320_longest
     # (320, 16, 0.016, '_longer', 1, None, 2.972), # sim_nohydro_002_L320_longer
     # (640, 0.5, 0.016, '', 1, None, 2.972), # sim_nohydro_002_L640
-    (640, 0.5, 0.114, '', 1, None, 2.972), # sim_nohydro_011_L640
+    # (640, 0.5, 0.114, '', 1, None, 2.972), # sim_nohydro_011_L640
 ]
 
 for L, dt, phi, suffix, nth_timestep, max_time, particle_diameter in datas:
     phistr = f'{phi*100:.0f}'.zfill(3)
     # go(f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt', f'sim_nohydro_{phistr}_L{L}{suffix}',  L, L, dt, phi, nth_timestep, max_time)
-    go(f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}_s2.972.suspension_phi{phi}_L{L}_s2.972.bin',
+    go(
+        # new ones:
+       # f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}_s2.972.suspension_phi{phi}_L{L}_s2.972.bin',
+       # old ones:
+       f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt',
        f'sim_nohydro_{phistr}_L{L}{suffix}',
        orig_width=L, 
        out_width=L, 

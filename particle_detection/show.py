@@ -57,7 +57,11 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=N
 if __name__ == '__main__':
     for file in common.files_from_argv('preprocessing/data', 'stack_'):
 
-        data_particles = common.load(f'particle_detection/data/particles_{file}.npz')
+        filename_particles = file
+        if file.endswith('_first'):
+            filename_particles = file.split('_first')[0]
+
+        data_particles = common.load(f'particle_detection/data/particles_{filename_particles}.npz')
         particles = data_particles['particles']
         radius    = data_particles.get('radius', np.zeros(particles.shape[0]))
         time_step = data_particles['time_step']
@@ -70,8 +74,8 @@ if __name__ == '__main__':
             
             # crop
             # stack = stack[:, :500, :500]
-
-            stack = stack - stack.mean(axis=0) # remove space background
+            # print('removing background')
+            # stack = stack - stack.mean(axis=0) # remove space background
             # stack = np.interp(stack, (stack.min(), stack.max()), (0, 1)) # convert to 0->1 range
 
         except FileNotFoundError:
@@ -81,6 +85,7 @@ if __name__ == '__main__':
             # radius = np.full(particles.shape[0], 0.002*160)
             radius = np.full(particles.shape[0], np.nan)
             print()
+
 
         def add_outlines(timestep, ax):
             add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=channel, outline=False)
@@ -92,6 +97,10 @@ if __name__ == '__main__':
         ax.set_xlim(particles[:, 1].min(), particles[:, 1].max())
         ax.set_aspect('equal')
 
+        preprocessing.stack_movie.show_single_frame(ax=ax, frame=stack[0, :, :], pixel_size=pixel_size,
+                                                    window_size_x=data_particles['window_size_x'], window_size_y=data_particles['window_size_y'])
+
+        print('adding outlines')
         add_outlines(0, ax)
 
         common.save_fig(fig, f'particle_detection/figures_png/frame1_{file}.png')

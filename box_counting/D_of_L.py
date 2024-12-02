@@ -10,12 +10,12 @@ import matplotlib.cm
 import box_counting.msd_single
 import visualisation.Ds_overlapped
 
-SHOW_THEORY = False
+SHOW_THEORY = True
 SHOW_TIMESCALEINTEGRAL_FIT = True
 DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE = True
 SHOW_LEGEND = True
 
-LATE_CN_ALPHA = 0.08
+LATE_CN_ALPHA = 0.1
 LABELS_ON_PLOT = False
 LABELS_ON_PLOT_Y_SHIFT = 1.2
 LABELS_ON_PLOT_X_SHIFT = 1.3
@@ -30,8 +30,10 @@ RESCALE_X_L2 = 1
 # RESCALE_X = RESCALE_X_L2
 RESCALE_X = None
 
-# PLATEAU_SOURCE = 'var'
-PLATEAU_SOURCE = 'nmsdfitinter'
+PLATEAU_SOURCE = 'cutoff'
+PLATEAU_SOURCE = 'var'
+PLATEAU_SOURCE = 'sDFT'
+# PLATEAU_SOURCE = 'nmsdfitinter'
 
 """
 Countoscope appendix:
@@ -83,13 +85,21 @@ def do_early_integral(f, t, T_integrand, T_integrand_min, T_integrand_max):
 class PositiveSlopeInTimescaleIntegralFitException(Exception):
     pass
 
-def do_late_integral(t, L, T_integrand, M2_index, M1_index):
-    late_fit_func = lambda t, a, b: (a - b*t) - np.log(1 + np.exp(a - b*t))
+def do_late_integral(t, L, T_integrand, M2_index, M1_index, fix_slope=False):
+    if fix_slope:
+        b = 4
+        late_fit_func = lambda t, a, B: (a - b*t) - np.log(1 + np.exp(a - b*t))
+    else:
+        late_fit_func = lambda t, a, b: (a - b*t) - np.log(1 + np.exp(a - b*t))
     late_fit_xdata =     np.log(t          [M1_index:M2_index])
     late_fit_ydata = 2 * np.log(T_integrand[M1_index:M2_index])
     assert late_fit_xdata.size > 3
     late_popt, late_pcov = scipy.optimize.curve_fit(late_fit_func, late_fit_xdata, late_fit_ydata)
-    a, b = late_popt
+    if fix_slope:
+        a = late_popt[0]
+    else:
+        a, b = late_popt
+    print(f'a = {a}, b = {b}')
     if b < 0:
         print('  positive slope in timescale integral fit')
         raise PositiveSlopeInTimescaleIntegralFitException()
@@ -97,8 +107,11 @@ def do_late_integral(t, L, T_integrand, M2_index, M1_index):
     b_unc = np.sqrt(late_pcov)[1, 1]
     late_fit_func_real = lambda t, a, b: np.exp(0.5 * late_fit_func(np.log(t), a, b))
     # what is real? is the other one log space or something?
-    t_end = t.max()*1e9
-    t_fit_late = np.logspace(np.log10(t[M1_index]), np.log10(t_end))
+    t_end = t.max()*1e3
+    if fix_slope:
+        t_fit_late = np.logspace(np.log10(t[M2_index]), np.log10(t_end))
+    else:
+        t_fit_late = np.logspace(np.log10(t[M1_index]), np.log10(t_end))
     if late_fit_func_real(t_end, a, b) < 1e-5:
         warnings.warn(f'late_fit_func_real(t_end, a, b) = late_fit_func_real({t_end}, {a}, {b}) = {late_fit_func_real(t_end, a, b)}')
     
@@ -213,12 +226,13 @@ def C_N_simplefit(t, C_N_over_VarN, C_N_over_VarN_unc, L):
 def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
        plot_color=None, export_destination=None, sep_in_label=False,
        show_nofit_cutoff=True, show_theory=False, labels_on_plot=True, max_num_boxes=10,
-       show_fits=True, late_C_N_alpha=LATE_CN_ALPHA, labels_on_plot_font_color=None,
+       show_short_fits=True, show_long_fits=True, late_C_N_alpha=LATE_CN_ALPHA, labels_on_plot_font_color=None,
        show_legend=False, plot_C_N_squared=True, box_size_indices=None,
        show_slope=False, show_T_of_L=False, rescale_x=None, colormap=None,
-       disable_ylabel=False):
+       disable_ylabel=False, plateau_adjust=1.0, plateau_source_suffix='', plateau_offset=0.0):
 
     integ_axs = ax
+    # ax.set_title(f'{file}: plateau: {plateau_source}')
 
     # D_fig = plt.figure()
     # T_fig = plt.figure()
@@ -253,6 +267,9 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
     D_of_Ls     = np.full((num_boxes), np.nan)
     D_of_L_uncs = np.full((2, num_boxes), np.nan)
     T_of_Ls     = np.full((num_boxes), np.nan)
+
+    D_of_Ls_fixexponent     = np.full((num_boxes), np.nan)
+    D_of_L_uncs_fixexponent = np.full((2, num_boxes), np.nan)
     
     D_of_Ls_nofit     = np.full((num_boxes), np.nan)
     D_of_L_uncs_nofit = np.full((2, num_boxes), np.nan)
@@ -263,7 +280,15 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
     D_of_Ls_simplefit     = np.full((num_boxes), np.nan)
     D_of_L_uncs_simplefit = np.full((2, num_boxes), np.nan)
     
+    D_of_Ls_nofit_noshortfit     = np.full((num_boxes), np.nan)
+    D_of_L_uncs_nofit_noshortfit = np.full((2, num_boxes), np.nan)
+    
     D0, _, _ = visualisation.Ds_overlapped.get_D0(file)
+
+    c = 4e-6
+    m = 1
+    thresh_line = c * t**m
+    ax.plot(t, thresh_line)
 
     for box_size_index in tqdm.trange(num_boxes, desc='box sizes'):
         L = box_sizes[box_size_index]
@@ -275,11 +300,31 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
         print(f'{L_label} N_var={N_var[box_size_index]:.4f}, N_var/L^2={N_var[box_size_index]/L**2:.4f}')
 
         # fits etc
+        cutoff_index = np.argmax(box_sizes > 30)
         plateau, plateau_std = box_counting.msd_single.get_plateau(
-            plateau_source, file=file, nmsd=N2_mean[box_size_index, :], L=L, phi=phi, sigma=sigma, t=t, var=N_var[box_size_index], varmod=N_var_mod[box_size_index],
-            D0=D0, N_mean=N_mean[box_size_index],
+            plateau_source,
+            file=file,
+            nmsd=N2_mean[box_size_index, :],
+            L=L,
+            phi=phi,
+            sigma=sigma,
+            t=t,
+            var=N_var[box_size_index],
+            varmod=N_var_mod[box_size_index],
+            D0=D0,
+            N_mean=N_mean[box_size_index],
+            density=data.get('density', np.nan),
+            var_time=data.get('var_time'),
+            cutoff_L=box_sizes[cutoff_index],
+            cutoff_plat=2*N_var[cutoff_index]
         )
-        var_label = plateau_source
+        print(plateau.shape, plateau)
+        plateau *= plateau_adjust
+        plateau_std *= plateau_adjust
+        print(plateau.shape, plateau)
+        assert np.isscalar(plateau_offset)
+        plateau += plateau_offset
+        print(plateau.shape, plateau)
 
         T_integrand_func = lambda nmsd: (1 - nmsd / plateau )**2 # countoscope paper eq. 8
         T_integrand     = T_integrand_func(N2_mean[box_size_index, :])
@@ -292,7 +337,7 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
         C_N_over_plateau_unc = np.sqrt(C_N_over_plateau_unc_sq)
 
         # data integral setup
-        MIN_M2_INDEX = 8
+        MIN_M2_INDEX = 10
     
         M2_index = None
         M1_index = None
@@ -313,6 +358,17 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
                 print('M2_index', M2_index)
             M2_index = max(M2_index, MIN_M2_INDEX)
             M1_index = int(M2_index / 1.2) # t is linear so we can just halve the index to halve the time
+
+            if 'eleanorlong010' in file:
+                M2_index = np.argmax(T_integrand < thresh_line)
+                # if M2_index < 100:
+                #    M2_index = min(int(60 * L), t.shape[0]-1)
+                M2_index = max(M2_index, MIN_M2_INDEX)
+                print((T_integrand < thresh_line)[:10])
+                assert M2_index != 0
+                M1_t = t[M2_index] / 2
+                # print('t', t, 'M1_t', M1_t)
+                M1_index = np.argmax(t > M1_t)
             
         elif file == 'alice0.02':
             M2_index = min(int(60 * L), t.shape[0]-1)
@@ -337,16 +393,27 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
         elif file.startswith('sim_'):
             if file == 'sim_nohydro_010_L640_div8':
                 M2_index = min(int(600 * np.sqrt(L)), t.shape[0]-1)
-            elif file == 'sim_nohydro_011_L320_longer_merged': # should this be longer?
-                M2_index = min(int(850 * np.sqrt(L)), t.shape[0]-1)
+            elif file.startswith('sim_nohydro_011_L320_longer'): # should this be longer?
+                # M2_index = min(int(560 * L**0.4), t.shape[0]-1)
+                # print(N2_mean[box_size_index, :] < thresh_line)
+                M2_index = np.argmax(T_integrand < thresh_line)
+                assert M2_index != 0
+                M1_t = t[M2_index] / 2
+                # print('t', t, 'M1_t', M1_t)
+                M1_index = np.argmax(t > M1_t)
             elif file == 'sim_nohydro_002_L320_longer_merged':
-                M2_index = min(int(850 * np.sqrt(L)), t.shape[0]-1)
+                # M2_index = min(int(560 * np.sqrt(L)), t.shape[0]-1)
+                M2_index = np.argmax(T_integrand < thresh_line)
+                M1_t = t[M2_index] / 2
+                M1_index = np.argmax(t > M1_t)
             elif file == 'sim_nohydro_011_L320_longer':
                 M2_index = min(int(80 * np.sqrt(L)), t.shape[0]-1)
+                M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
             else:
                 M2_index = min(int(1800 * np.sqrt(L)), t.shape[0]-1)
+                M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
             M2_index = max(M2_index, MIN_M2_INDEX)
-            M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
+            
         else:
             raise Exception('you need to define the parameters for this dataset')
 
@@ -354,48 +421,33 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
 
 
         # full method
-        early_fit_func, early_popt, early_integral, early_integral_min, early_integral_max = do_early_integral(f, t, T_integrand, T_integrand_min, T_integrand_max)
-        data_integral, data_integral_min, data_integral_max = do_data_integral(t, T_integrand, T_integrand_min, T_integrand_max, M2_index)
-        if L < 3:
-            # the late integral fails here cause it's fully in the noise
-            # but it doesn't matter for small boxes cause the noise is so low
-            late_integral, late_integral_min, late_integral_max = 0, 0, 0
-            plot_late_integral_fit = False
+        (early_plot_x, early_plot_y), plot_late_integral_fit, D_of_L, D_of_L_min, D_of_L_max = timescaleintegral_full(t, L, T_integrand, T_integrand_min, T_integrand_max, M2_index, M1_index)
         
-        else:
-        
-            try:
-                late_integral, late_integral_min, late_integral_max, late_popt, late_fit_func_real, t_fit_late = do_late_integral(t, L, T_integrand, M2_index, M1_index)
-
-                print(f'  late integral contribution {late_integral/(early_integral+data_integral+late_integral):.3f}')
-                plot_late_integral_fit = True
-
-            except PositiveSlopeInTimescaleIntegralFitException:
-                print('  full timescale integral failed')
-                plot_late_integral_fit = False
-
-        D_of_L, D_of_L_min, D_of_L_max = get_D_from_integral_contributions(L, early_integral, early_integral_min, early_integral_max, data_integral, data_integral_min, data_integral_max, late_integral, late_integral_min, late_integral_max)
         print(f'  final uncs {D_of_L_min/D_of_L:.3f} {D_of_L_max/D_of_L:.3f}')
         D_of_Ls[box_size_index] = D_of_L
         D_of_L_uncs[:, box_size_index] = [D_of_L - D_of_L_min, D_of_L_max - D_of_L]
+
+        # fixed exponent
+        (late_plot_x, late_plot_y), plot_late_integral_fit, D_of_L_fixexponent, D_of_L_min_fixexponent, D_of_L_max_fixexponent = timescaleintegral_fixexponent(t, L, T_integrand, T_integrand_min, T_integrand_max, M2_index, M1_index)
+        D_of_Ls_fixexponent[box_size_index] = D_of_L_fixexponent
+        D_of_L_uncs_fixexponent[:, box_size_index] = [D_of_L_fixexponent - D_of_L_min_fixexponent, D_of_L_max_fixexponent - D_of_L_fixexponent]
         
         # nofit method
-        data_integral_full, data_integral_full_min, data_integral_full_max = do_data_integral(t, T_integrand, T_integrand_min, T_integrand_max, -1)
+        # data_integral_full, data_integral_full_min, data_integral_full_max = do_data_integral(t, T_integrand, T_integrand_min, T_integrand_max, -1)
         
-        D_of_L_nofit, D_of_L_min_nofit, D_of_L_max_nofit = get_D_from_integral_contributions(L, early_integral, early_integral_min, early_integral_max, data_integral_full, data_integral_full_min, data_integral_full_max, 0, 0, 0)
-        D_of_Ls_nofit[box_size_index] = D_of_L_nofit
-        D_of_L_uncs_nofit[:, box_size_index] = [D_of_L_nofit - D_of_L_min_nofit, D_of_L_max_nofit - D_of_L_nofit]
+        # D_of_L_nofit, D_of_L_min_nofit, D_of_L_max_nofit = get_D_from_integral_contributions(L, early_integral, early_integral_min, early_integral_max, data_integral_full, data_integral_full_min, data_integral_full_max, 0, 0, 0)
+        # D_of_Ls_nofit[box_size_index] = D_of_L_nofit
+        # D_of_L_uncs_nofit[:, box_size_index] = [D_of_L_nofit - D_of_L_min_nofit, D_of_L_max_nofit - D_of_L_nofit]
+        
+        # D_of_L_nofit, D_of_L_min_nofit, D_of_L_max_nofit = get_D_from_integral_contributions(L, 0, 0, 0, data_integral_full, data_integral_full_min, data_integral_full_max, 0, 0, 0)
+        # D_of_Ls_nofit[box_size_index] = D_of_L_nofit
+        # D_of_L_uncs_nofit[:, box_size_index] = [D_of_L_nofit - D_of_L_min_nofit, D_of_L_max_nofit - D_of_L_nofit]
         
         # nofit2 method
-        stop_point = np.argmax(T_integrand < NOFIT_CROP_THRESHOLD)
-        if stop_point == 0: # argmax returns zero if condition not met
-            stop_point = -1
-        data_integral_full2, data_integral_full2_min, data_integral_full2_max = do_data_integral(t[:stop_point], T_integrand[:stop_point], T_integrand_min[:stop_point], T_integrand_max[:stop_point], -1)
-
-        D_of_L_nofit2, D_of_L_min_nofit2, D_of_L_max_nofit2 = get_D_from_integral_contributions(L, early_integral, early_integral_min, early_integral_max, data_integral_full2, data_integral_full2_min, data_integral_full2_max, 0, 0, 0)
+        D_of_L_nofit2, D_of_L_min_nofit2, D_of_L_max_nofit2 = timescaleintegral_nofit(t, L, T_integrand, T_integrand_min, T_integrand_max)
         D_of_Ls_nofit2[box_size_index] = D_of_L_nofit2
         D_of_L_uncs_nofit2[:, box_size_index] = [D_of_L_nofit2 - D_of_L_min_nofit2, D_of_L_max_nofit2 - D_of_L_nofit2]
-
+        
         # simple fit
         D_simplefit, D_simplefit_unc, simplefit_func = C_N_simplefit(t, C_N_over_plateau, C_N_over_plateau_unc, L)
         D_of_Ls_simplefit[box_size_index] = D_simplefit
@@ -458,11 +510,11 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
                 
             # integrand_rescaled_ax.plot(t[1:]/L**2, T_integrand[1:])
             
-            t_fit_early = np.logspace(-2, np.log10(t[1]))
-            if show_fits:
-                integrand_ax.plot(t_fit_early/rescale_x_value, early_fit_func(t_fit_early, *early_popt), color=color, linestyle=':')
-                if plot_late_integral_fit:
-                    integrand_ax.plot(t_fit_late/rescale_x_value, late_fit_func_real(t_fit_late, *late_popt), color=color, linestyle=':', linewidth=4)
+            if show_short_fits:
+                integrand_ax.plot(early_plot_x/rescale_x_value, early_plot_y, color=color, linestyle=':')
+            if show_long_fits and plot_late_integral_fit:
+                # integrand_ax.plot(t_fit_late/rescale_x_value, late_fit_func_real(t_fit_late, *late_popt), color=color, linestyle=':', linewidth=4)
+                integrand_ax.plot(late_plot_x/rescale_x_value, late_plot_y, color=color, linestyle=':', linewidth=4)
             
             
             # full sDFT (provided D0)
@@ -534,28 +586,99 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
         integrand_ax.set_xlabel('$t$ (s)')
 
     if plot_C_N_squared:
-        if not disable_ylabel: integrand_ax.set_ylabel(r'$C_N(\Delta t)^2$')
+        if not disable_ylabel: integrand_ax.set_ylabel(r'$C_N(t)^2$')
         integrand_ax.set_ylim(1e-5, 1.2e0)
     else:
-        if not disable_ylabel: integrand_ax.set_ylabel(r'$C_N(\Delta t)$')
+        if not disable_ylabel: integrand_ax.set_ylabel(r'$C_N(t)$')
         integrand_ax.set_ylim(5e-4, 1.2e0)
     
     if show_nofit_cutoff:
         integrand_ax.hlines(NOFIT_CROP_THRESHOLD, *integrand_ax.get_xlim(), label='nofit crop threshold', color='gray')
 
     if save_data:
-        common.save_data(f'visualisation/data/Ds_from_timescaleint_{plateau_source}_{file}',
+        common.save_data(f'visualisation/data/Ds_from_timescaleint_{plateau_source}{plateau_source_suffix}_{file}',
                 Ds=D_of_Ls, D_uncs=D_of_L_uncs, Ls=box_sizes,
                 particle_diameter=sigma, max_time_hours=data.get('max_time_hours'),)
-        common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_{plateau_source}_{file}',
+        common.save_data(f'visualisation/data/Ds_from_timescaleint_fixexponent_{plateau_source}{plateau_source_suffix}_{file}',
+                Ds=D_of_Ls_fixexponent, D_uncs=D_of_L_uncs_fixexponent, Ls=box_sizes,
+                particle_diameter=sigma, max_time_hours=data.get('max_time_hours'),)
+        common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_{plateau_source}{plateau_source_suffix}_{file}',
                 Ds=D_of_Ls_nofit, D_uncs=D_of_L_uncs_nofit, Ls=box_sizes,
                 particle_diameter=sigma, max_time_hours=data.get('max_time_hours'),)
-        common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_cropped_{plateau_source}_{file}',
+        common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_cropped_{plateau_source}{plateau_source_suffix}_{file}',
                 Ds=D_of_Ls_nofit2, D_uncs=D_of_L_uncs_nofit2, Ls=box_sizes,
                 particle_diameter=sigma, max_time_hours=data.get('max_time_hours'),)
-        common.save_data(f'visualisation/data/Ds_from_C_N_simplefit_{plateau_source}_{file}',
+        common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_cropped_noshort_{plateau_source}{plateau_source_suffix}_{file}',
+                Ds=D_of_Ls_nofit_noshortfit, D_uncs=D_of_L_uncs_nofit_noshortfit, Ls=box_sizes,
+                particle_diameter=sigma, max_time_hours=data.get('max_time_hours'),)
+    common.save_data(f'visualisation/data/Ds_from_C_N_simplefit_{plateau_source}{plateau_source_suffix}_{file}',
                 Ds=D_of_Ls_simplefit, D_uncs=D_of_L_uncs_simplefit, Ls=box_sizes,
                 particle_diameter=sigma, max_time_hours=data.get('max_time_hours'),)
+
+def timescaleintegral_nofit(t, L, T_integrand, T_integrand_min, T_integrand_max):
+    early_fit_func, early_popt, early_integral, early_integral_min, early_integral_max = do_early_integral(f, t, T_integrand, T_integrand_min, T_integrand_max)
+
+    stop_point = np.argmax(T_integrand < NOFIT_CROP_THRESHOLD)
+    if stop_point == 0: # argmax returns zero if condition not met
+        stop_point = -1
+    data_integral_full2, data_integral_full2_min, data_integral_full2_max = do_data_integral(t[:stop_point], T_integrand[:stop_point], T_integrand_min[:stop_point], T_integrand_max[:stop_point], -1)
+
+    D_of_L_nofit2, D_of_L_min_nofit2, D_of_L_max_nofit2 = get_D_from_integral_contributions(L, early_integral, early_integral_min, early_integral_max, data_integral_full2, data_integral_full2_min, data_integral_full2_max, 0, 0, 0)
+    return D_of_L_nofit2, D_of_L_min_nofit2, D_of_L_max_nofit2
+
+def timescaleintegral_full(t, L, T_integrand, T_integrand_min, T_integrand_max, M2_index, M1_index):
+    early_fit_func, early_popt, early_integral, early_integral_min, early_integral_max = do_early_integral(f, t, T_integrand, T_integrand_min, T_integrand_max)
+    
+    early_for_plotting_t = np.logspace(-2, np.log10(t[1]))
+    early_for_plotting_y = early_fit_func(early_for_plotting_t, *early_popt)
+    
+    data_integral, data_integral_min, data_integral_max = do_data_integral(t, T_integrand, T_integrand_min, T_integrand_max, M2_index)
+    if L < 3:
+            # the late integral fails here cause it's fully in the noise
+            # but it doesn't matter for small boxes cause the noise is so low
+        late_integral, late_integral_min, late_integral_max = 0, 0, 0
+        plot_late_integral_fit = False
+        
+    else:
+        try:
+            late_integral, late_integral_min, late_integral_max, late_popt, late_fit_func_real, t_fit_late = do_late_integral(t, L, T_integrand, M2_index, M1_index)
+            
+            print(f'  late integral contribution {late_integral/(early_integral+data_integral+late_integral):.3f}')
+            plot_late_integral_fit = True
+
+        except PositiveSlopeInTimescaleIntegralFitException:
+            print('  full timescale integral failed')
+            late_integral, late_integral_min, late_integral_max = 0, 0, 0
+            plot_late_integral_fit = False
+
+    D_of_L, D_of_L_min, D_of_L_max = get_D_from_integral_contributions(L, early_integral, early_integral_min, early_integral_max, data_integral, data_integral_min, data_integral_max, late_integral, late_integral_min, late_integral_max)
+    return (early_for_plotting_t, early_for_plotting_y), plot_late_integral_fit,D_of_L,D_of_L_min,D_of_L_max
+
+def timescaleintegral_fixexponent(t, L, T_integrand, T_integrand_min, T_integrand_max, M2_index, M1_index):
+    early_fit_func, early_popt, early_integral, early_integral_min, early_integral_max = do_early_integral(f, t, T_integrand, T_integrand_min, T_integrand_max)
+    
+    data_integral, data_integral_min, data_integral_max = do_data_integral(t, T_integrand, T_integrand_min, T_integrand_max, M2_index)
+    
+    if L < 3:
+            # the late integral fails here cause it's fully in the noise
+            # but it doesn't matter for small boxes cause the noise is so low
+        late_integral_fixexponent, late_integral_min_fixexponent, late_integral_max_fixexponent = 0, 0, 0
+        plot_late_integral_fit = False
+        late_plot_x, late_plot_y = None, None
+        
+    else:
+        try:
+            late_integral_fixexponent, late_integral_min_fixexponent, late_integral_max_fixexponent, late_popt_fixexponent, late_fit_func_real_fixexponent, late_plot_x = do_late_integral(t, L, T_integrand, M2_index, M1_index, fix_slope=True)
+            late_plot_y = late_fit_func_real_fixexponent(late_plot_x, *late_popt_fixexponent)
+            plot_late_integral_fit = True
+
+        except PositiveSlopeInTimescaleIntegralFitException:
+            print('  full timescale integral failed')
+            plot_late_integral_fit = False
+            late_plot_x, late_plot_y = None, None
+
+    D_of_L, D_of_L_min, D_of_L_max = get_D_from_integral_contributions(L, early_integral, early_integral_min, early_integral_max, data_integral, data_integral_min, data_integral_max, late_integral_fixexponent, late_integral_min_fixexponent, late_integral_max_fixexponent)
+    return (late_plot_x, late_plot_y), plot_late_integral_fit, D_of_L, D_of_L_min, D_of_L_max
     
 
     # if title != None: # not if title b/c we want title='' to go down this path
@@ -568,15 +691,19 @@ if __name__ == '__main__':
     for file in common.files_from_argv('box_counting/data', 'counted_'):
         integ_fig, integ_axs = plt.subplots(1, 1, figsize=(6, 5))
 
-        go(file, ax=integ_axs, plateau_source=PLATEAU_SOURCE, show_theory=SHOW_THEORY,
-           labels_on_plot=LABELS_ON_PLOT, max_num_boxes=MAX_NUM_BOXES, show_fits=SHOW_TIMESCALEINTEGRAL_FIT,
-           save_data=True, show_legend=SHOW_LEGEND, rescale_x=RESCALE_X)
+        plateau_source = PLATEAU_SOURCE
+        # plateau_source = 'sDFT'
+        go(file, ax=integ_axs, plateau_source=plateau_source, show_theory=SHOW_THEORY,
+           labels_on_plot=LABELS_ON_PLOT, max_num_boxes=MAX_NUM_BOXES, show_short_fits=SHOW_TIMESCALEINTEGRAL_FIT, show_long_fits=SHOW_TIMESCALEINTEGRAL_FIT,
+           save_data=True, show_legend=SHOW_LEGEND, rescale_x=RESCALE_X)#, plateau_adjust=1.05)
         
-        integ_axs.set_xlim(0.5e-1, 1e6)
+        # integ_axs.set_xlim(5e-1, 1e5)
 
         if RESCALE_X == RESCALE_X_L2:
             integ_axs.set_xlim(0.5e-1, 1e3)
             integ_axs.set_ylim(1e-3, 1)
 
+        integ_axs.set_xlim(0.5, 1e6)
+        integ_axs.set_title(f'plateau: {plateau_source}')
         
         common.save_fig(integ_fig, f'box_counting/figures_png/integrand_{file}.png', dpi=300)

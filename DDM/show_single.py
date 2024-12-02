@@ -14,8 +14,8 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
 
     fig, ax = plt.subplots(1, 1, figsize=(3.5, 3.4))
     ax.semilogx()
-    ax.set_xlabel('$\Delta t$ (s)')
-    ax.set_ylabel('$d(k, \Delta t)$')
+    ax.set_xlabel('$t$ (s)')
+    ax.set_ylabel('$d(k, t)$')
 
     target_ks = (0.2, 0.8, 2.4)
 

@@ -40,8 +40,8 @@ def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LON
         ax.loglog()
         ax.set_ylim(msd[1:].min()*0.6, msd.max()/0.8)
 
-    ax.set_ylabel(r'$\langle r(\Delta t)^2 \rangle$ ($\mathrm{\mu m}$)')
-    ax.set_xlabel('$\Delta t$ (s)')
+    ax.set_ylabel(r'$\langle r(t)^2 \rangle$ ($\mathrm{\mu m}$)')
+    ax.set_xlabel('$t$ (s)')
     
     # common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/msd_nofit_{file}.pdf', hide_metadata=True)
     fits = fit_msd(t, msd, msd_unc)

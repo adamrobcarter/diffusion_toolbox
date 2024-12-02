@@ -22,7 +22,7 @@ for file in common.files_from_argv('MSD/data', 'msd_individuals_'):
     # ax.set_xlim(t[1]*0.8, t[-1]/0.8)
 
     ax.set_ylabel(r'$r(t)^2$ ($\mathrm{\mu m}$)')
-    ax.set_xlabel('$\Delta t$ (s)')
+    ax.set_xlabel('$t$ (s)')
 
     # common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/msd_individuals_{file}.png', dpi=200, hide_metadata=True)
     # we save as png not pdf cause with all those lines the pdf will take a while to render

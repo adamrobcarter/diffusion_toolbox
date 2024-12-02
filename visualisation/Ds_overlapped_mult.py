@@ -7,22 +7,22 @@ import visualisation.Ds_overlapped
 
 SHOW_TWIN_K_AXIS = False
 PRESENT_SMALL = False
-PLOT_AGAINST_K = True
+PLOT_AGAINST_K = False
 
 DISCRETE_COLORS = False
 
 ERRORBAR_ALPHA = 0.2
-LEGEND_FONTSIZE = 5
+LEGEND_FONTSIZE = 6
 
 source_names = {
     'DDM': 'DDM',
     'DDM_short': 'DDM short',
     'DDM_long': 'DDM long',
-    'f': '$f(k, \Delta t)$',
-    'Fs': '$F_s(k, \Delta t)$',
-    'f_short': '$f(k, \Delta t)$ short',
+    'f': '$f(k, t)$',
+    'Fs': '$F_s(k, t)$',
+    'f_short': '$f(k, t)$ short',
     'Fs_short': '$F_s(k, \mathrm{short})$',
-    'f_long': '$f(k, \Delta t)$ long',
+    'f_long': '$f(k, t)$ long',
     'Fs_long': '$F_s(k, \mathrm{long})$',
     'boxcounting': 'counting full fit',
     'MSD': 'MSD',
@@ -102,6 +102,7 @@ def show_one_file(
         allow_rescale_y=True, linestyle=None,
         file_label=None, errorbar_alpha=ERRORBAR_ALPHA,
         markers=None, source_labels=None, color=None, disable_ylabel=False,
+        fade_out_thresh=np.inf, fade_out_alpha=0.5,
     ):
 
     all_Ds = []
@@ -150,6 +151,7 @@ def show_one_file(
             print(err)
     else:
         no_rescale = True
+    
     if no_rescale:
         rescale_y = 1
         if not disable_ylabel: ax.set_ylabel(r'$D$ ($\mathrm{\mu m^2/s}$)')
@@ -190,7 +192,7 @@ def show_one_file(
     # do the actual plotting
     for source in used_sources:
         source_i = sources.index(source)
-        if len(used_sources) == 1:
+        if len(sources) == 1:
             file_source_label = file_label
         else:
             if source_labels:
@@ -230,7 +232,10 @@ def show_one_file(
                     yerrs  = yerrs [:crop_end]
             zorder = -1 if 'theory' in source else 0
             if linestyle:
-                use_linestyle = linestyle[source_i]
+                if type(linestyle) == str:
+                    use_linestyle = linestyle
+                else:
+                    use_linestyle = linestyle[source_i]
             else:
                 use_linestyle = linestyles.get(source, 'none')
             if type(markers) == list:
@@ -241,7 +246,12 @@ def show_one_file(
                 marker = marker_index.get(source, 'o')
             # print(source, 'linestyles', use_linestyle, 'marker', marker)
             # print(file, source, 'plotting', ys.size, ys)
-            ax.plot(x_this, ys, linestyle=use_linestyle, marker=marker, markersize=4, color=used_color, label=file_source_label, zorder=zorder, linewidth=1)
+            fade_out_thresh = np.inf
+            not_faded = x_this < fade_out_thresh
+            # THIS NEEDS TO BE PER SOURCE I THINK, A FULL 2D ARRAY
+            faded     = x_this > fade_out_thresh
+            ax.plot(x_this[not_faded], ys[not_faded], linestyle=use_linestyle, marker=marker, markersize=4, color=used_color, label=file_source_label, zorder=zorder, linewidth=1)
+            ax.plot(x_this[faded    ], ys[faded    ], linestyle=use_linestyle, marker=marker, markersize=4, color=used_color,                          zorder=zorder, linewidth=1, alpha=fade_out_alpha)
             ax.errorbar(x_this, ys, yerr=yerrs, linestyle='none', marker='none', alpha=errorbar_alpha, color=used_color, zorder=zorder)
             # print(xs[source], ys)
 
@@ -290,7 +300,8 @@ def show_one_file(
 def go(files, ax, sources, plot_against_k=False, legend_fontsize=None,
        discrete_colors=False, logarithmic_y=False, file_labels=None,
        errorbar_alpha=ERRORBAR_ALPHA, markers=None, source_labels=None,
-       allow_rescale_y=True, colors=None, linestyles=None, disable_ylabel=False):
+       allow_rescale_y=True, colors=None, linestyles=None, disable_ylabel=False,
+       fade_out_alpha=0.5,):
     # colors can be len(files) or len(files) x len(sources)
     
     if colors:
@@ -332,6 +343,7 @@ def go(files, ax, sources, plot_against_k=False, legend_fontsize=None,
             file_label=file_label, errorbar_alpha=errorbar_alpha,
             markers=marker, source_labels=source_labels, color=color,
             disable_ylabel=disable_ylabel,
+            fade_out_thresh=None, fade_out_alpha=fade_out_alpha,
         )
 
     ax.hlines(1, *ax.get_xlim(), linestyle=(0, (0.7, 0.7)), color='gray')
@@ -355,17 +367,19 @@ if __name__ == '__main__':
         files,
         ax,
         sources = [
-                'f_first_first',
+                # 'f_first_first',
                 # 'f_first',
                 # 'f_short',
                 # 'f',
                 # 'f_long',
                 'MSD_first',
-                'D0Sk_theory',
-                # 'boxcounting_collective',
+                # 'D0Sk_theory',
+                # 'boxcounting_collective_var',
                 # 'timescaleint_var',
+                'timescaleint_fixexponent_var',
                 # 'timescaleint_nmsdfitinter'
-                # 'timescaleint_nofit_cropped_var'
+                # 'timescaleint_nofit_cropped_var',
+                # 'D_of_L_theory'
             ],
         # linestyle='none',
         legend_fontsize=LEGEND_FONTSIZE,
@@ -373,7 +387,7 @@ if __name__ == '__main__':
         allow_rescale_y=False,
         plot_against_k=PLOT_AGAINST_K,
     )
-    ax.set_ylim(0.03, 0.08)
+    ax.set_ylim(0.035, 0.1)
     
     filenames = '_'.join(files)
     common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_mult_{filenames}.png', dpi=200)

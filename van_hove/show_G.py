@@ -20,14 +20,14 @@ def go(file):
 
     def func(t_index):
         ax.clear()
-        ax.set_ylabel('$G(r, \Delta t)$')
+        ax.set_ylabel('$G(r, t)$')
         ax.set_xlabel('$r/\sigma$')
         # ax.semilogy() set_ylim(0.5, 30)
         ax.set_ylim(0.4, 70)
         ax.semilogy()
 
         ax.plot(r/particle_diameter, G[t_index, :], marker='.', color='tab:green')
-        ax.text(0.65, 0.9, f'$\Delta t={t[t_index]}\mathrm{{s}}$', transform=ax.transAxes)
+        ax.text(0.65, 0.9, f'$t={t[t_index]}\mathrm{{s}}$', transform=ax.transAxes)
     
 
     common.save_gif(func, range(int(len(t)*END_TIME_FRAC)), fig, f'van_hove/figures_png/G_{file}.gif', fps=4)

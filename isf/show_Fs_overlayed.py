@@ -191,8 +191,8 @@ def go(file, ax, target_ks, SHOW_FIT=False, colormap=common.colormap_cool):
         else:
             ax.set_ylim(-0.05, 1.05)
 
-        ax.set_xlabel('$\Delta t$ (s)')
-        ylabel = '$F_s(k, \Delta t)$' if type == 'Fs' else '$f(k, \Delta t)$' if type == 'f' else None
+        ax.set_xlabel('$t$ (s)')
+        ylabel = '$F_s(k, t)$' if type == 'Fs' else '$f(k, t)$' if type == 'f' else None
         ax.set_ylabel(ylabel)
 
 
@@ -213,7 +213,7 @@ if __name__ == '__main__':
         go(file, ax, target_ks=target_ks)
 
         if not PRESENT_SMALL:
-            ax.set_title(f'$F_s(\Delta t)$, {file}')
+            ax.set_title(f'$F_s(t)$, {file}')
 
         filename = f'f_decay_overlayed_{file}'
         common.save_fig(fig, f'isf/figures_png/{filename}.png', dpi=300)

@@ -4,7 +4,7 @@ import box_counting.D_of_L
 import box_counting.msd_single
 import visualisation.Ds_overlapped
 
-sources = ['var', 'varmod', 'nmsdfit', 'nmsdfitinter', 'sDFT']
+sources = ['var', 'varmod', 'nmsdfit', 'nmsdfitinter', 'sDFT', 'N_mean', 'density']
 
 for file in common.files_from_argv('box_counting/data', 'counted_'):
     # fig, axs = plt.subplots(5, 2, figsize=(2*3, 5*3))
@@ -45,7 +45,7 @@ for file in common.files_from_argv('box_counting/data', 'counted_'):
         )
         axs[1][method_index].set_yscale('linear')
         if file == 'eleanorlong001':
-            axs[1][method_index].set_ylim(0.9*0.05, 1*0.07)
+            axs[1][method_index].set_ylim(0.9*0.04, 1*0.07)
         else:
             axs[1][method_index].set_ylim(0.9*0.04, 3*0.04)
 
