@@ -9,6 +9,8 @@ import gc
 import tqdm
 import time
 
+WHAT IS THIS FILE FOR?!
+
 for file in sys.argv[1:]:
     print('processing', file)
     t0 = time.time()

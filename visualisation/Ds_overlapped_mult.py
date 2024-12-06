@@ -244,6 +244,8 @@ def show_one_file(
                 marker = markers
             else:
                 marker = marker_index.get(source, 'o')
+            if 'theory' in source:
+                marker = 'none'
             # print(source, 'linestyles', use_linestyle, 'marker', marker)
             # print(file, source, 'plotting', ys.size, ys)
             fade_out_thresh = np.inf
@@ -301,7 +303,7 @@ def go(files, ax, sources, plot_against_k=False, legend_fontsize=None,
        discrete_colors=False, logarithmic_y=False, file_labels=None,
        errorbar_alpha=ERRORBAR_ALPHA, markers=None, source_labels=None,
        allow_rescale_y=True, colors=None, linestyles=None, disable_ylabel=False,
-       fade_out_alpha=0.5,):
+       fade_out_alpha=0.5, show_Dcoll=False):
     # colors can be len(files) or len(files) x len(sources)
     
     if colors:
@@ -349,9 +351,11 @@ def go(files, ax, sources, plot_against_k=False, legend_fontsize=None,
     ax.hlines(1, *ax.get_xlim(), linestyle=(0, (0.7, 0.7)), color='gray')
 
     legend_margin = -0.015
-    ax.legend(fontsize=legend_fontsize, loc='upper left' if not plot_against_k else 'upper right',
-              bbox_to_anchor=(legend_margin, legend_margin, 1-2*legend_margin, 1-2*legend_margin)
-              )
+    ax.legend(
+        fontsize=legend_fontsize,
+        loc='upper left' if not plot_against_k else 'upper right',
+        bbox_to_anchor=(legend_margin, legend_margin, 1-2*legend_margin, 1-2*legend_margin)
+    )
     
 if __name__ == '__main__':
     
@@ -378,8 +382,9 @@ if __name__ == '__main__':
                 # 'timescaleint_var',
                 'timescaleint_fixexponent_var',
                 # 'timescaleint_nmsdfitinter'
-                # 'timescaleint_nofit_cropped_var',
-                # 'D_of_L_theory'
+                'timescaleint_nofit_cropped_var',
+                # 'D_of_L_theory',
+                'D0Sk_theory'
             ],
         # linestyle='none',
         legend_fontsize=LEGEND_FONTSIZE,

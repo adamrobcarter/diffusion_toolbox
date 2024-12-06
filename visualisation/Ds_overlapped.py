@@ -113,7 +113,8 @@ linestyle = {
 
 def get_D0(file):
     # we don't do these ones in get_D0_filename cause sometimes we might want to compare these ones
-    suffixes = ['_crop', '_trim', '_first', '_smallbins', '_nozero', '_no_overlap', '_long', '_longer', '_moreoverlap', '_spacing']
+    suffixes = ['_crop', '_trim', '_first', '_smallbins', '_nozero', '_no_overlap',
+                '_long', '_longer', '_moreoverlap', '_spacing', '_frac_of_window']
     for suffix in suffixes:
         if suffix in file:
             file = file.split(suffix)[0]
@@ -592,7 +593,7 @@ if __name__ == '__main__':
                 #   'MSD_long',
                 #   'D0Sk', 
                 #   'MSD_short',
-                #   'D0Sk_theory',
+                  'D0Sk_theory',
                 #   'dominiguez_theory',
                 #   'panzuela_theory',
                 #   'f_D1', 'f_D2',
@@ -608,14 +609,15 @@ if __name__ == '__main__':
                 # 'F_s_long',
                 #   'boxcounting_shorttime',
                 #     'boxcounting_first_quad',
-                    # 'boxcounting_collective_var',
+                    'boxcounting_collective_var',
                 #   'timescaleint_',
                 #   'timescaleint_nmsdfitinter',
                   'timescaleint_nofit_cropped_var',
-                  'timescaleint_nofit_cropped_sDFT',
+                #   'timescaleint_nofit_cropped_sDFT',
                 #   'timescaleint_fixexponent_cutoff',
                 'timescaleint_fixexponent_var',
-                'timescaleint_fixexponent_sDFT',
+                # 'timescaleint_fixexponent_sDFT',
+                # 'timescaleint_fixexponent_target_fixexponent',
                 #   'timescaleint_nofit_cropped_noshort_var',
                 #   'timescaleint_nofit_cropped_nmsdfitinter',
                 #   'MSD_centre_of_mass_proximity',

@@ -102,12 +102,18 @@ def preprocess(directory_path, directory_name, destination_filename, destination
             time_step *= 2
 
         else:
-            proj = np.full(obj.shape, np.nan, dtype=np.float16)
-            for i in range(obj.shape[0]): # possibly because obj is not a real numpy object
+            final_frame = obj.shape[0]
+            if destination_filename == 'psiche089':
+                final_frame = 531
+            proj = np.full((final_frame, obj.shape[1], obj.shape[2]), np.nan, dtype=np.float16)
+            
+            for i in range(final_frame): # possibly because obj is not a real numpy object
                 proj[i, :, :] = obj[i, :, :]
 
             # proj = obj.astype(np.float16)
             # print(proj.shape, proj.dtype, f'{proj.nbytes/1e9:.1f}GB')
+
+        del obj
 
     if end := endframe_map.get(destination_filename):
         proj = proj[:end+1, :, :]
@@ -139,6 +145,8 @@ def preprocess(directory_path, directory_name, destination_filename, destination
 
     # print('averaging ref')
     ref = (refA + refB)/2
+    if destination_filename == 'psiche089':
+        ref = refA
     del refA, refB
     
     # print('checking no negative')
@@ -174,7 +182,7 @@ print('WARNING NOT DOING ALL')
 
 files = list(os.scandir('/data2/acarter/psiche/PSICHE_0624'))
 
-do = ['psiche074']
+do = ['psiche089']
 
 for f in tqdm.tqdm(files):
     try:

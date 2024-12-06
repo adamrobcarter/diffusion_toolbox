@@ -7,6 +7,11 @@ import warnings
 import preprocessing.stack_movie
 
 
+CROP = 150
+X_START = 250
+Y_START = 50
+
+
 def add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=None, outline=True):
     # radius can be None
 
@@ -24,7 +29,7 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=N
     y = particles[particles_at_t, 0]
 
     # r = radius[particles_at_t] * np.sqrt(2) # TODO: should this be /pixel_size?
-    r = np.full_like(x, 2**2) # you would lose this problem if u actually showed the radius u numpty
+    r = np.full_like(x, 1.5) # you would lose this problem if u actually showed the radius u numpty
     # warnings.warn('i disabled showing radius')
     if particles.shape[1] == 4:
         id = particles[particles_at_t, 3]
@@ -45,7 +50,7 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=N
     # if cross:
     #     pass
     if outline:
-        circles = [plt.Circle((x[i], y[i]), edgecolor=color(i), facecolor='none', radius=r[i]*2, linewidth=1, alpha=alpha) for i in range(particles_at_t.sum())]
+        circles = [plt.Circle((x[i], y[i]), edgecolor=color(i), facecolor='none', radius=r[i]*2, linewidth=3, alpha=alpha) for i in range(particles_at_t.sum())]
         # c = matplotlib.collections.PatchCollection(circles, facecolor='red', alpha=0.5)
         c = matplotlib.collections.PatchCollection(circles, match_original=True)
     else:
@@ -73,9 +78,10 @@ if __name__ == '__main__':
             pixel_size = data_stack['pixel_size']
             
             # crop
+            # stack = stack[:, X_START:X_START+CROP, Y_START:Y_START+CROP]
             # stack = stack[:, :500, :500]
-            # print('removing background')
-            # stack = stack - stack.mean(axis=0) # remove space background
+            print('removing background')
+            stack = stack - stack.mean(axis=0) # remove space background
             # stack = np.interp(stack, (stack.min(), stack.max()), (0, 1)) # convert to 0->1 range
 
         except FileNotFoundError:
@@ -86,21 +92,33 @@ if __name__ == '__main__':
             radius = np.full(particles.shape[0], np.nan)
             print()
 
+        particles = particles[:, [1, 0, 2]] # DON'T ASK ME WHY
+
 
         def add_outlines(timestep, ax):
-            add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=channel, outline=False)
+            add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=channel, outline=True)
 
-        figsize = 0.01 * np.array([data_particles['window_size_x'], data_particles['window_size_y']])
+        # figsize = 0.01 * np.array([data_particles['window_size_x'], data_particles['window_size_y']])
+        figsize=None
 
         fig, ax = plt.subplots(1, 1, figsize=figsize)
         ax.set_ylim(particles[:, 0].min(), particles[:, 0].max())
         ax.set_xlim(particles[:, 1].min(), particles[:, 1].max())
         ax.set_aspect('equal')
 
-        preprocessing.stack_movie.show_single_frame(ax=ax, frame=stack[0, :, :], pixel_size=pixel_size,
-                                                    window_size_x=data_particles['window_size_x'], window_size_y=data_particles['window_size_y'])
+        frame = stack[0, :, :].transpose([1, 0])[::-1, :]
+        # print(frame.shape)
+        # frame = frame.transpose([1, 0])
+        # print(frame.shape)
+
+        preprocessing.stack_movie.show_single_frame(ax=ax, frame=frame, pixel_size=pixel_size,
+                                                    window_size_x=data_particles['window_size_x'], window_size_y=data_particles['window_size_y'],
+                                                    hide_scale_bar=True)
 
         print('adding outlines')
         add_outlines(0, ax)
 
-        common.save_fig(fig, f'particle_detection/figures_png/frame1_{file}.png')
+        ax.set_xlim(X_START*pixel_size, (X_START+CROP)*pixel_size)
+        ax.set_ylim(Y_START*pixel_size, (Y_START+CROP)*pixel_size)
+
+        common.save_fig(fig, f'particle_detection/figures_png/frame1_{file}.png', dpi=300, only_plot=True)

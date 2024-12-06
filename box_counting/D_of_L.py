@@ -32,7 +32,8 @@ RESCALE_X = None
 
 PLATEAU_SOURCE = 'cutoff'
 PLATEAU_SOURCE = 'var'
-PLATEAU_SOURCE = 'sDFT'
+# PLATEAU_SOURCE = 'sDFT'
+# PLATEAU_SOURCE = 'target_fixexponent'
 # PLATEAU_SOURCE = 'nmsdfitinter'
 
 """
@@ -51,7 +52,7 @@ Fig. 5.
 f = lambda tau: np.sqrt(tau / np.pi) * ( np.exp(-1/tau) - 1) + scipy.special.erf(np.sqrt(1/tau)) # countoscope eq. 2
 
 import warnings
-warnings.filterwarnings('ignore')
+# warnings.filterwarnings('ignore')
 
 def do_early_integral(f, t, T_integrand, T_integrand_min, T_integrand_max):
     interval_end_index = 4
@@ -99,7 +100,7 @@ def do_late_integral(t, L, T_integrand, M2_index, M1_index, fix_slope=False):
         a = late_popt[0]
     else:
         a, b = late_popt
-    print(f'a = {a}, b = {b}')
+    # print(f'a = {a}, b = {b}')
     if b < 0:
         print('  positive slope in timescale integral fit')
         raise PositiveSlopeInTimescaleIntegralFitException()
@@ -113,7 +114,7 @@ def do_late_integral(t, L, T_integrand, M2_index, M1_index, fix_slope=False):
     else:
         t_fit_late = np.logspace(np.log10(t[M1_index]), np.log10(t_end))
     if late_fit_func_real(t_end, a, b) < 1e-5:
-        warnings.warn(f'late_fit_func_real(t_end, a, b) = late_fit_func_real({t_end}, {a}, {b}) = {late_fit_func_real(t_end, a, b)}')
+        warnings.warn(f'late fit has not decayed to zero')# = late_fit_func_real({t_end}, {a}, {b}) = {late_fit_func_real(t_end, a, b)}')
     
     assert np.all(late_fit_func_real(t_fit_late, *late_popt) > 0), f'some of late_fit_func_real were negative for L={L}'
     assert np.all(late_fit_func_real([t[M2_index], t_end], *late_popt) > 0), f'some of late_fit_func_real were negative for L={L}'
@@ -132,7 +133,8 @@ def do_late_integral(t, L, T_integrand, M2_index, M1_index, fix_slope=False):
     int_min = min(late_integral, late_integral_00, late_integral_01, late_integral_10, late_integral_11)
     int_max = max(late_integral, late_integral_00, late_integral_01, late_integral_10, late_integral_11)
     if late_integral != 0:
-        print(f'  late integral uncs {int_min/late_integral:.3f} {int_max/late_integral:.3f}')
+        # print(f'  late integral uncs {int_min/late_integral:.3f} {int_max/late_integral:.3f}')
+        pass
     else:
         warnings.warn('late integral = 0')
     t_to_inf = np.logspace(np.log10(t[M1_index]), 15, 1000)
@@ -141,13 +143,13 @@ def do_late_integral(t, L, T_integrand, M2_index, M1_index, fix_slope=False):
 
     if late_integral < 0:
         late_integral = 0
-        print('  TURNED OFF NEGATIVE INTEGRAL')
+        warnings.warn('TURNED OFF NEGATIVE INTEGRAL')
     if int_min < 0:
         int_min = 0
-        print('  TURNED OFF NEGATIVE INTEGRAL')
+        warnings.warn('TURNED OFF NEGATIVE INTEGRAL')
     if int_max < 0:
         int_max = 0
-        print('  TURNED OFF NEGATIVE INTEGRAL')
+        warnings.warn('TURNED OFF NEGATIVE INTEGRAL')
     assert late_integral >= 0, f'late_integral = {late_integral}, late_fit_func_real(t[M2_index]) = {late_fit_func_real(t[M2_index], *late_popt)}, late_fit_func_real(t_end) = {late_fit_func_real(t_end, *late_popt)}'
 
     return late_integral, int_min, int_max, late_popt, late_fit_func_real, t_fit_late
@@ -222,6 +224,111 @@ def C_N_simplefit(t, C_N_over_VarN, C_N_over_VarN_unc, L):
     D_from_fit_unc = np.sqrt(pcov[0][0])
     return D_from_fit, D_from_fit_unc, func
 
+T_integrand_func = lambda nmsd, plat: (1 - nmsd / plat )**2 # countoscope paper eq. 8
+
+def get_M1_M2(file, L, t, T_integrand):
+        # data integral setup
+    MIN_M2_INDEX = 10
+
+    M2_index = None
+    M1_index = None
+
+    thresh_line = None
+
+    if file.startswith('eleanorlong') or file.startswith('eleanor0.01') or file.startswith('brennan'):
+        M2_index = min(int(300 * L), t.shape[0]-1)
+        if file == 'eleanorlong066':
+            M2_index = min(int(2400 * np.sqrt(L)), t.shape[0]-1)
+        if file == 'eleanorlong001':
+            if plateau_source == 'var':
+                M2_index = min(int(5000 * np.sqrt(L)), t.shape[0]-1)
+            elif plateau_source == 'nmsdfitinter':
+                M2_index = min(int(4000 * np.sqrt(L)), t.shape[0]-1)
+            elif plateau_source == 'nmsdfit':
+                M2_index = min(int(4000 * np.sqrt(L)), t.shape[0]-1)
+            else:
+                M2_index = min(int(2600 * np.sqrt(L)), t.shape[0]-1)
+            print('M2_index', M2_index)
+        M2_index = max(M2_index, MIN_M2_INDEX)
+        M1_index = int(M2_index / 1.2) # t is linear so we can just halve the index to halve the time
+
+        if 'eleanorlong010' in file:
+            c = 4e-6
+            m = 1
+            thresh_line = c * t**m
+            M2_index = np.argmax(T_integrand < thresh_line)
+            # if M2_index < 100:
+            #    M2_index = min(int(60 * L), t.shape[0]-1)
+            M2_index = max(M2_index, MIN_M2_INDEX)
+            assert M2_index != 0
+            M1_t = t[M2_index] / 2
+            # print('t', t, 'M1_t', M1_t)
+            M1_index = np.argmax(t > M1_t)
+        
+    elif file == 'alice0.02':
+        M2_index = min(int(60 * L), t.shape[0]-1)
+        M2_index = max(M2_index, MIN_M2_INDEX)
+        M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
+        # D0 = 0.0416
+    elif file == 'alice0.02_overlapped3':
+        M2_index = min(int(100 * L), t.shape[0]-1)
+        M2_index = max(M2_index, MIN_M2_INDEX)
+        M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
+        # D0 = 0.0416
+    elif file == 'alice0.34':
+        M2_index = min(int(40 * L), t.shape[0]-1)
+        M2_index = max(M2_index, MIN_M2_INDEX)
+        M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
+        # D0 = 0.0310
+    elif file == 'alice0.66':
+        M2_index = min(int(200 * L), t.shape[0]-1)
+        M2_index = max(M2_index, MIN_M2_INDEX)
+        M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
+        # D0 = 0.0175
+    elif file.startswith('sim_'):
+        if file == 'sim_nohydro_010_L640_div8':
+            M2_index = min(int(600 * np.sqrt(L)), t.shape[0]-1)
+        elif file.startswith('sim_nohydro_011_L320_longer'): # should this be longer?
+            # M2_index = min(int(560 * L**0.4), t.shape[0]-1)
+            # print(N2_mean[box_size_index, :] < thresh_line)
+            c = 4e-6
+            m = 1
+            thresh_line = c * t**m
+            M2_index = np.argmax(T_integrand < thresh_line)
+            assert M2_index != 0
+            M1_t = t[M2_index] / 2
+            # print('t', t, 'M1_t', M1_t)
+            M1_index = np.argmax(t > M1_t)
+        elif file.startswith('sim_nohydro_010_L640_longer') or file.startswith('sim_nohydro_011_L640_longer'): # should this be longer?
+            # M2_index = min(int(560 * L**0.4), t.shape[0]-1)
+            # print(N2_mean[box_size_index, :] < thresh_line)
+            c = 1e-7
+            m = 1
+            thresh_line = c * t**m
+            M2_index = np.argmax(T_integrand < thresh_line)
+            assert M2_index != 0
+            M1_t = t[M2_index] / 2
+            # print('t', t, 'M1_t', M1_t)
+            M1_index = np.argmax(t > M1_t)
+        elif file == 'sim_nohydro_002_L320_longer_merged':
+            # M2_index = min(int(560 * np.sqrt(L)), t.shape[0]-1)
+            M2_index = np.argmax(T_integrand < thresh_line)
+            M1_t = t[M2_index] / 2
+            M1_index = np.argmax(t > M1_t)
+        elif file == 'sim_nohydro_011_L320_longer':
+            M2_index = min(int(80 * np.sqrt(L)), t.shape[0]-1)
+            M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
+        else:
+            M2_index = min(int(1800 * np.sqrt(L)), t.shape[0]-1)
+            M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
+        M2_index = max(M2_index, MIN_M2_INDEX)
+        
+    else:
+        raise Exception('you need to define the parameters for this dataset')
+
+    assert M2_index - M1_index > 3, f'M2_index = {M2_index}, M1_index = {M1_index}, t.shape[0]-1 = {t.shape[0]-1}'
+
+    return M1_index, M2_index, thresh_line
 
 def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
        plot_color=None, export_destination=None, sep_in_label=False,
@@ -285,11 +392,6 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
     
     D0, _, _ = visualisation.Ds_overlapped.get_D0(file)
 
-    c = 4e-6
-    m = 1
-    thresh_line = c * t**m
-    ax.plot(t, thresh_line)
-
     for box_size_index in tqdm.trange(num_boxes, desc='box sizes'):
         L = box_sizes[box_size_index]
         
@@ -326,99 +428,18 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
         plateau += plateau_offset
         print(plateau.shape, plateau)
 
-        T_integrand_func = lambda nmsd: (1 - nmsd / plateau )**2 # countoscope paper eq. 8
-        T_integrand     = T_integrand_func(N2_mean[box_size_index, :])
-        T_integrand_min = T_integrand_func(N2_mean[box_size_index, :] + N2_std[box_size_index, :])
-        T_integrand_max = T_integrand_func(N2_mean[box_size_index, :] - N2_std[box_size_index, :])
+        T_integrand     = T_integrand_func(N2_mean[box_size_index, :], plateau)
+        T_integrand_min = T_integrand_func(N2_mean[box_size_index, :] + N2_std[box_size_index, :], plateau)
+        T_integrand_max = T_integrand_func(N2_mean[box_size_index, :] - N2_std[box_size_index, :], plateau)
 
         # these are for the simple fit to C_N
         C_N_over_plateau = 1 - N2_mean[box_size_index, :] / (plateau) # countoscope paper eq. 1
         C_N_over_plateau_unc_sq = (N2_std[box_size_index, :] / (plateau))**2 + (N2_mean[box_size_index, :] * plateau_std / (2*plateau))**2
         C_N_over_plateau_unc = np.sqrt(C_N_over_plateau_unc_sq)
 
-        # data integral setup
-        MIN_M2_INDEX = 10
-    
-        M2_index = None
-        M1_index = None
-
-        if file.startswith('eleanorlong') or file.startswith('eleanor0.01') or file.startswith('brennan'):
-            M2_index = min(int(300 * L), t.shape[0]-1)
-            if file == 'eleanorlong066':
-                M2_index = min(int(2400 * np.sqrt(L)), t.shape[0]-1)
-            if file == 'eleanorlong001':
-                if plateau_source == 'var':
-                    M2_index = min(int(5000 * np.sqrt(L)), t.shape[0]-1)
-                elif plateau_source == 'nmsdfitinter':
-                    M2_index = min(int(4000 * np.sqrt(L)), t.shape[0]-1)
-                elif plateau_source == 'nmsdfit':
-                    M2_index = min(int(4000 * np.sqrt(L)), t.shape[0]-1)
-                else:
-                    M2_index = min(int(2600 * np.sqrt(L)), t.shape[0]-1)
-                print('M2_index', M2_index)
-            M2_index = max(M2_index, MIN_M2_INDEX)
-            M1_index = int(M2_index / 1.2) # t is linear so we can just halve the index to halve the time
-
-            if 'eleanorlong010' in file:
-                M2_index = np.argmax(T_integrand < thresh_line)
-                # if M2_index < 100:
-                #    M2_index = min(int(60 * L), t.shape[0]-1)
-                M2_index = max(M2_index, MIN_M2_INDEX)
-                print((T_integrand < thresh_line)[:10])
-                assert M2_index != 0
-                M1_t = t[M2_index] / 2
-                # print('t', t, 'M1_t', M1_t)
-                M1_index = np.argmax(t > M1_t)
-            
-        elif file == 'alice0.02':
-            M2_index = min(int(60 * L), t.shape[0]-1)
-            M2_index = max(M2_index, MIN_M2_INDEX)
-            M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
-            # D0 = 0.0416
-        elif file == 'alice0.02_overlapped3':
-            M2_index = min(int(100 * L), t.shape[0]-1)
-            M2_index = max(M2_index, MIN_M2_INDEX)
-            M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
-            # D0 = 0.0416
-        elif file == 'alice0.34':
-            M2_index = min(int(40 * L), t.shape[0]-1)
-            M2_index = max(M2_index, MIN_M2_INDEX)
-            M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
-            # D0 = 0.0310
-        elif file == 'alice0.66':
-            M2_index = min(int(200 * L), t.shape[0]-1)
-            M2_index = max(M2_index, MIN_M2_INDEX)
-            M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
-            # D0 = 0.0175
-        elif file.startswith('sim_'):
-            if file == 'sim_nohydro_010_L640_div8':
-                M2_index = min(int(600 * np.sqrt(L)), t.shape[0]-1)
-            elif file.startswith('sim_nohydro_011_L320_longer'): # should this be longer?
-                # M2_index = min(int(560 * L**0.4), t.shape[0]-1)
-                # print(N2_mean[box_size_index, :] < thresh_line)
-                M2_index = np.argmax(T_integrand < thresh_line)
-                assert M2_index != 0
-                M1_t = t[M2_index] / 2
-                # print('t', t, 'M1_t', M1_t)
-                M1_index = np.argmax(t > M1_t)
-            elif file == 'sim_nohydro_002_L320_longer_merged':
-                # M2_index = min(int(560 * np.sqrt(L)), t.shape[0]-1)
-                M2_index = np.argmax(T_integrand < thresh_line)
-                M1_t = t[M2_index] / 2
-                M1_index = np.argmax(t > M1_t)
-            elif file == 'sim_nohydro_011_L320_longer':
-                M2_index = min(int(80 * np.sqrt(L)), t.shape[0]-1)
-                M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
-            else:
-                M2_index = min(int(1800 * np.sqrt(L)), t.shape[0]-1)
-                M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
-            M2_index = max(M2_index, MIN_M2_INDEX)
-            
-        else:
-            raise Exception('you need to define the parameters for this dataset')
-
-        assert M2_index - M1_index > 3, f'M2_index = {M2_index}, M1_index = {M1_index}, t.shape[0]-1 = {t.shape[0]-1}'
-
+        M1_index, M2_index, thresh_line = get_M1_M2(file, L, t, T_integrand)
+        if thresh_line is not None:
+            ax.plot(t, thresh_line)
 
         # full method
         (early_plot_x, early_plot_y), plot_late_integral_fit, D_of_L, D_of_L_min, D_of_L_max = timescaleintegral_full(t, L, T_integrand, T_integrand_min, T_integrand_max, M2_index, M1_index)
@@ -608,9 +629,9 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
         common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_cropped_{plateau_source}{plateau_source_suffix}_{file}',
                 Ds=D_of_Ls_nofit2, D_uncs=D_of_L_uncs_nofit2, Ls=box_sizes,
                 particle_diameter=sigma, max_time_hours=data.get('max_time_hours'),)
-        common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_cropped_noshort_{plateau_source}{plateau_source_suffix}_{file}',
-                Ds=D_of_Ls_nofit_noshortfit, D_uncs=D_of_L_uncs_nofit_noshortfit, Ls=box_sizes,
-                particle_diameter=sigma, max_time_hours=data.get('max_time_hours'),)
+        # common.save_data(f'visualisation/data/Ds_from_timescaleint_nofit_cropped_noshort_{plateau_source}{plateau_source_suffix}_{file}',
+        #         Ds=D_of_Ls_nofit_noshortfit, D_uncs=D_of_L_uncs_nofit_noshortfit, Ls=box_sizes,
+        #         particle_diameter=sigma, max_time_hours=data.get('max_time_hours'),)
     common.save_data(f'visualisation/data/Ds_from_C_N_simplefit_{plateau_source}{plateau_source_suffix}_{file}',
                 Ds=D_of_Ls_simplefit, D_uncs=D_of_L_uncs_simplefit, Ls=box_sizes,
                 particle_diameter=sigma, max_time_hours=data.get('max_time_hours'),)

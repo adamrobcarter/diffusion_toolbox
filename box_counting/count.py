@@ -122,7 +122,14 @@ if __name__ == '__main__':
 
         elif file.startswith('sim_') or file.startswith('brennan'):
             box_sizes = np.logspace(np.log10(0.288/2), np.log10(0.9*288), num_boxes)
-            sep_sizes = 7 - box_sizes # moremoreoverlap
+            if '320' in file:
+                sep_sizes = 7 - box_sizes # moremoreoverlap
+            elif '640' in file:
+                sep_sizes = 13 - box_sizes # moremoreoverlap
+            elif '160' in file:
+                sep_sizes = 7 - box_sizes # moremoreoverlap
+            else:
+                raise Exception()
 
         else:
             box_sizes = np.array([1, 2, 4, 8])

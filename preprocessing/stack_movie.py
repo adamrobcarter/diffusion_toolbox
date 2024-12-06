@@ -10,7 +10,7 @@ INVERSE_COLORS = False
 SHOW_TIMESTEP = True
 
 # HIGHLIGHTS = True # displays 50 frames evenly throughout the stack instead of the first 50
-HIGHLIGHTS = False
+HIGHLIGHTS = True
 # BACKWARDS = True
 BACKWARDS = False # plays the stack backwards. DIFF_WITH_ZERO is now compared to the last frame
 
@@ -106,6 +106,10 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
         num_timesteps_in_data = stack.shape[0]
     frames = range(0, min(num_timesteps_in_data, max_num_frames*every_nth_frame), every_nth_frame)
 
+
+    print('stack[frames]:')
+    common.term_hist(stack[frames])
+
     if not no_stack:
         if backwards:
             raise # remove me whenever you like
@@ -138,8 +142,8 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
                 else:
                     assert False, 'colors other than red and green not yet implemented'
 
-
-    # common.term_hist(usedstack)
+    print('used_stack:')
+    common.term_hist(usedstack)
 
     # print('min mean max', usedstack.min(), usedstack.mean(), usedstack.max())
     if not no_stack:
@@ -197,7 +201,8 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
 
     common.save_gif(show, range(num_timesteps), fig, outputfilename, fps=fps, dpi=dpi)
 
-def show_single_frame(ax, frame, pixel_size, window_size_x, window_size_y, channel=None, vmin=None, vmax=None):
+def show_single_frame(ax, frame, pixel_size, window_size_x, window_size_y, channel=None, vmin=None, vmax=None,
+                      hide_scale_bar=False):
 
     
     # vmin = np.quantile(usedstack, 0.01)
@@ -228,7 +233,9 @@ def show_single_frame(ax, frame, pixel_size, window_size_x, window_size_y, chann
         color = 'white' if frame.mean()/(frame.max()-frame.min()) < 0.2 else 'black'
     else:
         color = 'gray'
-    common.add_scale_bar(ax, pixel_size, color=color)
+
+    if not hide_scale_bar:
+        common.add_scale_bar(ax, pixel_size, color=color)
    
 
 
@@ -236,6 +243,8 @@ def go(file, outputfilename, add_drift=False, display_small=False, method=NONE, 
         data = common.load(f'preprocessing/data/stack_{file}.npz')
         
         stack      = data['stack']
+        # print('start')
+        # common.term_hist(stack)
         pixel_size = data['pixel_size']
         time_step  = data['time_step']
         channel    = data.get('channel')
@@ -243,6 +252,9 @@ def go(file, outputfilename, add_drift=False, display_small=False, method=NONE, 
         # window_size_y = data['window_size_y']
         window_size_x = stack.shape[1] * pixel_size
         window_size_y = stack.shape[2] * pixel_size
+
+        print('time:')
+        common.term_bar(stack[:, :, :].mean(axis=(1, 2)), range(0, stack.shape[0]+1))
 
         if add_drift:
             stack = common.add_drift_intensity(stack, 1)
@@ -252,6 +264,12 @@ def go(file, outputfilename, add_drift=False, display_small=False, method=NONE, 
         if display_small:
             # crop
             stack = stack[:, :300, :300]
+
+        if file.startswith('psiche'):
+            crop = 250
+            x_start = int((stack.shape[1] - crop)/2)
+            y_start = int((stack.shape[2] - crop)/2)
+            stack = stack[:, x_start:x_start+crop, y_start:y_start+crop]
 
         if flip_y:
             stack = stack[:, ::-1, :]
@@ -275,7 +293,7 @@ def go(file, outputfilename, add_drift=False, display_small=False, method=NONE, 
 if __name__ == '__main__':
     for file in common.files_from_argv('preprocessing/data/', 'stack_'):
         
-        filename = f'preprocessing/stack_movie_{file}'
+        filename = f'preprocessing/figures_png/stack_movie_{file}'
         if METHOD == REMOVE_BACKGROUND:
             filename += '_bkgrem'
         elif METHOD == DIFF_WITH_ZERO:

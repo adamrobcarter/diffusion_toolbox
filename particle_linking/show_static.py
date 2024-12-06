@@ -15,17 +15,15 @@ def go(file, destination_trajs, destination_positions, destination_intensities):
     data_stack = common.load(f'preprocessing/data/stack_{file}.npz')
     stack      = data_stack['stack']
     pixel_size = data_stack['pixel_size']
-    time_step  = data_stack['time_step']
     #     found_stack = True
     # except FileNotFoundError:
     #     found_stack = False
 
     data_particles = common.load(f'particle_linking/data/trajs_{file}.npz')
     particles = data_particles['particles']
-    radius    = data_particles['radius']
 
     # crop
-    stack = stack[:, X_START:X_START+CROP, Y_START:Y_START+CROP]
+    # stack = stack[:, X_START:X_START+CROP, Y_START:Y_START+CROP]
 
     stack = stack - stack.mean(axis=0) # remove space background
     
@@ -47,11 +45,11 @@ def go(file, destination_trajs, destination_positions, destination_intensities):
     for row_i in tqdm.trange(particles.shape[0]):
         row = particles[row_i, :]
         if row[2] == 0:
-            if X_START*pixel_size < row[0] < (X_START+CROP)*pixel_size:
-                if Y_START*pixel_size < row[1] < (Y_START+CROP)*pixel_size:
+            # if X_START*pixel_size < row[0] < (X_START+CROP)*pixel_size:
+            #     if Y_START*pixel_size < row[1] < (Y_START+CROP)*pixel_size:
                     ids.append(row[3])
 
-                    s = ax.scatter(row[1]/pixel_size-Y_START, row[0]/pixel_size-X_START, edgecolors='red', facecolors='none', s=1500)
+                    s = ax.scatter(row[1]/pixel_size, row[0]/pixel_size, edgecolors='red', facecolors='none', s=1500)
 
                     circles.append(s)
 
@@ -69,13 +67,18 @@ def go(file, destination_trajs, destination_positions, destination_intensities):
         y = particles_this_time[:, 1] / pixel_size - Y_START
 
         ax.plot(y, x)
+        ax.plot(x, y)
 
-    ax.set_xlim(0, CROP)
-    ax.set_ylim(0, CROP)
+    ax.set_xlim(X_START, X_START+CROP)
+    ax.set_ylim(Y_START, Y_START+CROP)
 
     common.save_fig(fig, destination_trajs, only_plot=True)
 
 if __name__ == '__main__':
     for file in common.files_from_argv('particle_linking/data', 'trajs_'):
         destination = f'particle_linking/figures_png/linked_static_{file}.png'
-        go(file, destination, None, None)
+        go(file,
+           f'particle_linking/figures_png/static_linked_{file}.png',
+           f'particle_linking/figures_png/static_positi_{file}.png',
+           f'particle_linking/figures_png/static_intens_{file}.png',
+        )

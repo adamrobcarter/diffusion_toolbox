@@ -8,19 +8,16 @@ import math
 FIT_USE_FLOW = False
 D_ERROR_THRESH = 0.5 # D_unc/D must be smaller than this to save
 
-def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, NAME, channel, live=False):
+def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, NAME, channel, num_displayed_k, live=False):
 
     # target_ks = list(np.logspace(np.log10(0.4), np.log10(7), 7))
     # target_ks = (0.28, 0.38, 0.5, 1.3, 2, 4, 8)
     # target_ks = (0.1, 0.14, 0.5, 1.3, 2, 4, 8)
-    num_displayed_ks = 14
 
     DDM_f     = np.full((F_D_sq.shape[0], num_displayed_ks), np.nan)
     DDM_f_unc = np.full((F_D_sq.shape[0], num_displayed_ks), np.nan)
 
     real_ks = []
-
-    fig, axs = plt.subplots(1, num_displayed_ks, figsize=(num_displayed_ks*3.5, 4))
 
     D_max = 0
 
@@ -38,7 +35,8 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, NAME, channel, live=False
         k_index = graph_i * every_nth_k
 
         real_ks.append(k[k_index])
-        print(f'k={k[k_index]:.2f}')
+        if not live:
+            print(f'k={k[k_index]:.2f}')
 
         ax = axs[graph_i]
 
@@ -174,8 +172,7 @@ def show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, NAME, channel, live=False
 
     fig.suptitle(f'{common.name(file)}, $\sigma={sigma}$, pixel$={pixel}$')
     
-    filename = f'DDM/figures_png/ddm_{file}_live.png' if live else f'DDM/figures_png/ddm_{file}.png'
-    common.save_fig(fig, filename)
+
     common.save_data(f'visualisation/data/Ds_from_DDM_{file}',
              Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, ks=ks_for_saving,
              NAME=NAME, channel=channel)
@@ -199,5 +196,11 @@ if __name__ == '__main__':
         pixel = data['pixel_size']
         NAME  = data['NAME']
         channel = data.get('channel')
+        
+        num_displayed_ks = 14
+        fig, axs = plt.subplots(1, num_displayed_ks, figsize=(num_displayed_ks*3.5, 4))
 
-        show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, NAME, channel)
+        show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, NAME, channel,
+             num_displayed_ks=num_displayed_ks)
+        
+        common.save_fig(fig, f'DDM/figures_png/ddm_{file}.png')

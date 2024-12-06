@@ -25,15 +25,15 @@ for file in common.files_from_argv('preprocessing/data', 'stack_'):
             sigma = 0
             pixel = 0
             
-            DDM.show.show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=True, NAME=NAME, channel=channel)
-            DDM.viz.show(file, F_D_sq_all, t, k, time_origins)
+            # DDM.show.show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, live=True, NAME=NAME, channel=channel)
+            # DDM.viz.show(file, F_D_sq_all, t, k, time_origins)
 
             common.save_data(f'DDM/data/ddm_{file}.npz', quiet=True,
                 k=k, F_D_sq=F_D_sq, F_D_sq_unc=F_D_sq_unc, t=t,
                 background_removed=background_removed, use_every_nth_frame=0,
                 num_k_bins=num_k_bins,
                 F_D_sq_all=F_D_sq_all, time_origins=time_origins,
-                pixel_size=pixel_size, particle_diameter=data.get('particle_diameter'),
+                pixel_size=pixel_size, particle_diameter=data.get('particle_diameter'), NAME=data.get('NAME'),
                 pack_frac_given=data.get('pack_frac_given'), partial=i)
 
     # do the DDM calculation
@@ -45,5 +45,5 @@ for file in common.files_from_argv('preprocessing/data', 'stack_'):
         background_removed=background_removed, use_every_nth_frame=use_every_nth_frame,
         computation_time_ddm=t1-t0, num_k_bins=num_k_bins,
         F_D_sq_all=F_D_sq_all, time_origins=time_origins,
-        pixel_size=pixel_size, particle_diameter=data.get('particle_diameter'),
+        pixel_size=pixel_size, particle_diameter=data.get('particle_diameter'), NAME=data.get('NAME'),
         pack_frac_given=data.get('pack_frac_given'), complete=True)

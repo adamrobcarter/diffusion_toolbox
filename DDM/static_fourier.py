@@ -7,7 +7,7 @@ import scipy.fft
 
 FIRST_FRAME = False
 FRAME_DIFF = True
-REMOVE_BKG = False
+REMOVE_BKG = True
 
 def do_static_fourier(file, stack, pixel_size, particle_diameter=None):
     if REMOVE_BKG:

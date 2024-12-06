@@ -4,7 +4,9 @@ import numpy as np
 import scipy.optimize
 import matplotlib.cm
 
-for file in common.files_from_argv('DDM/data', 'ddm_'):
+LABELS_ON_PLOT = False
+
+def go(file, ax, fit_result_in_label=True, target_ks=(0.125, 0.5, 1, 2, 4)):
     data = common.load(f'DDM/data/ddm_{file}.npz')
     k         = data['k']
     F_D_sq    = data['F_D_sq']
@@ -12,12 +14,9 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
 
     real_ks = []
 
-    fig, ax = plt.subplots(1, 1, figsize=(3.5, 3.4))
     ax.semilogx()
     ax.set_xlabel('$t$ (s)')
     ax.set_ylabel('$d(k, t)$')
-
-    target_ks = (0.2, 0.8, 2.4)
 
     for graph_i in range(len(target_ks)):
         target_k = target_ks[graph_i]
@@ -26,12 +25,7 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
 
         # label = fr"$k={k:.2f}\mathrm{{\mu m}}^{{-1}}$"
         color = matplotlib.cm.afmhot((graph_i+0.8)/(len(target_ks)+2))
-        ax.scatter(t[1:], F_D_sq[1:, k_index], s=15, color=color)
 
-    common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/ddm_overlapped_nofit_{file}.pdf', hide_metadata=True)
-    
-
-    for graph_i in range(len(target_ks)):
         target_k = target_ks[graph_i]
         k_index = np.argmax(k > target_k)
 
@@ -54,28 +48,49 @@ for file in common.files_from_argv('DDM/data', 'ddm_'):
         # print(D, D_unc)
         label = f'fit $D={common.format_val_and_unc(D, D_unc)}$\n$A=${popt[0]*rescale:.2g}\n$B=${popt[1]*rescale:.2g}'
         theory_curve = func(t_theory, *popt)*rescale
+        
+        L_label = rf'$k={k[k_index]:.1f}\mathrm{{\mu m}}^{{-1}}$, $2\pi/k={2*np.pi/k[k_index]:.1f}\mathrm{{\mu m}}$'
+        if fit_result_in_label and D > 1e-6 and np.isfinite(D_unc) and np.abs(D_unc)/100 < np.abs(D):
+            L_label += f', $D={common.format_val_and_unc(D, D_unc)}\mathrm{{\mu m^2/s}}$'
+
+        # plot data
+        ax.scatter(t[1:], F_D_sq[1:, k_index], s=15, color=color, label=L_label if not LABELS_ON_PLOT else None)
+
+        # plot fit
         ax.plot(t_theory, theory_curve, color='black', zorder=-1)
         # ax.plot(t_theory, func(t_theory, popt[0], popt[1], 1/(0.03*k[k_index]**2))*rescale, color='grey', label=label, zorder=-1)
 
-        t_index_for_text = int(t_theory.size * (3-graph_i) / 4)
-        print(np.gradient(theory_curve, t_theory)[t_index_for_text])
-        angle = np.arctan(np.gradient(theory_curve, t_theory)[t_index_for_text]) * 180/np.pi
-        # angle = 0
-        print(angle)
-        # angle = 89
-        # angle += 180
-        angle = 58
-        # print(angle)
-        L_label = rf'$k={k[k_index]:.1f}\mathrm{{\mu m}}^{{-1}}$'
-        ax.text(t_theory[t_index_for_text+0]*0.7, theory_curve[t_index_for_text+0]*1, L_label,
-                horizontalalignment='center', color=color, fontsize=9,
-                # transform_rotates_text=True, rotation=angle, rotation_mode='anchor')
-                rotation=angle, rotation_mode='anchor')
+        if LABELS_ON_PLOT:
+            t_index_for_text = int(t_theory.size * (3-graph_i) / 4)
+            print(np.gradient(theory_curve, t_theory)[t_index_for_text])
+            angle = np.arctan(np.gradient(theory_curve, t_theory)[t_index_for_text]) * 180/np.pi
+            # angle = 0
+            print(angle)
+            # angle = 89
+            # angle += 180
+            angle = 58
+            # print(angle)
+            ax.text(t_theory[t_index_for_text+0]*0.7, theory_curve[t_index_for_text+0]*1, L_label,
+                    horizontalalignment='center', color=color, fontsize=9,
+                    # transform_rotates_text=True, rotation=angle, rotation_mode='anchor')
+                    rotation=angle, rotation_mode='anchor')
 
     # ax.semilogy()
     # ax.set_title(fr'$k={k[k_index]:.2f}$ ($\approx{2*np.pi/k[k_index]:.2f}\mathrm{{\mu m}}$)')
     # ax.legend(fontsize=8)
 
-    common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/ddm_overlapped_{file}.pdf', hide_metadata=True)
-    common.save_fig(fig, f'DDM/figures_png/ddm_overlapped_{file}.png', dpi=200)
+    if not LABELS_ON_PLOT:
+        ax.legend(fontsize=7)
+
+    ax.set_title(data.get('NAME', 'no title found'))
     
+
+if __name__ == '__main__':
+
+    for file in common.files_from_argv('DDM/data', 'ddm_'):
+        
+        fig, ax = plt.subplots(1, 1, figsize=(3.5, 3.4))
+
+        go(file, ax)
+
+        common.save_fig(fig, f'DDM/figures_png/ddm_overlapped_{file}.png', dpi=200)

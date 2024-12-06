@@ -210,7 +210,7 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
         end_timestep = data[:, 2].max() // 64
         data_small = data_small[data_small[:, 2] < end_timestep, :]
 
-        common.save_data(f'particle_detection/data/particles_{outfile}_div8.npz',
+        common.save_data(f'particle_detection/data/particles_{outfile}_div64.npz',
             particles=data_small,
             time_step=dt, particle_diameter=2.79, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
             window_size_x=out_width, window_size_y=out_width, max_time_hours=round(end_timestep*dt/60/60, 2),
@@ -242,6 +242,10 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
 # go('raw_data/brennan/spec_softetakt_dt_0.25_nsave_2.suspension_phi_0.114_L_320_modified.txt', 'brennan_hydro_011_L320', 320, 320, 0.5, 0.114, 2.972)
 # go('raw_data/brennan/spec_softetakt_dt_0.25_nsave_64.suspension_phi_0.016_L_320_modified.txt', 'brennan_hydro_002_L320_longer', 320, 320, 16, 0.016, 2.972)
 
+# from anubis
+go('raw_data/anubis/nohydro2D_L640_dt0.5_s2.972.suspension_phi0.016_L640_s2.972.bin', 'sim_nohydro_002_L640',        640, 640, 0.5, 0.016, 2.972)
+go('raw_data/anubis/nohydro2D_L640_dt16_s2.972.suspension_phi0.016_L640_s2.972.bin',  'sim_nohydro_002_L640_longer', 640, 640, 16,  0.016, 2.972)
+
 datas = [
     # L  dt  phi
     # (320, 1, 0.01),
@@ -262,15 +266,16 @@ datas = [
     # (800, 8, 0.02, '', 1, 24*60*60),
     # (320, 8, 0.114, '_long', 1, None, 2.972),
     # (640, 0.5, 0.10, '', 1, None, 2.79),
-    (640, 8, 0.10, '_longer', 2, None, 2.79),
+    # (640, 8, 0.10, '_longer', 2, None, 2.79),
 
-    # (320, 0.5, 0.114, '', 1, None, 2.972), # sim_nohydro_011_L320
-    # (320, 0.5, 0.016, '', 1, None, 2.972), # sim_nohydro_002_L320
-    # (320, 16, 0.114, '_longer', 1, None, 2.972), # sim_nohydro_011_L320_longer
+    # (320, 0.5, 0.114, '',        1, None, 2.972), # sim_nohydro_011_L320
+    # (320, 0.5, 0.016, '',        1, None, 2.972), # sim_nohydro_002_L320
+    # (320, 16, 0.114, '_longer',  1, None, 2.972), # sim_nohydro_011_L320_longer
     # (320, 32, 0.114, '_longest', 1, None, 2.972), # sim_nohydro_011_L320_longest
-    # (320, 16, 0.016, '_longer', 1, None, 2.972), # sim_nohydro_002_L320_longer
-    # (640, 0.5, 0.016, '', 1, None, 2.972), # sim_nohydro_002_L640
-    # (640, 0.5, 0.114, '', 1, None, 2.972), # sim_nohydro_011_L640
+    # (320, 16, 0.016, '_longer',  1, None, 2.972), # sim_nohydro_002_L320_longer
+    # (640, 0.5, 0.016, '',        1, None, 2.972), # sim_nohydro_002_L640
+    # (640, 0.5, 0.114, '',        1, None, 2.972), # sim_nohydro_011_L640
+    # (640, 16, 0.114, '_longer',  1, None, 2.972), # sim_nohydro_011_L640_longer
 ]
 
 for L, dt, phi, suffix, nth_timestep, max_time, particle_diameter in datas:
@@ -278,9 +283,9 @@ for L, dt, phi, suffix, nth_timestep, max_time, particle_diameter in datas:
     # go(f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt', f'sim_nohydro_{phistr}_L{L}{suffix}',  L, L, dt, phi, nth_timestep, max_time)
     go(
         # new ones:
-       # f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}_s2.972.suspension_phi{phi}_L{L}_s2.972.bin',
+       f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}_s2.972.suspension_phi{phi}_L{L}_s2.972.bin',
        # old ones:
-       f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt',
+    #    f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt',
        f'sim_nohydro_{phistr}_L{L}{suffix}',
        orig_width=L, 
        out_width=L, 

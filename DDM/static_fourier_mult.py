@@ -8,6 +8,7 @@ import scipy.fft
 FIRST_FRAME = False
 FRAME_DIFF = False
 REMOVE_BKG = True
+NTH_TIMESTEP = 5
 
 fig, ax = plt.subplots(1, 1, figsize=(5, 5))
 
@@ -15,6 +16,7 @@ for file in (files := common.files_from_argv('preprocessing/data', 'stack_')):
     data = common.load(f'preprocessing/data/stack_{file}.npz')
     stack      = data['stack']
     pixel_size = data['pixel_size']
+    NAME       = data['NAME']
 
     particle_diameter = data.get('particle_diameter')
 
@@ -28,10 +30,11 @@ for file in (files := common.files_from_argv('preprocessing/data', 'stack_')):
         else:
             images = stack[[0], :, :]
     else:
+        # idk why NTH_TIMESTEP is only for not FIRST_FRAME
         if FRAME_DIFF:
-            images = stack[1::5, :, :] - stack[:-1:5, :, :]
+            images = stack[1::NTH_TIMESTEP, :, :] - stack[:-1:NTH_TIMESTEP, :, :]
         else:
-            images = stack[::5, :, :]
+            images = stack[::NTH_TIMESTEP, :, :]
     del stack
     num_frames = images.shape[0]
     
@@ -76,7 +79,7 @@ for file in (files := common.files_from_argv('preprocessing/data', 'stack_')):
     x = (bins[1:] + bins[:-1]) / 2
     k = 2 * np.pi * x
     ax.scatter(k, v/vmean, s=2)
-    ax.errorbar(k, v/vmean, yerr=err/np.sqrt(n)/vmean, linestyle='none', label=common.name(file))
+    ax.errorbar(k, v/vmean, yerr=err/np.sqrt(n)/vmean, linestyle='none', label=f'{file} {NAME}')
 
     # ax.vlines(2*np.pi/1.5, *ax.get_ylim())
 

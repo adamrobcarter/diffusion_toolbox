@@ -691,6 +691,9 @@ def add_drift_intensity(stack, drift):
 def term_hist(data):
     assert not np.any(np.isnan(data)), 'term_hist: nan found in data'
     counts, bin_edges = np.histogram(data, bins=20)
+    term_bar(counts, bin_edges)
+
+def term_bar(counts, bin_edges):
     term_fig = termplotlib.figure()
     term_fig.hist(counts, bin_edges, force_ascii=False, orientation="horizontal")
     term_fig.show()

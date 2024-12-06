@@ -9,6 +9,7 @@ import box_counting.msd_single
 import box_counting.msd_combined
 import box_counting.quantify_overlap_show
 import box_counting.show_raw_counts
+import isf.show_S_of_k
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker
@@ -123,6 +124,7 @@ COLORMAP_KS = common.colormap
 
 MARKER_FKT = 'd'
 MARKER_COUNTING = 'o'
+MARKER_PHENOMFIT = 's'
 
 LINESTYLE_FKT = (0, (1, 0.8))
 LINESTYLE_COUNTING = 'dashed'
@@ -288,7 +290,7 @@ if __name__ == '__main__':
     )
 
     box_counting.D_of_L.go(
-        'sim_nohydro_011_L320_longer_merged',
+        'sim_nohydro_011_L640_longer_merged',
         'var', #'nmsdfitinter',
         ax=ax_a,
         **D_of_L_props,
@@ -310,8 +312,8 @@ if __name__ == '__main__':
     ax_label(ax_b, 'b', x=0.95)
 
     # ax_c.set_xlim(*DS_OVERLAPPED_XLIM)
-    phi = 0.114
-    D0_over_Sk = (1 + phi) / ( 1- phi)**3
+    phi = 0.114**3
+    D0_over_Sk = (1 + phi) / ( 1- phi)
     # ax_c.hlines(D0_over_Sk, *ax_c.get_xlim(), color='gray', linestyle=':', label='$(1+\phi)/(1-\phi)^3$')
 
     Ds_ov_mult_props = dict(
@@ -325,7 +327,7 @@ if __name__ == '__main__':
     )
 
     visualisation.Ds_overlapped_mult.go(
-        ['sim_nohydro_002_L320_longer_mergedD', 'sim_nohydro_011_L320_longer_mergedD'],
+        ['sim_nohydro_002_L640_longer_merged', 'sim_nohydro_011_L640_longer_mergedD'],
         ax=ax_c,
         # sources=['D_of_L_theory', 'timescaleint_nmsdfitinter', 'timescaleint_nofit_cropped_nmsdfitinter'],
         sources=['D_of_L_theory', 'timescaleint_nofit_cropped_var'],
@@ -437,7 +439,7 @@ if __name__ == '__main__':
         logarithmic_y=False,
         legend_fontsize=LEGEND_FONTSIZE,
         file_labels=PHI_FILE_LABELS,
-        source_labels=['Eq. ? fit', 'theory'],
+        source_labels=['Eq. 6 fit', 'theory'],
         colors=[[COLOR_PHI002, COLOR_PHI002_THEORY], [COLOR_PHI011, COLOR_PHI011_THEORY]],
         sources=[
             'boxcounting_collective_var',
@@ -445,6 +447,7 @@ if __name__ == '__main__':
             'D_of_L_theory'
         ],
         linestyles=[['none', LINESTYLE_COUNTING]]*2,
+        markers = MARKER_PHENOMFIT
     )
 
     
@@ -452,6 +455,15 @@ if __name__ == '__main__':
     # probably something to do with sharey
     do_ticks(ax_a)
 
+    D0_over_Sk0 = (1 + 0.114) / ( 1 - 0.114)**3
+    D0_over_Sk0_2 = (1 + 0.016) / ( 1 - 0.016)**3
+    hlines_kwargs = dict(
+        linestyle='dotted',
+        label='$D_\mathrm{coll}$',
+        color=COLOR_PHI011_THEORY,
+        linewidth=1,
+    )
+    ax_c.hlines(D0_over_Sk0, *DS_OVERLAPPED_XLIM, **hlines_kwargs)
     visualisation.Ds_overlapped_mult.go(
         ['sim_nohydro_002_L320', 'sim_nohydro_011_L320'],
         ax=ax_c,
@@ -463,8 +475,10 @@ if __name__ == '__main__':
     ax_c.yaxis.labelpad = -1
     ax_c.xaxis.labelpad = -1
     ax_c.get_legend().remove()
-    ax_label(ax_c, 'c')#, x=0.95)
+    ax_label(ax_c, 'c')
+    
 
+    ax_d.hlines(D0_over_Sk0, *DS_OVERLAPPED_XLIM, **hlines_kwargs)
     visualisation.Ds_overlapped_mult.go(
         ['eleanorlong001', 'eleanorlong010'],
         ax=ax_d,
@@ -477,7 +491,7 @@ if __name__ == '__main__':
     ax_d.xaxis.labelpad = -1
     ax_d.get_legend().set_bbox_to_anchor((-0.12, 0, 1, 1))
     ax_label(ax_d, 'd', x=0.95)
-
+    
     common.save_fig(fig, f'{path}/fig_nmsd_fit.png', hide_metadata=True)
     common.save_fig(fig, f'{path}/fig_nmsd_fit.pdf', hide_metadata=True)
 
@@ -675,3 +689,16 @@ if __name__ == '__main__':
 
     common.save_fig(fig, f'{path}/fig8.png', hide_metadata=True)
     common.save_fig(fig, f'{path}/fig8.pdf', hide_metadata=True)
+
+    ############### S(k) appendix ###############
+    fig, ax = plt.subplots(1, 1,
+                                     figsize=(WIDTH/3, ONEROW_HEIGHT),
+                                     )
+
+    isf.show_S_of_k.go(
+        'eleanorlong010',
+        ax
+    )
+
+    common.save_fig(fig, f'{path}/fig_Sk_appendix.png', hide_metadata=True)
+    common.save_fig(fig, f'{path}/fig_Sk_appendix.pdf', hide_metadata=True)

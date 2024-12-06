@@ -10,6 +10,8 @@ import matplotlib.cm
 import visualisation.Ds_overlapped
 import scipy.signal
 import tqdm
+import box_counting.D_of_L
+import warnings
 
 # enums
 RESCALE_Y_VAR_N   = 1
@@ -131,6 +133,12 @@ gradax4.loglog()
 
 PLATEAU_SOURCES = ['var', 'varmod', 'nmsdfit', 'nmsdfitinter', 'sDFT', 'N_mean',
                    'density', 'var_time', 'cutoff']
+PLATEAU_SOURCE_NAMES = {
+    'var': 'variance',
+    'varmod': 'variance (single box, mean over boxes)',
+    'nmsdfit': 'fit',
+    'sDFT': 'theory',
+}
 
 def get_plateau(method, nmsd, file, L, phi, sigma, t, var, varmod, D0, N_mean, density, var_time, cutoff_L, cutoff_plat, display=False):
     if method == 'obs':
@@ -157,8 +165,35 @@ def get_plateau(method, nmsd, file, L, phi, sigma, t, var, varmod, D0, N_mean, d
         else:
             return var*2, 0
     elif method == 'target_nofit':
+        pass
+    elif method == 'target_fixexponent':
+        theory = countoscope_theory.nmsd.plateau_inter_2d(N_mean, L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma))
 
-    elif method == 'target_fixexponent'
+        def D_from_plat(plat):
+            T_integrand = box_counting.D_of_L.T_integrand_func(nmsd, plat)
+            assert np.isfinite(T_integrand).all()
+            M1_index, M2_index, _ = box_counting.D_of_L.get_M1_M2(file, L, t, T_integrand)
+            _, _, D_of_L, _, _ = box_counting.D_of_L.timescaleintegral_fixexponent(t, L, T_integrand, T_integrand, T_integrand, M2_index, M1_index)
+            return D_of_L
+        
+        # to_minimise = lambda plat: (theory - D_from_plat(plat))**2
+        # res = scipy.optimize.minimize(to_minimise, x0=[var*2])
+        # return res.x, 0
+
+        plats = np.logspace(np.log10(var/100), np.log10(N_mean), num=2000)
+        Ds = np.full_like(plats, np.nan)
+        for i in range(len(plats)):
+            Ds[i] = D_from_plat(plats[i])
+
+        target_index = np.argmin((Ds-theory)**2)
+        # print((Ds-theory)**2)
+        # assert target_index != 0
+        if target_index == 0:
+            warnings.warn('minimisation failed')
+            return np.nan, 0
+
+        return plats[target_index], 0
+
 
     # elif method == 'S(k=0)<N>':
     #     return
@@ -233,7 +268,7 @@ def go(file, ax, separation_in_label=False,
        rescale_x=None, rescale_y=None, legend_fontsize=7, legend_location=LEGEND_LOCATION,
        box_size_indices=None, show_nointer_theory_limits=False, max_boxes_on_plot=MAX_BOXES_ON_PLOT,
        timescaleint_replacement_plateau_source='var', nointer_theory_limit_labels=[],
-       disable_ylabel=False, show_second_legend=True,
+       disable_ylabel=False, show_second_legend=True, show_rescaled_theory=False,
     ):
     # D0_from_fits     = [{}, {}]
     # D0_unc_from_fits = [{}, {}]
@@ -508,7 +543,7 @@ def go(file, ax, separation_in_label=False,
             # t_for_fit = t_for_fit[t_for_fit < 1e2]
             tmax2 = t_for_fit.max()
             # assert tmax2 < tmax1
-            print('t fitting 2', t_for_fit[0], t_for_fit[-1])
+            # print('t fitting 2', t_for_fit[0], t_for_fit[-1])
 
             # t_for_fit2 = t_for_fit[t_for_fit > 3*L**2]
             # if t_for_fit2.size > 100:
@@ -517,7 +552,7 @@ def go(file, ax, separation_in_label=False,
             fitting_points22 = common.exponential_indices(t_for_fit, num=100)
             # p0 = (0.05, N_mean[box_size_index])
             assert t[fitting_points22[-1]] < tmax1
-            print('t fitting 2', t[fitting_points22[0]], t[fitting_points22[-1]])
+            # print('t fitting 2', t[fitting_points22[0]], t[fitting_points22[-1]])
             p02 = [0.05]
 
 
@@ -652,6 +687,11 @@ def go(file, ax, separation_in_label=False,
                 ax.plot(t_theory[1:], N2_theory_points[1:], color='gray', linewidth=1, label=type_of_fit if box_size_index==0 else None)
                 ax.plot(t_theory[1:], N2_theory_points_Lh[1:], color='white', linewidth=1, label=type_of_fit if box_size_index==0 else None)
             
+            if show_rescaled_theory and box_size_index==0:
+                t_theory_rescaled = np.logspace(-4, 4, num=200)
+                theory = N2_theory(t_theory_rescaled, D_MSD)
+                ax.plot(t_theory_rescaled[1:]/rescale_x_value, theory[1:]/rescale_y_value, color='black', linewidth=1, label='theory')
+                
             
             # label += fr', $D_\mathrm{{fit}}={popt[0]:.3g}\pm {np.sqrt(pcov[0][0]):.3g} \mathrm{{\mu m^2/s}}$'
 
