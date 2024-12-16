@@ -28,11 +28,14 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
     # 3 * sqrt(2 D dt) : 99.7%
     # however for some reason at the mo I seem to need more like 10 *, idk why
     dt = data['time_step']
-    D = 0.04
-    if data['pack_frac_given'] > 0.3:
-        D = 0.03
-    if data['pack_frac_given'] > 0.6:
-        D = 0.02
+    if 'eleanor' in file or 'sim_nohydro' in file or 'sim_hydro' in file or 'brennan' in file:
+        D = 0.04
+        if data['pack_frac_given'] > 0.3:
+            D = 0.03
+        if data['pack_frac_given'] > 0.6:
+            D = 0.02
+    else:
+        D = 1
     search_range = 10 * np.sqrt(2 * dt * D)
     adaptive_stop = 2 * np.sqrt(2 * dt * D)
     memory = 1
@@ -82,10 +85,10 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
     for i in tqdm.trange(particles.shape[0], desc='updating IDs'):
         particles[i, 3] = ID_map[particles[i, 3]]
     
-
-    exp_density = 4/np.pi * data['pack_frac_given'] / data['particle_diameter']**2
-    exp_num = exp_density * data['window_size_x'] * data['window_size_y']
-    print('num trajs', num_trajs, 'avg part per frame', particles.shape[0]/(particles[:, 2].max()+1), 'exp num', exp_num)
+    if 'pack_frac_given' in data:
+        exp_density = 4/np.pi * data['pack_frac_given'] / data['particle_diameter']**2
+        exp_num = exp_density * data['window_size_x'] * data['window_size_y']
+        print('num trajs', num_trajs, 'avg part per frame', particles.shape[0]/(particles[:, 2].max()+1), 'exp num', exp_num)
 
     
     num_before = particles.shape[0]

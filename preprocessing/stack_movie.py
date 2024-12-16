@@ -8,9 +8,10 @@ import warnings
 DISPLAY_SMALL = False
 INVERSE_COLORS = False
 SHOW_TIMESTEP = True
+HIDE_ANNOTATIONS = True
 
 # HIGHLIGHTS = True # displays 50 frames evenly throughout the stack instead of the first 50
-HIGHLIGHTS = True
+HIGHLIGHTS = False
 # BACKWARDS = True
 BACKWARDS = False # plays the stack backwards. DIFF_WITH_ZERO is now compared to the last frame
 
@@ -169,20 +170,24 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
 
             color = 'white' if frame.mean()/(frame.max()-frame.min()) < 0.2 else 'black' # this used to be usedstack not frame
         
-            show_single_frame(ax, frame, pixel_size, channel=channel, vmin=vmin, vmax=vmax, window_size_x=window_size_x, window_size_y=window_size_y)
+            show_single_frame(ax, frame, pixel_size, channel=channel, vmin=vmin, vmax=vmax,
+                              window_size_x=window_size_x, window_size_y=window_size_y,
+                              hide_scale_bar=HIDE_ANNOTATIONS)
 
         else:
             color = 'gray'
 
-            show_single_frame(ax, None, pixel_size, channel=channel, window_size_x=window_size_x, window_size_y=window_size_y)
+            show_single_frame(ax, None, pixel_size, channel=channel, window_size_x=window_size_x, window_size_y=window_size_y,
+                              hide_scale_bar=HIDE_ANNOTATIONS)
         
         time_string = speed_string(time_mult, every_nth_frame*nth_frame)
-        if SHOW_TIMESTEP:
-            time_string += f'\nframe = {timestep*nth_frame:.0f}'
-            time_string += f'\ntime = {timestep*time_step*nth_frame:.1f}s'
-        ax.text(0.95, 0.05, time_string, color=color, transform=ax.transAxes, ha='right', fontsize=10)
+        if not HIDE_ANNOTATIONS:
+            if SHOW_TIMESTEP:
+                time_string += f'\nframe = {timestep*nth_frame:.0f}'
+                time_string += f'\ntime = {timestep*time_step*nth_frame:.1f}s'
+            ax.text(0.95, 0.05, time_string, color=color, transform=ax.transAxes, ha='right', fontsize=10)
 
-        ax.text(0.1, 0.9, dataset_name, transform=ax.transAxes, fontsize=15, color=color)
+            ax.text(0.1, 0.9, dataset_name, transform=ax.transAxes, fontsize=15, color=color)
      
         
         # for hiding border

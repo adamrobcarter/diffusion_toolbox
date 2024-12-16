@@ -226,7 +226,7 @@ def C_N_simplefit(t, C_N_over_VarN, C_N_over_VarN_unc, L):
 
 T_integrand_func = lambda nmsd, plat: (1 - nmsd / plat )**2 # countoscope paper eq. 8
 
-def get_M1_M2(file, L, t, T_integrand):
+def get_M1_M2(file, L, t, T_integrand, plateau_source):
         # data integral setup
     MIN_M2_INDEX = 10
 
@@ -310,6 +310,15 @@ def get_M1_M2(file, L, t, T_integrand):
             M1_t = t[M2_index] / 2
             # print('t', t, 'M1_t', M1_t)
             M1_index = np.argmax(t > M1_t)
+        elif file.startswith('sim_nohydro_002_L640_longer'):
+            c = 2e-7
+            m = 1
+            thresh_line = c * t**m
+            M2_index = np.argmax(T_integrand < thresh_line)
+            assert M2_index != 0
+            M1_t = t[M2_index] / 2
+            M1_index = np.argmax(t > M1_t)
+
         elif file == 'sim_nohydro_002_L320_longer_merged':
             # M2_index = min(int(560 * np.sqrt(L)), t.shape[0]-1)
             M2_index = np.argmax(T_integrand < thresh_line)
@@ -332,11 +341,12 @@ def get_M1_M2(file, L, t, T_integrand):
 
 def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
        plot_color=None, export_destination=None, sep_in_label=False,
-       show_nofit_cutoff=True, show_theory=False, labels_on_plot=True, max_num_boxes=10,
+       show_nofit_cutoff=False, show_theory=False, labels_on_plot=True, max_num_boxes=10,
        show_short_fits=True, show_long_fits=True, late_C_N_alpha=LATE_CN_ALPHA, labels_on_plot_font_color=None,
        show_legend=False, plot_C_N_squared=True, box_size_indices=None,
        show_slope=False, show_T_of_L=False, rescale_x=None, colormap=None,
-       disable_ylabel=False, plateau_adjust=1.0, plateau_source_suffix='', plateau_offset=0.0):
+       disable_ylabel=False, plateau_adjust=1.0, plateau_source_suffix='', plateau_offset=0.0,
+       show_thresh_line=False):
 
     integ_axs = ax
     # ax.set_title(f'{file}: plateau: {plateau_source}')
@@ -437,8 +447,8 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
         C_N_over_plateau_unc_sq = (N2_std[box_size_index, :] / (plateau))**2 + (N2_mean[box_size_index, :] * plateau_std / (2*plateau))**2
         C_N_over_plateau_unc = np.sqrt(C_N_over_plateau_unc_sq)
 
-        M1_index, M2_index, thresh_line = get_M1_M2(file, L, t, T_integrand)
-        if thresh_line is not None:
+        M1_index, M2_index, thresh_line = get_M1_M2(file, L, t, T_integrand, plateau_source)
+        if thresh_line is not None and show_thresh_line:
             ax.plot(t, thresh_line)
 
         # full method
@@ -716,7 +726,8 @@ if __name__ == '__main__':
         # plateau_source = 'sDFT'
         go(file, ax=integ_axs, plateau_source=plateau_source, show_theory=SHOW_THEORY,
            labels_on_plot=LABELS_ON_PLOT, max_num_boxes=MAX_NUM_BOXES, show_short_fits=SHOW_TIMESCALEINTEGRAL_FIT, show_long_fits=SHOW_TIMESCALEINTEGRAL_FIT,
-           save_data=True, show_legend=SHOW_LEGEND, rescale_x=RESCALE_X)#, plateau_adjust=1.05)
+           save_data=True, show_legend=SHOW_LEGEND, rescale_x=RESCALE_X, show_thresh_line=True,
+           show_nofit_cutoff=True)#, plateau_adjust=1.05)
         
         # integ_axs.set_xlim(5e-1, 1e5)
 

@@ -6,14 +6,12 @@ import preprocessing.stack_movie
 
 CROP = None
 
-if __name__ == '__main__':
-    # SUFFIX = '_nominmass'
-    SUFFIX = ''
+def go(file, infile, outfile, SUFFIX=''):
 
-    for file in sys.argv[1:]:
-
-        data_particles = common.load(f'particle_detection/data/particles_{file}{SUFFIX}.npz')
+        data_particles = common.load(infile)
         particles = data_particles['particles']
+        # particles = particles[:, [1, 0, 2]] # DON'T ASK ME WHY
+        
         radius    = data_particles.get('radius')
         time_step = data_particles['time_step']
         num_timesteps = particles[:, 2].max() + 1
@@ -43,6 +41,9 @@ if __name__ == '__main__':
             stack = data_stack['stack']
             pixel_size = data_stack['pixel_size']
 
+            
+            stack = stack[:, ::-1, :]
+
             # crop
             if CROP:
                 stack = stack[:, :CROP*pixel_size, :500*pixel_size]
@@ -59,10 +60,20 @@ if __name__ == '__main__':
         def add_outlines(timestep, ax):
             particle_detection.show.add_particle_outlines(ax, pixel_size, particles, radius, timestep, outline=False)
 
-        filename = f'movie_{file}{SUFFIX}.gif'
-        preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"preprocessing/figures_png/{filename}",
+        preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, outfile,
                                                 func=add_outlines, num_timesteps_in_data=num_timesteps,
                                                 window_size_x=window_size_x, window_size_y=window_size_y)
         # preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}{SUFFIX}.mp4",
         #                                            func=add_outlines)
         # save_array_movie(stack_copy, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/{filename}.mp4")
+
+
+
+if __name__ == '__main__':
+
+    for file in sys.argv[1:]:
+        go(
+            file,
+            infile = f'particle_detection/data/particles_{file}.npz',
+            outfile = f'particle_detection/figures_png/movie_{file}.gif'
+        )

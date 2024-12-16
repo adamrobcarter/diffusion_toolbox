@@ -8,7 +8,7 @@ import math
 FIT_USE_FLOW = False
 D_ERROR_THRESH = 0.5 # D_unc/D must be smaller than this to save
 
-def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, NAME, channel, num_displayed_k, live=False):
+def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NAME=None, channel=None, live=False):
 
     # target_ks = list(np.logspace(np.log10(0.4), np.log10(7), 7))
     # target_ks = (0.28, 0.38, 0.5, 1.3, 2, 4, 8)
@@ -194,13 +194,13 @@ if __name__ == '__main__':
 
         sigma = data['particle_diameter']
         pixel = data['pixel_size']
-        NAME  = data['NAME']
+        NAME  = data.get('NAME')
         channel = data.get('channel')
         
         num_displayed_ks = 14
         fig, axs = plt.subplots(1, num_displayed_ks, figsize=(num_displayed_ks*3.5, 4))
 
-        show(file, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, NAME, channel,
+        show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, NAME=NAME, channel=channel,
              num_displayed_ks=num_displayed_ks)
         
         common.save_fig(fig, f'DDM/figures_png/ddm_{file}.png')

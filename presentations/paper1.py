@@ -110,6 +110,7 @@ def truncate_colormap(cmap, minval=0.0, maxval=1.0): # https://stackoverflow.com
 PHI002_CMAP_POINT = 0.3
 COLOR_PHI002 = cmocean.cm.ice(PHI002_CMAP_POINT)
 COLOR_PHI011 = 'tab:pink'
+COLOR_PHI011_alt = '#e39dcd'
 COLOR_PHI002_THEORY = '#202346'
 COLOR_PHI011_THEORY = '#551140' 
 # COLOR_NONOVERLAPPED = 'tab:green'
@@ -270,7 +271,7 @@ if __name__ == '__main__':
     common.save_fig(fig, f'{path}/fig3.pdf', hide_metadata=True)
 
 
-    ########################## fig tsi #########################
+    # ########################## fig tsi #########################
     fig, ((ax_a, ax_b), (ax_c, ax_d)) = plt.subplots(2, 2,
                                                      figsize=(WIDTH/2, TWOROW_HEIGHT),
                                                      sharey='row',
@@ -287,6 +288,7 @@ if __name__ == '__main__':
         colormap=COLORMAP_BOXES,
         show_short_fits=True,
         show_long_fits=False,
+        late_C_N_alpha=1,
     )
 
     box_counting.D_of_L.go(
@@ -316,21 +318,30 @@ if __name__ == '__main__':
     D0_over_Sk = (1 + phi) / ( 1- phi)
     # ax_c.hlines(D0_over_Sk, *ax_c.get_xlim(), color='gray', linestyle=':', label='$(1+\phi)/(1-\phi)^3$')
 
+    # Ds_ov_mult_props = dict(
+    #     logarithmic_y=False,
+    #     legend_fontsize=LEGEND_FONTSIZE-1,
+    #     file_labels=PHI_FILE_LABELS,
+    #     source_labels=['theory', 'tsi no fit', 'tsi fix exponent'],
+    #     colors=[[COLOR_PHI002_THEORY, COLOR_PHI002, 'black'], [COLOR_PHI011_THEORY, COLOR_PHI011, 'black']],
+    #     markers=[['none', MARKER_COUNTING, 'x']] * 2,
+    #     linestyles=[[LINESTYLE_COUNTING, 'none', 'none']]*2,
+    #     sources=['D_of_L_theory', 'timescaleint_fixexponent_var', 'timescaleint_nofit_cropped_var'],
+    # )
     Ds_ov_mult_props = dict(
         logarithmic_y=False,
-        legend_fontsize=LEGEND_FONTSIZE-1,
+        legend_fontsize=LEGEND_FONTSIZE,
         file_labels=PHI_FILE_LABELS,
-        source_labels=['theory', 'tsi no fit'],
+        source_labels=['theory', 'eq. 8'],
         colors=[[COLOR_PHI002_THEORY, COLOR_PHI002], [COLOR_PHI011_THEORY, COLOR_PHI011]],
         markers=[['none', MARKER_COUNTING]] * 2,
         linestyles=[[LINESTYLE_COUNTING, 'none']]*2,
+        sources=['D_of_L_theory', 'timescaleint_nofit_cropped_var'],
     )
 
     visualisation.Ds_overlapped_mult.go(
-        ['sim_nohydro_002_L640_longer_merged', 'sim_nohydro_011_L640_longer_mergedD'],
+        ['sim_nohydro_002_L640_longer_mergedD', 'sim_nohydro_011_L640_longer_mergedD'],
         ax=ax_c,
-        # sources=['D_of_L_theory', 'timescaleint_nmsdfitinter', 'timescaleint_nofit_cropped_nmsdfitinter'],
-        sources=['D_of_L_theory', 'timescaleint_nofit_cropped_var'],
         **Ds_ov_mult_props
         # markers=[[None, MARKER_COUNTING, 'x'], [None, MARKER_COUNTING, 'x']]
     )
@@ -343,12 +354,8 @@ if __name__ == '__main__':
     ax_c.get_legend().remove()
 
     visualisation.Ds_overlapped_mult.go(
-        ['eleanorlong001', 'eleanorlong010',
-        #  'brennan_hydro_010_L544'
-         ],
+        ['eleanorlong001', 'eleanorlong010'],
         ax=ax_d,
-        # sources=['D_of_L_theory', 'timescaleint_nmsdfitinter', 'timescaleint_nofit_cropped_nmsdfitinter'],
-        sources=['D_of_L_theory', 'timescaleint_nofit_cropped_var'],
         **Ds_ov_mult_props,
         disable_ylabel=True,
         # markers=[[None, 'none', 'o'], [None, 'none', 'o'], [None, 'none', 'o']],
@@ -358,7 +365,9 @@ if __name__ == '__main__':
     ax_d.set_xlim(*DS_OVERLAPPED_XLIM)
     ax_d.xaxis.labelpad = -1
     ax_label(ax_d, 'd', x=0.95)
-    ax_d.get_legend().set_bbox_to_anchor((-0.13, 0, 1, 1))
+    # ax_label(ax_d, 'd')
+    ax_d.get_legend().set_bbox_to_anchor((-0.05, 0, 1, 1))
+    # ax_d.get_legend().set_bbox_to_anchor((-0.9, 0.01, 1, 1))
 
     common.save_fig(fig, f'{path}/fig_tsi.png', hide_metadata=True)
     common.save_fig(fig, f'{path}/fig_tsi.pdf', hide_metadata=True)
@@ -388,7 +397,7 @@ if __name__ == '__main__':
     )
 
     box_counting.msd_single.go(
-        'sim_nohydro_011_L320_longer_merged',
+        'sim_nohydro_011_L640_longer_merged',
         ax=ax_a,
         legend_location='lower right',
         **msd_zoom_props
@@ -435,11 +444,15 @@ if __name__ == '__main__':
     ax_label(ax_b, 'b')
     ax_b.get_legend().set_bbox_to_anchor((-0.95, 0, 1, 1))
 
+    # matplotlib is being weird and this has to be after we do ax_b
+    # probably something to do with sharey
+    do_ticks(ax_a)
+
     Ds_mult_props = dict(
         logarithmic_y=False,
         legend_fontsize=LEGEND_FONTSIZE,
         file_labels=PHI_FILE_LABELS,
-        source_labels=['Eq. 6 fit', 'theory'],
+        source_labels=['eq. 6 fit', 'theory'],
         colors=[[COLOR_PHI002, COLOR_PHI002_THEORY], [COLOR_PHI011, COLOR_PHI011_THEORY]],
         sources=[
             'boxcounting_collective_var',
@@ -450,22 +463,17 @@ if __name__ == '__main__':
         markers = MARKER_PHENOMFIT
     )
 
-    
-    # matplotlib is being weird and this has to be after we do ax_b
-    # probably something to do with sharey
-    do_ticks(ax_a)
-
     D0_over_Sk0 = (1 + 0.114) / ( 1 - 0.114)**3
     D0_over_Sk0_2 = (1 + 0.016) / ( 1 - 0.016)**3
     hlines_kwargs = dict(
         linestyle='dotted',
-        label='$D_\mathrm{coll}$',
+        label='$D_\mathrm{coll}$ ($\phi=0.11$)',
         color=COLOR_PHI011_THEORY,
         linewidth=1,
     )
     ax_c.hlines(D0_over_Sk0, *DS_OVERLAPPED_XLIM, **hlines_kwargs)
     visualisation.Ds_overlapped_mult.go(
-        ['sim_nohydro_002_L320', 'sim_nohydro_011_L320'],
+        ['sim_nohydro_002_L640_longer_mergedD', 'sim_nohydro_011_L640_longer_mergedD'], # this used to not be merged
         ax=ax_c,
         **Ds_mult_props
     )
@@ -489,7 +497,7 @@ if __name__ == '__main__':
     ax_d.yaxis.set_major_locator(ticks_0p5)
     ax_d.set_xlim(*DS_OVERLAPPED_XLIM)
     ax_d.xaxis.labelpad = -1
-    ax_d.get_legend().set_bbox_to_anchor((-0.12, 0, 1, 1))
+    ax_d.get_legend().set_bbox_to_anchor((-0.05, 0, 1, 1))
     ax_label(ax_d, 'd', x=0.95)
     
     common.save_fig(fig, f'{path}/fig_nmsd_fit.png', hide_metadata=True)
@@ -602,16 +610,16 @@ if __name__ == '__main__':
     fig7_props = dict(
         logarithmic_y=False,
         legend_fontsize=LEGEND_FONTSIZE,
-        colors=[[COLOR_PHI002, COLOR_PHI002_THEORY], [COLOR_PHI011, COLOR_PHI011_THEORY]],
+        colors=[[COLOR_PHI002, COLOR_PHI002_THEORY], [COLOR_PHI011_alt, COLOR_PHI011_THEORY]],
         file_labels=PHI_FILE_LABELS,
         sources=['f_first_first', 'D0Sk_theory'],
-        markers=[[MARKER_FKT, 'none']]*2,
-        linestyles=[['none', LINESTYLE_FKT]]*2,
+    markers=[[MARKER_FKT, 'none']]*2,
+    linestyles=[['none', LINESTYLE_FKT]]*2,
         source_labels=['$f(k, t)$', 'theory']
     )
 
     visualisation.Ds_overlapped_mult.go(
-        ['sim_nohydro_002_L320_longer_mergedD', 'sim_nohydro_011_L320_longer_mergedD'],#, 'brennan_hydro_011_L320'],
+        ['sim_nohydro_002_L640_longer_mergedD', 'sim_nohydro_011_L640_longer_mergedD'],#, 'brennan_hydro_011_L320'],
         #                                          ^^^^ atm brennnan does not need merging cause dt16 is no longer than dt0.5
         ax=ax_a,
         **fig7_props
@@ -655,14 +663,14 @@ if __name__ == '__main__':
         file_labels=[''],
         # sources=      ['timescaleint_nmsdfitinter', 'D_of_L_theory',      'f_first_first', 'D0Sk_theory'],
         sources=      ['timescaleint_nofit_cropped_var',          'D_of_L_theory',      'f_first_first', 'D0Sk_theory'],
-        colors=       [[COLOR_PHI011,               COLOR_PHI011_THEORY,  COLOR_PHI011,    COLOR_PHI011_THEORY]],
+        colors=       [[COLOR_PHI011,               COLOR_PHI011_THEORY,  COLOR_PHI011_alt,    COLOR_PHI011_THEORY]],
         markers=      [[MARKER_COUNTING,            'none',               MARKER_FKT,      'none', ]],
         linestyles=   [['none',                     LINESTYLE_COUNTING,   'none',          LINESTYLE_FKT]],
         source_labels=['Countoscope',               'Countoscope theory', '$f(k, t)$',     '$f(k, t)$ theory']
     )
 
     visualisation.Ds_overlapped_mult.go(
-        ['sim_nohydro_011_L320_longer_mergedD'],
+        ['sim_nohydro_011_L640_longer_mergedD'],
         ax=ax_a,
         **fig8_props
     )
@@ -690,15 +698,15 @@ if __name__ == '__main__':
     common.save_fig(fig, f'{path}/fig8.png', hide_metadata=True)
     common.save_fig(fig, f'{path}/fig8.pdf', hide_metadata=True)
 
-    ############### S(k) appendix ###############
-    fig, ax = plt.subplots(1, 1,
-                                     figsize=(WIDTH/3, ONEROW_HEIGHT),
-                                     )
+    # ############### S(k) appendix ###############
+    # fig, ax = plt.subplots(1, 1,
+    #                                  figsize=(WIDTH/3, ONEROW_HEIGHT),
+    #                                  )
 
-    isf.show_S_of_k.go(
-        'eleanorlong010',
-        ax
-    )
+    # isf.show_S_of_k.go(
+    #     'eleanorlong010',
+    #     ax
+    # )
 
-    common.save_fig(fig, f'{path}/fig_Sk_appendix.png', hide_metadata=True)
-    common.save_fig(fig, f'{path}/fig_Sk_appendix.pdf', hide_metadata=True)
+    # common.save_fig(fig, f'{path}/fig_Sk_appendix.png', hide_metadata=True)
+    # common.save_fig(fig, f'{path}/fig_Sk_appendix.pdf', hide_metadata=True)

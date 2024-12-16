@@ -89,6 +89,15 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
         invert = True
         threshold *= 10
 
+    elif file == 'carlos01':
+        diameter = 7
+        # minmass = 2.8
+        # invert = Tru
+        # threshold *= 10
+
+    else:
+        raise Exception('you need to provide parameters for this dataset')
+
     if NO_MINMASS:
         minmass = 0
 

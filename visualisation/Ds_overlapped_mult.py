@@ -11,7 +11,7 @@ PLOT_AGAINST_K = False
 
 DISCRETE_COLORS = False
 
-ERRORBAR_ALPHA = 0.2
+ERRORBAR_ALPHA = 0.3
 LEGEND_FONTSIZE = 6
 
 source_names = {
@@ -277,8 +277,10 @@ def show_one_file(
 
     if logarithmic_y:
         ax.semilogy()
-        ax.yaxis.set_minor_formatter(matplotlib.ticker.LogFormatter()) # prevent scientific notation on axes
-        ax.yaxis.set_major_formatter(matplotlib.ticker.LogFormatter()) # prevent scientific notation on axes
+        ymin, ymax = ax.get_ylim()
+        if ymax/ymin < 50:
+            ax.yaxis.set_minor_formatter(matplotlib.ticker.LogFormatter()) # prevent scientific notation on axes
+            ax.yaxis.set_major_formatter(matplotlib.ticker.LogFormatter()) # prevent scientific notation on axes
 
     ylim_expand = 1.5
     ymin = max(0.01, np.nanmin(all_Ds[all_Ds > 0])/ylim_expand)
@@ -308,6 +310,8 @@ def go(files, ax, sources, plot_against_k=False, legend_fontsize=None,
     
     if colors:
         assert len(colors) == len(files)
+    if file_labels:
+        assert len(file_labels) == len(files)
 
     for i, file in enumerate(files):
         if file_labels:
@@ -331,10 +335,10 @@ def go(files, ax, sources, plot_against_k=False, legend_fontsize=None,
         if colors:
             color = colors[i]
         else:
-            if discrete_colors or True:
+            if discrete_colors:
                 color = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red'][i]
             else:
-                color = common.colormap(i, 0, len(files))
+                color = [common.colormap(i, 0, len(files))]*len(sources)
         
         show_one_file(
             i, file, sources,
@@ -348,7 +352,7 @@ def go(files, ax, sources, plot_against_k=False, legend_fontsize=None,
             fade_out_thresh=None, fade_out_alpha=fade_out_alpha,
         )
 
-    ax.hlines(1, *ax.get_xlim(), linestyle=(0, (0.7, 0.7)), color='gray')
+    ax.hlines(1, *ax.get_xlim(), linestyle=(0, (0.7, 0.7)), color='darkgray')
 
     legend_margin = -0.015
     ax.legend(
@@ -372,19 +376,20 @@ if __name__ == '__main__':
         ax,
         sources = [
                 # 'f_first_first',
+                # 'F_first32_first',
                 # 'f_first',
                 # 'f_short',
                 # 'f',
-                # 'f_long',
-                'MSD_first',
+                'f_long',
+                # 'MSD_first',
                 # 'D0Sk_theory',
                 # 'boxcounting_collective_var',
                 # 'timescaleint_var',
-                'timescaleint_fixexponent_var',
+                # 'timescaleint_fixexponent_var',
                 # 'timescaleint_nmsdfitinter'
-                'timescaleint_nofit_cropped_var',
+                # 'timescaleint_nofit_cropped_var',
                 # 'D_of_L_theory',
-                'D0Sk_theory'
+                # 'D0Sk_theory'
             ],
         # linestyle='none',
         legend_fontsize=LEGEND_FONTSIZE,

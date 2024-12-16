@@ -50,6 +50,7 @@ source_names = {
 colors = {
     'DDM_short': 'tab:purple',
     'f': 'lime',
+    'f_first_first': 'lime',
     'f_short': 'tab:green',
     'f_long': 'yellowgreen',
     'f_first': 'green',
@@ -147,6 +148,7 @@ def get_D0_filename(file):
                 'sim_nohydro_011_L320', 'sim_nohydro_011_L320_long', 'sim_nohydro_011_L320_longer',
                 'sim_nohydro_002_L320', 'sim_nohydro_002_L320_long', 'sim_nohydro_002_L320_longer',
                 'sim_nohydro_002_L640', 'sim_nohydro_011_L640',
+                'sim_nohydro_011_L160',
                 'brennan_hydro_002_L320', 'brennan_hydro_002_L640', 'brennan_hydro_011_L320']:
         file += '_div8'
     return file
@@ -201,7 +203,7 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
 
     elif source == 'D_of_L_theory':
 
-        L = np.logspace(np.log10(sigma*0.5e-1), np.log10(sigma*5e1), 100)
+        L = np.logspace(np.log10(sigma*0.05e-1), np.log10(sigma*5e1), 100)
         L = L[::-1] # so that it's the same order as the others
         D = countoscope_theory.timescaleint.D_of_L(L, D_MSD, phi, sigma)
 
@@ -260,7 +262,7 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
             print(f'skipping {source} {file}, no Ds found')
             raise FileNotFoundError(f'skipping {source} {file}, no Ds found')
         
-        if source.startswith('f') or source.startswith('F_s') or source.startswith('DDM'):
+        if source.startswith('f') or source.startswith('F_s') or source.startswith('F_first') or source.startswith('DDM'):
             
             if PLOT_AGAINST_K:
                 xs = data['ks']
@@ -603,7 +605,8 @@ if __name__ == '__main__':
                 # 'f_long',
                 # 'f',
                 # 'f_first',
-                # 'f_first_first',
+                'f_first_first',
+                'F_first32_first',
                 # 'F_s',
                 # 'F_s_first',
                 # 'F_s_long',
@@ -615,7 +618,7 @@ if __name__ == '__main__':
                   'timescaleint_nofit_cropped_var',
                 #   'timescaleint_nofit_cropped_sDFT',
                 #   'timescaleint_fixexponent_cutoff',
-                'timescaleint_fixexponent_var',
+                # 'timescaleint_fixexponent_var',
                 # 'timescaleint_fixexponent_sDFT',
                 # 'timescaleint_fixexponent_target_fixexponent',
                 #   'timescaleint_nofit_cropped_noshort_var',

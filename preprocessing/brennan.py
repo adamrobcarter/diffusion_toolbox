@@ -176,7 +176,7 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
         particles=data,
         time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
         window_size_x=out_width, window_size_y=out_width, max_time_hours=round(num_timesteps*dt/60/60, 2),
-            source_file=infile,
+        source_file=infile, density=density,
     )
 
     if data.shape[1] == 4:
@@ -184,7 +184,7 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
             particles=data,
             time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
             window_size_x=out_width, window_size_y=out_width, max_time_hours=round(num_timesteps*dt/60/60, 2),
-            source_file=infile,
+            source_file=infile, density=density,
         )
     
     if data.size > 5e7:
@@ -195,7 +195,7 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
             particles=data_small,
             time_step=dt, particle_diameter=2.79, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
             window_size_x=out_width, window_size_y=out_width, max_time_hours=round(end_timestep*dt/60/60, 2),
-            source_file=infile,
+            source_file=infile, density=density,
         )
 
         if data.shape[1] == 4:
@@ -203,7 +203,7 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
                 particles=data_small,
                 time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
                 window_size_x=out_width, window_size_y=out_width, max_time_hours=round(end_timestep*dt/60/60, 2),
-                source_file=infile,
+                source_file=infile, density=density,
             )
 
             
@@ -243,8 +243,10 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
 # go('raw_data/brennan/spec_softetakt_dt_0.25_nsave_64.suspension_phi_0.016_L_320_modified.txt', 'brennan_hydro_002_L320_longer', 320, 320, 16, 0.016, 2.972)
 
 # from anubis
-go('raw_data/anubis/nohydro2D_L640_dt0.5_s2.972.suspension_phi0.016_L640_s2.972.bin', 'sim_nohydro_002_L640',        640, 640, 0.5, 0.016, 2.972)
-go('raw_data/anubis/nohydro2D_L640_dt16_s2.972.suspension_phi0.016_L640_s2.972.bin',  'sim_nohydro_002_L640_longer', 640, 640, 16,  0.016, 2.972)
+# go('raw_data/anubis/nohydro2D_L640_dt0.5_s2.972.suspension_phi0.016_L640_s2.972.bin', 'sim_nohydro_002_L640',        640, 640, 0.5, 0.016, 2.972)
+# go('raw_data/anubis/nohydro2D_L640_dt16_s2.972.suspension_phi0.016_L640_s2.972.bin',  'sim_nohydro_002_L640_longer', 640, 640, 16,  0.016, 2.972)
+go('raw_data/anubis/nohydro2D_L160_dt0.5_s2.972.suspension_phi0.114_L160_s2.972.bin', 'sim_nohydro_011_L160',        160, 160, 0.5, 0.114, 2.972)
+go('raw_data/anubis/nohydro2D_L160_dt16_s2.972.suspension_phi0.114_L160_s2.972.bin',  'sim_nohydro_011_L160_longer', 160, 160, 16,  0.114, 2.972)
 
 datas = [
     # L  dt  phi

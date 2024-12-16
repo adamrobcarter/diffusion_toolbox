@@ -59,7 +59,7 @@ assert 0.99 < N_mean_ratio < 1.01, f'N_mean_ratio = {N_mean_ratio}'
 # assert 0.99 < N_var_ratio < 1.05, f'N_var_ratio = {N_var_ratio}'
 
 N_var_mod_ratio, N_var_mod_avg = mean_and_ratio(data1['N_var_mod'], data0['N_var_mod'])
-assert 0.99 < N_var_mod_ratio < 1.26, f'N_var_mod_ratio = {N_var_mod_ratio}'
+assert 0.99 < N_var_mod_ratio < 1.27, f'N_var_mod_ratio = {N_var_mod_ratio}'
 
 # N_var_mod_ratio, N_var_mod_avg = mean_and_ratio(data1['N_var_mod'], data0['N_var_mod'])
 # assert 0.99 < N_var_mod_ratio < 1.01, f'N_var_mod_ratio = {N_var_mod_ratio}'

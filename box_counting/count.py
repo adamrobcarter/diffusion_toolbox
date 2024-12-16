@@ -141,6 +141,10 @@ if __name__ == '__main__':
 
         print('largest box', box_sizes[-1])
 
+        if box_sizes.max() > window_size:
+            sep_sizes = sep_sizes[box_sizes < window_size]
+            box_sizes = box_sizes[box_sizes < window_size]
+
 
         output_filename = f'box_counting/data/counted_{file}'
         # output_filename += '_moreoverlap'

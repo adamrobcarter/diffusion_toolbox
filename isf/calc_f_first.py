@@ -20,9 +20,6 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
 
     if file.startswith('sim_nointer'):
         max_time_origins *= 16
-
-    if file == 'sim_nohydro_010_L544' or file == 'brennan_hydro_010_L544':
-        max_time_origins = 4000
         
     if file.startswith('sim_nohydro_011_L') or file.startswith('brennan_hydro_011_L'):
         max_time_origins = 4000
@@ -41,4 +38,6 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
         max_time_origins=max_time_origins,
         d_frames=[0, 1],
         file_prefix = 'first_',
+        # d_frames=[0, 32],
+        # file_prefix = 'first32_',
     )

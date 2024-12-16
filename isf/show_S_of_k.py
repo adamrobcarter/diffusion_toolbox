@@ -14,7 +14,7 @@ SHOW_THEORY = False
 EARLY_ALPHA = 1
 
 def go(file, ax):
-    data = common.load(f"isf/data/F_{file}.npz")
+    data = common.load(f"isf/data/F_first_{file}.npz")
     t                 = data["t"]
     F                 = data["F"] # (num timesteps) x (num k bins)
     F_unc             = data['F_unc']

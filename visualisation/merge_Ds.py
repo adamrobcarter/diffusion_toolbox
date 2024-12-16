@@ -7,6 +7,7 @@ SOURCES = [
     'timescaleint_nofit_cropped_var',
     'boxcounting_collective_var',
     'f_first_first',
+    # 'f_long',
     'timescaleint_fixexponent_var'
 ]
 for SOURCE in SOURCES:
@@ -20,7 +21,7 @@ for SOURCE in SOURCES:
     data_long  = common.load(f'visualisation/data/Ds_from_{SOURCE}_{files[1]}.npz')
     data_short = common.load(f'visualisation/data/Ds_from_{SOURCE}_{files[0]}.npz')
 
-    if SOURCE == 'f_first_first':
+    if SOURCE.startswith('f'):
         k_long  = data_long ['ks']
         k_short = data_short['ks']
 

@@ -150,7 +150,7 @@ def show_single_F_type(
 
         f     = F_all    [:, k_index]
         f_unc = F_unc_all[:, k_index]
-        if Ftype in ['f', 'f_first']:
+        if Ftype in ['f', 'f_first', 'F_first32']:
             f /= F_all[0, k_index]
             f_unc_sq_all = (F_unc_all / F_all[0, :])**2 + (F_all * F_unc_all[0, :] / F_all[0, :]**2)**2
             # assert f_unc_sq.shape == f_unc.shape, f'{f_unc_sq.shape} {f_unc.shape}'
@@ -192,6 +192,7 @@ def show_single_F_type(
         if do_fits:
             assert t[0] == 0
             assert np.isclose(f[0], 1), f'f(0) = {f[0]}'
+            # if not np.isclose(f[0], 1): warnings.warn(f'f(0) = {f[0]}')
             first_index = 1
             assert t[first_index] > 0
 

@@ -13,6 +13,7 @@ for file in common.files_from_argv('isf/data/', 'F_first_'):
         file,
         type_index=0,
         Ftype='f_first',
+        # Ftype='F_first32',
         fig=fig,
         axes=axes,
         num_displayed_ks=num_displayed_ks

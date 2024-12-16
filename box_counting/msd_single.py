@@ -134,9 +134,10 @@ gradax4.loglog()
 PLATEAU_SOURCES = ['var', 'varmod', 'nmsdfit', 'nmsdfitinter', 'sDFT', 'N_mean',
                    'density', 'var_time', 'cutoff']
 PLATEAU_SOURCE_NAMES = {
-    'var': 'variance',
-    'varmod': 'variance (single box, mean over boxes)',
-    'nmsdfit': 'fit',
+    'var': 'variance (all)',
+    'varmod': 'variance (mean over boxes)',
+    'nmsdfit': r'$\langle \Delta N^2(t) \rangle$ fit',
+    'nmsdfitinter': r'$\langle \Delta N^2(t) \rangle$ fit w inter',
     'sDFT': 'theory',
 }
 
