@@ -10,13 +10,6 @@ D_ERROR_THRESH = 0.5 # D_unc/D must be smaller than this to save
 
 def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NAME=None, channel=None, live=False):
 
-    # target_ks = list(np.logspace(np.log10(0.4), np.log10(7), 7))
-    # target_ks = (0.28, 0.38, 0.5, 1.3, 2, 4, 8)
-    # target_ks = (0.1, 0.14, 0.5, 1.3, 2, 4, 8)
-
-    DDM_f     = np.full((F_D_sq.shape[0], num_displayed_ks), np.nan)
-    DDM_f_unc = np.full((F_D_sq.shape[0], num_displayed_ks), np.nan)
-
     real_ks = []
 
     D_max = 0
@@ -48,16 +41,12 @@ def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NA
         to_plot = np.full_like(F_D_sq[:, k_index], True, dtype='bool')
         to_plot[0] = False
         anomalous = F_D_sq_unc[:, k_index] > F_D_sq[:, k_index]
-        # print(anomalous)
-
         # to_plot[anomalous] = False
 
 
         if num_removed := (to_plot==False).sum()-1:
             print(f'  removed {num_removed}')
-        # print(to_plot)
 
-        # ax.errorbar(t[1:], F_D_sq[1:, k_index], yerr=F_D_sq_unc[1:, k_index], marker='.', linestyle='none')
         ax.errorbar(t[to_plot], F_D_sq[to_plot, k_index], yerr=F_D_sq_unc[to_plot, k_index], marker='.', linestyle='none')
 
         if not live:
@@ -117,8 +106,6 @@ def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NA
             B_of_q.append(B)
             q.append(k[k_index])
 
-            # print(f'  A(q)={A:.2g}, B(q)={B:.2g}')
-
             if A > 0:
 
                 ax.plot(t_theory, func(t_theory, *popt)*rescale, color=common.FIT_COLOR, label=label, zorder=-1)
@@ -133,42 +120,17 @@ def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NA
             else:
                 print('  not saving, A(q) negative')
 
-            # DDM_f    [:, graph_i]
-            # DDM_f    [:, graph_i] = 1 - (F_D_sq[:, k_index] - B)/A
-            # DDM_f_unc[:, graph_i] = np.sqrt((1/A * dB)**2 + (1/A * F_D_sq_unc[:, k_index])**2 + ((F_D_sq[:, k_index] - B)/A**2 * dA)**2)
-            # DDM_f_unc[:, graph_i] = np.sqrt(DDM_f[:, graph_i]**2) * np.sqrt( (F_D_sq_unc[:, k_index]/F_D_sq[:, k_index])**2 + (dB/B)**2 + (dA/A)**2 )
-            # print('  had to do weird error propagation')
-            # D_of_t = -1/(k[k_index]**2 * t) * np.log(DDM_f[:, graph_i])
-
-            # D_max = max(D_max, np.nanmax(D_of_t[np.isfinite(D_of_t)]))
 
         ax.semilogx()
         # ax.semilogy()
         ax.set_title(fr'$k={k[k_index]:.2f}$ ($\approx{2*np.pi/k[k_index]:.2f}\mathrm{{\mu m}}$)')
+        ax.set_xlabel('$t$ (s)')
+        ax.set_ylabel('$|\Delta I(q, t)|^2$')
         
-        legend_handles, legend_labels = h, l = ax.get_legend_handles_labels()
+        legend_handles, legend_labels = ax.get_legend_handles_labels()
         if len(legend_handles):
             ax.legend(fontsize=9)
 
-        # print('DDM_f nan', common.nanfrac(DDM_f[:, graph_i]))
-        
-        # ax.set_ylim([np.min(F_D_sq[1:-2, k_index]-F_D_sq_unc[1:-2, k_index]),np.max(F_D_sq[1:-2, k_index]+F_D_sq_unc[1:-2, k_index])])
-        # ax.set_ylim([np.min(F_D_sq[to_plot, k_index]) - (np.max(F_D_sq[to_plot, k_index])-np.min(F_D_sq[to_plot, k_index]))*0.1,np.max(F_D_sq[to_plot, k_index]) + (np.max(F_D_sq[to_plot, k_index])-np.min(F_D_sq[to_plot, k_index]))*0.1])
-
-        # D_ax = D_axs[graph_i+1]
-        # D_ax.scatter(t[1:], D_of_t[1:], s=10)
-        # D_ax.semilogx()
-        # D_ax.hlines(D, t[1], t[-1], color='black', zorder=-1)
-
-    # for graph_i in range(len(target_ks)):
-    #     D_ax = D_axs[graph_i+1]
-        # D_ax.set_ylim(0, D_max*1.1)
-        # D_ax.set_ylim(0, D_max/5)
-
-    # k_th = np.logspace(np.log10(0.05), np.log10(10), 100)
-    # axs[0].plot(k_th, common.structure_factor_2d_hard_spheres(k_th, 0.34, 2.82))
-    # axs[0].semilogx()
-    # axs[0].vlines(real_ks, 0, 1.5, color='black')
 
     fig.suptitle(f'{common.name(file)}, $\sigma={sigma}$, pixel$={pixel}$')
     
@@ -192,7 +154,7 @@ if __name__ == '__main__':
         F_D_sq_unc = data['F_D_sq_unc']
         t          = data['t']
 
-        sigma = data['particle_diameter']
+        sigma = data.get('particle_diameter')
         pixel = data['pixel_size']
         NAME  = data.get('NAME')
         channel = data.get('channel')

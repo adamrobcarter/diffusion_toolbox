@@ -288,7 +288,7 @@ def go(file, ax, separation_in_label=False,
     # data = common.load(f'data/counted_driftremoved_{phi}.npz')
     N2_mean        = data['N2_mean']
     N2_std         = data['N2_std']
-    phi            = data['pack_frac']
+    phi            = data.get('pack_frac', np.nan)
     sigma          = data['particle_diameter']
     time_step      = data['time_step']
     depth_of_field = data.get('depth_of_field')
@@ -353,6 +353,8 @@ def go(file, ax, separation_in_label=False,
         anomalous = delta_N_sq < 1e-14
         # anomalous[0] = False # don't want to remove point t=0 as it could legit be zero
         # print(anomalous)
+        assert anomalous[1] == False
+
         if np.any(anomalous):
             if np.sum(anomalous) > 1:
                 print(f'  found {anomalous.sum()/delta_N_sq.size*100:.3f}% anomalous')
@@ -394,7 +396,7 @@ def go(file, ax, separation_in_label=False,
         # }[file]
 
         # fit to whole thing
-        if True: # we calculate the fit even if we don't need to, because we use it for getting the angles for labels_on_plot
+        if True and np.isfinite(phi): # we calculate the fit even if we don't need to, because we use it for getting the angles for labels_on_plot
             if depth_of_field:
                 N2_theory = lambda t, D, N: common.N2_nointer_3D(t, D, N, L, L, depth_of_field)
                 type_of_fit = 'sDFT fit (no inter, 3D)'
@@ -415,7 +417,11 @@ def go(file, ax, separation_in_label=False,
             log_N2_theory = lambda t, *args : np.log(N2_theory(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
             log_N2_theory_Lh = lambda t, *args : np.log(N2_theory_Lh(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
             
-            fitting_points = common.exponential_indices(t, num=500)
+            if t.size > 500:
+                fitting_points = common.exponential_indices(t, num=500)
+            else:
+                warnings.warn('may be selecting points for fit badly')
+                fitting_points = np.index_exp[:]
             # p0 = (0.05, N_mean[box_size_index])
             p0 = [0.05]
             popt, pcov = scipy.optimize.curve_fit(log_N2_theory, t[fitting_points], np.log(delta_N_sq[fitting_points]), p0=p0, maxfev=2000)
@@ -684,7 +690,7 @@ def go(file, ax, separation_in_label=False,
                 ax.hlines(2*N_var_mod[box_size_index]/rescale_y_value, t.min(), t.max(), linestyles='dotted', color='grey', linewidth=1, label=r'$2\mathrm{Var*}(N)$' if box_size_index==0 else None)
 
 
-            if not rescale_y and SHOW_THEORY_FIT:
+            if not rescale_y and SHOW_THEORY_FIT and np.isfinite(phi):
                 ax.plot(t_theory[1:], N2_theory_points[1:], color='gray', linewidth=1, label=type_of_fit if box_size_index==0 else None)
                 ax.plot(t_theory[1:], N2_theory_points_Lh[1:], color='white', linewidth=1, label=type_of_fit if box_size_index==0 else None)
             
@@ -725,27 +731,36 @@ def go(file, ax, separation_in_label=False,
                 # print('tt', t)
                 points_to_plot = common.exponential_indices(t, 500)
             else:
-                points_to_plot = np.index_exp[1:] # this is basically a functional way of writing points_to_plot = [1:]
-            
+                points_to_plot = np.index_exp[:] # this is basically a functional way of writing points_to_plot = [1:]
+
             exp_plot, = ax.plot(t[points_to_plot], delta_N_sq[points_to_plot], label=label, linestyle=linestyle, marker='o', markersize=markersize, zorder=-1, color=color)
             # exp_plot = ax.errorbar(t[1:], delta_N_sq[1:], yerr=delta_N_sq_err[1:]/np.sqrt(num_of_boxes[box_size_index]), label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
             # exp_plot = ax.errorbar(t[1:], delta_N_sq[1:], yerr=delta_N_sq_err[1:], label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
             plotted_handles.append(exp_plot)
 
             if labels_on_plot:
+
+                if np.isfinite(phi):
+                    x = t_theory
+                    y = N2_theory_points
+                else:
+                    x = t
+                    y = delta_N_sq
+
                 t_index_for_text = int(t_theory.size // 1.6)
-                angle = np.arctan(np.gradient(N2_theory_points, t_theory)[t_index_for_text]) * 180/np.pi
+                angle = np.arctan(np.gradient(y, x)[t_index_for_text]) * 180/np.pi
                 # plt.scatter(t_theory[t_index_for_text], N2_theory_points[t_index_for_text])
                 
                 if sigma and not np.isnan(sigma):
                     L_label = rf'$L={L/sigma:.2g}\sigma$'
                 else:
                     L_label = rf'$L={L:.2g}$'
+
                 if SHOW_JUST_ONE_BOX:
-                    ax.text(t_theory[t_index_for_text+6], N2_theory_points[t_index_for_text+6]/LABELS_ON_PLOT_Y_SHIFT, L_label,
+                    ax.text(x[t_index_for_text+6], y[t_index_for_text+6]/LABELS_ON_PLOT_Y_SHIFT, L_label,
                             horizontalalignment='center', color=color, fontsize=9)
                 else:
-                    ax.text(t_theory[t_index_for_text+6], N2_theory_points[t_index_for_text+6]*LABELS_ON_PLOT_Y_SHIFT, L_label,
+                    ax.text(x[t_index_for_text+6], y[t_index_for_text+6]*LABELS_ON_PLOT_Y_SHIFT, L_label,
                             horizontalalignment='center', color=color, fontsize=9,
                             transform_rotates_text=True, rotation=angle, rotation_mode='anchor')
             

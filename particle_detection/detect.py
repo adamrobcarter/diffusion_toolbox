@@ -160,13 +160,7 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
 
     assert particles.shape[0] > 0, 'no particles were found'
 
-    print(f'found {(particles.shape[0]/num_timesteps):.0f} particles per frame')
-    if particle_diameter is not None and not np.isnan(particle_diameter):
-        density = particles.shape[0]/num_timesteps / (stack.shape[0]*stack.shape[1]*pixel_size**2)
-        pack_frac = np.pi/4 * density * particle_diameter**2
-        print(f'so packing fraction phi = {pack_frac:.3f}')
-
-    common.save_data(f'particle_detection/data/particles_{outfile}.npz',
+    to_save = dict(
         #  particle_picklepath=picklepath,
         particles=particles, radius=radius, time_step=time_step,
         threshold=threshold, maxsize=maxsize, minmass=minmass, diameter=diameter, separation=separation,
@@ -177,3 +171,12 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
         channel=data.get('channel'), NAME=data.get('NAME'),
         pack_frac_given=data.get('pack_frac_given'),
     )
+
+    print(f'found {(particles.shape[0]/num_timesteps):.0f} particles per frame')
+    if particle_diameter is not None and not np.isnan(particle_diameter):
+        pack_frac = common.calc_pack_frac(particles, particle_diameter, stack.shape[0]*pixel_size, stack.shape[1]*pixel_size)
+        print(f'so packing fraction phi = {pack_frac:.3f}')
+
+        to_save['pack_frac'] = pack_frac
+
+    common.save_data(f'particle_detection/data/particles_{outfile}.npz', **to_save)

@@ -72,7 +72,7 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
     print(f'dropped {(num_trajs_before_filter-num_trajs)/num_trajs_before_filter:.2f} of rows in filter_stubs')
     # filtering stubs might seem unneeded but it makes calculation of the MSD much much quicker
 
-    particles = trajs[['y', 'x', 'frame', 'particle']].to_numpy(dtype=particles.dtype)
+    particles = trajs[['x', 'y', 'frame', 'particle']].to_numpy(dtype=particles.dtype)
     #                   ^    ^   I am aware these are the wrong way round
     # but it has to be so to work. possibly we introduced this error in the sparticles
     # tracking, but now we have to be consistant
@@ -116,5 +116,6 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
             particles=particles, radius=radius, time_step=data['time_step'],
             pixel_size=pixel_size,
             particle_diameter=data.get('particle_diameter'), pack_frac_given=data.get('pack_frac_given'),
+            pack_frac=data.get('pack_frac'),
             window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'))
             # particle_diameter_calced=particle_diameter_calced)

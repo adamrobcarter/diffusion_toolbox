@@ -8,7 +8,7 @@ import warnings
 DISPLAY_SMALL = False
 INVERSE_COLORS = False
 SHOW_TIMESTEP = True
-HIDE_ANNOTATIONS = True
+HIDE_ANNOTATIONS = False
 
 # HIGHLIGHTS = True # displays 50 frames evenly throughout the stack instead of the first 50
 HIGHLIGHTS = False
@@ -19,19 +19,29 @@ BACKWARDS = False # plays the stack backwards. DIFF_WITH_ZERO is now compared to
 REMOVE_BACKGROUND = 1
 DIFF_WITH_ZERO = 2 # frame - frame1
 DIFF_WITH_PREVIOUS = 3
+DIFF_WITH_TEN = 6
 NONE = 4
 TWOCHANNEL = 5
+
+METHOD_NAME = {
+    REMOVE_BACKGROUND: 'i(t) - mean(i)',
+    DIFF_WITH_ZERO: 'i(t) - i(0)',
+    DIFF_WITH_PREVIOUS: 'i(t) - i(t-1)',
+    DIFF_WITH_TEN: 'i(t) - i(t-10)',
+    NONE: '',
+    TWOCHANNEL: '',
+}
 
 # select your method here
 # METHOD = DIFF_WITH_PREVIOUS
 # METHOD = DIFF_WITH_ZERO
-METHOD = NONE
+METHODS = [NONE]
+METHODS = [NONE, REMOVE_BACKGROUND, DIFF_WITH_ZERO, DIFF_WITH_PREVIOUS, DIFF_WITH_TEN]
+# METHODS = [DIFF_WITH_TEN]
+# METHODS = [NONE]
 # METHOD = REMOVE_BACKGROUND
 
 ADD_DRIFT = False
-
-if METHOD == NONE:
-    BACKWARDS = False
 
 def normalise_stack(stack, file):
     max = np.quantile(stack, 0.99)
@@ -54,6 +64,8 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
                      dataset_name=None,
                      num_timesteps_in_data=None, # how many timesteps are in the original data?. only needed if stack is None
                      ):
+    if method == NONE:
+        assert not backwards
 
     figsize = (3, 3)
 
@@ -84,7 +96,7 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
         time_mult = 0.25
     
     if highlights:
-        every_nth_frame = stack.shape[0] // 50
+        every_nth_frame = num_timesteps_in_data // 50
     else:
         every_nth_frame = 1
 
@@ -108,8 +120,9 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
     frames = range(0, min(num_timesteps_in_data, max_num_frames*every_nth_frame), every_nth_frame)
 
 
-    print('stack[frames]:')
-    common.term_hist(stack[frames])
+    if not no_stack:
+        print('stack[frames]:')
+        common.term_hist(stack[frames])
 
     if not no_stack:
         if backwards:
@@ -128,6 +141,11 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
             print('subtracting previous frame')
             usedstack = stack[np.array(frames[:-1])+1, :, :] - stack[frames[:-1], :, :]
 
+        elif method == DIFF_WITH_TEN:
+            print('subtracting previous frame')
+            usedstack = stack[np.array(frames[:-1])+10, :, :] - stack[np.array(frames[:-1])+0, :, :]
+            print('I want to look later in the stack')
+
         elif method == NONE:
             usedstack = stack[frames, :, :]
 
@@ -143,8 +161,9 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
                 else:
                     assert False, 'colors other than red and green not yet implemented'
 
-    print('used_stack:')
-    common.term_hist(usedstack)
+    if not no_stack:
+        print('used_stack:')
+        common.term_hist(usedstack)
 
     # print('min mean max', usedstack.min(), usedstack.mean(), usedstack.max())
     if not no_stack:
@@ -187,7 +206,8 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
                 time_string += f'\ntime = {timestep*time_step*nth_frame:.1f}s'
             ax.text(0.95, 0.05, time_string, color=color, transform=ax.transAxes, ha='right', fontsize=10)
 
-            ax.text(0.1, 0.9, dataset_name, transform=ax.transAxes, fontsize=15, color=color)
+            ax.text(0.05, 0.9, dataset_name, transform=ax.transAxes, fontsize=15, color=color)
+            ax.text(0.05, 0.82, METHOD_NAME[METHOD], transform=ax.transAxes, fontsize=15, color=color)
      
         
         # for hiding border
@@ -244,8 +264,7 @@ def show_single_frame(ax, frame, pixel_size, window_size_x, window_size_y, chann
    
 
 
-def go(file, outputfilename, add_drift=False, display_small=False, method=NONE, highlights=False, backward=False, flip_y=False):
-        data = common.load(f'preprocessing/data/stack_{file}.npz')
+def go(file, data, outputfilename, add_drift=False, display_small=False, method=NONE, highlights=False, backward=False, flip_y=False):
         
         stack      = data['stack']
         # print('start')
@@ -267,10 +286,6 @@ def go(file, outputfilename, add_drift=False, display_small=False, method=NONE, 
             stack = np.swapaxes(stack, 1, 2)
 
         if display_small:
-            # crop
-            stack = stack[:, :300, :300]
-
-        if file.startswith('psiche'):
             crop = 250
             x_start = int((stack.shape[1] - crop)/2)
             y_start = int((stack.shape[2] - crop)/2)
@@ -297,28 +312,49 @@ def go(file, outputfilename, add_drift=False, display_small=False, method=NONE, 
         
 if __name__ == '__main__':
     for file in common.files_from_argv('preprocessing/data/', 'stack_'):
+        # num = int(file[6:9])
+        # if num < 114:
+        #     continue
         
-        filename = f'preprocessing/figures_png/stack_movie_{file}'
-        if METHOD == REMOVE_BACKGROUND:
-            filename += '_bkgrem'
-        elif METHOD == DIFF_WITH_ZERO:
-            filename += '_diffframe1'
-        elif METHOD == DIFF_WITH_PREVIOUS:
-            filename += '_diffprev'
-        if HIGHLIGHTS:
-            filename += '_highlights'
-        if BACKWARDS:
-            filename += '_backwards'
-        if ADD_DRIFT:
-            filename += '_drifted'
-        filename += '.gif'
+        data = common.load(f'preprocessing/data/stack_{file}.npz')
+        
+        try:
+            for METHOD in METHODS:
+                for crop in [False, True]:
+            
+                    filename = f'preprocessing/figures_png/stack_movie_{file}'
 
-        go(
-            file,
-            outputfilename=filename,
-            add_drift=ADD_DRIFT,
-            method=METHOD,
-            display_small=DISPLAY_SMALL,
-            highlights=HIGHLIGHTS,
-            backward=BACKWARDS
-        )
+                    if crop:
+                        filename += '_crop'
+
+                    if METHOD == REMOVE_BACKGROUND:
+                        filename += '_bkgrem'
+                    elif METHOD == DIFF_WITH_ZERO:
+                        filename += '_diffframe1'
+                    elif METHOD == DIFF_WITH_PREVIOUS:
+                        filename += '_diffprev'
+                    elif METHOD == DIFF_WITH_TEN:
+                        filename += '_diff10'
+                    if HIGHLIGHTS:
+                        filename += '_highlights'
+                    if BACKWARDS:
+                        filename += '_backwards'
+                    if ADD_DRIFT:
+                        filename += '_drifted'
+                    
+                    filename += '.gif'
+
+                    go(
+                        file,
+                        data,
+                        outputfilename=filename,
+                        add_drift=ADD_DRIFT,
+                        method=METHOD,
+                        display_small=crop,
+                        highlights=HIGHLIGHTS,
+                        backward=BACKWARDS
+                    )
+        except Exception as err:
+            print()
+            print(err)
+            print()

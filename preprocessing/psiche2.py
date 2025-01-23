@@ -39,8 +39,11 @@ endframe_map = {
 }
 
 skips = ['0154', '0015', '0016', '0046',
-          '0003', '0004', '0005', '0006', '0007', '0008', '0009',
-          '0010', '0011', '0012', '0013',
+          '0003', '0004', '0005', '0006', '0007', '0008',
+        #   '0009',
+        #   '0010',
+        #   '0011',
+          '0012', '0013',
           '0018', # no timestep recorded
           '0019', '0091', # bin
           '0166', # tomo
@@ -121,13 +124,13 @@ def preprocess(directory_path, directory_name, destination_filename, destination
 
     # load refs and dark
     with h5py.File(f'{directory_path}/pre_ref.nxs', 'r') as f:
-        refA = f['ref_2d'][:]
+        refA = f['ref_2d'][:] # flat field - no sample, beam on
 
     with h5py.File(f'{directory_path}/post_ref.nxs', 'r') as f:
-        refB = f['ref_2d'][:]
+        refB = f['ref_2d'][:] # flat field - no sample, beam on
 
     with h5py.File(f'{directory_path}/post_dark.nxs', 'r') as f:
-        dark = f['dark_2d'][:]
+        dark = f['dark_2d'][:] # dark - beam off
 
 
     # print('subtracting dark 1')
@@ -167,14 +170,29 @@ def preprocess(directory_path, directory_name, destination_filename, destination
     # print('up is down')
     proj = proj[:, ::-1, :]
 
+    if destination_filename in ['psiche086', 'psiche087', 'psiche088']:
+        proj = proj[:95, :, :]
+        print('removed later frames')
+
+    particle_diameter = None
+    if 'silice4um' in directory_name:
+        particle_diameter = 4
+    if 'silice1p7um' in directory_name:
+        particle_diameter = 1.7
+
+    to_save = dict(
+        NAME=destination_desc,
+        particle_diameter=particle_diameter
+    )
+
     common.save_data(f'preprocessing/data/stack_{destination_filename}.npz',
         stack=proj, pixel_size=0.325, time_step=time_step,
-        NAME=destination_desc)
+        **to_save)
 
     n = proj.shape[0] // 50
     common.save_data(f'preprocessing/data/stack_{destination_filename}_small.npz',
         stack=proj[::n], pixel_size=0.325, time_step=time_step*n, nth_frame=n,
-        NAME=destination_desc)
+        **to_save)
 
     # print(f'done in {time.time()-t0:.0f}s')
 
@@ -182,6 +200,7 @@ print('WARNING NOT DOING ALL')
 
 files = list(os.scandir('/data2/acarter/psiche/PSICHE_0624'))
 
+# do = ['psiche086', 'psiche087', 'psiche088', 'psiche089']
 do = ['psiche089']
 
 for f in tqdm.tqdm(files):

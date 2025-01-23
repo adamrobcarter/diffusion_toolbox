@@ -9,6 +9,10 @@ def calc_and_save(box_sizes, sep_sizes, data, output_file_name, particles=None,
                   save_data=True, skip_processing=False):
     t0 = time.time()
 
+    if particles is not None:
+        assert isinstance(particles, np.ndarray)
+        raise Exception('this is maybe deprecated?')
+
     if not save_data:
         print('WARNING: I am not going to save the data')
 
@@ -26,6 +30,8 @@ def calc_and_save(box_sizes, sep_sizes, data, output_file_name, particles=None,
 
     if particles == None:
         particles = data['particles']
+    else:
+        raise Exception('should this be deprecated, and this conditional removed?')
     print('particles', particles)
 
     # num_timesteps = int(particles[:, 2].max()) + 1
@@ -132,8 +138,13 @@ if __name__ == '__main__':
                 raise Exception()
 
         else:
-            box_sizes = np.array([1, 2, 4, 8])
-            sep_sizes = 100-box_sizes
+            if 'pixel_size' in data:
+                min_box = data['pixel_size']
+            else:
+                min_box = 1
+
+            box_sizes = np.logspace(np.log10(min_box), np.log10(0.9*window_size), num_boxes)
+            sep_sizes = 7-box_sizes
 
             
         # box_sizes = np.logspace(np.log10(0.288/2), np.log10(0.9*288), num_boxes)[-10:]

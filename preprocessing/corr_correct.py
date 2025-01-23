@@ -27,6 +27,7 @@ for file in common.files_from_argv('preprocessing/data', 'stack_'):
     newstack = newstack[:, lost_x:-lost_x, lost_y:-lost_y]
 
     assert not np.any(np.isnan(newstack))
+    assert newstack.size
 
     common.save_data(f'preprocessing/data/stack_{file}_shifted.npz',
                 stack=newstack,

@@ -5,6 +5,7 @@ import particle_detection.show
 import preprocessing.stack_movie
 
 CROP = None
+HIGHLIGHTS = False
 
 def go(file, infile, outfile, SUFFIX=''):
 
@@ -33,10 +34,10 @@ def go(file, infile, outfile, SUFFIX=''):
             pixel_size = None
             # radius = np.full(particles.shape[0], 0.002*160)
 
-            no_stack = True
+            # no_stack = True
         
         else:
-            no_stack = False
+            # no_stack = False
 
             stack = data_stack['stack']
             pixel_size = data_stack['pixel_size']
@@ -55,14 +56,18 @@ def go(file, infile, outfile, SUFFIX=''):
 
             stack = stack - stack.mean(axis=0) # remove space background
             
-        radius = np.full(particles.shape[0], data_particles['particle_diameter']/2)
+        if 'particle_diameter' in data_particles:
+            radius = np.full(particles.shape[0], data_particles['particle_diameter']/2)
+        else:
+            radius = None
         
         def add_outlines(timestep, ax):
             particle_detection.show.add_particle_outlines(ax, pixel_size, particles, radius, timestep, outline=False)
 
         preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, outfile,
                                                 func=add_outlines, num_timesteps_in_data=num_timesteps,
-                                                window_size_x=window_size_x, window_size_y=window_size_y)
+                                                window_size_x=window_size_x, window_size_y=window_size_y,
+                                                highlights=HIGHLIGHTS)
         # preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}{SUFFIX}.mp4",
         #                                            func=add_outlines)
         # save_array_movie(stack_copy, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/{filename}.mp4")

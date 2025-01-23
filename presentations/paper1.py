@@ -109,8 +109,10 @@ def truncate_colormap(cmap, minval=0.0, maxval=1.0): # https://stackoverflow.com
 
 PHI002_CMAP_POINT = 0.3
 COLOR_PHI002 = cmocean.cm.ice(PHI002_CMAP_POINT)
-COLOR_PHI011 = 'tab:pink'
-COLOR_PHI011_alt = '#e39dcd'
+# COLOR_PHI011 = 'tab:pink'
+COLOR_PHI011 = '#cf4ab6' # byzantine but made a little lighter
+# COLOR_PHI011_alt = '#e39dcd'
+COLOR_PHI011_alt = '#f1a7fe' # rich brilliant lavender
 COLOR_PHI002_THEORY = '#202346'
 COLOR_PHI011_THEORY = '#551140' 
 # COLOR_NONOVERLAPPED = 'tab:green'
@@ -139,136 +141,136 @@ GRIDSPEC_HSPACE = 0.27
 
 if __name__ == '__main__':
     pass
-    ########################## fig 1 #########################
-    fig = plt.figure(figsize=(WIDTH/2, 5))
-    gs = matplotlib.gridspec.GridSpec(2, 1)#, height_ratios=(1, 1))#, wspace=0, hspace=0)
-    gs0 = gs[0].subgridspec(1, 3)#, width_ratios=[1, 1])
-    gs1 = gs[1].subgridspec(1, 2, width_ratios=[0.9, 1.1])
-    ax_a = fig.add_subplot(gs0[0])
-    ax_b = fig.add_subplot(gs0[1])
-    ax_c = fig.add_subplot(gs0[2])
-    ax_d = fig.add_subplot(gs1[0])
-    ax_e = fig.add_subplot(gs1[1])
+    # ########################## fig 1 #########################
+    # fig = plt.figure(figsize=(WIDTH/2, 5))
+    # gs = matplotlib.gridspec.GridSpec(2, 1)#, height_ratios=(1, 1))#, wspace=0, hspace=0)
+    # gs0 = gs[0].subgridspec(1, 3)#, width_ratios=[1, 1])
+    # gs1 = gs[1].subgridspec(1, 2, width_ratios=[0.9, 1.1])
+    # ax_a = fig.add_subplot(gs0[0])
+    # ax_b = fig.add_subplot(gs0[1])
+    # ax_c = fig.add_subplot(gs0[2])
+    # ax_d = fig.add_subplot(gs1[0])
+    # ax_e = fig.add_subplot(gs1[1])
 
-    show_png(ax_a, 'presentations/paper1/fig1_dhont1.png')
-    ax_label(ax_a, 'a', x=0.9)
-    show_png(ax_b, 'presentations/paper1/fig1_dhont2.png')
-    ax_label(ax_b, 'b', x=0.9)
-    show_png(ax_c, 'presentations/paper1/fig1_dhont3.png')
-    ax_label(ax_c, 'c', x=0.9)
-    show_png(ax_d, 'presentations/paper1/fig1_sketch.png')
-    ax_label(ax_d, 'd', x=0.9)
-    box_counting.show_raw_counts.go('eleanorlong010_trim0.0625', ax_e)
-    ax_label(ax_e, 'e')
-    ax_e.set_aspect(15)
+    # show_png(ax_a, 'presentations/paper1/fig1_dhont1.png')
+    # ax_label(ax_a, 'a', x=0.9)
+    # show_png(ax_b, 'presentations/paper1/fig1_dhont2.png')
+    # ax_label(ax_b, 'b', x=0.9)
+    # show_png(ax_c, 'presentations/paper1/fig1_dhont3.png')
+    # ax_label(ax_c, 'c', x=0.9)
+    # show_png(ax_d, 'presentations/paper1/fig1_sketch.png')
+    # ax_label(ax_d, 'd', x=0.9)
+    # box_counting.show_raw_counts.go('eleanorlong010_trim0.0625', ax_e)
+    # ax_label(ax_e, 'e')
+    # ax_e.set_aspect(15)
 
-    # fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
-    # fig.get_layout_engine().set(w_pad=0, h_pad=0, hspace=0, wspace=0)
+    # # fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
+    # # fig.get_layout_engine().set(w_pad=0, h_pad=0, hspace=0, wspace=0)
 
-    common.save_fig(fig, f'{path}/fig1.png', hide_metadata=True)
-    common.save_fig(fig, f'{path}/fig1.pdf', hide_metadata=True)
-
-
-    ######################### fig 2 #########################
-    fig, ((ax_a, ax_b), (ax_c, ax_d)) = plt.subplots(2, 2, figsize=(WIDTH/2, 5.15),
-                                                     constrained_layout=True,
-                                                     gridspec_kw={'wspace': 0.09, 'hspace': 0})
-
-    show_png(ax_a, 'presentations/paper1/image_0.015.png', border=COLOR_PHI002)
-    ax_label(ax_a, 'a', x=0.9, color='white')
-    show_png(ax_b, 'presentations/paper1/image_0.015_crop.png', border=COLOR_PHI002)
-    ax_label(ax_b, 'b', x=0.9, color='white')
-    show_png(ax_c, 'presentations/paper1/image_0.105.png', border=COLOR_PHI011)
-    ax_label(ax_c, 'c', x=0.9, color='white')
-    show_png(ax_d, 'presentations/paper1/image_0.105_crop.png', border=COLOR_PHI011)
-    ax_label(ax_d, 'd', x=0.9, color='white')
-
-    # fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
-    # fig.get_layout_engine().set(w_pad=0, h_pad=0, hspace=0, wspace=0)
-
-    common.save_fig(fig, f'{path}/fig2.png', hide_metadata=True)
-    common.save_fig(fig, f'{path}/fig2.pdf', hide_metadata=True)
+    # common.save_fig(fig, f'{path}/fig1.png', hide_metadata=True)
+    # common.save_fig(fig, f'{path}/fig1.pdf', hide_metadata=True)
 
 
-    ######################### fig 3 #########################
-    fig = plt.figure(figsize=(WIDTH/2, 6))
-    gs = matplotlib.gridspec.GridSpec(2, 1)#, height_ratios=(1, 1))
-    gs0 = gs[0].subgridspec(1, 2, width_ratios=[1, 1], wspace=0.4)
-    gs1 = gs[1].subgridspec(1, 2, width_ratios=[1, 3], wspace=0.5)
-    ax_a = fig.add_subplot(gs0[0])
-    ax_b = fig.add_subplot(gs0[1])
-    ax_c = fig.add_subplot(gs1[0])
-    ax_d = fig.add_subplot(gs1[1])
+    # ######################### fig 2 #########################
+    # fig, ((ax_a, ax_b), (ax_c, ax_d)) = plt.subplots(2, 2, figsize=(WIDTH/2, 5.15),
+    #                                                  constrained_layout=True,
+    #                                                  gridspec_kw={'wspace': 0.09, 'hspace': 0})
 
-    # gs = matplotlib.gridspec.GridSpec(2, 3, width_ratios=(0.3, 0.2, 0.5))
-    # ax_a = fig.add_subplot(gs[0, :2])
-    # ax_b = fig.add_subplot(gs[0, 2])
-    # ax_c = fig.add_subplot(gs[1, 0])
-    # ax_d = fig.add_subplot(gs[1, 1:])
+    # show_png(ax_a, 'presentations/paper1/image_0.015.png', border=COLOR_PHI002)
+    # ax_label(ax_a, 'a', x=0.9, color='white')
+    # show_png(ax_b, 'presentations/paper1/image_0.015_crop.png', border=COLOR_PHI002)
+    # ax_label(ax_b, 'b', x=0.9, color='white')
+    # show_png(ax_c, 'presentations/paper1/image_0.105.png', border=COLOR_PHI011)
+    # ax_label(ax_c, 'c', x=0.9, color='white')
+    # show_png(ax_d, 'presentations/paper1/image_0.105_crop.png', border=COLOR_PHI011)
+    # ax_label(ax_d, 'd', x=0.9, color='white')
 
-    fig3_box_indices = [4, 11, 18, 25]
-    box_counting.msd_combined.go(
-        ['eleanorlong001_no_overlap', 'eleanorlong001'],
-        ax_a,
-        box_size_indices=fig3_box_indices,
-        legend_num_boxes=True,
-        colors=[COLOR_NONOVERLAPPED, COLOR_PHI002]
-    )
-    ax_a.set_ylim(0.4e-3, 0.3e3)
-    ax_label(ax_a, 'a')
-    ax_a.yaxis.labelpad = -1
-    # ax_a.legend(loc='upper center', fontsize=LEGEND_FONTSIZE)
+    # # fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
+    # # fig.get_layout_engine().set(w_pad=0, h_pad=0, hspace=0, wspace=0)
 
-    D_of_L_mult_props = dict(
-        save_data=False,
-        title='',
-        show_nofit_cutoff=False,
-        box_size_indices=fig3_box_indices,
-        show_short_fits=False,
-        show_long_fits=False,
-        plot_C_N_squared=False,
-        rescale_x=None,
-    )
-    box_counting.D_of_L.go(
-        'eleanorlong001_no_overlap',
-        'var',# 'nmsdfitinter',
-        ax=ax_b,
-        plot_color=COLOR_NONOVERLAPPED,
-        labels_on_plot=False, show_legend=False,
-        show_slope=True,
-        **D_of_L_mult_props,
-    )
-    box_counting.D_of_L.go(
-        'eleanorlong001',
-        'var',# 'nmsdfitinter',
-        ax=ax_b,
-        plot_color=COLOR_PHI002,
-        labels_on_plot_font_color='black',
-        **D_of_L_mult_props,
-    )
-    ax_label(ax_b, 'b')
-    ax_b.yaxis.labelpad = -1
+    # common.save_fig(fig, f'{path}/fig2.png', hide_metadata=True)
+    # common.save_fig(fig, f'{path}/fig2.pdf', hide_metadata=True)
 
-    # ax_label(ax_c, 'c', x=-0.3)
-    ax_c.axis('off')
-    y_offset = 0.05
-    x_offset = 0.02
-    width  = 0.33
-    height = 0.22
-    ax = show_png_offaxis(fig, 'presentations/paper1/fig3_nonOver.png', [x_offset, y_offset+height, width, height])
-    _  = show_png_offaxis(fig, 'presentations/paper1/fig3_Over.png',    [x_offset, y_offset,        width, height])
+
+    # ######################### fig 3 #########################
+    # fig = plt.figure(figsize=(WIDTH/2, 6))
+    # gs = matplotlib.gridspec.GridSpec(2, 1)#, height_ratios=(1, 1))
+    # gs0 = gs[0].subgridspec(1, 2, width_ratios=[1, 1], wspace=0.4)
+    # gs1 = gs[1].subgridspec(1, 2, width_ratios=[1, 3], wspace=0.5)
+    # ax_a = fig.add_subplot(gs0[0])
+    # ax_b = fig.add_subplot(gs0[1])
+    # ax_c = fig.add_subplot(gs1[0])
+    # ax_d = fig.add_subplot(gs1[1])
+
+    # # gs = matplotlib.gridspec.GridSpec(2, 3, width_ratios=(0.3, 0.2, 0.5))
+    # # ax_a = fig.add_subplot(gs[0, :2])
+    # # ax_b = fig.add_subplot(gs[0, 2])
+    # # ax_c = fig.add_subplot(gs[1, 0])
+    # # ax_d = fig.add_subplot(gs[1, 1:])
+
+    # fig3_box_indices = [4, 11, 18, 25]
+    # box_counting.msd_combined.go(
+    #     ['eleanorlong001_no_overlap', 'eleanorlong001'],
+    #     ax_a,
+    #     box_size_indices=fig3_box_indices,
+    #     legend_num_boxes=True,
+    #     colors=[COLOR_NONOVERLAPPED, COLOR_PHI002]
+    # )
+    # ax_a.set_ylim(0.4e-3, 0.3e3)
+    # ax_label(ax_a, 'a')
+    # ax_a.yaxis.labelpad = -1
+    # # ax_a.legend(loc='upper center', fontsize=LEGEND_FONTSIZE)
+
+    # D_of_L_mult_props = dict(
+    #     save_data=False,
+    #     title='',
+    #     show_nofit_cutoff=False,
+    #     box_size_indices=fig3_box_indices,
+    #     show_short_fits=False,
+    #     show_long_fits=False,
+    #     plot_C_N_squared=False,
+    #     rescale_x=None,
+    # )
+    # box_counting.D_of_L.go(
+    #     'eleanorlong001_no_overlap',
+    #     'var',# 'nmsdfitinter',
+    #     ax=ax_b,
+    #     plot_color=COLOR_NONOVERLAPPED,
+    #     labels_on_plot=False, show_legend=False,
+    #     show_slope=True,
+    #     **D_of_L_mult_props,
+    # )
+    # box_counting.D_of_L.go(
+    #     'eleanorlong001',
+    #     'var',# 'nmsdfitinter',
+    #     ax=ax_b,
+    #     plot_color=COLOR_PHI002,
+    #     labels_on_plot_font_color='black',
+    #     **D_of_L_mult_props,
+    # )
+    # ax_label(ax_b, 'b')
+    # ax_b.yaxis.labelpad = -1
+
+    # # ax_label(ax_c, 'c', x=-0.3)
+    # ax_c.axis('off')
+    # y_offset = 0.05
+    # x_offset = 0.02
+    # width  = 0.33
+    # height = 0.22
+    # ax = show_png_offaxis(fig, 'presentations/paper1/fig3_nonOver.png', [x_offset, y_offset+height, width, height])
+    # _  = show_png_offaxis(fig, 'presentations/paper1/fig3_Over.png',    [x_offset, y_offset,        width, height])
     
-    ax_label(ax, 'c')
+    # ax_label(ax, 'c')
 
-    box_counting.quantify_overlap_show.go(
-        'eleanorlong001',
-        ax_d,
-    )
-    ax_label(ax_d, 'd', x=0.3)
-    ax_d.legend(fontsize=LEGEND_FONTSIZE)
+    # box_counting.quantify_overlap_show.go(
+    #     'eleanorlong001',
+    #     ax_d,
+    # )
+    # ax_label(ax_d, 'd', x=0.3)
+    # ax_d.legend(fontsize=LEGEND_FONTSIZE)
 
-    common.save_fig(fig, f'{path}/fig3.png', hide_metadata=True)
-    common.save_fig(fig, f'{path}/fig3.pdf', hide_metadata=True)
+    # common.save_fig(fig, f'{path}/fig3.png', hide_metadata=True)
+    # common.save_fig(fig, f'{path}/fig3.pdf', hide_metadata=True)
 
 
     # ########################## fig tsi #########################
@@ -504,101 +506,101 @@ if __name__ == '__main__':
     common.save_fig(fig, f'{path}/fig_nmsd_fit.pdf', hide_metadata=True)
 
 
-    ######################### fig 6 (fkt) #########################
-    fig, ((ax_a, ax_b), (ax_c, ax_d)) = plt.subplots(2, 2,
-                                                     figsize=(WIDTH/2, 6),
-                                                     gridspec_kw={'wspace': 0.28, 'hspace': 0.27},
-                                                     )
-    isf.show_Fs_overlayed.go(
-        'eleanorlong001',
-        ax_a,
-        target_ks = (0.2, 0.8, 2.4, 4.8),
-        SHOW_FIT=False,
-        colormap=COLORMAP_KS
-    )
-    ax_a.yaxis.labelpad = -1
-    ax_a.xaxis.labelpad = -1
-
-    visualisation.Ds_overlapped_mult.go(
-        ['eleanorlong001'],
-        sources=['f_first_first', 'F_s_first'],
-        ax=ax_b,
-        logarithmic_y=False,
-        plot_against_k=True,
-        legend_fontsize=LEGEND_FONTSIZE,
-        source_labels=['$f(k, t)$', '$F_s(k, t)$'],
-        file_labels=[' '],
-        colors=[[COLOR_PHI002, COLOR_PHI002]],
-        markers=[[MARKER_FKT, 'x']]
-    )
-    ax_b.set_ylim(*DS_OVERLAPPED_YLIM)
-    ax_b.yaxis.set_major_locator(ticks_0p5)
-    ax_b.set_xlim(*DS_OVERLAPPED_XLIM_K)
-    ax_b.yaxis.labelpad = -1
-    ax_b.xaxis.labelpad = -1
-
+    # ######################### fig 6 (fkt) #########################
+    # fig, ((ax_a, ax_b), (ax_c, ax_d)) = plt.subplots(2, 2,
+    #                                                  figsize=(WIDTH/2, 6),
+    #                                                  gridspec_kw={'wspace': 0.28, 'hspace': 0.27},
+    #                                                  )
     # isf.show_Fs_overlayed.go(
     #     'eleanorlong001',
-    #     ax_c,
-    #     target_ks = [0.07],
-    #     SHOW_FIT=False
+    #     ax_a,
+    #     target_ks = (0.2, 0.8, 2.4, 4.8),
+    #     SHOW_FIT=False,
+    #     colormap=COLORMAP_KS
     # )
-    # ax_c.semilogy()
-    # ax_c.set_xscale('linear')
-    # ax_c.set_ylim(0.94, 1.01)
-    # ax_c.set_xlim(-5, 150)
-    # ax_c.yaxis.set_minor_formatter(matplotlib.ticker.ScalarFormatter()) # prevent scientific notation on axes
-    # ax_c.yaxis.set_major_formatter(matplotlib.ticker.ScalarFormatter()) # prevent scientific notation on axes
-    L = np.array([361.6])
-    get_L = lambda c : rf'$L_x={L[0]*c:.0f}\mathrm{{\mu m}}$'
-    visualisation.Ds_overlapped_mult.go(
-        ['eleanorlong001_crop1.0', 'eleanorlong001_crop0.5', 'eleanorlong001_crop0.25', 'eleanorlong001_crop0.125',
-            #'eleanorlong001_crop0.0625'
-        ],
-        sources=['f_first_first'],
-        ax=ax_c,
-        plot_against_k=True,
-        legend_fontsize=LEGEND_FONTSIZE,
-        markers='d',
-        file_labels=[get_L(1), get_L(0.5), get_L(0.25), get_L(0.125)],
-        source_labels=['', ''],
-        colors=[[COLORMAP_FKT_CROPS(0.0)], [COLORMAP_FKT_CROPS(0.33)], [COLORMAP_FKT_CROPS(0.66)], [COLORMAP_FKT_CROPS(1.0)]]
-    )
-    ax_c.set_ylim(*DS_OVERLAPPED_YLIM)
-    ax_c.yaxis.set_major_locator(ticks_0p5)
-    ax_c.set_xlim(*DS_OVERLAPPED_XLIM_K)
-    ax_c.xaxis.labelpad = -5
-    ax_c.yaxis.labelpad = -1
+    # ax_a.yaxis.labelpad = -1
+    # ax_a.xaxis.labelpad = -1
 
-    visualisation.Ds_overlapped_mult.go(
-        ['sim_nohydro_002_L320', 'sim_nohydro_002_L640_crop320'],
-        sources=[
-            'f_first_first'
-        ],
-        ax=ax_d,
-        plot_against_k=True,
-        markers=MARKER_FKT,
-        file_labels=['periodic boundary', 'non periodic boundary'],
-        source_labels=[''],
-        colors=[['olivedrab'], ['darkgreen']]
-    )
-    ax_d.text(0.95, 0.85, 'simulation', ha='right', fontsize=15, transform=ax_d.transAxes)
-    ax_d.set_ylim(*DS_OVERLAPPED_YLIM)
-    ax_d.yaxis.set_major_locator(ticks_0p5)
-    ax_d.set_xlim(*DS_OVERLAPPED_XLIM_K)
-    ax_d.legend(fontsize=8, loc='upper right', bbox_to_anchor=(1, 0.8)) # puts upper right at specified position
-    ax_d.xaxis.labelpad = -5
-    ax_d.yaxis.labelpad = -1
+    # visualisation.Ds_overlapped_mult.go(
+    #     ['eleanorlong001'],
+    #     sources=['f_first_first', 'F_s_first'],
+    #     ax=ax_b,
+    #     logarithmic_y=False,
+    #     plot_against_k=True,
+    #     legend_fontsize=LEGEND_FONTSIZE,
+    #     source_labels=['$f(k, t)$', '$F_s(k, t)$'],
+    #     file_labels=[' '],
+    #     colors=[[COLOR_PHI002, COLOR_PHI002]],
+    #     markers=[[MARKER_FKT, 'x']]
+    # )
+    # ax_b.set_ylim(*DS_OVERLAPPED_YLIM)
+    # ax_b.yaxis.set_major_locator(ticks_0p5)
+    # ax_b.set_xlim(*DS_OVERLAPPED_XLIM_K)
+    # ax_b.yaxis.labelpad = -1
+    # ax_b.xaxis.labelpad = -1
 
-    ax_label(ax_a, 'a', x=0.95)
-    ax_label(ax_b, 'b')#, x=0.95)
-    ax_label(ax_c, 'c')#, x=0.95)
-    ax_label(ax_d, 'd')#, x=0.95)
-    common.save_fig(fig, f'{path}/fig6.png', hide_metadata=True)
-    common.save_fig(fig, f'{path}/fig6.pdf', hide_metadata=True)
+    # # isf.show_Fs_overlayed.go(
+    # #     'eleanorlong001',
+    # #     ax_c,
+    # #     target_ks = [0.07],
+    # #     SHOW_FIT=False
+    # # )
+    # # ax_c.semilogy()
+    # # ax_c.set_xscale('linear')
+    # # ax_c.set_ylim(0.94, 1.01)
+    # # ax_c.set_xlim(-5, 150)
+    # # ax_c.yaxis.set_minor_formatter(matplotlib.ticker.ScalarFormatter()) # prevent scientific notation on axes
+    # # ax_c.yaxis.set_major_formatter(matplotlib.ticker.ScalarFormatter()) # prevent scientific notation on axes
+    # L = np.array([361.6])
+    # get_L = lambda c : rf'$L_x={L[0]*c:.0f}\mathrm{{\mu m}}$'
+    # visualisation.Ds_overlapped_mult.go(
+    #     ['eleanorlong001_crop1.0', 'eleanorlong001_crop0.5', 'eleanorlong001_crop0.25', 'eleanorlong001_crop0.125',
+    #         #'eleanorlong001_crop0.0625'
+    #     ],
+    #     sources=['f_first_first'],
+    #     ax=ax_c,
+    #     plot_against_k=True,
+    #     legend_fontsize=LEGEND_FONTSIZE,
+    #     markers='d',
+    #     file_labels=[get_L(1), get_L(0.5), get_L(0.25), get_L(0.125)],
+    #     source_labels=['', ''],
+    #     colors=[[COLORMAP_FKT_CROPS(0.0)], [COLORMAP_FKT_CROPS(0.33)], [COLORMAP_FKT_CROPS(0.66)], [COLORMAP_FKT_CROPS(1.0)]]
+    # )
+    # ax_c.set_ylim(*DS_OVERLAPPED_YLIM)
+    # ax_c.yaxis.set_major_locator(ticks_0p5)
+    # ax_c.set_xlim(*DS_OVERLAPPED_XLIM_K)
+    # ax_c.xaxis.labelpad = -5
+    # ax_c.yaxis.labelpad = -1
+
+    # visualisation.Ds_overlapped_mult.go(
+    #     ['sim_nohydro_002_L320', 'sim_nohydro_002_L640_crop320'],
+    #     sources=[
+    #         'f_first_first'
+    #     ],
+    #     ax=ax_d,
+    #     plot_against_k=True,
+    #     markers=MARKER_FKT,
+    #     file_labels=['periodic boundary', 'non periodic boundary'],
+    #     source_labels=[''],
+    #     colors=[['olivedrab'], ['darkgreen']]
+    # )
+    # ax_d.text(0.95, 0.85, 'simulation', ha='right', fontsize=15, transform=ax_d.transAxes)
+    # ax_d.set_ylim(*DS_OVERLAPPED_YLIM)
+    # ax_d.yaxis.set_major_locator(ticks_0p5)
+    # ax_d.set_xlim(*DS_OVERLAPPED_XLIM_K)
+    # ax_d.legend(fontsize=8, loc='upper right', bbox_to_anchor=(1, 0.8)) # puts upper right at specified position
+    # ax_d.xaxis.labelpad = -5
+    # ax_d.yaxis.labelpad = -1
+
+    # ax_label(ax_a, 'a', x=0.95)
+    # ax_label(ax_b, 'b')#, x=0.95)
+    # ax_label(ax_c, 'c')#, x=0.95)
+    # ax_label(ax_d, 'd')#, x=0.95)
+    # common.save_fig(fig, f'{path}/fig6.png', hide_metadata=True)
+    # common.save_fig(fig, f'{path}/fig6.pdf', hide_metadata=True)
 
 
-    ######################## fig 7 #########################
+    # ######################## fig 7 #########################
     fig, (ax_a, ax_b) = plt.subplots(1, 2,
                                      figsize=(WIDTH/2, ONEROW_HEIGHT),
                                      sharey='row',

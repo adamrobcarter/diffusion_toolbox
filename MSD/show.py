@@ -5,7 +5,7 @@ import scipy.optimize
 import matplotlib.cm
 
 SHOW_NOLOG_SHORTTIME = False
-SHOW_ERRORBARS = False
+SHOW_ERRORBARS = True
 
 def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LONG_FIT=False, export_destination=None):
     data = common.load(f'MSD/data/msd_{file}.npz')
@@ -49,19 +49,20 @@ def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LON
     print('first D=' + common.format_val_and_unc(fits['first']['D'], fits['first']['D_unc'], sigfigs=3))
 
     if SHOW_FIT:
-        ax.plot(fits['full']['t'], fits['full']['MSD'], color='white', linewidth=1, label='fit')
+        ax.plot(fits['full']['t'], fits['full']['MSD'], color=common.FIT_COLOR, linewidth=1, label='fit')
     print('fit D=' + common.format_val_and_unc(fits['full']['D'], fits['full']['D_unc'], sigfigs=3))
 
     if SHOW_SHORT_FIT:
-        ax.plot(fits['short']['t'], fits['short']['MSD'], color='white', linewidth=1, label='short fit')
+        ax.plot(fits['short']['t'], fits['short']['MSD'], color=common.FIT_COLOR, linewidth=1, label='short fit')
     print('fit short D=' + common.format_val_and_unc(fits['short']['D'], fits['short']['D_unc'], sigfigs=3))
 
     if t.size > 100:
         if SHOW_LONG_FIT:
-            ax.plot(fits['long']['t'], fits['long']['MSD'], color='white', linewidth=1, label='long fit')
+            ax.plot(fits['long']['t'], fits['long']['MSD'], color=common.FIT_COLOR, linewidth=1, label='long fit')
         print('fit long D=' + common.format_val_and_unc(fits['long']['D'], fits['long']['D_unc'], sigfigs=3))
 
     ax.legend()
+    ax.grid(alpha=0.3)
 
     filename = f'msd_{file}'
     if SHOW_FIT:

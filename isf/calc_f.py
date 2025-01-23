@@ -107,7 +107,7 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
     elif '034' in file:
         max_time_origins = 300
     else:
-        max_time_origins = 150
+        max_time_origins = 600
 
     max_time_origins /= 2
     max_time_origins /= 2

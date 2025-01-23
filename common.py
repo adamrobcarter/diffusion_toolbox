@@ -81,7 +81,7 @@ def load(filename):
         else:
             for key in keys:
                 if data[key].shape: # array
-                    print(f'  loaded {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} shape={data[key].shape}, size={arraysize(data[key])}')
+                    print(f'  loaded {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} shape={data[key].shape} size={arraysize(data[key])}')
                 else: # single value
                     if data[key] != None:
                         print(f'  loaded {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} value={format_value_for_save_load(data[key])}')
@@ -267,8 +267,8 @@ def add_scale_bar(ax, pixel_size, color='black'):
     ax.add_artist(asb)
 
 def save_gif(func, frames, fig, file, fps=1, dpi=300):
-    if fps > 10:
-        warnings.warn(f'fps = {fps:.1f} which seems dangerous')
+    if fps > 5:
+        warnings.warn(f'asked for fps = {fps:.1f} which seems dangerous. I have set to 5')
         fps = 5
 
     progress = tqdm.tqdm(total=len(frames)+1) # unsure why +1 but it seems to be needed
@@ -481,6 +481,8 @@ def exponential_indices(t, num=100):
             last_t = last_t * ratio
 
     assert 0.75 < len(points)/num < 2, f'fraction given = {len(points)/num} (ratio={ratio})' # check that we gave roughly the right number of points
+
+    # assert t[0] in points
 
     return np.array(points)
 
@@ -926,4 +928,16 @@ def calc_pack_frac(particles, particle_diameter, window_size_x, window_size_y):
     avg_particles_per_frame = particles.shape[0] / num_timesteps
     density = avg_particles_per_frame / (window_size_x * window_size_y)
     print('avg part per frame', avg_particles_per_frame)#, 'L^2', orig_width**2)
-    return np.pi/4 * density * particle_diameter**2
+    pack_frac = np.pi/4 * density * particle_diameter**2
+    assert 0 < pack_frac
+    assert pack_frac < 1
+    return pack_frac
+
+def add_exponential_index_indicator(ax, exponent, anchor, xlabel):
+    orders_of_mag = 3
+    x0 = anchor[0] / 10**(orders_of_mag)
+    y0 = anchor[1] / 10**(orders_of_mag * exponent)
+    x1 = anchor[0] * 10**(orders_of_mag)
+    y1 = anchor[1] * 10**(orders_of_mag * exponent)
+    ax.plot([x0, x1], [y0, y1], color=FIT_COLOR)
+    ax.text(anchor[0]*1.1, anchor[1], f'${xlabel}^{{{exponent}}}$', color=FIT_COLOR)

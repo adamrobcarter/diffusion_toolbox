@@ -78,6 +78,7 @@ def calc_for_f_type(
         use_big_k=True,
         linear_log_crossover_k=1,
         use_doublesided_k=False,
+        window=None,
     ):
 
     t0 = time.time()
@@ -95,7 +96,8 @@ def calc_for_f_type(
     Fs, F_unc, ks, F_unbinned, F_unc_unbinned, k_unbinned, k_x, k_y = scattering_functions.intermediate_scattering(
         F_type, num_k_bins, max_time_origins, d_frames, 
         particles_at_frame, num_timesteps, max_K, min_K, cores=cores, use_zero=use_zero, use_big_k=use_big_k, linear_log_crossover_k=linear_log_crossover_k,
-        use_doublesided_k=use_doublesided_k,
+        use_doublesided_k=use_doublesided_k, window=window,
+        Lx=data['window_size_x'], Ly=data['window_size_y'],
     )
     print('min K after', np.nanmin(ks))
     print(k_unbinned.shape)

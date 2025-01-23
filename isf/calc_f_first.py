@@ -28,6 +28,12 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
     if 'L1280' in file:
         cores = 4
 
+    # if 'eleanor' in file:
+    #     window = 'blackmanharris'
+    #     max_time_origins *= 1 / 0.132
+    # else:
+    #     window = None
+
     isf.calc_both.calc_for_f_type(
         file,
         'F',
@@ -39,5 +45,7 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
         d_frames=[0, 1],
         file_prefix = 'first_',
         # d_frames=[0, 32],
-        # file_prefix = 'first32_',
+        # file_prefix = 'first32_'
+        # window=window,
+        file_suffix='_nowindow',
     )

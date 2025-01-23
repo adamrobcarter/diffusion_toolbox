@@ -2,22 +2,90 @@ import common
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker
-import sys
+import sys, warnings
 import countoscope_theory.structure_factor
 import countoscope_theory.timescaleint
 import scipy.special
+
+import visualisation.Ds_overlapped_mult
+
+D0_SOURCE = 'MSD_first'
+# D0_SOURCE = 'MSD_short'
+
+if __name__ == '__main__':
+    for file in sys.argv[1:]:
+        fig, ax = plt.subplots(1, 1, figsize=(5, 4))
+
+        visualisation.Ds_overlapped_mult.go(
+            ax      = ax,
+            files   = [file], 
+            sources = [
+                # 'MSD_first',
+                #   'MSD_long',
+                #   'D0Sk', 
+                #   'MSD_short',
+                  'D0Sk_theory',
+                  'DDM',
+                #   'dominiguez_theory',
+                #   'panzuela_theory',
+                #   'f_D1', 'f_D2',
+                #   'f', 'f_short', 'f_long', 
+                #   'f_first',
+                # 'f_short',
+                # 'f_long',
+                # 'f',
+                # 'f_first',
+                'f_first_first',
+                # 'F_first32_first',
+                # 'F_s',
+                # 'F_s_first',
+                # 'F_s_long',
+                #   'boxcounting_shorttime',
+                    # 'boxcounting_first_quad',
+                    # 'boxcounting_collective_var',
+                #   'timescaleint_',
+                #   'timescaleint_nmsdfitinter',
+                #   'timescaleint_nofit_cropped_var',
+                #   'timescaleint_nofit_cropped_sDFT',
+                #   'timescaleint_fixexponent_cutoff',
+                # 'timescaleint_fixexponent_var',
+                # 'timescaleint_fixexponent_sDFT',
+                # 'timescaleint_fixexponent_target_fixexponent',
+                #   'timescaleint_nofit_cropped_noshort_var',
+                #   'timescaleint_nofit_cropped_nmsdfitinter',
+                #   'MSD_centre_of_mass_proximity',
+                # 'D_of_L_theory',
+                # 'D_of_L_theory_Lh',
+                # 'NtN0_first',
+                # 'NtN0_fit',
+                # 'F_s_first',
+            ],
+            # plot_against_k=False, TWO_PI=True, logarithmic_y=True, output_filename=filename,
+            # ylim=YLIM, legend_fontsize=LEGEND_FONTSIZE
+            )
+        ax.set_ylim(0, 5)
+        
+        common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_{file}.png')
+
+        # go(file, ['MSD_short', 'boxcounting_collective', 'timescaleint_nofit', 'timescaleint', 'C_N_simplefit'],
+        #     PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True)
+
+        # go(file, ['MSD_short', 'D0Sk', 'f', 'f_short', 'f_long'],
+        #     PLOT_AGAINST_K=True, TWO_PI=True, logarithmic_y=True)
+
+
+
+"""
 
 SHOW_TWIN_K_AXIS = False
 ERRORBAR_ALPHA = 0.4
 LABELS_ON_PLOT = False
 LABELS_ON_PLOT_FONTSIZE = 7
 LEGEND_FONTSIZE = 7
-D0_SOURCE = 'MSD_first'
-# D0_SOURCE = 'MSD_short'
 PREVENT_Y_RESCALING = False
 YLIM = None
 DEFAULT_FIGSIZE = (6, 5)
-
+"""
 source_names = {
     'DDM': 'DDM',
     'DDM_short': 'DDM short',
@@ -115,7 +183,7 @@ linestyle = {
 def get_D0(file):
     # we don't do these ones in get_D0_filename cause sometimes we might want to compare these ones
     suffixes = ['_crop', '_trim', '_first', '_smallbins', '_nozero', '_no_overlap',
-                '_long', '_longer', '_moreoverlap', '_spacing', '_frac_of_window']
+                '_long', '_longer', '_moreoverlap', '_spacing', '_frac_of_window', '_windowed', '_nowindow']
     for suffix in suffixes:
         if suffix in file:
             file = file.split(suffix)[0]
@@ -129,7 +197,11 @@ def get_D0(file):
         phi = data['pack_frac']
     else:
         print('using pack frac *given*')
-        phi = data['pack_frac_given']
+        if 'pack_frac_given' in data:
+            phi = data['pack_frac_given']
+        else:
+            warnings.warn('pack frac given not in data')
+            phi = np.nan
 
     print(f'D_MSD = {D_MSD}')
     return D_MSD, sigma, phi
@@ -203,7 +275,7 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
 
     elif source == 'D_of_L_theory':
 
-        L = np.logspace(np.log10(sigma*0.05e-1), np.log10(sigma*5e1), 100)
+        L = np.logspace(np.log10(sigma*0.5e-1), np.log10(sigma*5e1), 100)
         L = L[::-1] # so that it's the same order as the others
         D = countoscope_theory.timescaleint.D_of_L(L, D_MSD, phi, sigma)
 
@@ -276,12 +348,12 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
 
         elif source.startswith('boxcounting') or source.startswith('timescaleint') or source.startswith('C_N') or source.startswith('NtN0'):
             xs = data['Ls']
-            max_time = data['max_time_hours'] * 60 * 60
+            # max_time = data['max_time_hours'] * 60 * 60
 
             # max_L = np.sqrt(4 * D_MSD * max_time / 10)
             # keep = xs < max_L
-            T_of_L = countoscope_theory.timescaleint.T_of_L(xs, D_MSD, phi, sigma)
-            keep = 10 * T_of_L < max_time
+            # T_of_L = countoscope_theory.timescaleint.T_of_L(xs, D_MSD, phi, sigma)
+            # keep = 10 * T_of_L < max_time
 
             num_before = xs.size
             # xs = xs[keep]
@@ -356,7 +428,7 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
             D_uncs[errs_too_low] = 0.03 * np.repeat(np.abs(Ds)[np.newaxis, :], 2, axis=0)[errs_too_low]
 
     return xs, Ds, D_uncs, pixel_size, window_size, pack_frac_given, pack_frac_calced, diameter
-
+"""
 
 def go(file, sources, plot_against_k=False, TWO_PI=True, logarithmic_y=True, ylim=None,
        output_filename=None, export_destination=None, show_pixel=True,
@@ -595,7 +667,7 @@ if __name__ == '__main__':
                 #   'MSD_long',
                 #   'D0Sk', 
                 #   'MSD_short',
-                  'D0Sk_theory',
+                #   'D0Sk_theory',
                 #   'dominiguez_theory',
                 #   'panzuela_theory',
                 #   'f_D1', 'f_D2',
@@ -606,7 +678,7 @@ if __name__ == '__main__':
                 # 'f',
                 # 'f_first',
                 'f_first_first',
-                'F_first32_first',
+                # 'F_first32_first',
                 # 'F_s',
                 # 'F_s_first',
                 # 'F_s_long',
@@ -624,7 +696,7 @@ if __name__ == '__main__':
                 #   'timescaleint_nofit_cropped_noshort_var',
                 #   'timescaleint_nofit_cropped_nmsdfitinter',
                 #   'MSD_centre_of_mass_proximity',
-                'D_of_L_theory',
+                # 'D_of_L_theory',
                 # 'D_of_L_theory_Lh',
                 # 'NtN0_first',
                 # 'NtN0_fit',
@@ -639,3 +711,5 @@ if __name__ == '__main__':
 
         # go(file, ['MSD_short', 'D0Sk', 'f', 'f_short', 'f_long'],
         #     PLOT_AGAINST_K=True, TWO_PI=True, logarithmic_y=True)
+
+"""

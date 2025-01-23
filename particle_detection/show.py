@@ -30,6 +30,7 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=N
 
     # r = radius[particles_at_t] * np.sqrt(2) # TODO: should this be /pixel_size?
     r = np.full_like(x, 1.5) # you would lose this problem if u actually showed the radius u numpty
+    print('U HARDCODED THE ABOVE NUMBER U NUMPTY')
     # warnings.warn('i disabled showing radius')
     if particles.shape[1] == 4:
         id = particles[particles_at_t, 3]
@@ -52,9 +53,11 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=N
     if outline:
         circles = [plt.Circle((x[i], y[i]), edgecolor=color(i), facecolor='none', radius=r[i]*2, linewidth=3, alpha=alpha) for i in range(particles_at_t.sum())]
         # c = matplotlib.collections.PatchCollection(circles, facecolor='red', alpha=0.5)
+        assert len(circles)
         c = matplotlib.collections.PatchCollection(circles, match_original=True)
     else:
         circles = [plt.Circle((x[i], y[i]), facecolor=color(i), radius=r[i], alpha=alpha) for i in range(particles_at_t.sum())]
+        assert len(circles)
         c = matplotlib.collections.PatchCollection(circles, match_original=True)
 
     ax.add_collection(c)

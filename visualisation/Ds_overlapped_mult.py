@@ -375,14 +375,14 @@ if __name__ == '__main__':
         files,
         ax,
         sources = [
-                # 'f_first_first',
+                'f_first_first',
                 # 'F_first32_first',
                 # 'f_first',
                 # 'f_short',
                 # 'f',
-                'f_long',
+                # 'f_long',
                 # 'MSD_first',
-                # 'D0Sk_theory',
+                'D0Sk_theory',
                 # 'boxcounting_collective_var',
                 # 'timescaleint_var',
                 # 'timescaleint_fixexponent_var',
@@ -397,7 +397,7 @@ if __name__ == '__main__':
         allow_rescale_y=False,
         plot_against_k=PLOT_AGAINST_K,
     )
-    ax.set_ylim(0.035, 0.1)
+    ax.set_ylim(0.035, 0.2)
     
     filenames = '_'.join(files)
     common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_mult_{filenames}.png', dpi=200)
