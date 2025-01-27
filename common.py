@@ -629,8 +629,8 @@ def files_from_argv(location, prefix):
 
     for infile in infiles:
 
-        if infile.endswith('*'):
-            target = prefix + infile
+        if '*' in infile:
+            target = prefix + infile + '.npz'
             
             all_filenames = os.listdir(location)
             all_filenames.sort()
