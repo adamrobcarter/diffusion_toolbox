@@ -28,7 +28,7 @@ pixel_size = 0.25935
 
 common.save_data('preprocessing/data/stack_carlos01.npz',
     stack=stack.astype(np.float32),
-    time_step=time_step, pixel_size=pixel_size, particle_diameter=2.0,
+    time_step=time_step, pixel_size=pixel_size, particle_diameter=2.5, # 3.0 is my guess
     window_size_x=stack.shape[1]*pixel_size, window_size_y=stack.shape[2]*pixel_size,
     max_time_hours=max_time_hours,
     source_file=file,

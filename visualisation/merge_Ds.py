@@ -8,18 +8,23 @@ SOURCES = [
     'boxcounting_collective_var',
     'f_first_first',
     # 'f_long',
-    'timescaleint_fixexponent_var'
+    # 'timescaleint_fixexponent_var'
 ]
 for SOURCE in SOURCES:
-    K_CROSSOVER = 0.6
-    L_CROSSOVER = 3
-    print('L crossover', L_CROSSOVER, L_CROSSOVER/3)
 
     files = common.files_from_argv('box_counting/data/', 'counted_')
     assert len(files) == 2
 
     data_long  = common.load(f'visualisation/data/Ds_from_{SOURCE}_{files[1]}.npz')
     data_short = common.load(f'visualisation/data/Ds_from_{SOURCE}_{files[0]}.npz')
+
+    # if data_long['timestep'] > 16:
+    K_CROSSOVER = 0.6
+    L_CROSSOVER = 3
+    # else:
+        # K_CROSSOVER = 0.6
+        # L_CROSSOVER = 30
+    print('L crossover', L_CROSSOVER, L_CROSSOVER/3)
 
     if SOURCE.startswith('f'):
         k_long  = data_long ['ks']

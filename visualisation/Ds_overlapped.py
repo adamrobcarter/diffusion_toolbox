@@ -25,7 +25,7 @@ if __name__ == '__main__':
                 #   'D0Sk', 
                 #   'MSD_short',
                   'D0Sk_theory',
-                  'DDM',
+                #   'DDM',
                 #   'dominiguez_theory',
                 #   'panzuela_theory',
                 #   'f_D1', 'f_D2',
@@ -35,7 +35,7 @@ if __name__ == '__main__':
                 # 'f_long',
                 # 'f',
                 # 'f_first',
-                'f_first_first',
+                # 'f_first_first',
                 # 'F_first32_first',
                 # 'F_s',
                 # 'F_s_first',
@@ -45,7 +45,7 @@ if __name__ == '__main__':
                     # 'boxcounting_collective_var',
                 #   'timescaleint_',
                 #   'timescaleint_nmsdfitinter',
-                #   'timescaleint_nofit_cropped_var',
+                  'timescaleint_nofit_cropped_var',
                 #   'timescaleint_nofit_cropped_sDFT',
                 #   'timescaleint_fixexponent_cutoff',
                 # 'timescaleint_fixexponent_var',
@@ -61,9 +61,10 @@ if __name__ == '__main__':
                 # 'F_s_first',
             ],
             # plot_against_k=False, TWO_PI=True, logarithmic_y=True, output_filename=filename,
-            # ylim=YLIM, legend_fontsize=LEGEND_FONTSIZE
+            # ylim=YLIM,
+            legend_fontsize=8
             )
-        ax.set_ylim(0, 5)
+        ax.set_ylim(0.8, 3)
         
         common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_{file}.png')
 
@@ -183,7 +184,10 @@ linestyle = {
 def get_D0(file):
     # we don't do these ones in get_D0_filename cause sometimes we might want to compare these ones
     suffixes = ['_crop', '_trim', '_first', '_smallbins', '_nozero', '_no_overlap',
-                '_long', '_longer', '_moreoverlap', '_spacing', '_frac_of_window', '_windowed', '_nowindow']
+                '_long', '_longer', '_moreoverlap', '_spacing', '_frac_of_window', '_windowed', '_nowindow',
+                '_mixt']
+    if '_mixt' in file:
+        warnings.warn('allowing mixt for now, would be good to do a proper msd calculation though')
     for suffix in suffixes:
         if suffix in file:
             file = file.split(suffix)[0]
@@ -223,6 +227,10 @@ def get_D0_filename(file):
                 'sim_nohydro_011_L160',
                 'brennan_hydro_002_L320', 'brennan_hydro_002_L640', 'brennan_hydro_011_L320']:
         file += '_div8'
+
+    if file in ['sim_nohydro_011_L1280']:
+        file += '_div64'
+
     return file
 
 def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
@@ -369,7 +377,14 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
             assert not PLOT_AGAINST_K
 
         elif source.startswith('MSD_centre_of_mass'):
-            xs = np.sqrt(data['Ns'] / data['density'])
+            Ls = np.sqrt(data['Ns'] / data['density'])
+            ks = 2*np.pi/Ls
+            Ds = Ds / data['Ns']
+            Ds = Ds / common.structure_factor_2d_hard_spheres(ks, 0.34, 3)
+            # Ds = D_MSD / Ds
+            print('Ds', Ds)
+
+            xs = Ls
 
         elif source.startswith('MSD'):
             xs = []

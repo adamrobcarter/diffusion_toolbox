@@ -10,10 +10,8 @@ FIT_USE_FLOW = True
 # target_ks = (0.28, 0.38, 0.5, 1.3, 2, 4, 8)
 # target_ks = (0.1, 0.14, 0.5, 1.3, 2, 4, 8)
 target_ks = list(np.logspace(np.log10(0.2), np.log10(8), 14))
-fig, axs = plt.subplots(1, len(target_ks), figsize=(len(target_ks)*3.5, 4))
 
-
-for file in (files := common.files_from_argv('DDM/data', 'ddm_')):
+def go(file, axs, color):
     data = common.load(f'DDM/data/ddm_{file}.npz')
     k          = data['k']
     F_D_sq     = data['F_D_sq']
@@ -61,7 +59,7 @@ for file in (files := common.files_from_argv('DDM/data', 'ddm_')):
 
         # ax.errorbar(t[1:], F_D_sq[1:, k_index], yerr=F_D_sq_unc[1:, k_index], marker='.', linestyle='none')
         norm = F_D_sq[np.argmax(t>10), k_index]
-        ax.errorbar(t[to_plot], F_D_sq[to_plot, k_index]/norm, yerr=F_D_sq_unc[to_plot, k_index]/norm, marker='.', linestyle='none', label=common.name(file))
+        ax.errorbar(t[to_plot], F_D_sq[to_plot, k_index]/norm, yerr=F_D_sq_unc[to_plot, k_index]/norm, marker='.', linestyle='none', label=common.name(file), color=color)
         # ax.errorbar(t[1:-2], F_D_sq[1:-2, k_index]/time_step**2, yerr=F_D_sq_unc[1:-2, k_index]/time_step**2, marker='.', linestyle='none')
 
 
@@ -137,7 +135,9 @@ for file in (files := common.files_from_argv('DDM/data', 'ddm_')):
         ax.semilogx()
         # ax.semilogy()
         ax.set_title(fr'$k={k[k_index]:.2f}$ ($\approx{2*np.pi/k[k_index]:.2f}\mathrm{{\mu m}}$)')
-        ax.legend(fontsize=6)
+        ax.legend(fontsize=8)
+        ax.set_xlabel('$t$ (s)')
+        ax.set_ylabel('$|\Delta I(q, t)|^2$')
 
     # print('DDM_f nan', common.nanfrac(DDM_f[:, graph_i]))
     
@@ -159,17 +159,17 @@ for file in (files := common.files_from_argv('DDM/data', 'ddm_')):
     # axs[0].semilogx()
     # axs[0].vlines(real_ks, 0, 1.5, color='black')
 
-fig.suptitle(f'{common.name(file)}, $\sigma={sigma}$, pixel$={pixel}$')
+    
+fig, axs = plt.subplots(1, len(target_ks), figsize=(len(target_ks)*3.5, 3.7))
+
+
+for i, file in enumerate(files := common.files_from_argv('DDM/data', 'ddm_')):
+    color = common.colormap(i, 0, len(files))
+    print('i, color', i, color)
+    go(file, axs, color)
+
+    # fig.suptitle(f'{common.name(file)}, $\sigma={sigma}$, pixel$={pixel}$')
 
 filestring = '_'.join(files)
 filename = f'DDM/figures_png/ddm_mult_{filestring}.png'
 common.save_fig(fig, filename)
-    # np.savez(f'visualisation/data/Ds_from_DDM_{file}',
-    #          Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, ks=ks_for_saving)
-    # common.save_data(f'DDM/data/A_B_of_q_{file}.npz',
-    #          A=A_of_q, B=B_of_q, q=q,
-    #          pack_frac_given=data.get('pack_frac_given'), particle_diameter=data.get('particle_diameter'))
-    
-    # common.save_data(f'isf/data/DDM_{file}.npz',
-    #                  t=t, F=DDM_f, F_unc=DDM_f_unc, k=real_ks,
-    #                  particle_diameter=data.get('particle_diameter'))

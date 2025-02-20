@@ -141,15 +141,19 @@ PLATEAU_SOURCE_NAMES = {
     'sDFT': 'theory',
 }
 
-def get_plateau(method, nmsd, file, L, phi, sigma, t, var, varmod, D0, N_mean, density, var_time, cutoff_L, cutoff_plat, display=False):
+def get_plateau(method, nmsd, file, L, phi, sigma, t, var, varmod, D0, N_mean, density, var_time, cutoff_L, cutoff_plat, var_losecorr, var_std, display=False):
     if method == 'obs':
         return get_plateau_obs(file, nmsd)
     elif method == 'var':
-        return 2*var, 0
+        # return 2*var, 2 * np.sqrt(2/(n-1))*var # this is not a good estimate for the error on the variance as the samples are not independent
+        return 2*var, 2*var_std
     elif method == 'varmod':
         return 2*varmod, 0
     elif method == 'var_time':
+        assert False, 'below line needs changing'
         return 2*varmod, 0
+    elif method == 'var_losecorr':
+        return 2*var_losecorr, 0
     elif method == 'nmsdfit':
         return get_plateau_nmsd_fit(nmsd, t, var, L)
     elif method == 'nmsdfitinter':
@@ -293,16 +297,15 @@ def go(file, ax, separation_in_label=False,
     time_step      = data['time_step']
     depth_of_field = data.get('depth_of_field')
 
-    # N_stats        = data['N_stats']
-    # box_sizes    = N_stats[:, 0]
-    # N_mean       = N_stats[:, 1]
-    # N_var        = N_stats[:, 2]
-    # num_of_boxes = N_stats[:, 5]
     box_sizes    = data['box_sizes']
     # N_mean       = data['N_mean']
     N_mean       = data.get('N_mean')
     N_var        = data.get('N_var')
+    # N_var_std    = data.get('N_var_std')
+    N_var_std    = np.zeros_like(N_var)
     N_var_mod    = data.get('N_var_mod')
+    # N_var_losecorr = data.get('N_var_losecorr')
+    N_var_losecorr    = np.zeros_like(N_var)
     # num_of_boxes = data['num_boxes']
     sep_sizes    = data['sep_sizes']
 
@@ -477,7 +480,7 @@ def go(file, ax, separation_in_label=False,
 
         #     return D_from_fit2, D_from_fit_unc2, fit_ys
         
-
+        print('N_var_std', N_var_std)
         plateau, plateau_unc = get_plateau(
             timescaleint_replacement_plateau_source, 
             nmsd=delta_N_sq,
@@ -487,7 +490,9 @@ def go(file, ax, separation_in_label=False,
             sigma=sigma,
             t=t,
             var=N_var[box_size_index],
+            var_std=N_var_std[box_size_index],
             varmod=N_var_mod[box_size_index],
+            var_losecorr=N_var_losecorr[box_size_index],
             N_mean=N_mean[box_size_index],
             D0=D_MSD,
             density=data.get('density', np.nan),

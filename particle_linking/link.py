@@ -37,7 +37,7 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
     else:
         D = 1
     search_range = 10 * np.sqrt(2 * dt * D)
-    adaptive_stop = 2 * np.sqrt(2 * dt * D)
+    adaptive_stop = 1 * np.sqrt(2 * dt * D)
     memory = 1
 
     if file.startswith('eleanor'):

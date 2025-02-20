@@ -26,12 +26,12 @@ def setup(F_type, file, d_frames, drift_removed=False, max_K=None):
     assert less_than_or_close(particles[:, 0].max(), window_size_x), f'particles[:, 0].max() = {particles[:, 0].max()}, window_size_x={window_size_x}'
     assert less_than_or_close(particles[:, 1].max(), window_size_y), f'particles[:, 1].max() = {particles[:, 1].max()}, window_size_y={window_size_y}'
     
-    num_timesteps = int(particles[:, 2].max() + 1)
+    times = int(particles[:, 2].max() + 1)
 
     # d_frames = np.concatenate([np.arange(0, 9.1), np.logspace(1, np.log10(num_timesteps-100), 50)]).round()
 
     if not d_frames:
-        d_frames = common.exponential_integers(1, min(isf.show_both.LONG_END, num_timesteps-1)) - 1
+        d_frames = common.exponential_integers(1, min(isf.show_both.LONG_END, times-1)) - 1
     else:
        d_frames = np.array(d_frames) # user provided
 
@@ -56,9 +56,9 @@ def setup(F_type, file, d_frames, drift_removed=False, max_K=None):
             # we use this cause it's the same as used by eleanorlong
 
             
-    particles_at_frame, num_timesteps = scattering_functions.get_particles_at_frame(F_type, particles)
+    particles_at_frame, times = scattering_functions.get_particles_at_frame(F_type, particles)
 
-    return particles_at_frame, num_timesteps, d_frames, min_K, max_K, data
+    return particles_at_frame, times, d_frames, min_K, max_K, data
 
 def calc_for_f_type(
         file,
@@ -83,7 +83,9 @@ def calc_for_f_type(
 
     t0 = time.time()
 
-    particles_at_frame, num_timesteps, d_frames, min_K, max_K, data = setup(F_type, file, d_frames, drift_removed, max_K)
+    warnings.warn('is d_frames now d_times?')
+
+    particles_at_frame, times, d_frames, min_K, max_K, data = setup(F_type, file, d_frames, drift_removed, max_K)
 
     print('starting calculation')
     print('particles_at_frame:', common.arraysize(particles_at_frame))
@@ -95,7 +97,7 @@ def calc_for_f_type(
 
     Fs, F_unc, ks, F_unbinned, F_unc_unbinned, k_unbinned, k_x, k_y = scattering_functions.intermediate_scattering(
         F_type, num_k_bins, max_time_origins, d_frames, 
-        particles_at_frame, num_timesteps, max_K, min_K, cores=cores, use_zero=use_zero, use_big_k=use_big_k, linear_log_crossover_k=linear_log_crossover_k,
+        particles_at_frame, times, max_K, min_K, cores=cores, use_zero=use_zero, use_big_k=use_big_k, linear_log_crossover_k=linear_log_crossover_k,
         use_doublesided_k=use_doublesided_k, window=window,
         Lx=data['window_size_x'], Ly=data['window_size_y'],
     )
@@ -119,7 +121,7 @@ def calc_for_f_type(
         pixel_size=data.get('pixel_size'), pack_frac_given=data.get('pack_frac_given'),
         window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
         NAME=data.get('NAME'), channel=data.get('channel'),
-        num_timesteps=num_timesteps, max_time_hours=data.get('max_time_hours'), density=data.get('density'),
+        num_timesteps=times, max_time_hours=data.get('max_time_hours'), density=data.get('density'),
     )
 
     if save:

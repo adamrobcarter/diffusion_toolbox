@@ -5,6 +5,8 @@ import scipy.stats
 import scipy.optimize
 import scipy.fft
 
+raise Exception('deprecated')
+
 FIRST_FRAME = False
 FRAME_DIFF = False
 REMOVE_BKG = True

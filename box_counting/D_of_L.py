@@ -22,7 +22,8 @@ LABELS_ON_PLOT_X_SHIFT = 1.3
 
 MAX_NUM_BOXES = 10
 
-UNC_INCLUDES_NMSD_UNC = False
+UNC_INCLUDES_NMSD_UNC = True
+UNC_INCLUDES_VAR_UNC  = False
 
 NOFIT_CROP_THRESHOLD = 1e-4
 
@@ -30,11 +31,12 @@ RESCALE_X_L2 = 1
 # RESCALE_X = RESCALE_X_L2
 RESCALE_X = None
 
-PLATEAU_SOURCE = 'cutoff'
+# PLATEAU_SOURCE = 'cutoff'
 PLATEAU_SOURCE = 'var'
 # PLATEAU_SOURCE = 'sDFT'
 # PLATEAU_SOURCE = 'target_fixexponent'
 # PLATEAU_SOURCE = 'nmsdfitinter'
+# PLATEAU_SOURCE = 'var_losecorr'
 
 """
 Countoscope appendix:
@@ -71,12 +73,12 @@ def do_early_integral(f, t, T_integrand, T_integrand_min, T_integrand_max):
     early_popt_max, early_pcov_max = scipy.optimize.curve_fit(early_fit_func, early_fit_xdata, early_fit_ydata_max)
     early_integral_otherway = scipy.integrate.quad(early_fit_func, 0, t[1], args=early_popt_max[0])[0]
     
-    if UNC_INCLUDES_NMSD_UNC:
-        early_integral_min = min(early_integral, early_integral_oneway, early_integral_otherway)
-        early_integral_max = max(early_integral, early_integral_oneway, early_integral_otherway)
-    else:
-        early_integral_min = early_integral
-        early_integral_max = early_integral
+    # if UNC_INCLUDES_NMSD_UNC:
+    early_integral_min = min(early_integral, early_integral_oneway, early_integral_otherway)
+    early_integral_max = max(early_integral, early_integral_oneway, early_integral_otherway)
+    # else:
+    #     early_integral_min = early_integral
+    #     early_integral_max = early_integral
 
     assert early_integral_min <= early_integral
     assert early_integral <= early_integral_max
@@ -86,7 +88,7 @@ def do_early_integral(f, t, T_integrand, T_integrand_min, T_integrand_max):
 class PositiveSlopeInTimescaleIntegralFitException(Exception):
     pass
 
-def do_late_integral(t, L, T_integrand, M2_index, M1_index, fix_slope=False):
+def do_late_integral(t, L, T_integrand, T_integrand_min, T_integrand_max, M2_index, M1_index, fix_slope=False):
     if fix_slope:
         b = 4
         late_fit_func = lambda t, a, B: (a - b*t) - np.log(1 + np.exp(a - b*t))
@@ -163,12 +165,12 @@ def do_data_integral(t, T_integrand, T_integrand_min, T_integrand_max, M2_index)
             scipy.integrate.trapezoid(T_integrand_max[1:M2_index], t[1:M2_index]),
             scipy.integrate.trapezoid(T_integrand_min[1:M2_index], t[1:M2_index])
         ]
-    if UNC_INCLUDES_NMSD_UNC:
-        data_integral_min = min(min_and_max)
-        data_integral_max = max(min_and_max)
-    else:
-        data_integral_min = data_integral
-        data_integral_max = data_integral
+    # if UNC_INCLUDES_NMSD_UNC:
+    data_integral_min = min(min_and_max)
+    data_integral_max = max(min_and_max)
+    # else:
+    #     data_integral_min = data_integral
+    #     data_integral_max = data_integral
     assert data_integral_min <= data_integral
     assert data_integral_max >= data_integral
     if data_integral_min == data_integral:
@@ -224,7 +226,18 @@ def C_N_simplefit(t, C_N_over_VarN, C_N_over_VarN_unc, L):
     D_from_fit_unc = np.sqrt(pcov[0][0])
     return D_from_fit, D_from_fit_unc, func
 
-T_integrand_func = lambda nmsd, plat: (1 - nmsd / plat )**2 # countoscope paper eq. 8
+def T_integrand_func(nmsd, nmsd_unc, plat, plat_unc):
+    T_integrand = (1 - nmsd / plat )**2 # countoscope paper eq. 8
+    T_integrand_unc_sq_nmsd = (2*(1 - nmsd/plat) * (nmsd/plat) * plat_unc)**2
+    T_integrand_unc_sq_var  = (2*(1-nmsd/plat) * (-1/plat) * nmsd_unc)**2
+
+    T_integrand_unc_sq = np.zeros_like(T_integrand)
+    if UNC_INCLUDES_NMSD_UNC:
+        T_integrand_unc_sq += T_integrand_unc_sq_nmsd
+    if UNC_INCLUDES_VAR_UNC:
+        T_integrand_unc_sq += T_integrand_unc_sq_var
+
+    return T_integrand, np.sqrt(T_integrand_unc_sq)
 
 def get_M1_M2(file, L, t, T_integrand, plateau_source):
         # data integral setup
@@ -297,9 +310,9 @@ def get_M1_M2(file, L, t, T_integrand, plateau_source):
             M2_index = np.argmax(T_integrand < thresh_line)
             assert M2_index != 0
             M1_t = t[M2_index] / 2
-            # print('t', t, 'M1_t', M1_t)
             M1_index = np.argmax(t > M1_t)
-        elif file.startswith('sim_nohydro_010_L640_longer') or file.startswith('sim_nohydro_011_L640_longer'): # should this be longer?
+            
+        elif file.startswith('sim_nohydro_010_L640_longer') or file.startswith('sim_nohydro_011_L640_longer'):
             # M2_index = min(int(560 * L**0.4), t.shape[0]-1)
             # print(N2_mean[box_size_index, :] < thresh_line)
             c = 1e-7
@@ -308,8 +321,19 @@ def get_M1_M2(file, L, t, T_integrand, plateau_source):
             M2_index = np.argmax(T_integrand < thresh_line)
             assert M2_index != 0
             M1_t = t[M2_index] / 2
-            # print('t', t, 'M1_t', M1_t)
             M1_index = np.argmax(t > M1_t)
+            
+        elif file.startswith('sim_nohydro_011_L1280_longer'):
+            # M2_index = min(int(560 * L**0.4), t.shape[0]-1)
+            # print(N2_mean[box_size_index, :] < thresh_line)
+            c = 1e-7
+            m = 1
+            thresh_line = c * t**m
+            M2_index = np.argmax(T_integrand < thresh_line)
+            assert M2_index != 0
+            M1_t = t[M2_index] / 2
+            M1_index = np.argmax(t > M1_t)
+
         elif file.startswith('sim_nohydro_002_L640_longer'):
             c = 2e-7
             m = 1
@@ -328,6 +352,7 @@ def get_M1_M2(file, L, t, T_integrand, plateau_source):
             M2_index = min(int(80 * np.sqrt(L)), t.shape[0]-1)
             M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
         else:
+            # raise Exception()
             M2_index = min(int(1800 * np.sqrt(L)), t.shape[0]-1)
             M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
         M2_index = max(M2_index, MIN_M2_INDEX)
@@ -374,7 +399,14 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
     box_sizes = data['box_sizes']
     N_mean    = data['N_mean']
     N_var     = data['N_var']
+    # N_var_std = data['N_var_std']
+    N_var_std = np.zeros_like(N_var)
+
+    print(f'N_var_std/N_var', N_var_std/N_var)
+
     N_var_mod = data['N_var_mod']
+    # N_var_losecorr = data['N_var_losecorr']
+    N_var_losecorr = np.zeros_like(N_var)
     sep_sizes = data['sep_sizes']
 
     num_timesteps = N2_mean.shape[1]
@@ -422,25 +454,32 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
             sigma=sigma,
             t=t,
             var=N_var[box_size_index],
+            var_std=N_var_std[box_size_index],
             varmod=N_var_mod[box_size_index],
             D0=D0,
             N_mean=N_mean[box_size_index],
             density=data.get('density', np.nan),
             var_time=data.get('var_time'),
             cutoff_L=box_sizes[cutoff_index],
-            cutoff_plat=2*N_var[cutoff_index]
+            cutoff_plat=2*N_var[cutoff_index],
+            var_losecorr=N_var_losecorr[box_size_index]
         )
-        print(plateau.shape, plateau)
+        # print(plateau.shape, plateau)
         plateau *= plateau_adjust
         plateau_std *= plateau_adjust
-        print(plateau.shape, plateau)
+        # print(plateau.shape, plateau)
         assert np.isscalar(plateau_offset)
         plateau += plateau_offset
-        print(plateau.shape, plateau)
+        # print(plateau.shape, plateau)
 
-        T_integrand     = T_integrand_func(N2_mean[box_size_index, :], plateau)
-        T_integrand_min = T_integrand_func(N2_mean[box_size_index, :] + N2_std[box_size_index, :], plateau)
-        T_integrand_max = T_integrand_func(N2_mean[box_size_index, :] - N2_std[box_size_index, :], plateau)
+        # T_integrand     = T_integrand_func(N2_mean[box_size_index, :], plateau)
+        # T_integrand_min = T_integrand_func(N2_mean[box_size_index, :] + N2_std[box_size_index, :], plateau, plateau_std)
+        # T_integrand_max = T_integrand_func(N2_mean[box_size_index, :] - N2_std[box_size_index, :], plateau, plateau_std)
+        T_integrand, T_integrand_unc = T_integrand_func(N2_mean[box_size_index, :], N2_std[box_size_index, :], plateau, plateau_std)
+        T_integrand_max = T_integrand + T_integrand_unc
+        T_integrand_min = T_integrand - T_integrand_unc
+        # it's possible some of T_integrand_min are negative now so we prevent that
+        T_integrand_min[T_integrand_min < 0] = 0
 
         # these are for the simple fit to C_N
         C_N_over_plateau = 1 - N2_mean[box_size_index, :] / (plateau) # countoscope paper eq. 1
@@ -546,7 +585,8 @@ def go(file, plateau_source, ax, legend_fontsize=8, title=None, save_data=False,
             if show_long_fits and plot_late_integral_fit:
                 # integrand_ax.plot(t_fit_late/rescale_x_value, late_fit_func_real(t_fit_late, *late_popt), color=color, linestyle=':', linewidth=4)
                 integrand_ax.plot(late_plot_x/rescale_x_value, late_plot_y, color=color, linestyle=':', linewidth=4)
-            
+            # else:
+            #     assert False
             
             # full sDFT (provided D0)
             t_theory = np.logspace(np.log10(t[1]), np.log10(t[-1]))
@@ -672,7 +712,7 @@ def timescaleintegral_full(t, L, T_integrand, T_integrand_min, T_integrand_max, 
         
     else:
         try:
-            late_integral, late_integral_min, late_integral_max, late_popt, late_fit_func_real, t_fit_late = do_late_integral(t, L, T_integrand, M2_index, M1_index)
+            late_integral, late_integral_min, late_integral_max, late_popt, late_fit_func_real, t_fit_late = do_late_integral(t, L, T_integrand, T_integrand_min, T_integrand_max, M2_index, M1_index)
             
             print(f'  late integral contribution {late_integral/(early_integral+data_integral+late_integral):.3f}')
             plot_late_integral_fit = True
@@ -699,7 +739,7 @@ def timescaleintegral_fixexponent(t, L, T_integrand, T_integrand_min, T_integran
         
     else:
         try:
-            late_integral_fixexponent, late_integral_min_fixexponent, late_integral_max_fixexponent, late_popt_fixexponent, late_fit_func_real_fixexponent, late_plot_x = do_late_integral(t, L, T_integrand, M2_index, M1_index, fix_slope=True)
+            late_integral_fixexponent, late_integral_min_fixexponent, late_integral_max_fixexponent, late_popt_fixexponent, late_fit_func_real_fixexponent, late_plot_x = do_late_integral(t, L, T_integrand, T_integrand_min, T_integrand_max, M2_index, M1_index, fix_slope=True)
             late_plot_y = late_fit_func_real_fixexponent(late_plot_x, *late_popt_fixexponent)
             plot_late_integral_fit = True
 

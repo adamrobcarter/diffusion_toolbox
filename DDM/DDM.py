@@ -15,7 +15,7 @@ def do_binning(slice_length, F_D_sq_this, u_flat, u_bins):
     return F_D_sq
 
 
-def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D_sq, F_D_sq_unc, t, F_D_sq_all, time_origins : None):
+def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D_sq, F_D_sq_unc, t, F_D_sq_all, time_origins, F_D_sq_noradial, k_x, k_y : None):
     # num_k_bins is only used if the smallest image dimension > 150
     # otherwise the bins will be linearly (not log) spaced between min_K and max_K
      
@@ -24,9 +24,10 @@ def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D_sq,
     assert common.nanfrac(I) == 0
 
     use_every_nth_frame = 1
-    if stack.shape[0] > 100:
-        use_every_nth_frame = 2
-        warnings.warn('using every 2nd frame')
+    while stack.size/use_every_nth_frame > 4e8:
+        use_every_nth_frame *= 2
+    if use_every_nth_frame > 1:
+        warnings.warn(f'using every {use_every_nth_frame}th frame')
     # use_every_nth_frame = max(int(stack.size / 1e8), 1)
     # print(f'automatic: use every {use_every_nth_frame}th frame')
     # use_every_nth_frame = 1 # 10 is a good number for Alice, 1 for Marine]
@@ -70,6 +71,12 @@ def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D_sq,
     # u = np.sqrt(u_x**2 + u_y**2)
     # print('done')
 
+
+    F_D_sq_noradial_sum = np.zeros([used_times.size, I.shape[1], I.shape[2]])
+    noradial_sum_i = 0
+    # again, would be easier for this to be (time origins) x (used times) x Ix x Iy, but then the array would be too big
+    # instead we do averaging as we go
+
     for time_origin_index, time_origin in tqdm.tqdm(enumerate(time_origins), total=len(time_origins)):
 
         time_indexes = time_origin+used_times
@@ -93,6 +100,8 @@ def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D_sq,
     
         u = np.sqrt(u_x**2 + u_y**2)
 
+        F_D_sq_noradial_sum[:F_D_sq_this.shape[0], :, :] += F_D_sq_this
+        noradial_sum_i      += 1
         
         # for i in range(0, 10):
         #     print()
@@ -106,24 +115,18 @@ def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D_sq,
         #     print(u_x[ins], u_y[ins])
         # break
 
-        # this loop below is very surely the time bottleneck
+        # radial average
+        # this is very surely the time bottleneck
         u_flat = u.flatten()
         for t_index in range(slice_length):
             F_D_sq[time_origin_index, t_index, :], _, _ = scipy.stats.binned_statistic(u_flat, F_D_sq_this[t_index, :, :].flatten(), bins=u_bins)
             a, _, _ = scipy.stats.binned_statistic(u_flat, F_D_sq_this[t_index, :, :].flatten(), statistic='count', bins=u_bins)
-            # print(' '.join([f'{b:.0f}' for b in a]))
         
-            # should we check that this line is doing exactly what we expect?
             # it would be quicker for F_D_sq to have dimensions u_x, u_y instead of |u|, and then we could do the binned_statistic
             # afterwards, but this would make the size of the array huge
-            # print(''.join(['*' if a else '-' for a in np.isnan(F_D_sq[time_origin_index, t_index, :])]))
-        # F_D_sq[time_origin_index, :, :] = do_binning(slice_length, F_D_sq_this, u_flat, u_bins)
 
         # we calculate these now, for the callback (otherwise we could calc them after the loop finishes)
         F_D_sq_avg = np.nanmean(F_D_sq, axis=0) # average over time origins
-        # assert common.nanfrac(F_D_sq_avg) < 0.1, f'F_D_sq_avg was {common.nanfrac(F_D_sq_avg):.2f} nan'
-        # print(f'F_D_sq_avg was {common.nanfrac(F_D_sq_avg):.2f} nan')
-        
         num_points = np.count_nonzero(~np.isnan(F_D_sq), axis=0) # count num data points at each time origin
         F_D_sq_std = np.nanstd (F_D_sq, axis=0) # average over time origins
         F_D_sq_unc = F_D_sq_std / num_points
@@ -131,9 +134,11 @@ def calc(stack, pixel_size, time_step, num_k_bins, callback=lambda i, k, F_D_sq,
         u_avg = ( u_bins[:-1] + u_bins[1:] ) / 2
         
         k_avg = 2 * np.pi * u_avg
+        k_x = 2 * np.pi * u_x
+        k_y = 2 * np.pi * u_y
 
-        callback(time_origin_index, k_avg, F_D_sq_avg, F_D_sq_unc, used_times*time_step, F_D_sq, time_origins)
+        callback(time_origin_index, k_avg, F_D_sq_avg, F_D_sq_unc, used_times*time_step, F_D_sq, time_origins, F_D_sq_noradial_sum/noradial_sum_i, k_x, k_y)
 
     print('final nanfrac', common.nanfrac(F_D_sq_avg))
         
-    return k_avg, used_times*time_step, F_D_sq_avg, F_D_sq_unc, use_every_nth_frame, F_D_sq, time_origins
+    return k_avg, used_times*time_step, F_D_sq_avg, F_D_sq_unc, use_every_nth_frame, F_D_sq, time_origins, F_D_sq_noradial_sum/noradial_sum_i, k_x, k_y

@@ -19,7 +19,7 @@ def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LON
     msd_unc = msd_unc / np.sqrt(n)
     # ^^ this is based on thinking about how many independent measurements there are
 
-    fig, ax = plt.subplots(1, 1, figsize=(3.5, 3))
+    fig, ax = plt.subplots(1, 1, figsize=(4.5, 4))
 
     t = np.arange(0, msd.size) * data['time_step']
 

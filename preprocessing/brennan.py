@@ -1,6 +1,6 @@
 import numpy as np
 import common
-import time
+import time, os
 import tqdm
 
 # eleanorlong is
@@ -74,15 +74,19 @@ import tqdm
 
 
 def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_diameter, nth_timestep=1, max_time=None):
-    print(f'loading, last modified {common.get_last_modified_time(infile)} ago')
+    print(f'loading raw file, last modified {common.get_last_modified_time(infile)} ago')
 
     density = 4/np.pi * pack_frac_given / particle_diameter**2
     expected_particles_per_frame = density * orig_width**2
     if max_time:
         max_frame = max_time * dt
         max_rows = int((max_frame + 1) * expected_particles_per_frame)
+        print('max_rows', max_rows)
+
+        max_items = max_rows * 3
     else:
         max_rows = None
+        max_items = -1
 
     t0 = time.time()
     # data = np.loadtxt(infile)
@@ -91,7 +95,7 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
     if infile.endswith('.txt'):
         data = np.loadtxt(infile, max_rows=max_rows, dtype=np.float32)
     elif infile.endswith('.bin'):
-        data = np.fromfile(infile, dtype=np.float32) # there is a parameter to this function for not loading the whole array
+        data = np.fromfile(infile, dtype=np.float32, count=max_items) # there is a parameter to this function for not loading the whole array
         data = data.reshape((-1, 3))
     t1 = time.time()
     print(data.shape, data.dtype,  f'loaded {common.format_bytes(data.nbytes)} in {t1-t0:.1f}s at {common.format_bytes(data.nbytes/(t1-t0))}/sec')
@@ -108,14 +112,15 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
     last_timestep = data[:, 2].max()
     data = data[data[:, 2] != last_timestep, :]
     
-    print(f'loaded in {t1-t0:.0f}s. shape', data.shape, common.arraysize(data))
-    num_timesteps = data[:, 2].max()+1
-    print(f'{num_timesteps:.0f} timesteps = {num_timesteps*dt/60/60:.1f} hours')
-    assert num_timesteps > 100
+    # print(f'loaded in {t1-t0:.0f}s. shape', data.shape, common.arraysize(data))
+    # num_timesteps = data[:, 2].max()+1
+    times = np.unique(data[:, 2])
+    num_timesteps = times.size
+    print(times, num_timesteps)
+    print(f'{num_timesteps:.0f} timesteps, {data[:, 2].max()*dt/60/60:.1f} hours')
+    assert num_timesteps > 30
 
     
-
-    num_timesteps = int(data[:, 2].max() + 1)
     avg_particles_per_frame = data.shape[0] / num_timesteps
     density = avg_particles_per_frame / orig_width**2
     print('avg part per frame', avg_particles_per_frame, 'L^2', orig_width**2)
@@ -175,7 +180,7 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
     common.save_data(f'particle_detection/data/particles_{outfile}.npz',
         particles=data,
         time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
-        window_size_x=out_width, window_size_y=out_width, max_time_hours=round(num_timesteps*dt/60/60, 2),
+        window_size_x=out_width, window_size_y=out_width, max_time_hours=round(last_timestep*dt/60/60, 2),
         source_file=infile, density=density,
     )
 
@@ -183,7 +188,7 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
         common.save_data(f'particle_linking/data/trajs_{outfile}.npz',
             particles=data,
             time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
-            window_size_x=out_width, window_size_y=out_width, max_time_hours=round(num_timesteps*dt/60/60, 2),
+            window_size_x=out_width, window_size_y=out_width, max_time_hours=round(last_timestep*dt/60/60, 2),
             source_file=infile, density=density,
         )
     
@@ -245,8 +250,10 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
 # from anubis
 # go('raw_data/anubis/nohydro2D_L640_dt0.5_s2.972.suspension_phi0.016_L640_s2.972.bin', 'sim_nohydro_002_L640',        640, 640, 0.5, 0.016, 2.972)
 # go('raw_data/anubis/nohydro2D_L640_dt16_s2.972.suspension_phi0.016_L640_s2.972.bin',  'sim_nohydro_002_L640_longer', 640, 640, 16,  0.016, 2.972)
-go('raw_data/anubis/nohydro2D_L160_dt0.5_s2.972.suspension_phi0.114_L160_s2.972.bin', 'sim_nohydro_011_L160',        160, 160, 0.5, 0.114, 2.972)
-go('raw_data/anubis/nohydro2D_L160_dt16_s2.972.suspension_phi0.114_L160_s2.972.bin',  'sim_nohydro_011_L160_longer', 160, 160, 16,  0.114, 2.972)
+# go('raw_data/anubis/nohydro2D_L160_dt0.5_s2.972.suspension_phi0.114_L160_s2.972.bin', 'sim_nohydro_011_L160',        160, 160, 0.5, 0.114, 2.972)
+# go('raw_data/anubis/nohydro2D_L160_dt16_s2.972.suspension_phi0.114_L160_s2.972.bin',  'sim_nohydro_011_L160_longer', 160, 160, 16,  0.114, 2.972)
+# from anubis after first paper submission
+# go('raw_data/anubis/nohydro2D_L1280_dt64_s2.972.suspension_phi0.114_L1280_s2.972.bin',  'sim_nohydro_011_L1280_longer', 1280, 1280, 64,  0.114, 2.972)
 
 datas = [
     # L  dt  phi
@@ -278,24 +285,102 @@ datas = [
     # (640, 0.5, 0.016, '',        1, None, 2.972), # sim_nohydro_002_L640
     # (640, 0.5, 0.114, '',        1, None, 2.972), # sim_nohydro_011_L640
     # (640, 16, 0.114, '_longer',  1, None, 2.972), # sim_nohydro_011_L640_longer
+
+    # after first submission of paper
+    # (1280, 0.5, 0.114, '',        1, None, 2.972), # sim_nohydro_011_L1280
+    
+    # reimport
+    # (544, 0.5, 0.1, '',        1, None, 2.79), # sim_nohydro_011_L320
 ]
 
 for L, dt, phi, suffix, nth_timestep, max_time, particle_diameter in datas:
     phistr = f'{phi*100:.0f}'.zfill(3)
     # go(f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt', f'sim_nohydro_{phistr}_L{L}{suffix}',  L, L, dt, phi, nth_timestep, max_time)
+    
+    if particle_diameter == 2.972:
+        # new ones
+        file = f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}_s2.972.suspension_phi{phi}_L{L}_s2.972.bin'
+    else:
+        # old ones
+        file = f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt'
+       
+    go(
+        infile = file,
+        outfile = f'sim_nohydro_{phistr}_L{L}{suffix}',
+        orig_width=L, 
+        out_width=L, 
+        dt=dt, 
+        pack_frac_given=phi, nth_timestep=nth_timestep, max_time=max_time, particle_diameter=particle_diameter
+    )
+
+
+# new times (not frames) method
+datas2 = [
+    # (1280, 64, 0.5, 0.114, '_mixt', 1, None, 2.972),
+    # (640, 16, 0.5, 0.114, '_mixt', 1, None, 2.972),
+]
+
+for L, t1, t2, phi, suffix, nth_timestep, max_time, particle_diameter in datas2:
+    phistr = f'{phi*100:.0f}'.zfill(3)
+    # go(f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt', f'sim_nohydro_{phistr}_L{L}{suffix}',  L, L, dt, phi, nth_timestep, max_time)
     go(
         # new ones:
-       f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}_s2.972.suspension_phi{phi}_L{L}_s2.972.bin',
+       f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_t{t1}_{t2}.suspension_phi{phi}_L{L}_s2.972.bin',
        # old ones:
     #    f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt',
        f'sim_nohydro_{phistr}_L{L}{suffix}',
        orig_width=L, 
        out_width=L, 
-       dt=dt, 
+       dt=1,
        pack_frac_given=phi, nth_timestep=nth_timestep, max_time=max_time, particle_diameter=particle_diameter)
 
+
+###### mesu single t
+datas = [
+    ('/data2/acarter/toolbox/raw_data/mesu/hydro_dt0.2_phi0.114_L320.bin', '_dt0.2'),
+]
+
+for filepath, suffix in datas:
+    nth_timestep = 1
+    max_time = None
+    particle_diameter = 2.972
+
+    filename = filepath.split('/')[-1]
+    # print('use the following in a new shell')
+    # print(f'rsync cartera@login.mesu.sorbonne-universite.fr:{filepath} raw_data/mesu/{filename}')
+    # input()
+
+    filename_no_ext = filename.split('.bin')[0]
+
+    L   = int  (filename_no_ext.split('_L' )[1].split('_')[0])
+    phi = float(filename_no_ext.split('phi')[1].split('_')[0])
+    print(L, phi)
+
+    phistr = f'{phi*100:.0f}'.zfill(3)
+
+    go(
+        f'raw_data/mesu/{filename}',
+        f'sim_hydro_{phistr}_L{L}{suffix}',
+        orig_width=L, 
+        out_width=L, 
+        dt=1,
+        pack_frac_given=phi, nth_timestep=nth_timestep, max_time=max_time, particle_diameter=particle_diameter
+    )
+
+
+
+
+# infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_diameter
 # go('/data2/acarter/Spectral_Sophie_Boxes/data/spec_softetakt_long_run_dtau_0.025_nsave_2.suspension_phi_0.1_L_1280_modified.txt', 'brennan_hydro_010_L1280', 1280, 1280, 0.5, 0.1, 1)
-# go('/data2/acarter/Spectral_Sophie_Boxes/data/spec_softetakt_long_run_dtau_0.025_nsave_2.suspension_phi_0.1_L_544_modified.txt',  'brennan_hydro_010_L544',   544,  544, 0.5, 0.1, 1)
+# go(
+#     infile = '/data2/acarter/Spectral_Sophie_Boxes/data/spec_softetakt_long_run_dtau_0.025_nsave_2.suspension_phi_0.1_L_544_modified.txt',
+#     outfile = 'brennan_hydro_010_L544',
+#     orig_width = 544, 
+#     out_width = 544,
+#     dt = 0.5,
+#     pack_frac_given = 0.1,
+#     particle_diameter = 2.79
+# )
 # go('/data2/acarter/Spectral_Sophie_Boxes/data/spec_softetakt_long_run_dtau_0.025_nsave_2.suspension_phi_0.02_L_1600_modified.txt', 'brennan_hydro_002_L1600', orig_width=1600, out_width=1600, dt=0.5, pack_frac_given=0.02, particle_diameter=2.79)
 # go('/data2/acarter/Spectral_Sophie_Boxes/data/spec_softetakt_long_run_dtau_0.025_nsave_2.suspension_phi_0.02_L_800_modified.txt',  'brennan_hydro_002_L800',   800,  800, 0.5, 0.02, 1)
 

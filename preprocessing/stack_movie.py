@@ -10,6 +10,8 @@ INVERSE_COLORS = False
 SHOW_TIMESTEP = True
 HIDE_ANNOTATIONS = False
 
+SHOW_HISTOGRAMS = False
+
 # HIGHLIGHTS = True # displays 50 frames evenly throughout the stack instead of the first 50
 HIGHLIGHTS = False
 # BACKWARDS = True
@@ -36,7 +38,7 @@ METHOD_NAME = {
 # METHOD = DIFF_WITH_PREVIOUS
 # METHOD = DIFF_WITH_ZERO
 METHODS = [NONE]
-METHODS = [NONE, REMOVE_BACKGROUND, DIFF_WITH_ZERO, DIFF_WITH_PREVIOUS, DIFF_WITH_TEN]
+METHODS = [NONE, DIFF_WITH_TEN,REMOVE_BACKGROUND, DIFF_WITH_ZERO, DIFF_WITH_PREVIOUS]
 # METHODS = [DIFF_WITH_TEN]
 # METHODS = [NONE]
 # METHOD = REMOVE_BACKGROUND
@@ -89,6 +91,9 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
     
     fig, ax = plt.subplots(1, 1, figsize=figsize)
 
+    # stack = np.transpose(stack, [0, 2, 1]) # idk why, check on clearly rectangular data like psiche089_slice0
+
+
     time_mult = 4
     if file.startswith('marine'):
         time_mult = 0.25
@@ -120,7 +125,7 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
     frames = range(0, min(num_timesteps_in_data, max_num_frames*every_nth_frame), every_nth_frame)
 
 
-    if not no_stack:
+    if (not no_stack) and SHOW_HISTOGRAMS:
         print('stack[frames]:')
         common.term_hist(stack[frames])
 
@@ -161,7 +166,7 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
                 else:
                     assert False, 'colors other than red and green not yet implemented'
 
-    if not no_stack:
+    if (not no_stack) and SHOW_HISTOGRAMS:
         print('used_stack:')
         common.term_hist(usedstack)
 
@@ -207,7 +212,8 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
             ax.text(0.95, 0.05, time_string, color=color, transform=ax.transAxes, ha='right', fontsize=10)
 
             ax.text(0.05, 0.9, dataset_name, transform=ax.transAxes, fontsize=15, color=color)
-            ax.text(0.05, 0.82, METHOD_NAME[METHOD], transform=ax.transAxes, fontsize=15, color=color)
+            
+            # ax.text(0.05, 0.82, METHOD_NAME[METHOD], transform=ax.transAxes, fontsize=15, color=color)
      
         
         # for hiding border
@@ -267,8 +273,6 @@ def show_single_frame(ax, frame, pixel_size, window_size_x, window_size_y, chann
 def go(file, data, outputfilename, add_drift=False, display_small=False, method=NONE, highlights=False, backward=False, flip_y=False):
         
         stack      = data['stack']
-        # print('start')
-        # common.term_hist(stack)
         pixel_size = data['pixel_size']
         time_step  = data['time_step']
         channel    = data.get('channel')
@@ -278,7 +282,8 @@ def go(file, data, outputfilename, add_drift=False, display_small=False, method=
         window_size_y = stack.shape[2] * pixel_size
 
         print('time:')
-        common.term_bar(stack[:, :, :].mean(axis=(1, 2)), range(0, stack.shape[0]+1))
+        if SHOW_HISTOGRAMS:
+            common.term_bar(stack[:, :, :].mean(axis=(1, 2)), range(0, stack.shape[0]+1))
 
         if add_drift:
             stack = common.add_drift_intensity(stack, 1)

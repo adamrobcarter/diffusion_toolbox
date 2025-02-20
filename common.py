@@ -246,8 +246,9 @@ def save_fig(fig, path, dpi=100, only_plot=False, hide_metadata=False):
 
 def add_scale_bar(ax, pixel_size, color='black'):
     image_width = ax.get_xlim()[1] - ax.get_xlim()[0]
+    print('image width', image_width)
     if pixel_size:
-        target_scale_bar_length = image_width * pixel_size / 10
+        target_scale_bar_length = image_width / 10 # removed * pixel_size 
     else:
         target_scale_bar_length = image_width / 10
     possible_scale_bar_lengths = (0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000)
@@ -255,10 +256,12 @@ def add_scale_bar(ax, pixel_size, color='black'):
     takeClosest = lambda num,collection:min(collection,key=lambda x:abs(x-num))
     scale_bar_length = takeClosest(target_scale_bar_length, possible_scale_bar_lengths)
 
-    if pixel_size:
-        scale_bar_length_ax = scale_bar_length/pixel_size
-    else:
-        scale_bar_length_ax = scale_bar_length
+    # if pixel_size:
+    #     scale_bar_length_ax = scale_bar_length/pixel_size
+    # else:
+    # I had to comment this out - did we move from px to um at some point?
+    scale_bar_length_ax = scale_bar_length
+    print('scale bar length ax', scale_bar_length_ax)
 
     asb = AnchoredSizeBar(ax.transData, scale_bar_length_ax,
                           rf"${scale_bar_length}\mathrm{{\mu m}}$",
@@ -634,7 +637,6 @@ def files_from_argv(location, prefix):
             
             all_filenames = os.listdir(location)
             all_filenames.sort()
-            # print('all_filenames', all_filenames)
 
             filenames = fnmatch.filter(all_filenames, target)
             
@@ -654,7 +656,10 @@ def format_val_and_unc(val, unc, sigfigs=2, latex=True):
         assert np.sum(val.shape) < 2, f'You gave an array of shape {val.shape}. Only scalars are allowed'
 
     # print(val.shape, unc.shape)
-    digits_after_decimal = -math.floor(math.log10(abs(val))) + sigfigs-1
+    if val == 0: # log(0) is undefined
+        digits_after_decimal = 0
+    else:
+        digits_after_decimal = -math.floor(math.log10(abs(val))) + sigfigs-1
     # print(f'.{digits_after_decimal}f digi')
     if digits_after_decimal < 0:
         digits_after_decimal = 0
@@ -773,7 +778,7 @@ def colormap(value, min=0, max=1):
     if PLOT_COLOR == 'black':
         return matplotlib.cm.afmhot(np.interp(value, (min, max), (0.25, 0.85)))
     else:
-        return matplotlib.cm.afmhot(np.interp(value, (min, max), (0.2, 0.77)))
+        return matplotlib.cm.afmhot(np.interp(value, (min, max), (0.2, 0.7)))
 
 def colormap_colorbar(min=0, max=1):
     cmap = matplotlib.cm.afmhot
@@ -941,3 +946,13 @@ def add_exponential_index_indicator(ax, exponent, anchor, xlabel):
     y1 = anchor[1] * 10**(orders_of_mag * exponent)
     ax.plot([x0, x1], [y0, y1], color=FIT_COLOR)
     ax.text(anchor[0]*1.1, anchor[1], f'${xlabel}^{{{exponent}}}$', color=FIT_COLOR)
+
+def stokes_einstein_D(particle_diameter):
+    k_B = scipy.constants.k
+    T = 290 # K
+    eta = 1e-3 # Pa.s
+    r = particle_diameter * 1e-6 / 2 # assumed um
+
+    D =  k_B * T / (6 * np.pi * eta * r) # m^2 / s
+    D_um = D * (1e6)**2 # um^2 / s
+    return D_um

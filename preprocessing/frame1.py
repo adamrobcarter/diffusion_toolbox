@@ -3,13 +3,17 @@ import matplotlib.pyplot as plt
 import common
 import sys
 import matplotlib.cm
+import matplotlib.patches
 
 SMALL = False
-REMOVE_BACKGROUND = True
+REMOVE_BACKGROUND = False
 
 ANNOTATE_PACK_FRAC = False
 ANNOTATE_PARTICLE_DIAMETER = False
 
+DIFF_FRAMES = 1
+
+SLICES = False
 
 # THIS SHOULD USE STACK_MOVIE.PY!!
 
@@ -39,7 +43,10 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
         ax.set_ylim(000, 150)
         ax.set_xlim(000, 150)
 
-    frame1 = stack[0, :, :]
+    if DIFF_FRAMES:
+        frame1 = stack[DIFF_FRAMES, :, :] - stack[0, :, :]
+    else:
+        frame1 = stack[0, :, :]
     print(frame1[:4, :4])
 
     if REMOVE_BACKGROUND:
@@ -83,8 +90,22 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
 
     common.add_scale_bar(ax, data['pixel_size'], color=color)
 
+
+    if SLICES:
+        for i in range(SLICES):
+            rect = matplotlib.patches.Rectangle(
+                xy=(0, i*stack.shape[2]/SLICES), width=stack.shape[1], height=stack.shape[2]/SLICES,
+                edgecolor='red', facecolor='none'
+            )
+            ax.add_patch(rect)
+
     filename = f'frame1_{file}'
     if REMOVE_BACKGROUND:
         filename += '_bkgrem'
+    if SLICES:
+        filename += f'_slices{SLICES}'
+    if DIFF_FRAMES:
+        filename += f'_diff{DIFF_FRAMES}'
+
     common.save_fig(fig, f'preprocessing/figures_png/{filename}.png', dpi=600, only_plot=True)
     # common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/frame1_{file}.png', dpi=300, only_plot=True)

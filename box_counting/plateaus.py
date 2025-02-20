@@ -12,6 +12,8 @@ markers = {
     'var': 'o',
 }
 
+CROP_OFF_L_BELOW = 30
+
 def go(file, ax, sources, rescale_window=False, label_prefix='', rescale_sigma=True, colors=None,
        linestyle='-'):
 
@@ -28,6 +30,7 @@ def go(file, ax, sources, rescale_window=False, label_prefix='', rescale_sigma=T
     N_var          = data['N_var']
     N_var_mod      = data['N_var_mod']
     N_var_time     = data.get('N_var_time')
+    N_var_losecorr = data.get('N_var_losecorr')
     N_var_mod_std  = data['N_var_mod_std']
     sep_sizes      = data['sep_sizes']
     time_step      = data['time_step']
@@ -50,7 +53,8 @@ def go(file, ax, sources, rescale_window=False, label_prefix='', rescale_sigma=T
                                 L=box_sizes[i], phi=phi, sigma=sigma, t=t,
                                 var=N_var[i], varmod=N_var_mod[i], D0=D0,
                                 N_mean=N_mean[i], density=data.get('density', 0),
-                                var_time=N_var_time, cutoff_L=box_sizes[19], cutoff_plat=2*N_var[19])
+                                var_time=N_var_time, cutoff_L=box_sizes[19], cutoff_plat=2*N_var[19],
+                                var_losecorr=N_var_losecorr[i])
             
             # if source == 'var' and i == 21:
             #     v_10 = plateaus[i]
@@ -89,6 +93,10 @@ def go(file, ax, sources, rescale_window=False, label_prefix='', rescale_sigma=T
         ax.set_ylabel('plateau')
         ax.set_xlabel('$L/\sigma$')
         
+    if CROP_OFF_L_BELOW:
+        first_index = np.argmax(box_sizes > CROP_OFF_L_BELOW)
+        ax.set_xlim(box_sizes[first_index]/rescale_x, box_sizes[-1]/rescale_x*1.1)
+        ax.set_ylim(plateaus[first_index]/rescale_y, plateaus[-1]/rescale_y*1.1)
 
         # if 'eleanorlong001' in file:
         #     ax.set_xlim(1e1, 3e2)
@@ -106,7 +114,7 @@ if __name__ == '__main__':
     for file in common.files_from_argv('box_counting/data/', 'counted_'):
         fig, ax = plt.subplots(1, 1)
 
-        go(file, ax, ['var', 'sDFT'])
+        go(file, ax, ['var', 'var_losecorr', 'sDFT'])
         # go(file, ax, PLATEAU_SOURCES)
 
         common.save_fig(fig, f'box_counting/figures_png/plateaus_{file}.png', dpi=200)

@@ -78,9 +78,9 @@ def calc_and_save(box_sizes, sep_sizes, data, output_file_name, particles=None,
 
     output = dict(filename=output_file_name, N2_mean=N2_mean, N2_std=N2_std,
                 box_sizes=box_sizes, sep_sizes=sep_sizes,
-                num_boxes=results.num_boxes, N_mean=results.N_mean, N_var=results.N_var,
+                num_boxes=results.num_boxes, N_mean=results.N_mean, N_var=results.N_var, N_var_std=results.N_var_std,
                 N_var_mod=results.N_var_mod, N_var_mod_std=results.N_var_mod_std, N_mean_std=results.N_mean_std,
-                N_var_time=results.N_var_time,
+                N_var_time=results.N_var_time, N_var_losecorr=results.N_var_losecorr,
                 time_step=time_step, particle_diameter=particle_diameter,
                 particle_diameter_calced=particle_diameter_calced, computation_time=time.time()-t0,
                 depth_of_field=depth_of_field,
@@ -128,12 +128,14 @@ if __name__ == '__main__':
 
         elif file.startswith('sim_') or file.startswith('brennan'):
             box_sizes = np.logspace(np.log10(0.288/2), np.log10(0.9*288), num_boxes)
-            if '320' in file:
-                sep_sizes = 7 - box_sizes # moremoreoverlap
+            if '160' in file:
+                sep_sizes = 7 - box_sizes
+            elif '320' in file:
+                sep_sizes = 7 - box_sizes
             elif '640' in file:
-                sep_sizes = 13 - box_sizes # moremoreoverlap
-            elif '160' in file:
-                sep_sizes = 7 - box_sizes # moremoreoverlap
+                sep_sizes = 13 - box_sizes
+            elif '1280' in file:
+                sep_sizes = 17 - box_sizes # it seems this could be reduced
             else:
                 raise Exception()
 

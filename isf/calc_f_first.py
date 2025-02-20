@@ -26,7 +26,12 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
 
     cores = 16 # increasing this above 16 seems risky. if the program freezes, try reducing this
     if 'L1280' in file:
-        cores = 4
+        cores = 8
+        print('CHANGE TO 4')
+        
+
+    # print('DEBUG')
+    # max_time_origins /= 1000
 
     # if 'eleanor' in file:
     #     window = 'blackmanharris'
@@ -42,10 +47,11 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
         # file_suffix='_25bins',
         cores=cores,
         max_time_origins=max_time_origins,
-        d_frames=[0, 1],
+        d_frames=[0, 0.5],
+        # d_frames=[0, 1],
         file_prefix = 'first_',
         # d_frames=[0, 32],
         # file_prefix = 'first32_'
         # window=window,
-        file_suffix='_nowindow',
+        # file_suffix='_nowindow',
     )

@@ -5,10 +5,13 @@ import scipy.optimize
 import scipy.special
 import math
 
-FIT_USE_FLOW = False
+FIT_USE_FLOW = True
 D_ERROR_THRESH = 0.5 # D_unc/D must be smaller than this to save
+SEMILOGX = True
+# THEORY_PLOT_DS = [1, 0.1]
+THEORY_PLOT_DS = []
 
-def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NAME=None, channel=None, live=False):
+def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NAME=None, channel=None, live=False, k_index_offset=0):
 
     real_ks = []
 
@@ -22,10 +25,10 @@ def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NA
     B_of_q = []
     q = []
 
-    every_nth_k = k.size // num_displayed_ks
+    every_nth_k = (k.size - k_index_offset) // num_displayed_ks
 
     for graph_i in range(num_displayed_ks):
-        k_index = graph_i * every_nth_k
+        k_index = k_index_offset + graph_i * every_nth_k
 
         real_ks.append(k[k_index])
         if not live:
@@ -39,7 +42,8 @@ def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NA
             continue
 
         to_plot = np.full_like(F_D_sq[:, k_index], True, dtype='bool')
-        to_plot[0] = False
+        if SEMILOGX:
+            to_plot[0] = False
         anomalous = F_D_sq_unc[:, k_index] > F_D_sq[:, k_index]
         # to_plot[anomalous] = False
 
@@ -77,25 +81,41 @@ def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NA
 
                 popt, pcov = scipy.optimize.curve_fit(func, t[to_plot], F_D_sq_rescaled[to_plot], sigma=weights[to_plot], p0=(F_D_sq_rescaled.max(), F_D_sq_rescaled.min(), 0.001, 0.01), maxfev=100000)#, absolute_sigma=True)
                 
-                D = popt[2] 
-                D_unc = np.sqrt(pcov)[2][2]
-
-                v = popt[3]
-                v_unc = np.sqrt(pcov)[3][3]
                 
-                label = f'$D={common.format_val_and_unc(D, D_unc)}$\n$v={common.format_val_and_unc(v, v_unc)}$'
-                # label = f'fit $D={D:.5f}$, $v={v:.5f}$'
+                if 'particle_diameter' in data:
+                    D = popt[2] / common.stokes_einstein_D(data['particle_diameter'])
+                    D_unc = np.sqrt(pcov)[2][2] / common.stokes_einstein_D(data['particle_diameter'])
+
+                    v = popt[3]
+                    v_unc = np.sqrt(pcov)[3][3]
+                    
+                    label = f'$D=({common.format_val_and_unc(D, D_unc)})D_\mathrm{{SE}}$\n$v={common.format_val_and_unc(v, v_unc)}\mathrm{{\mu m/s}}$'
+                    # label = f'fit $D={D:.5f}$, $v={v:.5f}$'
+                else:
+                    D = popt[2] 
+                    D_unc = np.sqrt(pcov)[2][2]
+
+                    v = popt[3]
+                    v_unc = np.sqrt(pcov)[3][3]
+                    
+                    label = f'$D={common.format_val_and_unc(D, D_unc)}$\n$v={common.format_val_and_unc(v, v_unc)}$'
+                    # label = f'fit $D={D:.5f}$, $v={v:.5f}$'
 
             else: 
                 func = lambda t, A, B, D: A * (1 - np.exp(-t*k[k_index]**2*D)) + B
 
                 popt, pcov = scipy.optimize.curve_fit(func, t[1:], F_D_sq_rescaled[1:], sigma=weights[to_plot], p0=(F_D_sq_rescaled.max(), F_D_sq_rescaled.min(), 0.1), maxfev=100000)#, absolute_sigma=True)
                 
-                D = popt[2] 
+                D = popt[2]
                 D_unc = np.sqrt(pcov)[2][2]
 
                 # label = f'fit $D={common.format_val_and_unc(D, D_unc)}$'
-                label = f'fit $D={D:.2g}±{D_unc:.2g}$'
+                if 'particle_diameter' in data:
+                    D  = D / common.stokes_einstein_D(data['particle_diameter'])
+                    D_unc  = D_unc / common.stokes_einstein_D(data['particle_diameter'])
+                    label = f'fit $D=({D:.2g}±{D_unc:.2g})D_\mathrm{{SE}}$'
+                else:
+                    label = f'fit $D={D:.2g}±{D_unc:.2g}\mathrm{{\mu m}}$'
             
 
             A = popt[0] * rescale
@@ -121,18 +141,37 @@ def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NA
                 print('  not saving, A(q) negative')
 
 
-        ax.semilogx()
+        if SEMILOGX:
+            ax.semilogx()
         # ax.semilogy()
-        ax.set_title(fr'$k={k[k_index]:.2f}$ ($\approx{2*np.pi/k[k_index]:.2f}\mathrm{{\mu m}}$)')
+        ax.set_title(fr'$k={k[k_index]:.2f}\mathrm{{\mu m^-1}}$ ($\approx{2*np.pi/k[k_index]:.2f}\mathrm{{\mu m}}$)')
         ax.set_xlabel('$t$ (s)')
         ax.set_ylabel('$|\Delta I(q, t)|^2$')
+
+        ymin = F_D_sq[1:, k_index].min()/1.02
+        # ymax = F_D_sq[int(F_D_sq.shape[0]*0.7), k_index] * 1.3
+        ymax = F_D_sq[:, k_index].max()*1.02
         
+        if 'particle_diameter' in data:
+            for D_mult in THEORY_PLOT_DS:
+                yspan = ymax - ymin
+                B = ymin + yspan/5
+                A = yspan / 3
+                
+                D = common.stokes_einstein_D(data['particle_diameter']) * D_mult
+                
+                theory = A * (1 - np.exp(-k[k_index]**2 * t_theory * D)) + B
+                ax.plot(t_theory, theory, linestyle='dotted', label='$D=' f'{D_mult}' + '*D_\mathrm{Stokes-Einstein}$')
+
+        ax.set_ylim(ymin, ymax)
+
+
         legend_handles, legend_labels = ax.get_legend_handles_labels()
         if len(legend_handles):
             ax.legend(fontsize=9)
 
-
-    fig.suptitle(f'{common.name(file)}, $\sigma={sigma}$, pixel$={pixel}$')
+    suptitle = common.name(file) + ' ' + str(data.get('NAME', ''))
+    fig.suptitle(f'{suptitle}, $\sigma={sigma}$, pixel$={pixel}$')
     
 
     common.save_data(f'visualisation/data/Ds_from_DDM_{file}',
@@ -148,6 +187,7 @@ def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NA
 
 if __name__ == '__main__':
     for file in common.files_from_argv('DDM/data', 'ddm_'):
+        # we load this stuff here, not in `show()` as we normally do, so that we can use `show()` in the live situation
         data = common.load(f'DDM/data/ddm_{file}.npz')
         k          = data['k']
         F_D_sq     = data['F_D_sq']
@@ -160,9 +200,15 @@ if __name__ == '__main__':
         channel = data.get('channel')
         
         num_displayed_ks = 14
+        k_index_offset   =  0
+        
+        if 'psiche' in file:
+            k_index_offset = k.size // 2
+            num_displayed_ks = 7
+
         fig, axs = plt.subplots(1, num_displayed_ks, figsize=(num_displayed_ks*3.5, 4))
 
         show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, NAME=NAME, channel=channel,
-             num_displayed_ks=num_displayed_ks)
+             num_displayed_ks=num_displayed_ks, k_index_offset=k_index_offset)
         
         common.save_fig(fig, f'DDM/figures_png/ddm_{file}.png')

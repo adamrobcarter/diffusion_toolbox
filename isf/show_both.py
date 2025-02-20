@@ -87,6 +87,8 @@ def show_single_F_type(
     k_all     = d["k"]
     particle_diameter = d['particle_diameter']
 
+    assert np.isfinite(k_all).all()
+
     ks_2D = len(k_all.shape) == 2
 
     num_ks = k_all.shape[1] if ks_2D else k_all.size
@@ -197,18 +199,22 @@ def show_single_F_type(
             assert t[first_index] > 0
 
             if f[first_index] > 1e-2:
+                if f[first_index] == 1.0:
+                    print(f'f[{first_index}] == 1.0')
+                    print(f)
+
                 D_first = -1 / (k**2 * t[first_index]) * np.log(f[first_index])
                 D_unc_first = 1 / (k**2 * t[first_index]) * f_unc[first_index] / f[first_index]
                 # print(f'  first D={D_first:.3g}')
                 assert D_unc_first >= 0, f'D_unc_first={D_unc_first:.3f} = 1 / ({k:.3f}**2 * {t[first_index]:.3f} * {f[first_index]:.3f}) * {f_unc[first_index]:.3f}'
-                print(f'f rel err {f_unc[first_index]/f[first_index]:.4f}, D rel err {D_unc_first/D_first}')
-                print(f'D(f)={D_first:.3f}, D(f+df)={-1 / (k**2 * t[first_index]) * np.log(f[first_index]+f_unc[first_index]):.3f}, D(f-df)={-1 / (k**2 * t[first_index]) * np.log(f[first_index]-f_unc[first_index]):.3f}')
+                # print(f'f rel err {f_unc[first_index]/f[first_index]:.4f}, D rel err {D_unc_first/D_first}')
+                # print(f'D(f)={D_first:.3f}, D(f+df)={-1 / (k**2 * t[first_index]) * np.log(f[first_index]+f_unc[first_index]):.3f}, D(f-df)={-1 / (k**2 * t[first_index]) * np.log(f[first_index]-f_unc[first_index]):.3f}')
                 Ds_for_saving_first    .append(D_first)
                 D_uncs_for_saving_first.append(D_unc_first)
                 ks_for_saving_first    .append(k)
                 if display: print(f'  first: D={common.format_val_and_unc(D_first, D_unc_first, latex=False)}')
             else:
-                if display: print('  first: skipped')
+                if display: print('  first: skipped (f(k,t) < 0.01)')
 
         # if Ftype == 'f':
         #     noise_thresh = 1e-2 # for eleanorlong!!
@@ -598,19 +604,26 @@ def show_single_F_type(
 
 
         ##### displaying
+        assert np.all(f != 0)
+        print(f_unc)
+        assert np.all(f_unc != 0)
 
-        D      = -1/(k**2 * t ) * np.log(f)
-        D_unc  =  1/(k**2 * t ) / np.sqrt(f**2) * f_unc # the sqrt(**2) is needed to prevent negative errors
+        # D and D2 are only for plotting
+        # this whole [1:] thing is to stop annoying console warnings for /0 and log(<1) because f_unc[0] = 0
+        D_bad = f_bad[1:]
+
+        D      = -1/(k**2 * t[1:] ) * np.log(f[1:])
+        D_unc  =  1/(k**2 * t[1:] ) / np.sqrt(f[1:]**2) * f_unc[1:] # the sqrt(**2) is needed to prevent negative errors
             
-        D2     = -1/k**2 * np.gradient(np.log(f), t)
-        D2_unc = np.abs( 1/k**2 * np.gradient(1/f, t) * f_unc )
+        D2     = -1/k**2 * np.gradient(np.log(f[1:]), t[1:])
+        D2_unc = np.abs( 1/k**2 * np.gradient(1/f[1:], t[1:]) * f_unc[1:] )
             
         
         if display:
-            D_ax.scatter(t [~f_bad  ], D [~f_bad  ], color=color, label=Ftype, s=6)
-            D_ax.scatter(t [ f_bad  ], D [ f_bad  ], color=color,   alpha=0.2, s=6)
-            D_ax.scatter(t [~f_bad  ], D2[~f_bad  ], color=colors[type_index+1], label=Ftype, s=6)
-            D_ax.scatter(t [ f_bad  ], D2[ f_bad  ], color=colors[type_index+1],   alpha=0.2, s=6)
+            D_ax.scatter(t [~D_bad  ], D [~D_bad  ], color=color, label=Ftype, s=6)
+            D_ax.scatter(t [ D_bad  ], D [ D_bad  ], color=color,   alpha=0.2, s=6)
+            D_ax.scatter(t [~D_bad  ], D2[~D_bad  ], color=colors[type_index+1], label=Ftype, s=6)
+            D_ax.scatter(t [ D_bad  ], D2[ D_bad  ], color=colors[type_index+1],   alpha=0.2, s=6)
                 # D_ax.errorbar(t , D , yerr=D_unc , fmt='', color=color, alpha=0.2, linestyle='none')
             D_ax.errorbar(t , D , yerr=D_unc , fmt='', color=color, alpha=errorbar_alpha, linestyle='none')
             D_ax.errorbar(t , D2, yerr=D2_unc, fmt='', color=colors[type_index+1], alpha=errorbar_alpha, linestyle='none')
@@ -718,6 +731,7 @@ def show_single_F_type(
         common.save_fig(sp_fig, f'isf/figures_png/segre_pusey_rescaling_{file}.png')     
 
     if do_fits:
+        assert len(Ds_for_saving_first), 'nothing to save'
         common.save_data(f'visualisation/data/Ds_from_{Ftype}_first_{file}',
                     Ds=Ds_for_saving_first, D_uncs=D_uncs_for_saving_first, ks=ks_for_saving_first,
                     particle_diameter=particle_diameter,

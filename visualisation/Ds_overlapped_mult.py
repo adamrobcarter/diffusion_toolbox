@@ -7,7 +7,7 @@ import visualisation.Ds_overlapped
 
 SHOW_TWIN_K_AXIS = False
 PRESENT_SMALL = False
-PLOT_AGAINST_K = False
+PLOT_AGAINST_K = True
 
 DISCRETE_COLORS = False
 
@@ -272,6 +272,7 @@ def show_one_file(
             ax.vlines(window_size, min(ys), max(ys), color='gray', linestyle='dashed', label='window size')
 
     assert len(all_Ds) > 0, 'no Ds were found at all'
+    assert np.isfinite(all_Ds).any(), 'Ds were found but they were all nan'
     all_Ds = np.array(all_Ds)
     # print(all_Ds)
 
@@ -382,7 +383,7 @@ if __name__ == '__main__':
                 # 'f',
                 # 'f_long',
                 # 'MSD_first',
-                'D0Sk_theory',
+                # 'D0Sk_theory',
                 # 'boxcounting_collective_var',
                 # 'timescaleint_var',
                 # 'timescaleint_fixexponent_var',

@@ -32,6 +32,9 @@ timestep_map = {
     '0163_Muscovite50_100um_silice4um': 1,
     '0092_muscovite50_100um_silice4um_z19apres': 2, # guessed!!!
     '0024_silice4um_sediment': 1,
+    '0011_H2O_glass_cap': 1, # guessed
+    '0010_emptyglasscap': 1, # guessed
+    '0009_test_flat_long': 1, # guessed
 }
 
 endframe_map = {
@@ -46,7 +49,7 @@ skips = ['0154', '0015', '0016', '0046',
           '0012', '0013',
           '0018', # no timestep recorded
           '0019', '0091', # bin
-          '0166', # tomo
+          '0166', '0092', # tomo
           '0164', # abandoned
           ]
 
@@ -175,10 +178,20 @@ def preprocess(directory_path, directory_name, destination_filename, destination
         print('removed later frames')
 
     particle_diameter = None
-    if 'silice4um' in directory_name:
+    if 'silice4' in directory_name:
         particle_diameter = 4
-    if 'silice1p7um' in directory_name:
+    if 'silice1p7' in directory_name:
         particle_diameter = 1.7
+    if 'silice7p75' in directory_name:
+        particle_diameter = 7.75
+    if 'silice0p96' in directory_name:
+        particle_diameter = 0.96
+    if 'silice0p7' in directory_name:
+        particle_diameter = 0.7
+    if 'PS2' in directory_name:
+        particle_diameter = 2
+    if 'PS1' in directory_name:
+        particle_diameter = 1
 
     to_save = dict(
         NAME=destination_desc,
@@ -196,12 +209,15 @@ def preprocess(directory_path, directory_name, destination_filename, destination
 
     # print(f'done in {time.time()-t0:.0f}s')
 
-print('WARNING NOT DOING ALL')
 
 files = list(os.scandir('/data2/acarter/psiche/PSICHE_0624'))
 
-# do = ['psiche086', 'psiche087', 'psiche088', 'psiche089']
-do = ['psiche089']
+do = ['psiche029', 'psiche030', 'psiche031', 'psiche032', 'psiche033', 'psiche034',
+      'psiche035', 'psiche036', 'psiche037', 'psiche038', 'psiche039']
+# do = []
+
+if len(do):
+    print('WARNING NOT DOING ALL')
 
 for f in tqdm.tqdm(files):
     try:
@@ -209,6 +225,7 @@ for f in tqdm.tqdm(files):
             # print(f.name, f.path)
 
             if 'tomo' in f.name.lower():
+                # print('skipping tomo')
                 continue
 
             if f.name.startswith('_') or f.name == 'slurmdir':
@@ -218,8 +235,10 @@ for f in tqdm.tqdm(files):
             internal_desc = f.name[5:].replace('_', ' ')
             # print(internal_desc)
 
-            if not (internal_name in do):
+            if (len(do)) and not (internal_name in do):
                 continue
+
+            do.remove(internal_name)
 
             preprocess(f.path, f.name, internal_name, internal_desc)
             # f.path: /data2/acarter/psiche/PSICHE_0624/0064_PS3um_Au_exp500ms
@@ -231,3 +250,7 @@ for f in tqdm.tqdm(files):
     except Exception as err:
         print(f'failed on {f.name}')
         print(err)
+
+if len(do):
+    left = ' '.join(do)
+    raise Exception(f'Did not find all items: {left}')

@@ -3,7 +3,7 @@ import common
 import numpy as np
 import matplotlib.cm
 
-fig, ax = plt.subplots(1, 1, figsize=(3.5, 3))
+fig, ax = plt.subplots(1, 1, figsize=(5.5, 5))
 
 files = common.files_from_argv('MSD/data', 'msd_')
 
