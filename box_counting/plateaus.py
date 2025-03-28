@@ -8,14 +8,17 @@ import visualisation.Ds_overlapped
 import tqdm
 
 markers = {
-    'sDFT': '^',
+    'sDFT': 'none',
     'var': 'o',
+}
+linestyles = {
+    'sDFT': '-',
+    'var': 'none',
 }
 
 CROP_OFF_L_BELOW = 30
 
-def go(file, ax, sources, rescale_window=False, label_prefix='', rescale_sigma=True, colors=None,
-       linestyle='-'):
+def go(file, ax, sources, rescale_window=False, label_prefix='', rescale_sigma=True, colors=None):
 
     data = common.load(f'box_counting/data/counted_{file}.npz')
     N2_mean        = data['N2_mean']
@@ -42,19 +45,31 @@ def go(file, ax, sources, rescale_window=False, label_prefix='', rescale_sigma=T
         assert len(colors) == len(sources)
 
     for source_i, source in enumerate(sources):
+
+        if source == 'sDFT':
+            # this is a weird hack so sDFT can have more Ls than box sizes in the counted data
+            box_sizes = np.logspace(np.log10(box_sizes.min()), np.log10(box_sizes.max()), num=100)
+
         plateaus = np.full(box_sizes.shape, np.nan)
         plateaus_unc = np.full(box_sizes.shape, np.nan)
 
-        for i in tqdm.trange(len(box_sizes)):
-            if 'target' in source and i < 10:
+        for box_size_index in tqdm.trange(len(box_sizes)):
+            if 'target' in source and box_size_index < 10:
                 continue
-            
-            plateaus[i], plateaus_unc[i] = get_plateau(method=source, nmsd=N2_mean[i, :], file=file,
-                                L=box_sizes[i], phi=phi, sigma=sigma, t=t,
-                                var=N_var[i], varmod=N_var_mod[i], D0=D0,
-                                N_mean=N_mean[i], density=data.get('density', 0),
-                                var_time=N_var_time, cutoff_L=box_sizes[19], cutoff_plat=2*N_var[19],
-                                var_losecorr=N_var_losecorr[i])
+
+            def get():
+                if source == 'sDFT':
+                    # this is a weird hack so sDFT can have more Ls than box sizes in the counted data
+                    L = box_sizes[box_size_index]
+                    N_mean2 = data['density'] * L**2
+                    return countoscope_theory.nmsd.plateau_inter_2d(N_mean2, L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma)), 0
+                else:
+                    return get_plateau(
+                        method=source, file=file, data=data, box_size_index=box_size_index,
+                        phi=phi, sigma=sigma, t=t, D0=D0,
+                    )
+        
+            plateaus[box_size_index], plateaus_unc[box_size_index] = get()
             
             # if source == 'var' and i == 21:
             #     v_10 = plateaus[i]
@@ -71,10 +86,17 @@ def go(file, ax, sources, rescale_window=False, label_prefix='', rescale_sigma=T
         color = None
         if colors:
             color = colors[source_i]
+
+        print(source, plateaus_unc/plateaus)
         
-        label = label_prefix + PLATEAU_SOURCE_NAMES.get(source, source)
-        ax.plot(box_sizes/rescale_x, plateaus/rescale_y, label=label, marker=markers.get(source, '.'),
-                color=color, linestyle=linestyle)
+        if source == 'sDFT':
+            label = PLATEAU_SOURCE_NAMES.get(source, source)
+            ax.plot(box_sizes/rescale_x, plateaus/rescale_y, label=label, marker=markers.get(source, '.'),
+                    color=color, linestyle=linestyles.get(source, 'none'))
+        else:
+            label = label_prefix + PLATEAU_SOURCE_NAMES.get(source, source)
+            ax.errorbar(box_sizes/rescale_x, plateaus/rescale_y, plateaus_unc/rescale_y, label=label, marker=markers.get(source, '.'),
+                    color=color, linestyle=linestyles.get(source, 'none'))
 
     # ax.errorbar(box_sizes/data['particle_diameter'], v_10 * box_sizes**2 / box_sizes[21]**2, label=r'$Var_{10\sigma} L^2/(10\sigma)^2$', marker='.')
 
@@ -114,7 +136,7 @@ if __name__ == '__main__':
     for file in common.files_from_argv('box_counting/data/', 'counted_'):
         fig, ax = plt.subplots(1, 1)
 
-        go(file, ax, ['var', 'var_losecorr', 'sDFT'])
+        go(file, ax, ['var', 'histogram', 'sDFT'])
         # go(file, ax, PLATEAU_SOURCES)
 
         common.save_fig(fig, f'box_counting/figures_png/plateaus_{file}.png', dpi=200)

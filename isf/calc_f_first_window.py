@@ -48,16 +48,25 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
 
     if file == 'sim_nohydro_011_L320_test_singlet': d_frames = [0, 16]
 
-    isf.calc_both.calc_for_f_type(
-        file,
-        'F',
+    calc_props = dict(
+        file=file,
+        F_type='F',
         num_k_bins=60,
-        # file_suffix='_25bins',
         cores=cores,
         max_time_origins=max_time_origins,
         d_frames=d_frames,
         file_prefix = 'first_',
-        # file_prefix = 'first32_'
-        # window=window,
-        # file_suffix='_new',
     )
+
+    isf.calc_both.calc_for_f_type(
+        file_suffix='_nowindow',
+        window=None,
+        **calc_props
+    )
+
+    isf.calc_both.calc_for_f_type(
+        file_suffix='_bhwindow',
+        window='blackmanharris',
+        **calc_props
+    )
+

@@ -37,8 +37,8 @@ METHOD_NAME = {
 # select your method here
 # METHOD = DIFF_WITH_PREVIOUS
 # METHOD = DIFF_WITH_ZERO
-METHODS = [NONE]
-METHODS = [NONE, DIFF_WITH_TEN,REMOVE_BACKGROUND, DIFF_WITH_ZERO, DIFF_WITH_PREVIOUS]
+METHODS = [NONE, DIFF_WITH_PREVIOUS]
+# METHODS = [NONE, DIFF_WITH_TEN,REMOVE_BACKGROUND, DIFF_WITH_ZERO, DIFF_WITH_PREVIOUS]
 # METHODS = [DIFF_WITH_TEN]
 # METHODS = [NONE]
 # METHOD = REMOVE_BACKGROUND
@@ -108,6 +108,8 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
     if file == 'pierre_exp':
         every_nth_frame = 10
         time_mult = 0.1
+
+    assert every_nth_frame > 0, f'every_nth_frame = {every_nth_frame}, is your data too short?'
 
     fps = 1/time_step * time_mult
 
@@ -217,8 +219,9 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
      
         
         # for hiding border
-        fig.set_size_inches(*fig.get_size_inches()) # apparently this is needed to make subplots_adjust work
-        fig.subplots_adjust(left=0, bottom=0, right=1, top=1)
+        if False:
+            fig.set_size_inches(*fig.get_size_inches()) # apparently this is needed to make subplots_adjust work
+            fig.subplots_adjust(left=0, bottom=0, right=1, top=1)
 
     
         func(timestep, ax)
@@ -257,8 +260,10 @@ def show_single_frame(ax, frame, pixel_size, window_size_x, window_size_y, chann
     if frame is not None:
         ax.imshow(frame, cmap=cmap, interpolation='none', vmin=vmin, vmax=vmax, extent=(0, window_size_x, 0, window_size_y))
     
-    ax.set_xlim(0, window_size_x)
-    ax.set_ylim(0, window_size_y)
+    # ax.set_xlim(0, window_size_x)
+    # ax.set_ylim(0, window_size_y)
+    ax.set_xlim(-window_size_x, window_size_x)
+    ax.set_ylim(-window_size_x, window_size_y)
     
     if frame is not None:
         color = 'white' if frame.mean()/(frame.max()-frame.min()) < 0.2 else 'black'
@@ -325,7 +330,8 @@ if __name__ == '__main__':
         
         try:
             for METHOD in METHODS:
-                for crop in [False, True]:
+                for crop in [False]:
+                # for crop in [False, True]:
             
                     filename = f'preprocessing/figures_png/stack_movie_{file}'
 

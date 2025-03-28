@@ -7,10 +7,10 @@ import warnings
 import preprocessing.stack_movie
 
 
-CROP = 150
-X_START = 250
-Y_START = 50
-
+# CROP = 150
+# X_START = 250
+# Y_START = 50
+CROP = False
 
 def add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=None, outline=True):
     # radius can be None
@@ -121,7 +121,8 @@ if __name__ == '__main__':
         print('adding outlines')
         add_outlines(0, ax)
 
-        ax.set_xlim(X_START*pixel_size, (X_START+CROP)*pixel_size)
-        ax.set_ylim(Y_START*pixel_size, (Y_START+CROP)*pixel_size)
+        if CROP:
+            ax.set_xlim(X_START*pixel_size, (X_START+CROP)*pixel_size)
+            ax.set_ylim(Y_START*pixel_size, (Y_START+CROP)*pixel_size)
 
         common.save_fig(fig, f'particle_detection/figures_png/frame1_{file}.png', dpi=300, only_plot=True)

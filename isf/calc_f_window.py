@@ -1,7 +1,11 @@
 import isf.calc_both
 import common
+"""
 
-def go(file, window=False):
+OUT OF DATE, SHOULD USE window PARAM OF calc_f.py
+
+# doubleside
+for file in common.files_from_argv('particle_detection/data', 'particles_'):
     d_frames = None
 
     if '001' in file:
@@ -37,6 +41,7 @@ def go(file, window=False):
     if '_pot_longer' in file:
         d_frames = [0, 1, 4, 16, 64, 256, 1024]
 
+    window = True
     
     isf.calc_both.calc_for_f_type(
         file,
@@ -51,6 +56,17 @@ def go(file, window=False):
         file_suffix = '_bhwindow' if window else ''
     )
 
-if __name__ == '__main__':
-    for file in common.files_from_argv('particle_detection/data', 'particles_'):
-        go(file)
+    window = False
+    
+    isf.calc_both.calc_for_f_type(
+        file,
+        'F',
+        cores=16, # increasing this above 16 seems risky for big datasets
+        max_time_origins=max_time_origins, # computation time is directly proportional
+        use_zero=True, use_doublesided_k=False,
+        # file_suffix='',
+        d_frames=d_frames,
+        num_k_bins=60,
+        window = 'blackmanharris' if window else None,
+        file_suffix = '_bhwindow' if window else ''
+    )

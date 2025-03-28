@@ -28,6 +28,8 @@ def go(file, ax):
     S     = F    [0, :]
     k     = k    [0, :]
     S_unc = F_unc[0, :]
+
+    # assert np.any(S > 0.001)
     
     start_index = 40 # crops off k=0 delta fn
     start_index = 0
@@ -56,9 +58,10 @@ def go(file, ax):
 
     if data['log'] or FORCE_LOG_X_AXIS:
         ax.semilogx()
-        x_th = np.logspace(np.log10(k.min()), np.log10(k.max()), num=200)
+        x_th = np.logspace(np.log10(np.nanmin(k)), np.log10(np.nanmax(k)), num=200)
     else:
         x_th = np.linspace(0, k.max())
+    assert np.isfinite(x_th).all()
     # popt, pcov = scipy.optimize.curve_fit(countoscope_theory.structure_factor.hard_spheres_2d, x[min:end_index], S[min:end_index], p0=(0.3, 2))
     # ax.plot(x_th, countoscope_theory.structure_factor.hard_spheres_2d(x_th, *popt), color='grey', label=f'fit ($\phi={common.format_val_and_unc(popt[0], np.sqrt(pcov[0, 0]), sigfigs=3)}$, $\sigma={common.format_val_and_unc(popt[1], np.sqrt(pcov[1, 1]), sigfigs=3)}$)')
     
@@ -67,13 +70,14 @@ def go(file, ax):
             phi = np.pi/4 * density * sigma**2
             return countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma)
 
-        print(f'fitting from {k[min]:.2g}')
+        print(f'fitting for k >= {k[min]:.2g}')
         popt, pcov = scipy.optimize.curve_fit(fit_func, k[min:], S[min:], p0=(2,))
         sigma = popt[0]
         sigma_unc = np.sqrt(pcov[0, 0])
         phi_fit = np.pi/4 * density * sigma**2
         phi_fit_unc = 2 * np.pi/4 * density * sigma**2 * sigma_unc
         # label=f'fit: $\phi={common.format_val_and_unc(popt[0], np.sqrt(pcov[0, 0]), sigfigs=3)}$, $\sigma={common.format_val_and_unc(popt[1], np.sqrt(pcov[1, 1]), sigfigs=3)}$'
+        assert np.isfinite(fit_func(x_th, sigma)).all()
         ax.plot(x_th/rescale_x, fit_func(x_th, sigma), color=common.FIT_COLOR, zorder=10)
         print(f'fit gave sigma={common.format_val_and_unc(sigma, sigma_unc, sigfigs=4, latex=False)}, phi={common.format_val_and_unc(phi_fit, phi_fit_unc, sigfigs=4, latex=False)}')
         phi_force = np.pi/4 * density * 2.972**2

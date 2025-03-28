@@ -53,7 +53,7 @@ skips = ['0154', '0015', '0016', '0046',
           '0164', # abandoned
           ]
 
-def preprocess(directory_path, directory_name, destination_filename, destination_desc):
+def preprocess(directory_path, directory_name, destination_filename, destination_desc, dtype):
     print(f'processing {directory_name}')
     t0 = time.time()
     
@@ -99,7 +99,7 @@ def preprocess(directory_path, directory_name, destination_filename, destination
         # print(obj.shape, obj.dtype)
 
         if obj.shape[0] > 1000 and False:
-            proj = np.full((obj.shape[0]//2, obj.shape[1], obj.shape[2]), np.nan, dtype=np.float16)
+            proj = np.full((obj.shape[0]//2, obj.shape[1], obj.shape[2]), np.nan, dtype=dtype)
             print(proj.shape, proj.dtype, proj.nbytes/1e9)
 
             for i in tqdm.trange(0, obj.shape[0]//2):
@@ -111,12 +111,12 @@ def preprocess(directory_path, directory_name, destination_filename, destination
             final_frame = obj.shape[0]
             if destination_filename == 'psiche089':
                 final_frame = 531
-            proj = np.full((final_frame, obj.shape[1], obj.shape[2]), np.nan, dtype=np.float16)
+            proj = np.full((final_frame, obj.shape[1], obj.shape[2]), np.nan, dtype=dtype)
             
             for i in range(final_frame): # possibly because obj is not a real numpy object
                 proj[i, :, :] = obj[i, :, :]
 
-            # proj = obj.astype(np.float16)
+            # proj = obj.astype(dtype)
             # print(proj.shape, proj.dtype, f'{proj.nbytes/1e9:.1f}GB')
 
         del obj
@@ -168,7 +168,7 @@ def preprocess(directory_path, directory_name, destination_filename, destination
     # print(proj.dtype, proj.shape, proj.min(), proj.mean(), proj.max())
 
     # print('finishing')
-    # proj = proj.astype(np.float16)
+    # proj = proj.astype(dtype)
 
     # print('up is down')
     proj = proj[:, ::-1, :]
@@ -178,24 +178,34 @@ def preprocess(directory_path, directory_name, destination_filename, destination
         print('removed later frames')
 
     particle_diameter = None
+    particle_material = None
+    
     if 'silice4' in directory_name:
         particle_diameter = 4
+        particle_material = 'SiO2'
     if 'silice1p7' in directory_name:
         particle_diameter = 1.7
+        particle_material = 'SiO2'
     if 'silice7p75' in directory_name:
         particle_diameter = 7.75
+        particle_material = 'SiO2'
     if 'silice0p96' in directory_name:
         particle_diameter = 0.96
+        particle_material = 'SiO2'
     if 'silice0p7' in directory_name:
         particle_diameter = 0.7
+        particle_material = 'SiO2'
     if 'PS2' in directory_name:
         particle_diameter = 2
+        particle_material = 'PS'
     if 'PS1' in directory_name:
         particle_diameter = 1
+        particle_material = 'PS'
 
     to_save = dict(
         NAME=destination_desc,
-        particle_diameter=particle_diameter
+        particle_diameter=particle_diameter,
+        particle_material=particle_material
     )
 
     common.save_data(f'preprocessing/data/stack_{destination_filename}.npz',
@@ -211,36 +221,38 @@ def preprocess(directory_path, directory_name, destination_filename, destination
 
 
 files = list(os.scandir('/data2/acarter/psiche/PSICHE_0624'))
+files2 = list(os.scandir('/data2/acarter/psiche/PISCHE_0624_2/PSICHE_0624'))
 
-do = ['psiche029', 'psiche030', 'psiche031', 'psiche032', 'psiche033', 'psiche034',
-      'psiche035', 'psiche036', 'psiche037', 'psiche038', 'psiche039']
+# do = ['psiche029', 'psiche030', 'psiche031', 'psiche032', 'psiche033', 'psiche034',
+#       'psiche035', 'psiche036', 'psiche037', 'psiche038', 'psiche039']
 # do = []
+do = ['psiche024']
 
 if len(do):
     print('WARNING NOT DOING ALL')
 
-for f in tqdm.tqdm(files):
+def go(f):
     try:
         if f.is_dir():
             # print(f.name, f.path)
 
             if 'tomo' in f.name.lower():
                 # print('skipping tomo')
-                continue
+                return
 
             if f.name.startswith('_') or f.name == 'slurmdir':
-                continue
+                return
 
             internal_name = f'psiche{f.name[1:4]}'
             internal_desc = f.name[5:].replace('_', ' ')
             # print(internal_desc)
 
             if (len(do)) and not (internal_name in do):
-                continue
+                return
 
             do.remove(internal_name)
 
-            preprocess(f.path, f.name, internal_name, internal_desc)
+            preprocess(f.path, f.name, internal_name, internal_desc, dtype=np.float16)
             # f.path: /data2/acarter/psiche/PSICHE_0624/0064_PS3um_Au_exp500ms
             # f.name: 0064_PS3um_Au_exp500ms
             # internal_name: psiche064
@@ -250,6 +262,12 @@ for f in tqdm.tqdm(files):
     except Exception as err:
         print(f'failed on {f.name}')
         print(err)
+
+        
+for f in tqdm.tqdm(files):
+    go(f)
+for f in tqdm.tqdm(files2):
+    go(f)
 
 if len(do):
     left = ' '.join(do)

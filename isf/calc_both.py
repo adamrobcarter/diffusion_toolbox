@@ -21,19 +21,14 @@ def setup(F_type, file, d_frames, drift_removed=False, max_K=None):
     pixel_size    = data.get('pixel_size')
     window_size_x = data['window_size_x']
     window_size_y = data['window_size_y']
-    assert particles[:, 0].min() >= 0
-    assert particles[:, 1].min() >= 0
-    assert less_than_or_close(particles[:, 0].max(), window_size_x), f'particles[:, 0].max() = {particles[:, 0].max()}, window_size_x={window_size_x}'
-    assert less_than_or_close(particles[:, 1].max(), window_size_y), f'particles[:, 1].max() = {particles[:, 1].max()}, window_size_y={window_size_y}'
+    # assert 'density' in data
+    if '_pot' not in file:
+        assert particles[:, 0].min() >= 0
+        assert particles[:, 1].min() >= 0
+        assert less_than_or_close(particles[:, 0].max(), window_size_x), f'particles[:, 0].max() = {particles[:, 0].max()}, window_size_x={window_size_x}'
+        assert less_than_or_close(particles[:, 1].max(), window_size_y), f'particles[:, 1].max() = {particles[:, 1].max()}, window_size_y={window_size_y}'
     
     times = int(particles[:, 2].max() + 1)
-
-    # d_frames = np.concatenate([np.arange(0, 9.1), np.logspace(1, np.log10(num_timesteps-100), 50)]).round()
-
-    if not d_frames:
-        d_frames = common.exponential_integers(1, min(isf.show_both.LONG_END, times-1)) - 1
-    else:
-       d_frames = np.array(d_frames) # user provided
 
     if drift_removed:
         particles = common.remove_drift(particles)
@@ -55,8 +50,13 @@ def setup(F_type, file, d_frames, drift_removed=False, max_K=None):
             max_K = 21.81661564992912 # was 10
             # we use this cause it's the same as used by eleanorlong
 
-            
     particles_at_frame, times = scattering_functions.get_particles_at_frame(F_type, particles)
+
+    if not d_frames:
+        d_frames = times[:10]
+        # d_frames = common.exponential_integers(1, min(isf.show_both.LONG_END, times-1)) - 1
+    else:
+       d_frames = np.array(d_frames) # user provided
 
     return particles_at_frame, times, d_frames, min_K, max_K, data
 
@@ -75,8 +75,6 @@ def calc_for_f_type(
         use_zero=True,
         save=True,
         d_frames=None,
-        use_big_k=True,
-        linear_log_crossover_k=1,
         use_doublesided_k=False,
         window=None,
     ):
@@ -94,10 +92,11 @@ def calc_for_f_type(
         warnings.warn(f'halved number of cores to {cores}')
 
     print(f'going with min k = ({min_K[0]:.4f}, {min_K[1]:.4f})')
+    print('going with d_frames =', d_frames)
 
     Fs, F_unc, ks, F_unbinned, F_unc_unbinned, k_unbinned, k_x, k_y = scattering_functions.intermediate_scattering(
         F_type, num_k_bins, max_time_origins, d_frames, 
-        particles_at_frame, times, max_K, min_K, cores=cores, use_zero=use_zero, use_big_k=use_big_k, linear_log_crossover_k=linear_log_crossover_k,
+        particles_at_frame, times, max_K, min_K, cores=cores,
         use_doublesided_k=use_doublesided_k, window=window,
         Lx=data['window_size_x'], Ly=data['window_size_y'],
     )
@@ -120,7 +119,7 @@ def calc_for_f_type(
         particle_diameter=data['particle_diameter'], drift_removed=drift_removed,
         pixel_size=data.get('pixel_size'), pack_frac_given=data.get('pack_frac_given'),
         window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
-        NAME=data.get('NAME'), channel=data.get('channel'),
+        NAME=data.get('NAME'), channel=data.get('channel'), window=window,
         num_timesteps=times, max_time_hours=data.get('max_time_hours'), density=data.get('density'),
     )
 

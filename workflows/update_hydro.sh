@@ -1,0 +1,10 @@
+set -e
+
+# python -m isf.calc_f sim_hydro_011_L320_pot_longer sim_hydro_011_L640_pot_longer
+# python -m box_counting.count sim_hydro_011_L320_pot_longer sim_hydro_011_L640_pot_longer
+python -m isf.show_f sim_hydro_011_L320_pot_longer sim_hydro_011_L640_pot_longer
+python -m box_counting.msd_single sim_hydro_011_L320_pot_longer sim_hydro_011_L640_pot_longer
+python -m box_counting.D_of_L sim_hydro_011_L320_pot_longer sim_hydro_011_L640_pot_longer
+python -m visualisation.merge_Ds sim_hydro_011_L320_pot sim_hydro_011_L320_pot_longer
+python -m visualisation.merge_Ds sim_hydro_011_L640_pot sim_hydro_011_L640_pot_longer
+python -m visualisation.Ds_overlapped sim_hydro_011_L320_pot_longer_mergedD sim_hydro_011_L640_pot_longer_mergedD

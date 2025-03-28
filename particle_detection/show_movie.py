@@ -5,13 +5,16 @@ import particle_detection.show
 import preprocessing.stack_movie
 
 CROP = None
-HIGHLIGHTS = False
+HIGHLIGHTS = True
 
 def go(file, infile, outfile, SUFFIX=''):
 
         data_particles = common.load(infile)
         particles = data_particles['particles']
         # particles = particles[:, [1, 0, 2]] # DON'T ASK ME WHY
+
+        print('particles max', particles[:, 0].max(), particles[:, 0].min())
+        print('particles max', particles[:, 1].max(), particles[:, 1].min())
         
         radius    = data_particles.get('radius')
         time_step = data_particles['time_step']

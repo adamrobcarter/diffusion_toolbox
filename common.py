@@ -13,6 +13,7 @@ from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 import termplotlib
 import psutil
 import matplotlib.pyplot as plt
+import zipfile
 
 PLOT_COLOR = 'white'
 # PLOT_COLOR = 'black'
@@ -58,6 +59,15 @@ def intensity_correlation(data1, data2):
 
     print(r_sq.shape)
 
+def get_npz_info(npz, key):
+    if not key.endswith('.npy'):
+        raise Exception()
+
+    npy = npz.open(key)
+    version = np.lib.format.read_magic(npy)
+    shape, fortran, dtype = np.lib.format._read_array_header(npy, version)
+    return key[:-4], shape, dtype
+
 def load(filename):
     t0 = time.time()
 
@@ -67,25 +77,37 @@ def load(filename):
     print(f'loading {filename}, last modified {diff} ago')
     # print(f'loading {filename}, last modified ago')
 
+
     # try:
-    data = np.load(f'{filename}', allow_pickle=True)
+    # data = np.load(f'{filename}', allow_pickle=True)
     # except FileNotFoundError:
     #     psiche = filename.split('/')[-1]
     #     print(psiche)
     #     data = np.load(f'/media/com-psiche/Sans titre/psiche_export1_npzFiles/{psiche}', allow_pickle=True)
 
     if filename.endswith('.npz'):
-        keys = data.keys()
-        if len(keys) > 50:
-            print(f'  loaded {len(keys)} key-value pairs')
-        else:
-            for key in keys:
-                if data[key].shape: # array
-                    print(f'  loaded {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} shape={data[key].shape} size={arraysize(data[key])}')
-                else: # single value
-                    if data[key] != None:
-                        print(f'  loaded {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} value={format_value_for_save_load(data[key])}')
+        # https://stackoverflow.com/a/43223420/1103752
+        with zipfile.ZipFile(filename) as npz:
+            data = np.load(f'{filename}', allow_pickle=True) # quite janky to load it again, but I'm not sure how to get the numpy array from the zipfile object
+            
+            # keys = data.keys()
+            names = npz.namelist()
+
+            if len(names) > 50:
+                print(f'  loaded {len(names)} key-value pairs')
+            else:
+            # for key in keys:
+                for name in names:
+                    key, shape, dtype = get_npz_info(npz, name)
+                    
+
+                    if shape: # array
+                        print(f'  found  {key.ljust(20)} dtype={str(dtype).ljust(12)} shape={shape}, size={format_bytes(dtype.itemsize*np.prod(shape))}')
+                    else: # single value
+                        if data[key] != None:
+                            print(f'  loaded {key.ljust(20)} dtype={str(dtype).ljust(12)} value={format_value_for_save_load(data[key])}')
     else:
+        data = np.load(f'{filename}', allow_pickle=True)
         print(f'  loaded, dtype={data.dtype}, shape={data.shape}, size={arraysize(data)}')
         
     if (comp_time := time.time() - t0) > 60:
@@ -132,6 +154,7 @@ def arraysize(arr, mult=1):
     return format_bytes(size)
 
 def format_bytes(size):
+    size = int(size)
     if size < 1e3:
         # return str(size) + 'B'
         return f'{size}B'
@@ -246,9 +269,12 @@ def save_fig(fig, path, dpi=100, only_plot=False, hide_metadata=False):
 
 def add_scale_bar(ax, pixel_size, color='black'):
     image_width = ax.get_xlim()[1] - ax.get_xlim()[0]
+    warnings.warn('this is broken!!! at one point we moved from the xlim being px to um')
+    # currently working on psiche089_small
     print('image width', image_width)
     if pixel_size:
-        target_scale_bar_length = image_width / 10 # removed * pixel_size 
+        target_scale_bar_length = image_width / 10 # removed * pixel_size  
+        target_scale_bar_length = image_width / 10 * pixel_size # unremoved * pixel_size  
     else:
         target_scale_bar_length = image_width / 10
     possible_scale_bar_lengths = (0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000)
@@ -256,11 +282,11 @@ def add_scale_bar(ax, pixel_size, color='black'):
     takeClosest = lambda num,collection:min(collection,key=lambda x:abs(x-num))
     scale_bar_length = takeClosest(target_scale_bar_length, possible_scale_bar_lengths)
 
-    # if pixel_size:
-    #     scale_bar_length_ax = scale_bar_length/pixel_size
-    # else:
+    if pixel_size:
+        scale_bar_length_ax = scale_bar_length/pixel_size
+    else:
     # I had to comment this out - did we move from px to um at some point?
-    scale_bar_length_ax = scale_bar_length
+        scale_bar_length_ax = scale_bar_length
     print('scale bar length ax', scale_bar_length_ax)
 
     asb = AnchoredSizeBar(ax.transData, scale_bar_length_ax,
@@ -700,9 +726,17 @@ def term_hist(data):
     counts, bin_edges = np.histogram(data, bins=20)
     term_bar(counts, bin_edges)
 
-def term_bar(counts, bin_edges):
+def term_bar(y, x):
+    y = np.array(y)
+    x = np.array(x)
+
+    if np.any(y < 0):
+        y -= y.min()
+        
+    assert x.size == y.size + 1
+
     term_fig = termplotlib.figure()
-    term_fig.hist(counts, bin_edges, force_ascii=False, orientation="horizontal")
+    term_fig.hist(y, x, force_ascii=False, orientation="horizontal")
     term_fig.show()
 
     
@@ -929,23 +963,37 @@ def curve_fit(func, x, y, p0=None, sigma=None, absolute_sigma=None):
     return popt, np.diag(np.sqrt(pcov))
 
 def calc_pack_frac(particles, particle_diameter, window_size_x, window_size_y):
-    num_timesteps = int(particles[:, 2].max() + 1)
-    avg_particles_per_frame = particles.shape[0] / num_timesteps
-    density = avg_particles_per_frame / (window_size_x * window_size_y)
-    print('avg part per frame', avg_particles_per_frame)#, 'L^2', orig_width**2)
+    density = calc_density(particles, window_size_x, window_size_y)
     pack_frac = np.pi/4 * density * particle_diameter**2
     assert 0 < pack_frac
     assert pack_frac < 1
     return pack_frac
 
+def calc_density(particles, window_size_x, window_size_y):
+    num_timesteps = len(np.unique(particles[:, 2]))
+    avg_particles_per_frame = particles.shape[0] / num_timesteps
+    density = avg_particles_per_frame / (window_size_x * window_size_y)
+    print('avg part per frame', avg_particles_per_frame)#, 'L^2', orig_width**2)
+    return density
+
 def add_exponential_index_indicator(ax, exponent, anchor, xlabel):
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+
     orders_of_mag = 3
+    ax.loglog() # doesn't make sense otherwise
     x0 = anchor[0] / 10**(orders_of_mag)
     y0 = anchor[1] / 10**(orders_of_mag * exponent)
     x1 = anchor[0] * 10**(orders_of_mag)
     y1 = anchor[1] * 10**(orders_of_mag * exponent)
+    print('plot', x0, y0, x1, y1)
     ax.plot([x0, x1], [y0, y1], color=FIT_COLOR)
-    ax.text(anchor[0]*1.1, anchor[1], f'${xlabel}^{{{exponent}}}$', color=FIT_COLOR)
+    if ylim[0] < anchor[1] < ylim[1]:
+        ax.text(anchor[0]*1.1, anchor[1], f'${xlabel}^{{{exponent:.2f}}}$', color=FIT_COLOR)
+
+    # reset xlim and ylim
+    ax.set_xlim(*xlim)
+    ax.set_ylim(*ylim)
 
 def stokes_einstein_D(particle_diameter):
     k_B = scipy.constants.k
@@ -956,3 +1004,31 @@ def stokes_einstein_D(particle_diameter):
     D =  k_B * T / (6 * np.pi * eta * r) # m^2 / s
     D_um = D * (1e6)**2 # um^2 / s
     return D_um
+
+def stokes_einstein_v(particle_diameter, particle_material):
+    # https://iopscience.iop.org/article/10.1088/0034-4885/77/5/056602
+    # V_particle = 4/3 * np.pi * (particle_diameter/2)**3
+
+    d = particle_diameter * 1e-6 # assumed um
+
+    rho_particle = np.nan
+    if particle_material == 'SiO2':
+        rho_particle = 2.648 # wikipedia
+    rho_water = 1.0
+
+    delta_rho = rho_particle - rho_water # kg m^-3
+    # m_star = delta_rho * V_particle # kg
+
+    g = 9.81 # gravity, m s^-2
+    # f = 1e-3 # viscous friction coefficent (from chatgpt sorry) kg m^-1 s^-1
+
+    # v_0 = m_star * g / f # kg * m s^-2 / ( kg m^-1 s^-1 )
+    #                      # kg m s^-2 kg^-1 m s 
+    #                      # m2 s^-1
+
+    # https://pubs.acs.org/doi/pdf/10.1021/j100056a017 eq 5
+    viscosity = 1e-3 # wikipedia, kg/m/s
+    
+    v = delta_rho * g * d**2 / (18 * viscosity) # m/s
+    v_um = v * 1e6
+    return v_um

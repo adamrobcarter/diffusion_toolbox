@@ -9,7 +9,6 @@ if __name__ == '__main__':
     for file in common.files_from_argv('particle_detection/data', 'particles_'):
 
         data = common.load(f'particle_detection/data/particles_{file}.npz')
-        particles     = data['particles']
         window_size_x = data['window_size_x']
         window_size_y = data['window_size_y']
         
@@ -45,6 +44,7 @@ if __name__ == '__main__':
             sep_sizes = 100-box_sizes
 
         sep_sizes = 50-box_sizes
+        sep_sizes[sep_sizes < 2] = 2
 
 
         output_filename = f'box_counting/data/counted_{file}_no_overlap'
@@ -52,7 +52,7 @@ if __name__ == '__main__':
         output_filename += '.npz'
 
         t0 = time.time()
-        box_counting.count.calc_and_save(box_sizes, sep_sizes, data, particles,
-            output_filename, save_counts=False,
+        box_counting.count.calc_and_save(box_sizes=box_sizes, sep_sizes=sep_sizes, data=data,
+            output_file_name=output_filename, save_counts=False,
             save_data=True)
         print(f'took {time.time()-t0:.0f}s')

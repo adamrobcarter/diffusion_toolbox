@@ -12,6 +12,7 @@ import scipy.signal
 import tqdm
 import box_counting.D_of_L
 import warnings
+import box_counting.N_histogram
 
 # enums
 RESCALE_Y_VAR_N   = 1
@@ -67,6 +68,8 @@ RESCALE_Y = None
 
 SHORTTIME_FIT_ERROR_THRESH = 0.05 # D_unc/D must be smaller than this for the point to save
 
+TIMESCALEINT_REPLACEMENT_PLATEAU_SOURCE = 'var'
+
 have_displayed_at_least_one = False
 
 def get_plateau_range(file):
@@ -91,7 +94,7 @@ def get_plateau_range(file):
     elif 'marine3' in file: # hacky, pls don't do this
         start_index = -1900
         end_index   = -1000
-    elif 'sim_nohydro' in file:
+    elif 'sim_nohydro' in file or 'sim_hydro' in file:
         start_index = -20000
         end_index   = -10000
     else: # used to be -300, -100
@@ -139,25 +142,44 @@ PLATEAU_SOURCE_NAMES = {
     'nmsdfit': r'$\langle \Delta N^2(t) \rangle$ fit',
     'nmsdfitinter': r'$\langle \Delta N^2(t) \rangle$ fit w inter',
     'sDFT': 'theory',
+    'histogram': 'histogram',
 }
 
-def get_plateau(method, nmsd, file, L, phi, sigma, t, var, varmod, D0, N_mean, density, var_time, cutoff_L, cutoff_plat, var_losecorr, var_std, display=False):
+def get_plateau(method, file, data, box_size_index, phi, sigma, t, D0,cutoff_L=None, cutoff_plat=None):
+    
+
+    N_var  = data['N_var']    [box_size_index]
+    N_mean = data['N_mean']   [box_size_index]
+    L      = data['box_sizes'][box_size_index]
+
     if method == 'obs':
         return get_plateau_obs(file, nmsd)
     elif method == 'var':
         # return 2*var, 2 * np.sqrt(2/(n-1))*var # this is not a good estimate for the error on the variance as the samples are not independent
-        return 2*var, 2*var_std
+        lb_diff = np.abs(N_var - data['N_var_sem_lb'][box_size_index])
+        ub_diff = np.abs(N_var - data['N_var_sem_ub'][box_size_index])
+        var_sem = np.max([lb_diff, ub_diff], axis=0)
+        var_std = var_sem
+        return 2*N_var, var_std
+    
+    elif method == 'histogram':
+        
+        var, var_unc = box_counting.N_histogram.do_hist_fit(data['hist_x'][box_size_index, :], data['hist_y'][box_size_index, :],
+                    N_mean, N_var)
+
+        return 2*var, 2*var_unc
+
     elif method == 'varmod':
-        return 2*varmod, 0
+        return 2*data['N_var_mod'][box_size_index], 0# 2*data['N_var_mod_std'][box_size_index] / np.sqrt(data['num_boxes'][box_size_index]) # error seems to be underestimated at the mo
     elif method == 'var_time':
         assert False, 'below line needs changing'
         return 2*varmod, 0
     elif method == 'var_losecorr':
         return 2*var_losecorr, 0
     elif method == 'nmsdfit':
-        return get_plateau_nmsd_fit(nmsd, t, var, L)
+        return get_plateau_nmsd_fit(data['N2_mean'][box_size_index, :], t, N_var, L)
     elif method == 'nmsdfitinter':
-        return get_plateau_fit_nmsd_inter(file, t, nmsd, phi, sigma, L, D0)
+        return get_plateau_fit_nmsd_inter(file, t, data['N2_mean'][box_size_index, :], phi, sigma, L, D0)
     elif method == 'sDFT':
         return countoscope_theory.nmsd.plateau_inter_2d(N_mean, L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma)), 0
     elif method == 'N_mean':
@@ -168,7 +190,7 @@ def get_plateau(method, nmsd, file, L, phi, sigma, t, var, varmod, D0, N_mean, d
         if L > cutoff_L:
             return cutoff_plat * L**2 / cutoff_L**2, 0
         else:
-            return var*2, 0
+            return N_var*2, 0
     elif method == 'target_nofit':
         pass
     elif method == 'target_fixexponent':
@@ -185,7 +207,7 @@ def get_plateau(method, nmsd, file, L, phi, sigma, t, var, varmod, D0, N_mean, d
         # res = scipy.optimize.minimize(to_minimise, x0=[var*2])
         # return res.x, 0
 
-        plats = np.logspace(np.log10(var/100), np.log10(N_mean), num=2000)
+        plats = np.logspace(np.log10(N_var/100), np.log10(N_mean), num=2000)
         Ds = np.full_like(plats, np.nan)
         for i in range(len(plats)):
             Ds[i] = D_from_plat(plats[i])
@@ -267,7 +289,7 @@ def get_plateau_nmsd_fit(nmsd, t, var, L):
 
     return popt2[1], np.sqrt(pcov2[1, 1])
 
-def go(file, ax, separation_in_label=False,
+def go(file, ax=None, separation_in_label=False,
        linestyle='none', show_title=False,
        show_timescaleint_replacement=False, show_variance=False, labels_on_plot=True,
        rescale_x=None, rescale_y=None, legend_fontsize=7, legend_location=LEGEND_LOCATION,
@@ -279,6 +301,12 @@ def go(file, ax, separation_in_label=False,
     # D0_unc_from_fits = [{}, {}]
     # Dc_from_fits     = [{}, {}]
     # Dc_unc_from_fits = [{}, {}]
+
+    if not ax:
+        force_display_false = True
+        # prevents anything being plotted or shown
+    else:
+        force_display_false = False
 
     LOWTIME_FIT_END = 20
     
@@ -480,25 +508,15 @@ def go(file, ax, separation_in_label=False,
 
         #     return D_from_fit2, D_from_fit_unc2, fit_ys
         
-        print('N_var_std', N_var_std)
         plateau, plateau_unc = get_plateau(
             timescaleint_replacement_plateau_source, 
-            nmsd=delta_N_sq,
             file=file,
-            L=L,
+            data=data,
+            box_size_index=box_size_index,
             phi=phi,
             sigma=sigma,
             t=t,
-            var=N_var[box_size_index],
-            var_std=N_var_std[box_size_index],
-            varmod=N_var_mod[box_size_index],
-            var_losecorr=N_var_losecorr[box_size_index],
-            N_mean=N_mean[box_size_index],
             D0=D_MSD,
-            density=data.get('density', np.nan),
-            var_time=None,
-            cutoff_L=None,
-            cutoff_plat=None
         )
             
         # fitting_points2 = common.exponential_indices(t, num=100)
@@ -668,6 +686,10 @@ def go(file, ax, separation_in_label=False,
             display = True
         else:
             display = box_size_index % (len(box_sizes) // max_boxes_on_plot) == 0
+        
+        if force_display_false:
+            display = False
+            # the user can provide no ax if they want to compute the Ds without plotting
 
         if display:
             print('box_size_index', box_size_index)
@@ -836,67 +858,46 @@ def go(file, ax, separation_in_label=False,
             legend2 = ax.legend(handles=handles, labels=nointer_theory_limit_labels, loc='lower right', bbox_to_anchor=(0, 0, 0.75, 1), fontsize=legend_fontsize)
             ax.add_artist(legend2)
 
-    assert have_displayed_at_least_one, 'display was false for all L'
+    if not force_display_false:
+        assert have_displayed_at_least_one, 'display was false for all L'
 
-    if rescale_x and not FORCE_HIDE_LEGEND:
-        legend = ax.legend(handles=plotted_handles, fontsize=legend_fontsize, loc=legend_location)
-        common.set_legend_handle_size(legend)
-        pass
-    if not LINEAR_Y:
-        ax.semilogy()
-    ax.semilogx()
-    if rescale_x == RESCALE_X_L:
-        xlabel = '$t/L ($\mathrm{s/\mu m})$'
-    elif rescale_x == RESCALE_X_L2:
-        xlabel = '$t/L^2$ ($\mathrm{s/\mu m^2}$)'
-    else:
-        xlabel = '$t$ ($\mathrm{s}$)'
-    if rescale_y == None:
-        ylabel = r'$\langle \Delta N^2(t) \rangle$ ($\mathrm{\mu m^2}$)'
-    elif rescale_y == RESCALE_Y_N:
-        ylabel = r'$\langle \Delta N^2(t) \rangle / \langle N\rangle$'
-    elif rescale_y == RESCALE_Y_VAR_N:
-        ylabel = r'$\langle \Delta N^2(t) \rangle / Var(N)$'
-    elif rescale_y == RESCALE_Y_PLATEAU:
-        ylabel = r'$\langle \Delta N^2(t) \rangle / \mathrm{plateau}$'
-    elif rescale_y == RESCALE_Y_L2:
-        ylabel = r'$\langle \Delta N^2(t) \rangle / L^2$ ($\mathrm{\mu m^{-2}}$)'
-    ax.set_xlabel(xlabel)
-    if not disable_ylabel: ax.set_ylabel(ylabel)
+        if rescale_x and not FORCE_HIDE_LEGEND:
+            legend = ax.legend(handles=plotted_handles, fontsize=legend_fontsize, loc=legend_location)
+            common.set_legend_handle_size(legend)
+            pass
+        if not LINEAR_Y:
+            ax.semilogy()
+        ax.semilogx()
+        if rescale_x == RESCALE_X_L:
+            xlabel = '$t/L ($\mathrm{s/\mu m})$'
+        elif rescale_x == RESCALE_X_L2:
+            xlabel = '$t/L^2$ ($\mathrm{s/\mu m^2}$)'
+        else:
+            xlabel = '$t$ ($\mathrm{s}$)'
+        if rescale_y == None:
+            ylabel = r'$\langle \Delta N^2(t) \rangle$ ($\mathrm{\mu m^2}$)'
+        elif rescale_y == RESCALE_Y_N:
+            ylabel = r'$\langle \Delta N^2(t) \rangle / \langle N\rangle$'
+        elif rescale_y == RESCALE_Y_VAR_N:
+            ylabel = r'$\langle \Delta N^2(t) \rangle / Var(N)$'
+        elif rescale_y == RESCALE_Y_PLATEAU:
+            ylabel = r'$\langle \Delta N^2(t) \rangle / \mathrm{plateau}$'
+        elif rescale_y == RESCALE_Y_L2:
+            ylabel = r'$\langle \Delta N^2(t) \rangle / L^2$ ($\mathrm{\mu m^{-2}}$)'
+        ax.set_xlabel(xlabel)
+        if not disable_ylabel: ax.set_ylabel(ylabel)
 
-    title = file
-    # title = f'Simulated colloids in RCP spheres\n$\phi={phi:.3f}$'
-    if not np.isnan(phi):
-        title += f', $\phi_\mathrm{{calc}}={phi:.3f}$'
-    if not np.isnan(sigma):
-        title += f', $\sigma={sigma:.2f}\mathrm{{\mu m}}$'
-    if sigma_calced := data.get('particle_diameter_calced'):
-        title += f', $\sigma_\mathrm{{calc}}={sigma_calced:.3f}\mathrm{{\mu m}}$'
-        # print('sigma calced hidden from legend')
-    if show_title:
-        ax.set_title(title)
-
-    filename = f'nmsd_'
-    # if SHOW_JUST_ONE_BOX:
-    #     filename += f'one_'
-    # if RESCALE_X_L2 or RESCALE_Y:
-    #     filename += 'rescaled_'
-    # if SHOW_T_SLOPE:
-    #     filename += f't_'
-    # if SHOW_THEORY_FIT:
-    #     filename += f'theory_'
-    # if SHOW_SHORT_TIME_FIT:
-    #     filename += f'shorttime_'
-    # if SHOW_TIMESCALEINT_REPLACEMENT:
-    #     filename += f'timescaleintreplace_'
-    # filename += f'{file}'
-    # if LINEAR_Y:
-    #     filename += '_liny'
-
-    # common.save_fig(fig, f'/home/acarter/presentations/cmd31/figures/{filename}.pdf', hide_metadata=True)
-    # common.save_fig(fig, f'box_counting/figures_png/{filename}.png', dpi=200)
-    # if export_destination:
-    #     common.save_fig(fig, export_destination, hide_metadata=True)
+        title = file
+        # title = f'Simulated colloids in RCP spheres\n$\phi={phi:.3f}$'
+        if not np.isnan(phi):
+            title += f', $\phi_\mathrm{{calc}}={phi:.3f}$'
+        if not np.isnan(sigma):
+            title += f', $\sigma={sigma:.2f}\mathrm{{\mu m}}$'
+        if sigma_calced := data.get('particle_diameter_calced'):
+            title += f', $\sigma_\mathrm{{calc}}={sigma_calced:.3f}\mathrm{{\mu m}}$'
+            # print('sigma calced hidden from legend')
+        if show_title:
+            ax.set_title(title)
 
     common.save_data(f'visualisation/data/Ds_from_boxcounting_{file}',
             Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, Ls=Ls_for_saving,
@@ -933,6 +934,7 @@ if __name__ == '__main__':
            linestyle=LINESTYLE,
            show_variance=SHOW_VARIANCE,
            show_timescaleint_replacement=SHOW_TIMESCALEINT_REPLACEMENT,
+           timescaleint_replacement_plateau_source=TIMESCALEINT_REPLACEMENT_PLATEAU_SOURCE,
            show_title=not PRESENT_SMALL,
            labels_on_plot=LABELS_ON_PLOT,
            rescale_x=RESCALE_X, rescale_y=RESCALE_Y,

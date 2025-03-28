@@ -7,6 +7,9 @@ import DDM.viz
 background_removed = False
 
 for file in common.files_from_argv('preprocessing/data', 'stack_'):
+
+    assert '_small' not in file, 'you sure you want to go on _small?'
+
     data = common.load(f'preprocessing/data/stack_{file}.npz')
     stack      = data['stack']
     pixel_size = data['pixel_size']
@@ -34,6 +37,7 @@ for file in common.files_from_argv('preprocessing/data', 'stack_'):
                 num_k_bins=num_k_bins,
                 F_D_sq_all=F_D_sq_all, time_origins=time_origins, F_D_sq_noradial=F_D_sq_noradial, k_x=k_x, k_y=k_y,
                 pixel_size=pixel_size, particle_diameter=data.get('particle_diameter'), NAME=data.get('NAME'),
+                particle_material=data.get('particle_material'), 
                 pack_frac_given=data.get('pack_frac_given'), partial=i)
 
     # do the DDM calculation
@@ -46,4 +50,5 @@ for file in common.files_from_argv('preprocessing/data', 'stack_'):
         computation_time_ddm=t1-t0, num_k_bins=num_k_bins,
         F_D_sq_all=F_D_sq_all, time_origins=time_origins, F_D_sq_noradial=F_D_sq_noradial, k_x=k_x, k_y=k_y,
         pixel_size=pixel_size, particle_diameter=data.get('particle_diameter'), NAME=data.get('NAME'),
+        particle_material=data.get('particle_material'),
         pack_frac_given=data.get('pack_frac_given'), complete=True)

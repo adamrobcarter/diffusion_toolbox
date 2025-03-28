@@ -4,7 +4,7 @@ import common
 import trackpy
 import tqdm
 
-for file in common.files_from_argv('particle_detection/data', 'particles_'):
+def go(file):
     data = common.load(f'particle_detection/data/particles_{file}.npz')
     pixel_size = data.get('pixel_size')
     particles  = data['particles']
@@ -14,6 +14,20 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
     print('particles.dtype', particles.dtype)
 
     print('creating dataframe')
+    print('particles[:, 2]', particles[:, 2])
+
+    if 'mixt' in file:
+        # trackpy needs frame numbers not times
+        # so we convert from time to number using the maps frame_to_time and time_to_frame
+        frame_to_time = np.unique(particles[:, 2])
+        time_to_frame = lambda time: np.argmax(frame_to_time == time)
+
+        for row in tqdm.trange(particles.shape[0], desc='mapping times', leave=False):
+            particles[row, 2] = time_to_frame(particles[row, 2])
+
+    assert np.unique(particles[:, 2]).size == particles[:, 2].max() + 1, f'{np.unique(particles[:, 2]).size} != {particles[:, 2].max() + 1}'
+    # if they are integers, this should check they're continuous and zero based
+
     features = pandas.DataFrame(particles, columns=['x', 'y', 'frame'])
     # the dtype of the frame column is float32
     print('created dataframe')
@@ -46,6 +60,8 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
         pass
     if file.startswith('sim_nohydro'):
         pass
+    if file.startswith('sim_hydro'):
+        pass
     if file.startswith('sim_nointer'):
         pass
     print('search range', search_range)
@@ -76,8 +92,21 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
     #                   ^    ^   I am aware these are the wrong way round
     # but it has to be so to work. possibly we introduced this error in the sparticles
     # tracking, but now we have to be consistant
+    #### ^^^^ this might be one of the things fucking up the show_movie
+
+    assert particles.shape[0] > 0, 'no particles in resulting dataset'
+
+    
+
+    if 'mixt' in file:
+        # trackpy needs frame numbers not times
+        # so we convert back from number to time
+
+        for row in tqdm.trange(particles.shape[0], desc='remapping times', leave=False):
+            particles[row, 2] = frame_to_time[int(particles[row, 2])]
 
     # after filtering stubs, the IDs are now no longer continuous
+
     IDs = np.unique(particles[:, 3])
     ID_map = {}
     for i, ID in enumerate(IDs):
@@ -119,3 +148,7 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
             pack_frac=data.get('pack_frac'),
             window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'))
             # particle_diameter_calced=particle_diameter_calced)
+
+if __name__ == '__main__':
+    for file in common.files_from_argv('particle_detection/data', 'particles_'):
+        go(file)

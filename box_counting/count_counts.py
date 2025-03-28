@@ -17,9 +17,8 @@ if __name__ == '__main__':
 
 
         box_sizes = np.logspace(np.log10(0.288/2), np.log10(0.9*288), 30)
-        # box_sizes = box_sizes[5::4]
-        # box_sizes = box_sizes[8::3]
-        box_sizes = box_sizes[15::2]
+        # box_sizes = box_sizes[20, 22, 24, 26]
+        box_sizes = box_sizes[[17, 20, 23, 26]]
         sep_sizes = 7 - box_sizes
 
 

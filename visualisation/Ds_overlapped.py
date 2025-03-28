@@ -2,7 +2,7 @@ import common
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker
-import sys, warnings
+import sys, warnings, os
 import countoscope_theory.structure_factor
 import countoscope_theory.timescaleint
 import scipy.special
@@ -14,12 +14,9 @@ D0_SOURCE = 'MSD_first'
 
 if __name__ == '__main__':
     for file in sys.argv[1:]:
-        fig, ax = plt.subplots(1, 1, figsize=(5, 4))
+        fig, ax = plt.subplots(1, 1, figsize=(5.5, 4.5))
 
-        visualisation.Ds_overlapped_mult.go(
-            ax      = ax,
-            files   = [file], 
-            sources = [
+        sources = [
                 # 'MSD_first',
                 #   'MSD_long',
                 #   'D0Sk', 
@@ -36,6 +33,16 @@ if __name__ == '__main__':
                 # 'f',
                 # 'f_first',
                 # 'f_first_first',
+                # 'f_t0.5',
+                # 'f_t2',
+                # 'f_t8',
+                # 'f_t16',
+                # 'f_t32',
+                'f_t64',
+                'f_t256',
+                'f_t1024',
+                'f_t4092',
+                # 'f_t16384',
                 # 'F_first32_first',
                 # 'F_s',
                 # 'F_s_first',
@@ -45,7 +52,9 @@ if __name__ == '__main__':
                     # 'boxcounting_collective_var',
                 #   'timescaleint_',
                 #   'timescaleint_nmsdfitinter',
+
                   'timescaleint_nofit_cropped_var',
+
                 #   'timescaleint_nofit_cropped_sDFT',
                 #   'timescaleint_fixexponent_cutoff',
                 # 'timescaleint_fixexponent_var',
@@ -59,12 +68,25 @@ if __name__ == '__main__':
                 # 'NtN0_first',
                 # 'NtN0_fit',
                 # 'F_s_first',
-            ],
-            # plot_against_k=False, TWO_PI=True, logarithmic_y=True, output_filename=filename,
+            ]
+
+        colors = [[common.colormap(i/len(sources)) for i in range(len(sources))]]
+        print(colors)
+
+        visualisation.Ds_overlapped_mult.go(
+            colors  = colors,
+            ax      = ax,
+            files   = [file], 
+            sources = sources,
+            # plot_against_k=False,
+            # logarithmic_y=True, output_filename=filename,
             # ylim=YLIM,
-            legend_fontsize=8
+            legend_fontsize=8,
+            linestyles = ['-']
             )
-        ax.set_ylim(0.8, 3)
+        ax.set_ylim(0.7, 6)
+
+        # common.add_exponential_index_indicator(ax, 1/3, (8, 2), 'L')    
         
         common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_{file}.png')
 
@@ -184,13 +206,18 @@ linestyle = {
 def get_D0(file):
     # we don't do these ones in get_D0_filename cause sometimes we might want to compare these ones
     suffixes = ['_crop', '_trim', '_first', '_smallbins', '_nozero', '_no_overlap',
-                '_long', '_longer', '_moreoverlap', '_spacing', '_frac_of_window', '_windowed', '_nowindow',
-                '_mixt']
+                '_long', '_longer', '_moreoverlap', '_spacing', '_frac_of_window', '_windowed', '_nowindow', '_bhwindow',
+                # '_mixt'
+                '_xk',# '_unmix'
+                ]
     if '_mixt' in file:
         warnings.warn('allowing mixt for now, would be good to do a proper msd calculation though')
     for suffix in suffixes:
         if suffix in file:
             file = file.split(suffix)[0]
+
+    if '_unmix' in file:
+        file = file.split('_unmix')[0] + '_mixt'
             
     file = get_D0_filename(file)
             
@@ -213,10 +240,24 @@ def get_D0(file):
 def get_D0_filename(file):
     print(f'get_D0_filename({file})')
 
+    if file in ['sim_nohydro_011_L320_test_singlet_mixt', 'sim_nohydro_011_L320_test_mixt', 'sim_nohydro_011_L320_test_singlet']: # remove after this problem solved
+        return 'sim_nohydro_011_L640_div64'
+
     suffixes = ['_merged', '_crop1.0'] # these are ones we will never want to compare
     for suffix in suffixes:
         if suffix in file:
             file = file.split(suffix)[0]
+
+    root = 'visualisation/data/Ds_from_MSD_first'
+
+    if os.path.isfile(f'{root}_{file}.npz'):
+        return file
+    elif os.path.isfile(f'{root}_{file}_div8.npz'):
+        return f'{file}_div8'
+    elif os.path.isfile(f'{root}_{file}_div64.npz'):
+        return f'{file}_div64'
+    else:
+        raise Exception(f'MSD file not found for {file} ({root}_{file}_div64.npz not found)')
 
     if file in ['eleanorlong066', 'sim_nohydro_034_L640', 'sim_nohydro_034_L1280',
                 'sim_nohydro_010_L320', 'sim_nohydro_010_L544', 'sim_nohydro_010_L544_dt2', 'sim_nohydro_010_L640',
@@ -398,7 +439,6 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
     window_size = None
     pack_frac_calced = None
     pack_frac_given = None
-    diameter = None
     
     if data:
         diameter = data.get('particle_diameter')
@@ -432,299 +472,12 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
     if np.all(D_uncs == 0):
         print('all D_uncs zero!')
 
-    if not ('theory' in source):
+    if not ('theory' in source) and False:
         print('forcing min 3%% errors')
         errs_too_low = D_uncs/np.abs(Ds) < 0.03
         if len(D_uncs.shape) == 1:
             D_uncs[errs_too_low] = 0.03 * np.abs(Ds[errs_too_low])
         else:
-            print(D_uncs, Ds)
-            print(D_uncs.shape, np.repeat(Ds[:, np.newaxis], 2, axis=1).shape)
             D_uncs[errs_too_low] = 0.03 * np.repeat(np.abs(Ds)[np.newaxis, :], 2, axis=0)[errs_too_low]
 
-    return xs, Ds, D_uncs, pixel_size, window_size, pack_frac_given, pack_frac_calced, diameter
-"""
-
-def go(file, sources, plot_against_k=False, TWO_PI=True, logarithmic_y=True, ylim=None,
-       output_filename=None, export_destination=None, show_pixel=True,
-       show_window=True, show_pack_frac_plateau=False, figsize=DEFAULT_FIGSIZE,
-       label_k_scaling=False, label_pack_frac=False, hide_msd=False, ax=None,
-       legend_fontsize=None):
-
-    all_Ds = []
-    found_at_least_one_file = False
-        
-    ax_supplied = ax != None
-    if not ax_supplied:
-        fig, ax = plt.subplots(1, 1, figsize=figsize)
-    
-    pack_frac_calced = None
-    pack_frac_given  = None
-    pixel_size = None
-    window_size = None
-    diameter = None
-
-    xs = {}
-    Ds = {}
-    D_uncs = {}
-
-    used_sources = []
-
-    D_MSD, sigma, phi = get_D0(file)
-
-    # get all the data
-    for source in sources:
-        try:
-            xs[source], Ds[source], D_uncs[source], pixel_size_temp, window_size_temp, \
-                pack_frac_given_temp, pack_frac_calced_temp, diameter_temp = \
-                get_L_and_D(source, file, plot_against_k, TWO_PI, D_MSD, phi, sigma)
-        
-            if pixel_size_temp:       pixel_size       = pixel_size_temp
-            if window_size_temp:      window_size      = window_size_temp
-            if pack_frac_calced_temp: pack_frac_calced = pack_frac_calced_temp
-            if pack_frac_given_temp:  pack_frac_given  = pack_frac_given_temp
-            if diameter_temp:         diameter         = diameter_temp
-
-            used_sources.append(source)
-            found_at_least_one_file = True
-
-        except FileNotFoundError as e:
-            print('FileNotFound', e)
-
-    assert found_at_least_one_file
-
-    if D0_SOURCE in used_sources and not PREVENT_Y_RESCALING:
-        ax.set_ylabel(r'$D/D_\mathrm{self}$')
-        rescale_y = Ds[D0_SOURCE][0]
-    else:
-        ax.set_ylabel('$D$ ($\mathrm{\mu m^2/s}$)')
-        rescale_y = 1
-
-    if diameter and not np.isnan(diameter):
-        if plot_against_k:
-            rescale_x = 1/diameter
-            ax.set_xlabel(r'$k \sigma$')
-        else:
-            rescale_x = diameter
-            ax.set_xlabel(r'$L/\sigma$')
-    else:
-        rescale_x = 1
-        if plot_against_k:
-            ax.set_xlabel(r'$k$')
-        else:
-            ax.set_xlabel(r'$L$')
-
-    assert sum([len(x) for x in xs.values()]) > 0, 'xs was empty'
-    xmin = min([min(x) for x in xs.values() if len(x)>0]) / rescale_x
-    xmax = max([max(x) for x in xs.values() if len(x)>0]) / rescale_x
-
-    if pack_frac_calced:
-        pack_frac = pack_frac_calced
-    elif pack_frac_given:
-        pack_frac = pack_frac_given
-    else:
-        pack_frac = None
-    if pack_frac:
-        if show_pack_frac_plateau:
-            x = (1+pack_frac)/(1-pack_frac)**3 * D_MSD
-            Dc_theory_color = 'gray'
-            Dc_theory_label = r'$(1+\phi)/(1-\phi)^3$' if not LABELS_ON_PLOT else None
-            ax.hlines(x, xmin, xmax, label=Dc_theory_label, color=Dc_theory_color, linestyle=':')
-            if LABELS_ON_PLOT:
-                ax.text(xmax, x/1.1, '$D_c$ theory (no hydro)', ha='right', va='top', color=Dc_theory_color, fontsize=LABELS_ON_PLOT_FONTSIZE)
-
-        if label_pack_frac:
-            ax.text(0.12, 0.8, f'$\phi={pack_frac:.2f}$', transform=ax.transAxes, color=common.FIT_COLOR, fontsize=10)
-
-    # do the actual plotting
-    for source in used_sources:
-        source_label = f'{source_names.get(source, source)}'# if not source.startswith('MSD') else None
-
-        xs[source] = xs[source] / rescale_x
-
-        color = get_color(source)
-        ys = Ds[source] / rescale_y
-        yerrs = D_uncs[source] / rescale_y
-        
-        assert not np.any(np.isnan(xs[source]))
-
-        plot_label = source_label if not LABELS_ON_PLOT else None
-        zorder = -1 if source.endswith('theory') else None
-
-        if source.startswith('MSD'):
-            if not hide_msd:
-                ax.hlines(ys[0], xmin, xmax, color=color, linestyle='dotted', label=plot_label)
-                print('MSD errors hacked')
-                ax.fill_between(ax.get_xlim(), ys[0]*0.97, ys[0]*1.03, facecolor=color, alpha=0.5)
-
-        else:
-            ax.plot(xs[source], ys, linestyle=get_linestyle(source), marker=get_marker(source), markersize=5, color=color,
-                label=plot_label, zorder=zorder)
-            ax.errorbar(xs[source], ys, yerr=yerrs, linestyle='none', marker='none', alpha=ERRORBAR_ALPHA, color=color)
-
-        if LABELS_ON_PLOT:
-                
-            # old code for MSD labels:
-            #         xpos = xmin if PLOT_AGAINST_K else xmax
-            #         ha = 'left' if PLOT_AGAINST_K else 'right'
-            #         ax.text(xpos, ys[0]/1.2, source_label, ha=ha, va='top', color=colors[source], fontsize=LABELS_ON_PLOT_FONTSIZE)
-
-            offset = len(ys) // 6 if plot_against_k else -len(ys) // 6
-            if source == 'D_of_L_theory':
-                offset = int(len(ys) * 0.6)
-            if source == 'D0Sk_theory':
-                offset = len(ys) // 2
-            if source == 'boxcounting_collective':
-                offset = -len(ys) // 3
-            xpos = xs[source][offset] * 1.2
-            ypos = ys[offset]*1.2
-            ha = 'left' if plot_against_k else 'right'
-            if source == 'f_short' and plot_against_k == False:
-                xpos = xs[source][5] * 1.5
-                ypos = ys[5]*1.2
-                ha = 'left'
-            ax.text(xpos, ypos, source_label, ha=ha, va='bottom', color=color, fontsize=LABELS_ON_PLOT_FONTSIZE)
-
-        if np.all(yerrs == 0):
-            print(source, 'all errors zero')
-
-        # assert not np.any(np.isnan(Ds)), 'nan was found in Ds'
-        [all_Ds.append(D) for D in ys]
-
-
-    assert len(all_Ds) > 0, 'no Ds were found at all'
-
-    # phi = 0.34
-    # D_th_self = ( 1 - 1.73*phi )
-    # D_th_coll = ( 1 + 1.45*phi )
-
-    if logarithmic_y:
-        ax.semilogy()
-        ax.yaxis.set_minor_formatter(matplotlib.ticker.LogFormatter()) # prevent scientific notation on axes
-        ax.yaxis.set_major_formatter(matplotlib.ticker.LogFormatter()) # prevent scientific notation on axes
-
-    if not ylim:
-        ylim_expand = 1.2
-        if np.nanmax(all_Ds) - np.nanmax(all_Ds) < 0.4:
-            ylim_expand = 1.5
-        ylim = (np.nanquantile(all_Ds, 0.05)/ylim_expand, np.nanquantile(all_Ds, 0.95)*ylim_expand)
-        # if ylim:
-        #     ax.set_ylim(*ylim)
-        # ax.set_ylabel('$D/D_0$')
-        # ax.set_xticks([])
-    ax.set_ylim(*ylim)
-
-    if not plot_against_k:
-        if show_pixel:
-            ax.vlines(pixel_size,  *ylim, color='gray', linestyle='dotted', label='pixel size')
-        if show_window:
-            ax.vlines(window_size, *ylim, color='gray', linestyle='dashed', label='window size (max)')
-
-
-
-    ax.semilogx()
-    if plot_against_k:
-        
-
-        if SHOW_TWIN_K_AXIS:
-            realspace_ax = ax.secondary_xaxis('top', functions=(lambda k: 2*np.pi/k, lambda r: 2*np.pi/r))
-            # realspace_ax.set_xticks([1e2, 1e1, 1e0, 1e-1, 1e-2, 1e-3])
-            realspace_ax.set_xlabel(r'$2\pi/k / \sigma$')
-    else:
-        ax.set_xlabel(r'$L / \sigma$')
-    # ax.set_xlabel(r'$k / (2\pi / \sigma)$')
-    # ax.semilogy()
-
-    if not LABELS_ON_PLOT:
-        ax.legend(fontsize=legend_fontsize)
-    # ax.set_title(f'{file}, errorbars not yet all correct')
-    # name = '_'.join(used_sources)
-    # filename = f'{file}_{name}'
-    # if not TWO_PI:
-    #     filename += '_oneoverk'
-
-    if label_k_scaling:
-        k_scaling = r'$k \rightarrow L = 2\pi/k$' if TWO_PI else r'$k \rightarrow L = 1/k$'
-        ax.text(0.12, 0.8, k_scaling, transform=ax.transAxes)
-    
-    if not ax_supplied:
-        if export_destination:
-            common.save_fig(fig, export_destination, hide_metadata=True)
-        # if output_filename:
-        common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_{output_filename}.png', dpi=200)
-
-    print()
-
-def get_linestyle(source):
-    return linestyle.get(trim_source(source), 'none')
-
-def get_marker(source):
-    # print('marker', source, trim_source(source), markers.get(trim_source(source)))
-    return markers.get(trim_source(source), 'o')
-
-def get_color(source):
-    return colors.get(trim_source(source), common.FIT_COLOR)
-
-suffixes = ['_obs', '_nmsdfitinter', '_nmsdfit', '_var', '_varmod', '_sDFT', '_N_mean', '_density']
-
-def trim_source(source):
-    for suffix in suffixes:
-        source = source.split(suffix)[0]
-    return source
-
-if __name__ == '__main__':
-    for file in sys.argv[1:]:
-
-        filename = file
-
-        go(file, [
-            # 'MSD_first',
-                #   'MSD_long',
-                #   'D0Sk', 
-                #   'MSD_short',
-                #   'D0Sk_theory',
-                #   'dominiguez_theory',
-                #   'panzuela_theory',
-                #   'f_D1', 'f_D2',
-                #   'f', 'f_short', 'f_long', 
-                #   'f_first',
-                # 'f_short',
-                # 'f_long',
-                # 'f',
-                # 'f_first',
-                'f_first_first',
-                # 'F_first32_first',
-                # 'F_s',
-                # 'F_s_first',
-                # 'F_s_long',
-                #   'boxcounting_shorttime',
-                #     'boxcounting_first_quad',
-                    'boxcounting_collective_var',
-                #   'timescaleint_',
-                #   'timescaleint_nmsdfitinter',
-                  'timescaleint_nofit_cropped_var',
-                #   'timescaleint_nofit_cropped_sDFT',
-                #   'timescaleint_fixexponent_cutoff',
-                # 'timescaleint_fixexponent_var',
-                # 'timescaleint_fixexponent_sDFT',
-                # 'timescaleint_fixexponent_target_fixexponent',
-                #   'timescaleint_nofit_cropped_noshort_var',
-                #   'timescaleint_nofit_cropped_nmsdfitinter',
-                #   'MSD_centre_of_mass_proximity',
-                # 'D_of_L_theory',
-                # 'D_of_L_theory_Lh',
-                # 'NtN0_first',
-                # 'NtN0_fit',
-                # 'F_s_first',
-            ],
-            plot_against_k=False, TWO_PI=True, logarithmic_y=True, output_filename=filename,
-            ylim=YLIM, legend_fontsize=LEGEND_FONTSIZE
-            )
-
-        # go(file, ['MSD_short', 'boxcounting_collective', 'timescaleint_nofit', 'timescaleint', 'C_N_simplefit'],
-        #     PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True)
-
-        # go(file, ['MSD_short', 'D0Sk', 'f', 'f_short', 'f_long'],
-        #     PLOT_AGAINST_K=True, TWO_PI=True, logarithmic_y=True)
-
-"""
+    return xs, Ds, D_uncs, pixel_size, window_size, pack_frac_given, pack_frac_calced

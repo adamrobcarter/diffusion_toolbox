@@ -11,7 +11,10 @@ SEMILOGX = True
 # THEORY_PLOT_DS = [1, 0.1]
 THEORY_PLOT_DS = []
 
-def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NAME=None, channel=None, live=False, k_index_offset=0):
+def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, 
+         NAME=None, channel=None, do_fit=True, k_index_offset=0, k_index_end_early=0, particle_diameter=None,
+         color=None, plot_label=None, fit_use_flow=False, log_y=False, save_data=True,
+         legend_fontsize=9, particle_material=None):
 
     real_ks = []
 
@@ -25,13 +28,16 @@ def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NA
     B_of_q = []
     q = []
 
-    every_nth_k = (k.size - k_index_offset) // num_displayed_ks
+    every_nth_k = (k.size - k_index_offset) // (num_displayed_ks + k_index_end_early)
+
+    ymins = np.full(num_displayed_ks, np.nan)
+    ymaxs = np.full(num_displayed_ks, np.nan)
 
     for graph_i in range(num_displayed_ks):
         k_index = k_index_offset + graph_i * every_nth_k
 
         real_ks.append(k[k_index])
-        if not live:
+        if not do_fit:
             print(f'k={k[k_index]:.2f}')
 
         ax = axs[graph_i]
@@ -51,9 +57,18 @@ def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NA
         if num_removed := (to_plot==False).sum()-1:
             print(f'  removed {num_removed}')
 
-        ax.errorbar(t[to_plot], F_D_sq[to_plot, k_index], yerr=F_D_sq_unc[to_plot, k_index], marker='.', linestyle='none')
 
-        if not live:
+        ax.errorbar(t[to_plot], F_D_sq[to_plot, k_index], yerr=F_D_sq_unc[to_plot, k_index],
+                    marker='.', linestyle='none', color=color, label=plot_label)
+        
+        # ax.set_xlim(t[to_plot].min()*0.9, t[to_plot].max()*0.11)
+
+        ymins[graph_i] = np.nanmin(F_D_sq[to_plot, k_index])
+        ymaxs[graph_i] = np.nanmax(F_D_sq[to_plot, k_index])
+        assert np.isfinite(ymins[graph_i])
+        assert np.isfinite(ymaxs[graph_i])
+
+        if do_fit:
             # curve_fit needs the params to have similar scale (https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html)
             # we do not have that, so we rescale F_D by it's max value
             rescale = F_D_sq[1:, k_index].max()
@@ -74,32 +89,32 @@ def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NA
 
             t_theory = np.logspace(np.log10(t[1]), np.log10(t[-1]), 200)
 
-            if FIT_USE_FLOW:
+            if fit_use_flow:
                 J0 = lambda x: scipy.special.j0(x)
                 # func = lambda t, A, B, tau, v : A * (1 - np.exp(-t/tau) * J0(k[k_index]*v*t)) + B
                 func = lambda t, A, B, D, v : A * (1 - np.exp(-t*k[k_index]**2*D) * J0(k[k_index]*v*t)) + B
 
                 popt, pcov = scipy.optimize.curve_fit(func, t[to_plot], F_D_sq_rescaled[to_plot], sigma=weights[to_plot], p0=(F_D_sq_rescaled.max(), F_D_sq_rescaled.min(), 0.001, 0.01), maxfev=100000)#, absolute_sigma=True)
                 
+                D = popt[2] 
+                D_unc = np.sqrt(pcov)[2][2]
+
+                v = popt[3]
+                v_unc = np.sqrt(pcov)[3][3]
+
+                label = ''
                 
-                if 'particle_diameter' in data:
-                    D = popt[2] / common.stokes_einstein_D(data['particle_diameter'])
-                    D_unc = np.sqrt(pcov)[2][2] / common.stokes_einstein_D(data['particle_diameter'])
-
-                    v = popt[3]
-                    v_unc = np.sqrt(pcov)[3][3]
-                    
-                    label = f'$D=({common.format_val_and_unc(D, D_unc)})D_\mathrm{{SE}}$\n$v={common.format_val_and_unc(v, v_unc)}\mathrm{{\mu m/s}}$'
-                    # label = f'fit $D={D:.5f}$, $v={v:.5f}$'
+                if particle_diameter:
+                    D_SE = common.stokes_einstein_D(particle_diameter)
+                    label += f'$D=({common.format_val_and_unc(D/D_SE, D_unc/D_SE)})D_\mathrm{{SE}}$'
                 else:
-                    D = popt[2] 
-                    D_unc = np.sqrt(pcov)[2][2]
-
-                    v = popt[3]
-                    v_unc = np.sqrt(pcov)[3][3]
-                    
                     label = f'$D={common.format_val_and_unc(D, D_unc)}$\n$v={common.format_val_and_unc(v, v_unc)}$'
-                    # label = f'fit $D={D:.5f}$, $v={v:.5f}$'
+                
+                if particle_diameter and particle_material:
+                    v_SE = common.stokes_einstein_v(particle_diameter, particle_material)
+                    label += f'\n$v=({common.format_val_and_unc(v/v_SE, v_unc/v_SE)})v_\mathrm{{SE}}$'
+                else:
+                    label += f'\n$v={common.format_val_and_unc(v, v_unc)}\mathrm{{\mu m/s}}$'
 
             else: 
                 func = lambda t, A, B, D: A * (1 - np.exp(-t*k[k_index]**2*D)) + B
@@ -110,9 +125,9 @@ def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NA
                 D_unc = np.sqrt(pcov)[2][2]
 
                 # label = f'fit $D={common.format_val_and_unc(D, D_unc)}$'
-                if 'particle_diameter' in data:
-                    D  = D / common.stokes_einstein_D(data['particle_diameter'])
-                    D_unc  = D_unc / common.stokes_einstein_D(data['particle_diameter'])
+                if particle_diameter:
+                    D  = D / common.stokes_einstein_D(particle_diameter)
+                    D_unc  = D_unc / common.stokes_einstein_D(particle_diameter)
                     label = f'fit $D=({D:.2g}±{D_unc:.2g})D_\mathrm{{SE}}$'
                 else:
                     label = f'fit $D={D:.2g}±{D_unc:.2g}\mathrm{{\mu m}}$'
@@ -141,10 +156,7 @@ def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NA
                 print('  not saving, A(q) negative')
 
 
-        if SEMILOGX:
-            ax.semilogx()
-        # ax.semilogy()
-        ax.set_title(fr'$k={k[k_index]:.2f}\mathrm{{\mu m^-1}}$ ($\approx{2*np.pi/k[k_index]:.2f}\mathrm{{\mu m}}$)')
+        ax.set_title(fr'$k={k[k_index]:.2f}\mathrm{{\mu m^{{-1}}}}$ ($\approx{2*np.pi/k[k_index]:.2f}\mathrm{{\mu m}}$)')
         ax.set_xlabel('$t$ (s)')
         ax.set_ylabel('$|\Delta I(q, t)|^2$')
 
@@ -152,31 +164,35 @@ def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NA
         # ymax = F_D_sq[int(F_D_sq.shape[0]*0.7), k_index] * 1.3
         ymax = F_D_sq[:, k_index].max()*1.02
         
-        if 'particle_diameter' in data:
+        if particle_diameter:
             for D_mult in THEORY_PLOT_DS:
                 yspan = ymax - ymin
                 B = ymin + yspan/5
                 A = yspan / 3
                 
-                D = common.stokes_einstein_D(data['particle_diameter']) * D_mult
+                D = common.stokes_einstein_D(particle_diameter) * D_mult
                 
                 theory = A * (1 - np.exp(-k[k_index]**2 * t_theory * D)) + B
                 ax.plot(t_theory, theory, linestyle='dotted', label='$D=' f'{D_mult}' + '*D_\mathrm{Stokes-Einstein}$')
 
-        ax.set_ylim(ymin, ymax)
+        # ax.set_ylim(ymin, ymax)
 
 
-        legend_handles, legend_labels = ax.get_legend_handles_labels()
-        if len(legend_handles):
-            ax.legend(fontsize=9)
-
-    suptitle = common.name(file) + ' ' + str(data.get('NAME', ''))
-    fig.suptitle(f'{suptitle}, $\sigma={sigma}$, pixel$={pixel}$')
+        # legend_handles, legend_labels = ax.get_legend_handles_labels()
+        # if len(legend_handles):
+        
+            
+        if SEMILOGX:
+            ax.semilogx()
+        # if log_y:
+        #     ax.semilogy()
+            
+        ax.legend(fontsize=legend_fontsize)
     
-
-    common.save_data(f'visualisation/data/Ds_from_DDM_{file}',
-             Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, ks=ks_for_saving,
-             NAME=NAME, channel=channel)
+    if save_data:
+        common.save_data(f'visualisation/data/Ds_from_DDM_{file}',
+                Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, ks=ks_for_saving,
+                NAME=NAME, channel=channel)
     # common.save_data(f'DDM/data/A_B_of_q_{file}.npz',
     #          A=A_of_q, B=B_of_q, q=q,
     #          pack_frac_given=data.get('pack_frac_given'), particle_diameter=data.get('particle_diameter'))
@@ -184,6 +200,8 @@ def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, NA
     # common.save_data(f'isf/data/DDM_{file}.npz',
     #                  t=t, F=DDM_f, F_unc=DDM_f_unc, k=real_ks,
     #                  particle_diameter=data.get('particle_diameter'))
+
+    return ymins, ymaxs, t.min(), t.max()
 
 if __name__ == '__main__':
     for file in common.files_from_argv('DDM/data', 'ddm_'):
@@ -209,6 +227,12 @@ if __name__ == '__main__':
         fig, axs = plt.subplots(1, num_displayed_ks, figsize=(num_displayed_ks*3.5, 4))
 
         show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, NAME=NAME, channel=channel,
-             num_displayed_ks=num_displayed_ks, k_index_offset=k_index_offset)
+             num_displayed_ks=num_displayed_ks, k_index_offset=k_index_offset,
+            particle_diameter=data.get('particle_diameter'),
+            fit_use_flow=FIT_USE_FLOW)
+        
+        
+        suptitle = common.name(file) + ' ' + str(NAME)
+        fig.suptitle(f'{suptitle}, $\sigma={sigma}$, pixel$={pixel}$')
         
         common.save_fig(fig, f'DDM/figures_png/ddm_{file}.png')

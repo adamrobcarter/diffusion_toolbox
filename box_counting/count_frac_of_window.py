@@ -3,7 +3,7 @@ import numpy as np
 import time
 import sys
 import common
-from box_counting.count import calc_and_save
+from box_counting.count import calc_and_save, get_box_spacing
 
 if __name__ == '__main__':
     for file in common.files_from_argv('particle_detection/data', 'particles_'):
@@ -21,7 +21,7 @@ if __name__ == '__main__':
         # box_sizes_px = np.array([0.9*window_size/pixel_size])
         # sep_sizes = 17 - box_sizes
         # sep_sizes = 9 - box_sizes # moreoverlap
-        sep_sizes = 17 - box_sizes # moremoreoverlap
+        sep_sizes = get_box_spacing(file) - box_sizes # moremoreoverlap
 
 
         output_filename = f'box_counting/data/counted_{file}_frac_of_window.npz'

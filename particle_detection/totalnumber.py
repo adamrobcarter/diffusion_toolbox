@@ -7,9 +7,11 @@ for file in common.files_from_argv('particle_detection/data/', 'particles_'):
     particles = data['particles']
 
     hist, bins = np.histogram(particles[:, 2], bins=range(0, int(particles[:, 2].max())+2))
+    # times, counts = np.unique(particles[:, 2], return_counts=True)
 
     fig, ax = plt.subplots()
     ax.plot(hist)
-    ax.set_xlabel('time (frames)')
+    # ax.bar(times, counts, width=1)
+    ax.set_xlabel('time (frames) (might actually be time rn, need to check this)')
     ax.set_ylabel('number of particles')
     common.save_fig(fig, f'particle_detection/figures_png/totalnumber_{file}.png')

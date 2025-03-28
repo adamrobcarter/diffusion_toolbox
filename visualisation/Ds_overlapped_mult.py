@@ -7,9 +7,9 @@ import visualisation.Ds_overlapped
 
 SHOW_TWIN_K_AXIS = False
 PRESENT_SMALL = False
-PLOT_AGAINST_K = True
+PLOT_AGAINST_K = False
 
-DISCRETE_COLORS = False
+DISCRETE_COLORS = True
 
 ERRORBAR_ALPHA = 0.3
 LEGEND_FONTSIZE = 6
@@ -112,7 +112,6 @@ def show_one_file(
     pack_frac_given  = None
     pixel_size = None
     window_size = None
-    diameter = None
 
     xs = {}
     Ds = {}
@@ -124,17 +123,17 @@ def show_one_file(
 
     
     D_MSD, sigma, phi = visualisation.Ds_overlapped.get_D0(file)
+    diameter = sigma
 
     # get all the data
     for source in sources:
         try:
-            xs[source], Ds[source], D_uncs[source], pixel_size_temp, window_size_temp, pack_frac_given_temp, pack_frac_calced_temp, diameter_temp = visualisation.Ds_overlapped.get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD=D_MSD, sigma=sigma, phi=phi)
+            xs[source], Ds[source], D_uncs[source], pixel_size_temp, window_size_temp, pack_frac_given_temp, pack_frac_calced_temp = visualisation.Ds_overlapped.get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD=D_MSD, sigma=sigma, phi=phi)
         
             if pixel_size_temp:       pixel_size       = pixel_size_temp
             if window_size_temp:      window_size      = window_size_temp
             if pack_frac_calced_temp: pack_frac_calced = pack_frac_calced_temp
             if pack_frac_given_temp:  pack_frac_given  = pack_frac_given_temp
-            if diameter_temp:         diameter         = diameter_temp
 
             used_sources.append(source)
 
@@ -164,6 +163,7 @@ def show_one_file(
             rescale_x = diameter
             ax.set_xlabel(r'$L/\sigma$')
     else:
+        assert False
         rescale_x = 1
         if PLOT_AGAINST_K:
             ax.set_xlabel(r'$k$')
@@ -210,6 +210,10 @@ def show_one_file(
         else:
             assert len(color) == len(sources), f'len(color) = {len(color)} != len(sources) = {len(sources)}'
             used_color = color[source_i]
+
+        if used_color == 'none':
+            print('preventing labelling of invisible plot')
+            file_source_label = None
 
         ys = Ds[source] / rescale_y
         yerrs = D_uncs[source] / rescale_y
@@ -289,7 +293,7 @@ def show_one_file(
     ymax = np.nanquantile(all_Ds, 0.95)*ylim_expand*1.2
     if 'MSD_short' in used_sources:
         ymin = 0.3
-    # ax.set_ylim(ymin, ymax)
+    ax.set_ylim(ymin, ymax)
     
     ax.semilogx()
     if PLOT_AGAINST_K:
@@ -345,7 +349,7 @@ def go(files, ax, sources, plot_against_k=False, legend_fontsize=None,
             i, file, sources,
             PLOT_AGAINST_K=plot_against_k, TWO_PI=True, logarithmic_y=logarithmic_y,
             ax=ax, show_window=False, show_pixel=False,
-            num_files=len(files),
+            num_files=len(files), # uh? function name sounds like there's only one?
             allow_rescale_y=allow_rescale_y, linestyle=linestyle,
             file_label=file_label, errorbar_alpha=errorbar_alpha,
             markers=marker, source_labels=source_labels, color=color,
@@ -376,14 +380,20 @@ if __name__ == '__main__':
         files,
         ax,
         sources = [
-                'f_first_first',
+                # 'f_first_first',
+                'D0Sk_theory',
+                # 'f_t32',
+                # 'f_t8',
+                # 'f_t2',
+                # 'f_t1024',
+                'f_t0.5',
+                'f_t256',
                 # 'F_first32_first',
                 # 'f_first',
                 # 'f_short',
                 # 'f',
                 # 'f_long',
                 # 'MSD_first',
-                # 'D0Sk_theory',
                 # 'boxcounting_collective_var',
                 # 'timescaleint_var',
                 # 'timescaleint_fixexponent_var',
@@ -395,10 +405,10 @@ if __name__ == '__main__':
         # linestyle='none',
         legend_fontsize=LEGEND_FONTSIZE,
         discrete_colors=DISCRETE_COLORS,
-        allow_rescale_y=False,
+        allow_rescale_y=True,
         plot_against_k=PLOT_AGAINST_K,
     )
-    ax.set_ylim(0.035, 0.2)
+    ax.set_ylim(0.9, 5)
     
     filenames = '_'.join(files)
     common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_mult_{filenames}.png', dpi=200)

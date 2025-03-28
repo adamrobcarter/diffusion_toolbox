@@ -12,17 +12,15 @@ radius = sigma/2
 time_step = 1
 D = common.stokes_einstein_D(sigma)
 num_timesteps = 500
-# signal_to_noise = 100
-# v = 0.1 # px / frames UNCHANGEABLE ATM
-
-####### EVERYTHING MIGHT HAVE BEEN DONE IN PX NOT um BEFORE
-####### AND CHANGING IT MIGHT HAVE JUST BROKEN THE MOVING BKG
+signal_to_noise = 0.01
 
 # for v in [0, 0.1, 0.2]:
 # for v in [0, 0.1, 0.2]:
-for v in [0.02]:
-    for signal_to_noise in [0.01]:
+# for v in [0.04]:
+#     for signal_to_noise in [0.02]:
     # for signal_to_noise in [1]:
+for amplitude in [4]: # seems to be px
+    for freq in [3.5]:
 
         num_particles = int(L**2 * 4 / np.pi * phi / sigma**2)
 
@@ -65,14 +63,15 @@ for v in [0.02]:
             i /= radius # normalise so max is 1
             return i
 
-        background = rng.uniform(0, 1/signal_to_noise, size=(int((num_pixels)*10), int((num_pixels+v*num_timesteps)*10)))
+        background = rng.uniform(0, 1/signal_to_noise, size=(int((num_pixels)*10), int((num_pixels+2*amplitude*num_timesteps)*10)))
         background = scipy.ndimage.uniform_filter(background, size=30, mode='reflect')
         assert np.isfinite(background).all()
         # ^ this is the true background which we reproject each time
 
         def background_at_t(t):
             # apply the background velocity
-            offset = v*t
+            offset = amplitude * ( np.sin(2*np.pi*freq*t) + 1 ) # + 1 cause the offset should be positive
+
             bkg = background[0:num_pixels*10, int(offset):int(num_pixels*10+offset)]
             # now we gotta do the mean per chunk
             # you could do this better with reshape or summat but i cba
@@ -96,11 +95,11 @@ for v in [0.02]:
         # print(stack.mean(), stack.std(), stack.min(), stack.max()0)
         common.term_hist(stack)
 
-        common.save_data(f'preprocessing/data/stack_sim_psiche_v{v}_sn{signal_to_noise}.npz',
+        common.save_data(f'preprocessing/data/stack_sim_psiche_vib{freq}_a{amplitude}.npz',
                         stack=stack, pixel_size=pixel_size, time_step=time_step,
                         signal_to_noise=signal_to_noise,
                         particle_diameter=sigma)
-        common.save_data(f'preprocessing/data/stack_sim_psiche_v{v}_sn{signal_to_noise}_small.npz',
+        common.save_data(f'preprocessing/data/stack_sim_psiche_vib{freq}_a{amplitude}_small.npz',
                         stack=stack[::int(num_timesteps/50)], pixel_size=pixel_size, time_step=time_step,
                         signal_to_noise=signal_to_noise,
                         particle_diameter=sigma)

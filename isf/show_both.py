@@ -29,6 +29,7 @@ FIT_WITH_ZERO_POINT = True
 
 CROP_AT_SK_MINIMUM = False
 
+SHOW_FITS = False
 SHOW_TWOSTAGE_FIT = False
 
 FILTER_RISING_MULTIPLE = 2.5
@@ -36,6 +37,8 @@ FILTER_RISING_MULTIPLE = 2.5
 SHORT_END = 8 # this is time (not frame)
 LONG_START = 100 # this is time (not frame)
 LONG_END   = 1000
+
+DS_FOR_SAVING_NTH_T = 1024
 
 LIN_PLOT_END_TIME_MULT = 50 # controls how much time is plotted on the log f/lin t axes
 
@@ -63,6 +66,8 @@ def show_single_F_type(
     D_uncs_for_saving_first = []
     ks_for_saving_first = []
 
+    # Ds_for_saving_nth defined later
+
     Ds_for_saving_D1 = []
     D_uncs_for_saving_D1 = []
     ks_for_saving_D1 = []
@@ -86,6 +91,11 @@ def show_single_F_type(
     F_unc_all = d['F_unc']
     k_all     = d["k"]
     particle_diameter = d['particle_diameter']
+
+    
+    Ds_for_saving_nth     = [[] for i in range(len(t))]
+    D_uncs_for_saving_nth = [[] for i in range(len(t))]
+    ks_for_saving_nth     = [[] for i in range(len(t))]
 
     assert np.isfinite(k_all).all()
 
@@ -192,6 +202,8 @@ def show_single_F_type(
             graph_i += 1
 
         if do_fits:
+
+            # first point inversion
             assert t[0] == 0
             assert np.isclose(f[0], 1), f'f(0) = {f[0]}'
             # if not np.isclose(f[0], 1): warnings.warn(f'f(0) = {f[0]}')
@@ -199,9 +211,11 @@ def show_single_F_type(
             assert t[first_index] > 0
 
             if f[first_index] > 1e-2:
+
                 if f[first_index] == 1.0:
-                    print(f'f[{first_index}] == 1.0')
-                    print(f)
+                    print(f'  f[{first_index}] == 1.0')
+
+                # print(f'  f[{first_index}] = {f[first_index]}')
 
                 D_first = -1 / (k**2 * t[first_index]) * np.log(f[first_index])
                 D_unc_first = 1 / (k**2 * t[first_index]) * f_unc[first_index] / f[first_index]
@@ -215,6 +229,28 @@ def show_single_F_type(
                 if display: print(f'  first: D={common.format_val_and_unc(D_first, D_unc_first, latex=False)}')
             else:
                 if display: print('  first: skipped (f(k,t) < 0.01)')
+
+            # nth point inversion
+            for nth_t_index, nth_t in enumerate(t[1:]):
+                nth_index = np.argmax(t == nth_t)
+                if nth_index == 0: # nth_index == 0 would mean point not found
+                    if display:
+                        print(f'  nth: t == {nth_t} not found. t =', t)
+
+                elif f[nth_index] > 1e-2:
+                    D_nth = -1 / (k**2 * t[nth_index]) * np.log(f[nth_index])
+                    D_unc_nth = 1 / (k**2 * t[nth_index]) * f_unc[nth_index] / f[nth_index]
+                    # print(f'  nth D={D_nth:.3g}')
+                    assert D_unc_nth >= 0, f'D_unc_nth={D_unc_nth:.3f} = 1 / ({k:.3f}**2 * {t[nth_index]:.3f} * {f[nth_index]:.3f}) * {f_unc[nth_index]:.3f}'
+                    # print(f'f rel err {f_unc[nth_index]/f[nth_index]:.4f}, D rel err {D_unc_nth/D_nth}')
+                    # print(f'D(f)={D_nth:.3f}, D(f+df)={-1 / (k**2 * t[nth_index]) * np.log(f[nth_index]+f_unc[nth_index]):.3f}, D(f-df)={-1 / (k**2 * t[nth_index]) * np.log(f[nth_index]-f_unc[nth_index]):.3f}')
+                    # print(Ds_for_saving_nth, nth_t_index)
+                    Ds_for_saving_nth    [nth_t_index].append(D_nth)
+                    D_uncs_for_saving_nth[nth_t_index].append(D_unc_nth)
+                    ks_for_saving_nth    [nth_t_index].append(k)
+                    if display: print(f'  nth: D={common.format_val_and_unc(D_nth, D_unc_nth, latex=False)} (nth_index={nth_index})')
+                else:
+                    if display: print('  nth: skipped (f(k,t) < 0.01)')
 
         # if Ftype == 'f':
         #     noise_thresh = 1e-2 # for eleanorlong!!
@@ -403,7 +439,7 @@ def show_single_F_type(
                 D = f_popt[0]
                 D_unc = np.sqrt(f_pcov)[0][0]
 
-                if display:
+                if display and SHOW_FITS:
                     ax      .plot(t_th, func(t_th, *f_popt), color=color, linestyle='dashdot', label=f'total {print_D(D)}')
                     ax_short.plot(t_th, func(t_th, *f_popt), color=color, linestyle='dashdot', label=f'total {print_D(D)}')
                     log_ax  .plot(t_th, func(t_th, *f_popt), color=color, linestyle='dashdot', label=f'total {print_D(D)}')
@@ -454,7 +490,7 @@ def show_single_F_type(
 
                 if np.isfinite(D_unc_short):
                     
-                    if display:
+                    if display and SHOW_FITS:
                         ax      .plot(t_th, func(t_th, *f_popt_short), color=color, linestyle='dotted', label=f'short fit {print_D(D_short)}')
                         ax_short.plot(t_th, func(t_th, *f_popt_short), color=color, linestyle='dotted', label=f'short fit {print_D(D_short)}')
                         log_ax  .plot(t_th, func(t_th, *f_popt_short), color=color, linestyle='dotted', label=f'short fit {print_D(D_short)}')
@@ -484,7 +520,7 @@ def show_single_F_type(
                     D_unc_short_linear = np.sqrt(f_pcov_short_linear)[0][0]
 
                     if np.isfinite(D_unc_short_linear):
-                        if display:
+                        if display and SHOW_FITS:
                             # ax.plot(t_th, linear_func(t_th, *f_popt_short_linear), color=color, linestyle='dotted', label='short')
                             ax_short.plot(t_th, linear_func(t_th, *f_popt_short_linear), color='tab:red', linestyle='dotted', label=f'short lin {print_D(D_short_linear)}')
                             ax      .plot(t_th, linear_func(t_th, *f_popt_short_linear), color='tab:red', linestyle='dotted', label=f'short lin {print_D(D_short_linear)}')
@@ -526,7 +562,7 @@ def show_single_F_type(
                         pass
                     else:
                     
-                        if display:
+                        if display and SHOW_FITS:
                             ax    .plot(t_th, func(t_th, *f_popt_long), color=color, linestyle='dashed', label=f'long {print_D(D_long)}')
                             log_ax.plot(t_th, func(t_th, *f_popt_long), color=color, linestyle='dashed', label=f'long {print_D(D_long)}')
                         
@@ -605,18 +641,17 @@ def show_single_F_type(
 
         ##### displaying
         assert np.all(f != 0)
-        print(f_unc)
         assert np.all(f_unc != 0)
 
         # D and D2 are only for plotting
-        # this whole [1:] thing is to stop annoying console warnings for /0 and log(<1) because f_unc[0] = 0
-        D_bad = f_bad[1:]
 
-        D      = -1/(k**2 * t[1:] ) * np.log(f[1:])
-        D_unc  =  1/(k**2 * t[1:] ) / np.sqrt(f[1:]**2) * f_unc[1:] # the sqrt(**2) is needed to prevent negative errors
+        D_bad = f_bad
+
+        D      = -1/(k**2 * t ) * np.log(f)
+        D_unc  =  1/(k**2 * t ) / np.sqrt(f**2) * f_unc # the sqrt(**2) is needed to prevent negative errors
             
-        D2     = -1/k**2 * np.gradient(np.log(f[1:]), t[1:])
-        D2_unc = np.abs( 1/k**2 * np.gradient(1/f[1:], t[1:]) * f_unc[1:] )
+        D2     = -1/k**2 * np.gradient(np.log(f), t)
+        D2_unc = np.abs( 1/k**2 * np.gradient(1/f, t) * f_unc )
             
         
         if display:
@@ -731,38 +766,40 @@ def show_single_F_type(
         common.save_fig(sp_fig, f'isf/figures_png/segre_pusey_rescaling_{file}.png')     
 
     if do_fits:
+        common_to_save = dict(
+            particle_diameter=particle_diameter, max_time_origins=d['max_time_origins'],
+            pixel_size=d.get('pixel_size'), max_time_hours=d.get('max_time_hours'),
+            channel=d.get('channel'), NAME=d.get('NAME'), computation_time=d['computation_time']
+        )
+
         assert len(Ds_for_saving_first), 'nothing to save'
         common.save_data(f'visualisation/data/Ds_from_{Ftype}_first_{file}',
                     Ds=Ds_for_saving_first, D_uncs=D_uncs_for_saving_first, ks=ks_for_saving_first,
-                    particle_diameter=particle_diameter,
-                    pixel_size=d.get('pixel_size'), max_time_hours=d.get('max_time_hours'),
-                    channel=d.get('channel'), NAME=d.get('NAME'))
+                        **common_to_save
+                    )
+        for nth_t_index, nth_t in enumerate(t[1:]):
+            assert len(Ds_for_saving_nth), 'nothing to save'
+            common.save_data(f'visualisation/data/Ds_from_{Ftype}_t{nth_t}_{file}',
+                        Ds=Ds_for_saving_nth[nth_t_index], D_uncs=D_uncs_for_saving_nth[nth_t_index], ks=ks_for_saving_nth[nth_t_index],
+                        **common_to_save
+                        )
+        
         if Ftype != 'f_first':
             common.save_data(f'visualisation/data/Ds_from_{Ftype}_{file}',
                         Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, ks=ks_for_saving,
-                        particle_diameter=particle_diameter,
-                        pixel_size=d.get('pixel_size'), max_time_hours=d.get('max_time_hours'),
-                        channel=d.get('channel'), NAME=d.get('NAME'))
+                        **common_to_save)
             common.save_data(f'visualisation/data/Ds_from_{Ftype}_short_{file}',
                         Ds=Ds_for_saving_short, D_uncs=D_uncs_for_saving_short, ks=ks_for_saving_short,
-                        particle_diameter=particle_diameter,
-                        pixel_size=d.get('pixel_size'), max_time_hours=d.get('max_time_hours'),
-                        channel=d.get('channel'), NAME=d.get('NAME'))
+                        **common_to_save)
             common.save_data(f'visualisation/data/Ds_from_{Ftype}_long_{file}',
                         Ds=Ds_for_saving_long, D_uncs=D_uncs_for_saving_long, ks=ks_for_saving_long,
-                        particle_diameter=particle_diameter,
-                        pixel_size=d.get('pixel_size'), max_time_hours=d.get('max_time_hours'),
-                        channel=d.get('channel'), NAME=d.get('NAME'))
+                        **common_to_save)
             common.save_data(f'visualisation/data/Ds_from_{Ftype}_D1_{file}',
                         Ds=Ds_for_saving_D1, D_uncs=D_uncs_for_saving_D1, ks=ks_for_saving_D1,
-                        particle_diameter=particle_diameter,
-                        pixel_size=d.get('pixel_size'), max_time_hours=d.get('max_time_hours'),
-                        channel=d.get('channel'), NAME=d.get('NAME'))
+                        **common_to_save)
             common.save_data(f'visualisation/data/Ds_from_{Ftype}_D2_{file}',
                         Ds=Ds_for_saving_D2, D_uncs=D_uncs_for_saving_D2, ks=ks_for_saving_D2,
-                        particle_diameter=particle_diameter,
-                        pixel_size=d.get('pixel_size'), max_time_hours=d.get('max_time_hours'),
-                        channel=d.get('channel'), NAME=d.get('NAME'))
+                        **common_to_save)
 
 if __name__ == '__main__':
     for file in sys.argv[1:]:

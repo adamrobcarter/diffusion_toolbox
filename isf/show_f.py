@@ -2,7 +2,7 @@ import sys
 import matplotlib.pyplot as plt
 import common
 
-for file in common.files_from_argv('isf/data/', 'F_'):
+def go(file, skip_saving_figure=False):
     from isf.show_both import show_single_F_type
     # ^^^ rn we do this hack cause the figure is created at import inside show_both
 
@@ -13,4 +13,9 @@ for file in common.files_from_argv('isf/data/', 'F_'):
             
     fig.suptitle(fr'f(k, t), {file}')
 
-    common.save_fig(fig, f'isf/figures_png/f_decay_t_{file}.png', dpi=200)
+    if not skip_saving_figure:
+        common.save_fig(fig, f'isf/figures_png/f_decay_t_{file}.png', dpi=200)
+
+if __name__ == '__main__':
+    for file in common.files_from_argv('isf/data/', 'F_'):
+        go(file)

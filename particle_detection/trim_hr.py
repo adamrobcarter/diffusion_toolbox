@@ -1,6 +1,6 @@
 import common
 
-TRIMS = [7]
+TRIMS = [7.11]
 # TRIMS = [0.0625]
 
 for file in common.files_from_argv('particle_detection/data', 'particles_'):

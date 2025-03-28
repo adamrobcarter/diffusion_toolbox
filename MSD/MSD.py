@@ -769,6 +769,7 @@ def calc_incremental(particles):
         assert not np.any(np.isnan(data_this_particle))
 
         if data_this_particle.shape[0] == 0:
+            raise Exception('what is this doing?!!!!')
             pass
 
         # elif current_id % calc_every != 0:
@@ -989,3 +990,298 @@ def MSD(data, num_shifts, shift_length, time_step, exponent=2):
 
     return t, mean_msd
     """
+
+###### msd mixt seems complicated so we're gonna start again
+# knowing that we only need to calculate MSD(frame=1)
+
+
+def get_frames_with_delta_t(t, dt):
+    # find all pairs of frames in `t` separated by `dt`
+    pairs = []
+
+    print('t[:10]', t[:10])
+
+    pairs = np.zeros((len(t), 2), dtype=int)
+    num_pairs_found = 0
+
+    for frame in range(len(t)):
+        if len(index := np.where(t == t[frame] + dt)[0]):
+
+            pairs[num_pairs_found, :] = (frame, index[0])
+            num_pairs_found += 1
+
+    pairs = pairs[:num_pairs_found, :]
+
+    assert len(pairs), f'no frames with time delta {dt} were found in the data'
+
+    assert np.isfinite(pairs).all()
+    return pairs
+
+def get_particles_at_frame(particles):
+    ##### this was shamefully copied straight from scattering functions
+
+    # assert particles.dtype == np.float32
+
+    # data is x,y,t
+    particles[:, 2] -= particles[:, 2].min() # convert time to being 0-based
+
+    # find max number of particles at any one timestep
+    times, num_particles_at_frame = np.unique(particles[:, 2], return_counts=True)
+    num_timesteps = times.size
+    max_particles_at_frame = num_particles_at_frame.max()
+    assert num_particles_at_frame.size == num_timesteps, f'{num_particles_at_frame.size} != {num_timesteps}'
+
+
+    ###########start
+
+    #### this whole thing a mess and tbh I don't remember why I did it this way
+    #### ffs adam this is a sign that you need to take more time over the code
+
+    # for Fself, we need the IDs, so we provide a list where the nth element is the nth particle
+    assert particles.shape[1] == 4, 'for self intermediate scattering, you should provide rows of x,y,t,#'
+
+    # we sort the ting by particle ID, then time
+    print('sorting')
+    particles = particles[particles[:, 3].argsort()]
+    particles = particles[np.lexsort((particles[:, 2], particles[:, 3]))] # sort by ID then time
+    print('sorted')
+
+    # for the reshaping we use frame number not time
+    time_to_frame = lambda time: np.argmax(times == time)
+    assert time_to_frame(0) == 0
+    for row in tqdm.trange(particles.shape[0], desc='mapping times'):
+        particles[row, 2] = time_to_frame(particles[row, 2])
+
+    assert particles.shape[0], 'particles was empty'
+
+    # find trajectories that are long enough
+    i = 0
+    MIN_TRAJ_LENGTH = 0
+    good_ids = []
+    progress = tqdm.tqdm(total=particles.shape[0], desc='finding trajectories')
+    skipped = 0
+    too_short = 0
+
+    while i < particles.shape[0]-1:
+        start_i = i
+        current_id = int(particles[i, 3])
+        start_time = particles[i, 2]
+        while i < particles.shape[0]-1 and particles[i, 3] == current_id:
+            i += 1
+            progress.update()
+        end_i = i
+        # print(particles[start_i:end_i, :])
+        end_time = particles[i-1, 2]
+        # print(f'end_t={end_time}, start_t={start_time} i={i}')
+        assert end_time >= start_time, f'end_t={end_time}, start_t={start_time}'
+        traj_length = end_time - start_time
+        rows_used = end_i - start_i
+        assert end_i > start_i
+        # print(rows_used, traj_length, rows_used == traj_length + 1)
+
+        if rows_used != traj_length + 1: # this essentially checks that the frame number is going up by one each time
+            skipped += 1
+                
+            if start_time == 0:
+                print('start t zero skipped')
+        else:
+            if traj_length > MIN_TRAJ_LENGTH:
+                good_ids.append((current_id, start_i, end_i))
+                if start_time == 0:
+                    print('start t zero good')
+            else:
+                too_short += 1
+                if start_time == 0:
+                    print('start t zero too short')
+        
+        i += 1
+
+    progress.close()
+
+    assert len(good_ids), 'good_ids is empty'
+
+    print('good trajs', len(good_ids)/particles[:, 3].max())
+    print('skipped', skipped/particles[:, 3].max())
+    print('too short', too_short/particles[:, 3].max())
+
+    print(particles[:10, :])
+
+    # save these trajectories in a new shape - (num timesteps) x (num trajectories) x 2
+    particles_at_frame = np.full((num_timesteps, len(good_ids), 2), np.nan)
+    xys = particles[:, [0, 1]]
+    for id_index in tqdm.trange(len(good_ids), desc='reshaping'):
+        old_id = good_ids[id_index][0]
+        new_id = id_index # need to resample the IDs when we remove some particles
+
+
+        start_i = good_ids[id_index][1]
+        end_i   = good_ids[id_index][2]
+        start_t = int(particles[start_i, 2])
+        end_t   = int(particles[end_i-1, 2])
+
+        if id_index < 5:
+            print(old_id, good_ids[id_index], start_i, end_i, start_t, end_t)
+        
+        xys_to_save = xys[start_i:end_i, :]
+        assert xys_to_save.shape[0], 'there are no rows in xys_to_save'
+        assert np.isfinite(xys_to_save).all()
+        # print(xys_to_save.shape)
+        # print(particles_at_frame[start_t:end_t+1, new_id, :].shape)
+        particles_at_frame[start_t:end_t+1, new_id, :] = xys_to_save
+
+        # if i > 10:
+        #     break
+    
+    # print(np.isfinite(particles_at_frame).all(axis=(1, 2)).sum())
+    # print(np.isfinite(particles_at_frame).all(axis=(0, 2)).sum())
+
+    num_particles = int(particles[:, 3].max()) + 1
+    assert num_particles > 0
+
+    del particles
+
+    # check that for every particle there is at least one non-nan coordinate
+    assert np.isfinite(particles_at_frame).any(axis=(0, 2)).all()
+    # check that for every time there is at least one non-nan coordinate
+    assert np.isfinite(particles_at_frame).any(axis=(1, 2)).all()
+    print(np.isfinite(particles_at_frame).any(axis=2).sum(axis=1))
+    print('min particles at frame', np.min(np.isfinite(particles_at_frame).any(axis=2).sum(axis=1)))
+    assert np.all(np.isfinite(particles_at_frame).any(axis=2).sum(axis=1) > 10)
+
+    # raise Exception('you have not yet implemented the new time (not frame) based approach here')
+
+
+    warnings.warn('this needs to be back-copied to scattering_functions')
+
+    ################end
+
+    assert particles_at_frame.shape[0] == times.shape[0]
+    assert np.isfinite(times).all()
+
+    return particles_at_frame, times
+
+def calc_mixt(particles, requested_times, max_time_origins):
+
+    msd     = np.full(len(requested_times), np.nan)
+    msd_unc = np.full(len(requested_times), np.nan)
+
+    particles_at_frame, times = get_particles_at_frame(particles)
+
+    for time_i, requested_time in enumerate(tqdm.tqdm(requested_times, desc='calculating')):
+        pairs = get_frames_with_delta_t(times, requested_time)
+        assert len(pairs)
+
+        use_every_nth_pair = int(np.ceil(pairs.shape[0] / max_time_origins))
+        print(f'd_frame = {requested_time} : use_every_nth_pair = {use_every_nth_pair}')
+
+        pairs_to_use = pairs[::use_every_nth_pair, :]
+
+        r2     = np.full(pairs_to_use.shape[0], np.nan)
+        r2_std = np.full(pairs_to_use.shape[0], np.nan)
+
+        for pair_i in range(pairs_to_use.shape[0]):
+            frame1, frame2 = pairs_to_use[pair_i, :]
+            # if frame1 > 1:
+            #     continue
+            # print(frame1, frame2)
+            r2[pair_i], r2_std[pair_i] = calc_for_pair(particles_at_frame[frame1, :, :], particles_at_frame[frame2, :, :])
+
+        assert np.isfinite(r2).all()
+
+        msd    [time_i] = r2.mean()
+        msd_unc[time_i] = r2_std.mean()
+
+        if requested_time > 0:
+            assert msd[time_i] > 0
+
+    assert np.isfinite(msd).all()
+
+    return msd, msd_unc
+        
+def calc_for_pair(xy_t0, xy_t1):
+    # for two lists of coordinates, calculate the mean and std of the change in positions
+
+    assert xy_t0.shape[0], 'xy_t0 has no rows in it'
+    assert xy_t1.shape[0], 'xy_t1 has no rows in it'
+
+
+    # there can be nans if a particle has moved off the screen between frames, so we remove any such particles
+    t0_mask = np.isfinite(xy_t0).all(axis=1)
+    t1_mask = np.isfinite(xy_t1).all(axis=1)
+    assert t0_mask.sum(), 'no particles were found at t0'
+    assert t1_mask.sum(), 'no particles were found at t1'
+    mask = t0_mask & t1_mask
+    assert mask.sum(), f'no particles were found in the intersection of t0 & t1. t0 has {np.isfinite(xy_t0).all(axis=1).sum()} and t1 {np.isfinite(xy_t1).all(axis=1).sum()}'
+    xy_t0_safe = xy_t0[mask, :]
+    xy_t1_safe = xy_t1[mask, :]
+
+    r_xy = xy_t1_safe - xy_t0_safe
+    r2 = r_xy[:, 0]**2 + r_xy[:, 1]**2
+    assert np.isfinite(r2).all()
+    
+    mean, std = r2.mean(), r2.std()
+    assert np.isfinite(mean)
+    return mean, std
+
+    
+
+def calc_mixt_new(particles, requested_times):
+    # new philosophy: no reshaping
+
+    # we sort the ting by particle ID, then time
+    print('sorting')
+    particles = particles[particles[:, 3].argsort()]
+    particles = particles[np.lexsort((particles[:, 2], particles[:, 3]))] # sort by ID then time
+    print('sorted')
+
+    # we use the iterative mean/std dev method
+    num = np.zeros(len(requested_times))
+    msd_sum = np.zeros(len(requested_times))
+    msd_sq_sum = np.zeros(len(requested_times))
+
+    row = 0
+
+    progress = tqdm.tqdm(total=particles.shape[0])
+
+    while row < particles.shape[0]:
+        particle_id = particles[row, 3]
+
+        while row < particles.shape[0] and particles[row, 3] == particle_id:
+            time_origin = particles[row, 2]
+            x_origin = particles[row, 0]
+            y_origin = particles[row, 1]
+            # print('doing time origin', time_origin)
+
+            row_time_destination = row # this is the row for the time we're comparing to
+
+            for time_index in range(len(requested_times)):
+                requested_time = requested_times[time_index]
+
+                while row_time_destination < particles.shape[0] and particles[row_time_destination, 3] == particle_id and particles[row_time_destination, 2] - time_origin <= requested_time:
+                    # print('checking time destination', particles[row_time_destination, 2])
+                    if particles[row_time_destination, 2] - time_origin == requested_time:
+                        # we found the right time delta, so we can use this
+                        x_destination = particles[row_time_destination, 0]
+                        y_destination = particles[row_time_destination, 1]
+                        r2 = (x_destination - x_origin)**2 + (y_destination - y_origin)**2
+
+                        num[time_index] += 1
+                        msd_sum[time_index] += r2
+                        msd_sq_sum[time_index] += r2**2
+
+                    row_time_destination += 1
+                
+            row += 1
+            progress.update()
+
+            # I think there is a problem here in that if
+
+    progress.close()
+
+    msd = msd_sum / num
+    msd_std = np.sqrt(msd_sq_sum/num - (msd_sum/num)**2)
+
+    if np.any(num == 0):
+        raise Exception(f'no points were found with time delta {np.array(requested_times)[num == 0]}')
+
+    return msd, msd_std
