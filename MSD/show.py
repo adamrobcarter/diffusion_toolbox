@@ -5,6 +5,7 @@ import scipy.optimize
 import matplotlib.cm
 
 SHOW_NOLOG_SHORTTIME = False
+NOLOG_SHORTTIME_END = 500
 SHOW_ERRORBARS = True
 
 def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LONG_FIT=False, export_destination=None):
@@ -32,9 +33,9 @@ def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LON
     # ax.set_xlim(0, 20)
     # ax.set_ylim(0, 0.04)
     if SHOW_NOLOG_SHORTTIME:
-        END = min(5000, t.size-1)
-        ax.set_xlim(0, t[END])
-        ax.set_ylim(0, msd[END])
+        end = min(NOLOG_SHORTTIME_END, t.size-1)
+        ax.set_xlim(0, t[end])
+        ax.set_ylim(0, msd[end])
     else:
         ax.loglog()
         ax.set_ylim(msd[1:].min()*0.6, msd.max()/0.8)
@@ -42,7 +43,7 @@ def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LON
     ax.set_ylabel(r'$\langle r(t)^2 \rangle$ ($\mathrm{\mu m}$)')
     ax.set_xlabel('$t$ (s)')
 
-    print(f'<x>({t[1]}) = {np.sqrt(msd[1])/0.288:.3g} * 0.288um, <x>({t[32]}) = {np.sqrt(msd[32])/0.288} * 0.288um')
+    print(f'<x>({t[1]}) = {np.sqrt(msd[1])/0.288:.3g} * 0.288um') # <x>({t[32]}) = {np.sqrt(msd[32])/0.288} * 0.288um'
     
     # common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/msd_nofit_{file}.pdf', hide_metadata=True)
     

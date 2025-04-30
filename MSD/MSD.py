@@ -727,22 +727,29 @@ def calc_centre_of_mass_onepoint_for_single_timeorigin(groupsize, data_these_tim
 #     # print('data_this_group.shape', data_this_group.shape)
 #     return displacements.mean(), displacements.std()
 
+def is_integer(arr):
+    return arr % 1 == 0
 
-
-def calc_incremental(particles):
+def calc_incremental_xyz(particles, num_dimensions):
     # version that doesn't need reshaping - probably slower but a lot less memory
-    assert particles[:, 3].min() == 0
+
+    time_column = num_dimensions
+    id_column = num_dimensions + 1
+
+    assert particles[:, id_column].min() == 0
+
+    assert np.all(is_integer(particles[:, time_column])), 'times should be all integer when using this method'
 
     # need the data are sorted by particle ID
-    particles = particles[particles[:, 3].argsort()]
+    particles = particles[particles[:, id_column].argsort()]
     
-    num_particles = int(particles[:, 3].max()) + 1
-    num_timesteps = int(particles[:, 2].max()) + 1
+    num_particles = int(particles[:, id_column].max()) + 1
+    num_timesteps = int(particles[:, time_column].max()) + 1
     print(f'{num_particles} particles, {num_timesteps} timesteps')
 
-    msd_sum = np.zeros(num_timesteps)
-    msd_sum_sq = np.zeros(num_timesteps)
-    msd_count = np.zeros(num_timesteps)
+    msd_sum    = np.zeros((num_dimensions, num_timesteps))
+    msd_sum_sq = np.zeros((num_dimensions, num_timesteps))
+    msd_count  = np.zeros(num_timesteps)
 
     progress = tqdm.tqdm(total=particles.shape[0])
 
@@ -753,18 +760,18 @@ def calc_incremental(particles):
     # calc_every = 10
 
     while start_index < particles.shape[0]-1:
-        current_id = particles[start_index, 3]
+        current_id = particles[start_index, id_column]
         end_index = start_index + 1
         # print(start_index, end_index, particles.shape[0])
         # find the index of the last row that has this particle ID
-        while end_index < particles.shape[0] and particles[end_index, 3] == current_id:
+        while end_index < particles.shape[0] and particles[end_index, id_column] == current_id:
             end_index += 1
 
         data_this_particle = particles[start_index:end_index, :]
-        assert np.all(data_this_particle[:, 3] == current_id)
+        assert np.all(data_this_particle[:, id_column] == current_id)
         
         # now sort by time
-        data_this_particle = data_this_particle[data_this_particle[:, 2].argsort()]
+        data_this_particle = data_this_particle[data_this_particle[:, time_column].argsort()]
 
         assert not np.any(np.isnan(data_this_particle))
 
@@ -779,7 +786,7 @@ def calc_incremental(particles):
             # print(data_this_particle[:, 2])
             # assert data_this_particle[0, 2] == 0
             # num_timesteps_this_particle = int(data_this_particle[:, 2].max()) + 1
-            num_timesteps_this_particle = int(data_this_particle[-1, 2]) + 1
+            num_timesteps_this_particle = int(data_this_particle[-1, time_column]) + 1
             # print(num_timesteps_this_particle, data_this_particle.shape)
             # print(data_this_particle)
             # [print(data_this_particle[i, :]) for i in range(data_this_particle.shape[0])]
@@ -793,13 +800,14 @@ def calc_incremental(particles):
                 # print(num_timesteps_this_particle)
                 # assert data_this_particle[-1, 2] == num_timesteps_this_particle - 1
                 # t1 = time.time()
-                x_MSD = msd_fft1d(data_this_particle[:, 0])
-                y_MSD = msd_fft1d(data_this_particle[:, 1])
-                MSD = x_MSD + y_MSD
-                assert not np.any(np.isnan(MSD))
+                MSDs = np.full((num_dimensions, data_this_particle.shape[0]), np.nan)
+                for dimension in range(num_dimensions):
+                    MSDs[dimension, :] = msd_fft1d(data_this_particle[:, dimension])
+                # MSD = MSDs.sum(axis=0)
+                assert not np.any(np.isnan(MSDs))
                 # t2 = time.time()
-                msd_sum[:num_timesteps_this_particle] += MSD
-                msd_sum_sq[:num_timesteps_this_particle] += MSD**2
+                msd_sum   [:, :num_timesteps_this_particle] += MSDs
+                msd_sum_sq[:, :num_timesteps_this_particle] += MSDs**2
                 msd_count[:num_timesteps_this_particle] += 1
                 # t3 = time.time()
                 # t_a = t1-t0
@@ -813,12 +821,16 @@ def calc_incremental(particles):
     progress.close()
 
     print(f'skipped {skipped/num_particles:.2f}')
+    assert skipped < 1.0, 'all particles were skipped'
     # assert skipped/num_particles < 0.7
 
     assert not np.any(np.isnan(msd_sum))
     assert not np.any(np.isnan(msd_count))
+
+    assert not np.all(msd_count == 0)
     
     if np.any(msd_count == 0):
+        raise NotImplementedError('this has not been updated since we moved to calculating each dimension')
         index = np.argmax(msd_count==0)
         print(f'no particles were found after frame={index}')
         if index < 100:
@@ -836,6 +848,10 @@ def calc_incremental(particles):
     # unc = std
 
     return avg, unc
+
+def calc_incremental(particles, num_dimensions):
+    msds, msds_unc = calc_incremental_xyz(particles, num_dimensions)
+    return msds.sum(axis=0), msds_unc.sum(axis=0)
 
 """
 @numba.njit()
@@ -1225,18 +1241,21 @@ def calc_for_pair(xy_t0, xy_t1):
 
     
 
-def calc_mixt_new(particles, requested_times):
+def calc_mixt_new(particles, requested_times, dimension):
     # new philosophy: no reshaping
+
+    time_column = dimension
+    id_column = dimension + 1
 
     # we sort the ting by particle ID, then time
     print('sorting')
-    particles = particles[particles[:, 3].argsort()]
-    particles = particles[np.lexsort((particles[:, 2], particles[:, 3]))] # sort by ID then time
+    particles = particles[particles[:, id_column].argsort()]
+    particles = particles[np.lexsort((particles[:, time_column], particles[:, id_column]))] # sort by ID then time
     print('sorted')
 
     # we use the iterative mean/std dev method
-    num = np.zeros(len(requested_times))
-    msd_sum = np.zeros(len(requested_times))
+    num        = np.zeros(len(requested_times))
+    msd_sum    = np.zeros(len(requested_times))
     msd_sq_sum = np.zeros(len(requested_times))
 
     row = 0
@@ -1244,12 +1263,76 @@ def calc_mixt_new(particles, requested_times):
     progress = tqdm.tqdm(total=particles.shape[0])
 
     while row < particles.shape[0]:
-        particle_id = particles[row, 3]
+        particle_id = particles[row, id_column]
 
-        while row < particles.shape[0] and particles[row, 3] == particle_id:
-            time_origin = particles[row, 2]
-            x_origin = particles[row, 0]
-            y_origin = particles[row, 1]
+        while row < particles.shape[0] and particles[row, id_column] == particle_id:
+            time_origin = particles[row, time_column]
+            origin = particles[row, 0:dimension]
+
+            row_time_destination = row # this is the row for the time we're comparing to
+
+            for time_index in range(len(requested_times)):
+                requested_time = requested_times[time_index]
+
+                while row_time_destination < particles.shape[0] and particles[row_time_destination, id_column] == particle_id and particles[row_time_destination, time_column] - time_origin <= requested_time:
+                    # print('checking time destination', particles[row_time_destination, 2])
+                    if particles[row_time_destination, time_column] - time_origin == requested_time:
+                        # we found the right time delta, so we can use this
+                        destination = particles[row_time_destination, 0:dimension]
+                        r2 = ((destination - origin)**2).sum()
+
+
+                        num       [time_index] += 1
+                        msd_sum   [time_index] += r2
+                        msd_sq_sum[time_index] += r2**2
+
+                    row_time_destination += 1
+                
+            row += 1
+            progress.update()
+
+            # I think there is a problem here in that if
+
+    progress.close()
+
+    msd = msd_sum / num
+    msd_std = np.sqrt(msd_sq_sum/num - (msd_sum/num)**2)
+
+    if np.any(num == 0):
+        raise Exception(f'no points were found with time delta {np.array(requested_times)[num == 0]}')
+
+    return msd, msd_std
+
+    
+
+def calc_mixt_new_xyz(particles, requested_times, num_dimensions):
+    # new philosophy: no reshaping
+    print('THIS METHOD DOES VERY BADLY COMPARED TO calc_incremental')
+
+    ID_COLUMN = num_dimensions + 1
+    TIME_COLUMN = num_dimensions
+
+    # we sort the ting by particle ID, then time
+    print('sorting')
+    particles = particles[particles[:, ID_COLUMN].argsort()]
+    particles = particles[np.lexsort((particles[:, TIME_COLUMN], particles[:, ID_COLUMN]))] # sort by ID then time
+    print('sorted')
+
+    # we use the iterative mean/std dev method
+    num        = np.zeros(len(requested_times))
+    msd_sum    = np.zeros((num_dimensions, len(requested_times)))
+    msd_sq_sum = np.zeros((num_dimensions, len(requested_times)))
+
+    row = 0
+
+    progress = tqdm.tqdm(total=particles.shape[0])
+
+    while row < particles.shape[0]:
+        particle_id = particles[row, ID_COLUMN]
+
+        while row < particles.shape[0] and particles[row, ID_COLUMN] == particle_id:
+            time_origin = particles[row, TIME_COLUMN]
+            origin_coord = particles[row, 0:num_dimensions]
             # print('doing time origin', time_origin)
 
             row_time_destination = row # this is the row for the time we're comparing to
@@ -1257,21 +1340,22 @@ def calc_mixt_new(particles, requested_times):
             for time_index in range(len(requested_times)):
                 requested_time = requested_times[time_index]
 
-                while row_time_destination < particles.shape[0] and particles[row_time_destination, 3] == particle_id and particles[row_time_destination, 2] - time_origin <= requested_time:
+                while row_time_destination < particles.shape[0] and particles[row_time_destination, ID_COLUMN] == particle_id and particles[row_time_destination, TIME_COLUMN] - time_origin <= requested_time:
                     # print('checking time destination', particles[row_time_destination, 2])
-                    if particles[row_time_destination, 2] - time_origin == requested_time:
+                    if particles[row_time_destination, TIME_COLUMN] - time_origin == requested_time:
                         # we found the right time delta, so we can use this
-                        x_destination = particles[row_time_destination, 0]
-                        y_destination = particles[row_time_destination, 1]
-                        r2 = (x_destination - x_origin)**2 + (y_destination - y_origin)**2
+                        destination_coord = particles[row_time_destination, 0:num_dimensions]
 
                         num[time_index] += 1
-                        msd_sum[time_index] += r2
-                        msd_sq_sum[time_index] += r2**2
+
+                        for dimension in range(num_dimensions):
+                            r2 = (origin_coord[dimension] - destination_coord[dimension])**2
+                            msd_sum   [dimension, time_index] += r2
+                            msd_sq_sum[dimension, time_index] += r2**2
 
                     row_time_destination += 1
                 
-            row += 1
+            row += 1 # you could change this to += 2 for use_every_nth_timestep = 2 etc
             progress.update()
 
             # I think there is a problem here in that if
