@@ -59,7 +59,7 @@ def speed_string(time_mult, every_nth_frame):
 
 def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
                      window_size_x, window_size_y,
-                     func=lambda timestep, ax : None, nth_frame=1, max_num_frames=50,
+                     func=lambda timestep, ax : None, nth_frame=1, max_num_frames=20,
                      dpi=300,
                      display_small=True, inverse_colors=False, highlights=False,
                      backwards=False, method=NONE, stacks=None, stackcolors=None, channel=None,
