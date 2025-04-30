@@ -4,9 +4,13 @@ import sys
 
 for file in sys.argv[1:]:
     data = common.load(f'preprocessing/data/stack_{file}.npz')
-    stack = data['stack'][1, :, :]
+    stack = data['stack'][:, :, :]
     stack -= stack.min()
-    print(stack.max())
+    # print(stack.max())
+    stack /= stack.max()
     stack *= 65535
+    print(stack.shape)
 
-    tifffile.imwrite(f'preprocessing/data/stack_{file}.tiff', stack.astype('uint16'))
+    filename = f'preprocessing/data/stack_{file}.tiff'
+    tifffile.imwrite(filename, stack.astype('uint16'))
+    print(f'saved {filename}')

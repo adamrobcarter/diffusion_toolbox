@@ -11,7 +11,10 @@ import box_counting.msd_single
 import visualisation.Ds_overlapped
 
 SHOW_THEORY = True
-SHOW_TIMESCALEINTEGRAL_FIT = False
+SHOW_TIMESCALEINTEGRAL_FIT_SHORT = True
+SHOW_TIMESCALEINTEGRAL_FIT_LONG = True
+SHOW_THRESH_LINE = True
+SHOW_NOFIT_CUTOFF = True
 DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE = True
 SHOW_LEGEND = True
 
@@ -321,10 +324,8 @@ def get_M1_M2(file, L, t, T_integrand, plateau_source):
             M1_t = t[M2_index] / 2
             M1_index = np.argmax(t > M1_t)
             
-        elif 'hydro_010_L640_longer' in file or 'hydro_011_L640_longer' in file:
-            # M2_index = min(int(560 * L**0.4), t.shape[0]-1)
-            # print(N2_mean[box_size_index, :] < thresh_line)
-            c = 1e-7
+        elif 'L320' in file and 'longer' in file and '011' in file:
+            c = 1e-6
             m = 1
             thresh_line = c * t**m
             M2_index = np.argmax(T_integrand < thresh_line)
@@ -335,7 +336,22 @@ def get_M1_M2(file, L, t, T_integrand, plateau_source):
             M1_t = t[M2_index] / 2
             M1_index = np.argmax(t > M1_t)
             
-        elif 'hydro_011_L1280_longer' in file:
+        # elif 'hydro_010_L640_longer' in file or 'hydro_011_L640_longer' in file:
+        elif 'L640' in file and 'longer' in file and '011' in file:
+            # M2_index = min(int(560 * L**0.4), t.shape[0]-1)
+            # print(N2_mean[box_size_index, :] < thresh_line)
+            c = 5e-7
+            m = 1
+            thresh_line = c * t**m
+            M2_index = np.argmax(T_integrand < thresh_line)
+            # assert M2_index != 0
+            # print('you removed this assertion which may be bad')
+            # if M2_index == 0: # T integrand and thresh_line never crossed
+            #     M2_index = t.size-1
+            M1_t = t[M2_index] / 2
+            M1_index = np.argmax(t > M1_t)
+            
+        elif 'L1280' in file and 'longer' in file and '011' in file:
             # M2_index = min(int(560 * L**0.4), t.shape[0]-1)
             # print(N2_mean[box_size_index, :] < thresh_line)
             c = 1e-7
@@ -346,7 +362,7 @@ def get_M1_M2(file, L, t, T_integrand, plateau_source):
             M1_t = t[M2_index] / 2
             M1_index = np.argmax(t > M1_t)
 
-        elif 'hydro_002_L640_longer' in file:
+        elif 'L640' in file and 'longer' in file and '002' in file:
             c = 2e-7
             m = 1
             thresh_line = c * t**m
@@ -410,24 +426,6 @@ def go(file, plateau_source, ax=None, legend_fontsize=8, title=None, save_data=F
     box_sizes = data['box_sizes']
     N_mean    = data['N_mean']
     N_var     = data['N_var']
-    N_var_std = data.get('N_var_std')
-    N_var_sem_lb = data['N_var_sem_lb']
-    N_var_sem_ub = data['N_var_sem_ub']
-
-    # N_var_sem_ub can be both bigger and smaller than N_var (..?!)
-    # so we use this logic to get a measure of the uncertainty
-    lb_diff = np.abs(N_var - N_var_sem_lb)
-    ub_diff = np.abs(N_var - N_var_sem_ub)
-    N_var_sem = np.max([lb_diff, ub_diff], axis=0)
-    print('N_var_sem/N_var', N_var_sem/N_var)
-
-    # print(f'N_var_std/N_var', N_var_std/N_var)
-    print(f'N_var_sem_ub/N_var', N_var_sem_lb/N_var)
-    print(f'N_var_sem_lb/N_var', N_var_sem_ub/N_var)
-
-    N_var_mod = data['N_var_mod']
-    # N_var_losecorr = data['N_var_losecorr']
-    N_var_losecorr = np.zeros_like(N_var)
     sep_sizes = data['sep_sizes']
 
     num_timesteps = N2_mean.shape[1]
@@ -515,8 +513,13 @@ def go(file, plateau_source, ax=None, legend_fontsize=8, title=None, save_data=F
         C_N_over_plateau_unc = np.sqrt(C_N_over_plateau_unc_sq)
 
         M1_index, M2_index, thresh_line = get_M1_M2(file, L, t, T_integrand, plateau_source)
+        print(thresh_line, show_thresh_line, ax)
         if thresh_line is not None and show_thresh_line and ax:
             ax.plot(t, thresh_line)
+        else:
+            if thresh_line is None:
+                pass
+                # assert False, f'you probably need to enter M1 and M2 for {file}'
 
         # full method
         (early_plot_x, early_plot_y), plot_late_integral_fit, D_of_L, D_of_L_min, D_of_L_max = timescaleintegral_full(t, L, T_integrand, T_integrand_min, T_integrand_max, M2_index, M1_index)
@@ -803,9 +806,9 @@ if __name__ == '__main__':
         plateau_source = PLATEAU_SOURCE
         # plateau_source = 'sDFT'
         go(file, ax=ax, plateau_source=plateau_source, show_theory=SHOW_THEORY,
-           labels_on_plot=LABELS_ON_PLOT, max_num_boxes=MAX_NUM_BOXES, show_short_fits=SHOW_TIMESCALEINTEGRAL_FIT, show_long_fits=SHOW_TIMESCALEINTEGRAL_FIT,
-           save_data=True, show_legend=SHOW_LEGEND, rescale_x=RESCALE_X, show_thresh_line=True,
-           show_nofit_cutoff=True)#, plateau_adjust=1.05)
+           labels_on_plot=LABELS_ON_PLOT, max_num_boxes=MAX_NUM_BOXES, show_short_fits=SHOW_TIMESCALEINTEGRAL_FIT_SHORT, show_long_fits=SHOW_TIMESCALEINTEGRAL_FIT_LONG,
+           save_data=True, show_legend=SHOW_LEGEND, rescale_x=RESCALE_X, show_thresh_line=SHOW_THRESH_LINE,
+           show_nofit_cutoff=SHOW_NOFIT_CUTOFF)#, plateau_adjust=1.05)
         
         # ax.set_xlim(5e-1, 1e5)
 

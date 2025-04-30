@@ -33,14 +33,15 @@ def calc_and_save(file, box_sizes, sep_sizes, data, output_file_name, particles=
         particles = data['particles']
     else:
         raise Exception('should this be deprecated, and this conditional removed?')
-    print('particles', particles)
+    # print('particles', particles)
 
     if '_pot' in file:
         print('cropping')
         keep_x = (0 <= particles[:, 0]) & (particles[:, 0] <= window_size_x)
         keep_y = (0 <= particles[:, 1]) & (particles[:, 1] <= window_size_y)
-        print(keep_x.shape, particles.shape)
-        particles = particles[keep_x & keep_y, :]
+        keep = keep_x & keep_y
+        particles = particles[keep, :]
+        assert keep.sum() / keep.size > 0.9
 
     # num_timesteps = int(particles[:, 2].max()) + 1
 
@@ -185,13 +186,10 @@ def go(file):
     box_sizes, sep_sizes = get_box_sizes(file, data)
 
     
-    print('box sizes', box_sizes/data['particle_diameter'])
+    # print('box sizes', box_sizes/data['particle_diameter'])
     Nboxes_nowrap = np.ceil((data['window_size_x'] - box_sizes)/(box_sizes + sep_sizes))
     Nboxes_wrap   = np.ceil((data['window_size_x']            )/(box_sizes + sep_sizes))
-    print('wrapping more boxes', Nboxes_wrap/Nboxes_nowrap)
-
-    import sys
-    sys.exit()
+    # print('wrapping more boxes', Nboxes_wrap/Nboxes_nowrap)
 
     output_filename = f'box_counting/data/counted_{file}'
         # output_filename += '_moreoverlap'

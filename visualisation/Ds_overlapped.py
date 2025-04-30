@@ -11,6 +11,7 @@ import visualisation.Ds_overlapped_mult
 
 D0_SOURCE = 'MSD_first'
 # D0_SOURCE = 'MSD_short'
+PLOT_AGAINST_K = True
 
 if __name__ == '__main__':
     for file in sys.argv[1:]:
@@ -38,11 +39,16 @@ if __name__ == '__main__':
                 # 'f_t8',
                 # 'f_t16',
                 # 'f_t32',
-                'f_t64',
-                'f_t256',
-                'f_t1024',
-                'f_t4092',
+                # 'f_t64',
+                # 'f_t256',
+                # 'f_t1024',
+                # 'f_t4092',
                 # 'f_t16384',
+                
+                'f_t128',
+                'f_t512',
+                'f_t2048',
+
                 # 'F_first32_first',
                 # 'F_s',
                 # 'F_s_first',
@@ -53,7 +59,7 @@ if __name__ == '__main__':
                 #   'timescaleint_',
                 #   'timescaleint_nmsdfitinter',
 
-                  'timescaleint_nofit_cropped_var',
+                #   'timescaleint_nofit_cropped_var',
 
                 #   'timescaleint_nofit_cropped_sDFT',
                 #   'timescaleint_fixexponent_cutoff',
@@ -70,23 +76,24 @@ if __name__ == '__main__':
                 # 'F_s_first',
             ]
 
-        colors = [[common.colormap(i/len(sources)) for i in range(len(sources))]]
+        colors = [common.colormap(i/len(sources)) for i in range(len(sources))]
         print(colors)
 
         visualisation.Ds_overlapped_mult.go(
+            [(file, source) for source in sources],
             colors  = colors,
             ax      = ax,
-            files   = [file], 
-            sources = sources,
-            # plot_against_k=False,
+            plot_against_k=PLOT_AGAINST_K,
             # logarithmic_y=True, output_filename=filename,
             # ylim=YLIM,
             legend_fontsize=8,
-            linestyles = ['-']
+            # linestyles = ['-']
             )
-        ax.set_ylim(0.7, 6)
+        ax.set_ylim(0.7, 10)
+        ax.semilogy()
 
-        # common.add_exponential_index_indicator(ax, 1/3, (8, 2), 'L')    
+        common.add_exponential_index_indicator(ax, -1/2, (1, 1), 'k')   
+        common.add_exponential_index_indicator(ax, -1, (1, 1), 'k')    
         
         common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_{file}.png')
 
@@ -276,6 +283,9 @@ def get_D0_filename(file):
 
 def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
     data = None
+
+    assert type(source) == str
+    assert type(file)   == str
 
     if source == 'D0Sk':
         data = common.load(f"isf/data/F_{file}.npz")

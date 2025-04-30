@@ -235,9 +235,80 @@ for Lx, color in [
 ax.legend(fontsize=LEGEND_FONTSIZE)
 ax.set_xlim(2e-2, 1e0)
 ax.set_ylim(1e-5, 2e-2)
+ax.set_title('periodic nonhydro')
 common.save_fig(fig, f'{path}/si_plateaus_sim_rescaled.png', hide_metadata=True)
-common.save_fig(fig, f'{path}/si_plateaus_sim_rescaled.pdf', hide_metadata=True)
+# common.save_fig(fig, f'{path}/si_plateaus_sim_rescaled.pdf', hide_metadata=True)
 
+# nonperiodic version
+fig, ax = plt.subplots(1, 1, figsize=SI_SINGLE_FIGSIZE)
+for Lx, color in [
+    # [1280, COLOR_LX_1280],
+    [640,  COLOR_LX_640],
+    [320,  COLOR_LX_320],
+]:
+    box_counting.plateaus.go(
+        f'sim_nohydro_011_L{Lx}_pot_longer_frac_of_window',
+        ax,
+        ['var', 'sDFT'] if Lx==640 else ['var'],
+        rescale_window=True,
+        label_prefix=f'$L_x = {Lx}\mathrm{{\mu m}}$ ',
+        rescale_sigma=False,
+        colors=[color, 'black'] if Lx==640 else [color],
+    )
+ax.legend(fontsize=LEGEND_FONTSIZE)
+ax.set_xlim(2e-2, 1e0)
+ax.set_ylim(1e-5, 2e-2)
+ax.set_title('nonperiodic nonhydro')
+common.save_fig(fig, f'{path}/si_plateaus_sim_rescaled_nonperiodic.png', hide_metadata=True)
+# common.save_fig(fig, f'{path}/si_plateaus_sim_rescaled_nonperiodic.pdf', hide_metadata=True)
+
+# hydro periodic version
+fig, ax = plt.subplots(1, 1, figsize=SI_SINGLE_FIGSIZE)
+for Lx, color in [
+    # [1280, COLOR_LX_1280],
+    [640,  COLOR_LX_640],
+    [320,  COLOR_LX_320],
+]:
+    box_counting.plateaus.go(
+        f'sim_hydro_011_L{Lx}_longer_frac_of_window',
+        ax,
+        ['var', 'sDFT'] if Lx==640 else ['var'],
+        rescale_window=True,
+        label_prefix=f'$L_x = {Lx}\mathrm{{\mu m}}$ ',
+        rescale_sigma=False,
+        colors=[color, 'black'] if Lx==640 else [color],
+    )
+ax.legend(fontsize=LEGEND_FONTSIZE)
+ax.set_xlim(2e-2, 1e0)
+ax.set_ylim(1e-5, 2e-2)
+ax.set_title('periodic hydro')
+common.save_fig(fig, f'{path}/si_plateaus_sim_rescaled_periodic_hydro.png', hide_metadata=True)
+# common.save_fig(fig, f'{path}/si_plateaus_sim_rescaled_periodic.pdf', hide_metadata=True)
+
+# nonperiodic hydro version
+fig, ax = plt.subplots(1, 1, figsize=SI_SINGLE_FIGSIZE)
+for Lx, color in [
+    # [1280, COLOR_LX_1280],
+    [640,  COLOR_LX_640],
+    [320,  COLOR_LX_320],
+]:
+    box_counting.plateaus.go(
+        f'sim_hydro_011_L{Lx}_pot_longer_frac_of_window',
+        ax,
+        ['var', 'sDFT'] if Lx==640 else ['var'],
+        rescale_window=True,
+        label_prefix=f'$L_x = {Lx}\mathrm{{\mu m}}$ ',
+        rescale_sigma=False,
+        colors=[color, 'black'] if Lx==640 else [color],
+    )
+ax.legend(fontsize=LEGEND_FONTSIZE)
+ax.set_xlim(2e-2, 1e0)
+ax.set_ylim(1e-5, 2e-2)
+ax.set_title('nonperiodic hydro')
+common.save_fig(fig, f'{path}/si_plateaus_sim_rescaled_nonperiodic_hydro.png', hide_metadata=True)
+# common.save_fig(fig, f'{path}/si_plateaus_sim_rescaled_nonperiodic.pdf', hide_metadata=True)
+
+ADD crop-.9_frac_of_window
 
 ########################## periodic box size ##################
 # fig, (ax1, ax2) = plt.subplots(1, 2, figsize=SI_DOUBLE_FIGSIZE, sharey='row')
@@ -286,6 +357,53 @@ common.save_fig(fig, f'{path}/si_plateaus_sim_rescaled.pdf', hide_metadata=True)
 
 # common.save_fig(fig, f'{path}/si_D_periodic_size.png', hide_metadata=True)
 # common.save_fig(fig, f'{path}/si_D_periodic_size.pdf', hide_metadata=True)
+
+##### nonperiodic version
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=SI_DOUBLE_FIGSIZE, sharey='row')
+
+Ls = [640,]
+
+kwargs = dict(
+    labels = [f'$L_x={L}\mathrm{{\mu m}}$' for L in Ls],
+    # colors = [[cmocean.cm.ice((len(Ls)-i)/len(Ls))] for i in range(len(Ls))]
+    # colors = [[COLOR_LX_320], [COLOR_LX_640], [COLOR_LX_1280]]#, [cmocean.cm.ice(0.1)]],
+    colors = [COLOR_LX_640]#, [cmocean.cm.ice(0.1)]],
+)
+xlim = (10, 100)
+ylim = (2e1, 2e3)
+
+visualisation.Ds_overlapped_mult.go(
+    [(f'sim_nohydro_011_L{L}_pot_longer_mergedD', 'timescaleint_nofit_cropped_var') for L in Ls],
+    ax      = ax1,
+    markers = MARKER_COUNTING,
+    **kwargs
+)
+ax1.set_ylim(DS_OVERLAPPED_YLIM)
+ax1.set_xlim(DS_OVERLAPPED_XLIM1280)
+ax_label(ax1, 'a', x=0.95)
+# ax_sim.set_xlim(plateaus_xlim)
+# ax_sim.set_ylim(plateaus_ylim)
+# ax_sim.tick_params(axis='x', which='minor', labelbottom=False)
+
+# visualisation.Ds_overlapped_mult.go(
+#     # files   = [f'sim_nohydro_011_L{L}_mixt' for L in Ls],
+#     files   = [f'sim_nohydro_011_L{L}_pot_longer_mergedD' for L in Ls],
+#     sources = ['f_first_first'],
+#     [(f'sim_nohydro_011_L{L}_pot_longer_mergedD', 'f_first_first') for L in Ls]
+#     ax      = ax2,
+#     markers = MARKER_FKT,
+#     disable_ylabel=True,
+#     **kwargs
+# )
+ax2.set_xlim(DS_OVERLAPPED_XLIM_L_FOR_FKT1280)
+ax2.set_ylim(DS_OVERLAPPED_YLIM_FKT)
+ax_label(ax2, 'b', x=0.95)
+# ax_exp.set_xlim(plateaus_xlim)
+# ax_exp.set_ylim(plateaus_ylim)
+# ax_exp.tick_params(axis='x', which='minor', labelbottom=False)
+
+common.save_fig(fig, f'{path}/si_D_periodic_size_nonperiodic.png', hide_metadata=True)
+common.save_fig(fig, f'{path}/si_D_periodic_size_nonperiodic.pdf', hide_metadata=True)
 
 
 # ########################## timescaleint longtime fit ##################

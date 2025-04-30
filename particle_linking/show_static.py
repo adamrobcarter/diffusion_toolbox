@@ -6,35 +6,39 @@ import matplotlib.pyplot as plt
 import tqdm
 import matplotlib.cm
 
-MAX_TIME = 1000
+MAX_TIME = 100000
 CROP = 150
-X_START = 250
-Y_START = 50
+X_START = 0
+Y_START = 0
 
 def go(file, destination_trajs, destination_positions, destination_intensities):
-    data_stack = common.load(f'preprocessing/data/stack_{file}.npz')
-    stack      = data_stack['stack']
-    pixel_size = data_stack['pixel_size']
-    #     found_stack = True
-    # except FileNotFoundError:
-    #     found_stack = False
-
-    data_particles = common.load(f'particle_linking/data/trajs_{file}.npz')
-    particles = data_particles['particles']
-
-    # crop
-    # stack = stack[:, X_START:X_START+CROP, Y_START:Y_START+CROP]
-
-    stack = stack - stack.mean(axis=0) # remove space background
-    
-    # def add_outlines(timestep, ax):
-    #     particle_detection.show.add_particle_outlines(ax, pixel_size, particles, radius, timestep)
-
-    filename = f'movie_linked_{file}'
 
     fig, ax = plt.subplots(1, 1)
 
-    ax.imshow(stack[0, :, :], cmap=matplotlib.cm.Greys)
+    try:
+        data_stack = common.load(f'preprocessing/data/stack_{file}.npz')
+        stack      = data_stack['stack']
+        pixel_size = data_stack['pixel_size']
+        found_stack = True
+
+
+    except FileNotFoundError:
+        found_stack = False
+
+    data_particles = common.load(f'particle_linking/data/trajs_{file}.npz')
+    particles = data_particles['particles']
+    
+    # def add_outlines(timestep, ax):
+    #     particle_detection.show.add_particle_outlines(ax, pixel_size, particles, radius, timestep)
+    
+    if found_stack:
+        # crop
+        # stack = stack[:, X_START:X_START+CROP, Y_START:Y_START+CROP]
+
+        stack = stack - stack.mean(axis=0) # remove space background
+        assert False, 'change below to pcolormesh in real units not px'
+        ax.imshow(stack[0, :, :], cmap=matplotlib.cm.Greys)
+
     if destination_intensities:
         common.save_fig(fig, destination_intensities, only_plot=True)
 
@@ -49,7 +53,7 @@ def go(file, destination_trajs, destination_positions, destination_intensities):
             #     if Y_START*pixel_size < row[1] < (Y_START+CROP)*pixel_size:
                     ids.append(row[3])
 
-                    s = ax.scatter(row[1]/pixel_size, row[0]/pixel_size, edgecolors='red', facecolors='none', s=1500)
+                    s = ax.scatter(row[1], row[0], edgecolors='red', facecolors='none', s=1500)
 
                     circles.append(s)
 
@@ -63,22 +67,33 @@ def go(file, destination_trajs, destination_positions, destination_intensities):
     for id in tqdm.tqdm(ids):
         particles_this_id = particles[particles[:, 3] == id, :]
         particles_this_time = particles_this_id[particles_this_id[:, 2] < MAX_TIME, :]
-        x = particles_this_time[:, 0] / pixel_size - X_START
-        y = particles_this_time[:, 1] / pixel_size - Y_START
+        x = particles_this_time[:, 0] - X_START
+        y = particles_this_time[:, 1] - Y_START
 
         ax.plot(y, x)
         ax.plot(x, y)
 
-    ax.set_xlim(X_START, X_START+CROP)
-    ax.set_ylim(Y_START, Y_START+CROP)
+    if CROP:
+        ax.set_xlim(X_START, X_START+CROP)
+        ax.set_ylim(Y_START, Y_START+CROP)
+
+    if 'window_size_x' not in data_particles:
+        print(particles[:, 0].min(), particles[:, 0].max())
+        print(particles[:, 1].min(), particles[:, 1].max())
+        ax.set_xlim(particles[:, 0].min(), particles[:, 0].max())
+        ax.set_ylim(particles[:, 1].min(), particles[:, 1].max())
+        
 
     common.save_fig(fig, destination_trajs, only_plot=True)
 
 if __name__ == '__main__':
     for file in common.files_from_argv('particle_linking/data', 'trajs_'):
         destination = f'particle_linking/figures_png/linked_static_{file}.png'
-        go(file,
-           f'particle_linking/figures_png/static_linked_{file}.png',
-           f'particle_linking/figures_png/static_positi_{file}.png',
-           f'particle_linking/figures_png/static_intens_{file}.png',
+        go(
+            file,
+            f'particle_linking/figures_png/static_linked_{file}.png',
+            None,
+            # f'particle_linking/figures_png/static_positi_{file}.png',
+            None,
+            # f'particle_linking/figures_png/static_intens_{file}.png',
         )

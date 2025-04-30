@@ -74,14 +74,12 @@ import subprocess
 #             progress.set_description(f'loaded {common.format_bytes(arraysize)}')
 
 
-def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_diameter, nth_timestep=1, max_time=None,
+def go(infile, outfile, L, pack_frac_given, particle_diameter, dt=None, nth_timestep=1, max_time=None,
        extra_source_file=None, skiprows=None, multiply_time_by=None):
     print(f'loading raw file, last modified {common.get_last_modified_time(infile)} ago')
 
-    assert orig_width == out_width
-
     density = 4/np.pi * pack_frac_given / particle_diameter**2
-    expected_particles_per_frame = density * orig_width**2
+    expected_particles_per_frame = density * L**2
     if max_time:
         max_frame = max_time * dt
         max_rows = int((max_frame + 1) * expected_particles_per_frame)
@@ -104,6 +102,16 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
     t1 = time.time()
     print(data.shape, data.dtype,  f'loaded {common.format_bytes(data.nbytes)} in {t1-t0:.1f}s at {common.format_bytes(data.nbytes/(t1-t0))}/sec')
 
+    if dt == None:
+        assert multiply_time_by == None
+        assert 'mixt' not in infile
+
+        # dt = None, times = [0, 0.5, 1, 1.5, ...]
+        times = np.unique(data[:, 2])
+        dt = times[1] - times[0]
+        multiply_time_by = 1/dt
+        # dt = 0.5, times = [0, 1, 2, 3, ...]
+        
     if multiply_time_by:
         print('doing multiply time by')
         data[:, 2] *= multiply_time_by
@@ -141,52 +149,31 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
     print(f'{num_timesteps:.0f} timesteps, {data[:, 2].max()*dt/60/60:.1f} hours')
     assert num_timesteps > 30
 
-    density = common.calc_density(data, orig_width, orig_width)
+    density = common.calc_density(data, L, L)
     pack_frac_calced = np.pi/4 * density * particle_diameter**2
     print(f'pack_frac_calced={pack_frac_calced:.4f}, pack_frac_given={pack_frac_given:.4f}')
     if num_timesteps > 1000:
         assert np.isclose(pack_frac_calced, pack_frac_given, rtol=0.1), f'pack frac calced {pack_frac_calced}, given {pack_frac_given}'
 
-    # print('removing some timesteps')
-    # keep_rows = data[:, 2] % nth_timesteps == 0
-    # data = data[keep_rows, :]
-    # print(f'removed {keep_rows.sum()/keep_rows.size:.3f}')
-
     data[:, 2] -= data[:, 2].min()
     assert data[:, 2].min() == 0
 
-    # num_timesteps_before = int(data[:, 2].max() + 1)
-    # print('num timesteps before crop', num_timesteps_before)
-
-
-    # print('time1:')
-    # common.term_hist(data[:, 2])
-
-    # not_too_long = data[:, 2] < 26477
-    # print(f'keeping {not_too_long.sum()/not_too_long.size:.2f} (too long)')
-    # data = data[not_too_long, :]
-
-    assert orig_width == out_width, 'at the moment'
-
-    # print('y histogram:')
-    # common.term_hist(data[:, 1])
-
     if '_pot' in infile:
         print('shifting')
-        data[:, 0] += orig_width/2
-        data[:, 1] += orig_width/2
+        data[:, 0] += L/2
+        data[:, 1] += L/2
         print('xy min max', data[:, 0].min(), data[:, 0].max(), data[:, 1].min(), data[:, 1].max())
     else:
         print('periodic wrapping')
-        data[:, 0] = data[:, 0] % orig_width
-        data[:, 1] = data[:, 1] % orig_width
+        data[:, 0] = data[:, 0] % L
+        data[:, 1] = data[:, 1] % L
 
-        assert orig_width == out_width # for the mo
+        assert L == L # for the mo
 
         # print('modded into window:')
         # common.term_hist(data[:, 1])
         print('x,y min,max', data[:, 0].min(), data[:, 0].max(), data[:, 1].min(), data[:, 1].max())
-        keep = ( data[:, 0] >= 0 ) & ( data[:, 0] <= out_width ) &  ( data[:, 1] >= 0 ) & ( data[:, 1] <= out_width ) # I think they should be "<" not "<=" but for some reason this is failing on sim_nohydro_034_L1280
+        keep = ( data[:, 0] >= 0 ) & ( data[:, 0] <= L ) &  ( data[:, 1] >= 0 ) & ( data[:, 1] <= L ) # I think they should be "<" not "<=" but for some reason this is failing on sim_nohydro_034_L1280
         assert keep.sum() == keep.size
 
     # if orig_width > out_width:
@@ -208,7 +195,7 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
     common.save_data(f'particle_detection/data/particles_{outfile}.npz',
         particles=data,
         time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
-        window_size_x=out_width, window_size_y=out_width, max_time_hours=round(last_timestep*dt/60/60, 2),
+        window_size_x=L, window_size_y=L, max_time_hours=round(last_timestep*dt/60/60, 2),
         source_file=infile, density=density, extra_source_file=extra_source_file,
     )
 
@@ -216,7 +203,7 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
         common.save_data(f'particle_linking/data/trajs_{outfile}.npz',
             particles=data,
             time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
-            window_size_x=out_width, window_size_y=out_width, max_time_hours=round(last_timestep*dt/60/60, 2),
+            window_size_x=L, window_size_y=L, max_time_hours=round(last_timestep*dt/60/60, 2),
             source_file=infile, density=density, extra_source_file=extra_source_file,
         )
     
@@ -226,8 +213,8 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
 
         common.save_data(f'particle_detection/data/particles_{outfile}_div8.npz',
             particles=data_small,
-            time_step=dt, particle_diameter=2.79, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
-            window_size_x=out_width, window_size_y=out_width, max_time_hours=round(end_timestep*dt/60/60, 2),
+            time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
+            window_size_x=L, window_size_y=L, max_time_hours=round(end_timestep*dt/60/60, 2),
             source_file=infile, density=density, extra_source_file=extra_source_file,
         )
 
@@ -235,7 +222,7 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
             common.save_data(f'particle_linking/data/trajs_{outfile}_div8.npz',
                 particles=data_small,
                 time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
-                window_size_x=out_width, window_size_y=out_width, max_time_hours=round(end_timestep*dt/60/60, 2),
+                window_size_x=L, window_size_y=L, max_time_hours=round(end_timestep*dt/60/60, 2),
                 source_file=infile, density=density, extra_source_file=extra_source_file,
             )
 
@@ -245,8 +232,8 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
 
         common.save_data(f'particle_detection/data/particles_{outfile}_div64.npz',
             particles=data_small,
-            time_step=dt, particle_diameter=2.79, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
-            window_size_x=out_width, window_size_y=out_width, max_time_hours=round(end_timestep*dt/60/60, 2),
+            time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
+            window_size_x=L, window_size_y=L, max_time_hours=round(end_timestep*dt/60/60, 2),
             source_file=infile, density=density, extra_source_file=extra_source_file,
         )
 
@@ -254,7 +241,7 @@ def go(infile, outfile, orig_width, out_width, dt, pack_frac_given, particle_dia
             common.save_data(f'particle_linking/data/trajs_{outfile}_div8.npz',
                 particles=data_small,
                 time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
-                window_size_x=out_width, window_size_y=out_width, max_time_hours=round(end_timestep*dt/60/60, 2),
+                window_size_x=L, window_size_y=L, max_time_hours=round(end_timestep*dt/60/60, 2),
                 source_file=infile, density=density, extra_source_file=extra_source_file,
             )
     print()
@@ -338,8 +325,7 @@ if __name__ == '__main__':
         go(
             infile = file,
             outfile = f'sim_nohydro_{phistr}_L{L}{suffix}',
-            orig_width=L, 
-            out_width=L, 
+            L=L, 
             dt=dt, 
             pack_frac_given=phi, nth_timestep=nth_timestep, max_time=max_time, particle_diameter=particle_diameter
         )
@@ -361,8 +347,7 @@ if __name__ == '__main__':
         # old ones:
         #    f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt',
         f'sim_nohydro_{phistr}_L{L}{suffix}',
-        orig_width=L, 
-        out_width=L, 
+        L=L,
         dt=1,
         pack_frac_given=phi, nth_timestep=nth_timestep, max_time=max_time, particle_diameter=particle_diameter)
 
@@ -386,11 +371,12 @@ def go_mesu(filepath, suffix='', skip_rsync=False, **kwargs):
 
     phistr = f'{phi*100:.0f}'.zfill(3)
 
+    if 'theta' in 
+
     go(
         f'raw_data/mesu/{filename}',
         f'sim_{hydro}_{phistr}_L{L}{suffix}',
-        orig_width=L,
-        out_width=L, 
+        L=L,
         pack_frac_given=phi,
         particle_diameter=particle_diameter,
         extra_source_file=filepath,
@@ -398,6 +384,7 @@ def go_mesu(filepath, suffix='', skip_rsync=False, **kwargs):
     )
 
 if __name__ == '__main__':
+    pass
     # hydro/nohydro plot
     # go_mesu('/store/cartera/2d_monolayer/hydro_phi0.114_L640.bin', '_mixt')
     # go_mesu('/store/cartera/2d_monolayer/nohydro_phi0.114_L640.bin', '_mixt', skiprows=int(90e6)),
@@ -423,15 +410,36 @@ if __name__ == '__main__':
     # go_mesu('/store/cartera/2d_monolayer/nohydro_t0.5_pot_phi0.114_L640.bin', suffix='_pot', multiply_time_by=1/0.5, dt=0.5)
 
     # missing one from before
-    go_mesu('/store/cartera/2d_monolayer/nohydro_t0.5_phi0.114_L1280.bin', suffix='_pot', multiply_time_by=1/0.5, dt=0.5, skip_rsync=True)
+    # go_mesu('/store/cartera/2d_monolayer/nohydro_t0.5_phi0.114_L1280.bin', suffix='_pot', multiply_time_by=1/0.5, dt=0.5, skip_rsync=True)
 
     # nohydro xy pot conf for fkt windowing
     # go_mesu('/store/cartera/2d_monolayer/nohydro_t0.5_pot_phi0.114_L640.bin', suffix='_pot', multiply_time_by=1/0.5, dt=0.5)
     # go_mesu('/store/cartera/2d_monolayer/nohydro_t16_pot_phi0.114_L640.bin', suffix='_pot_longer', multiply_time_by=1/16, dt=16) # unfinished
     # go_mesu('/store/cartera/2d_monolayer/nohydro_t0.5_pot_phi0.016_L640.bin', suffix='_pot', multiply_time_by=1/0.5, dt=0.5)
     # go_mesu('/store/cartera/2d_monolayer/nohydro_t16_pot_phi0.016_L640.bin', suffix='_pot_longer', multiply_time_by=1/16, dt=16)
+    # go_mesu('/store/cartera/2d_monolayer/nohydro_t16_longest_pot_phi0.016_L640.bin', suffix='_pot_longest', multiply_time_by=1/16, dt=16)
 
+    # others for fig S6
+    # go_mesu('/store/cartera/2d_monolayer/nohydro_t0.5_pot_phi0.114_L320.bin', suffix='_pot', multiply_time_by=1/0.5, dt=0.5)
+    # go_mesu('/store/cartera/2d_monolayer/nohydro_t0.5_pot_phi0.114_L1280.bin', suffix='_pot', multiply_time_by=1/0.5, dt=0.5)
+    # go_mesu('/store/cartera/2d_monolayer/nohydro_t16_pot_phi0.114_L320.bin', suffix='_pot_longer', multiply_time_by=1/16, dt=16)
+    # go_mesu('/store/cartera/2d_monolayer/nohydro_t64_pot_phi0.114_L1280.bin', suffix='_pot_longer')
+    
+    # for PNV
+    # go_mesu('/store/cartera/2d_monolayer/nohydro_t0.5_short_phi0.01_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
+    # go_mesu('/store/cartera/2d_monolayer/nohydro_t0.5_short_phi0.1_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
+    # go_mesu('/store/cartera/2d_monolayer/nohydro_t0.5_short_phi0.3_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
+    # go_mesu('/store/cartera/2d_monolayer/nohydro_t0.5_short_phi0.5_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
 
+    # zconf
+    # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_pot_zconf_phi0.114_L640.bin', suffix='_pot_zconf', skip_rsync=True)
+
+    # Eleanor drift vs theta interacting
+    # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_theta10_phi0.02_L640.bin', suffix='_theta10')
+    go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_theta10_phi0.04_L640.bin', suffix='_theta10')
+    # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_theta10_phi0.06_L640.bin', suffix='_theta10')
+    # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_theta10_phi0.08_L640.bin', suffix='_theta10')
+    # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_theta10_phi0.1_L640.bin', suffix='_theta10')
 
 """
 #################################

@@ -68,15 +68,15 @@ sources = [
     'boxcounting_collective_var',
     'f_first_first',
 ]
-for source in sources:
-    visualisation.merge_Ds.go([SIMULATION_SOURCE_002, f'{SIMULATION_SOURCE_002}_longer'], source)
-    visualisation.merge_Ds.go([SIMULATION_SOURCE_011, f'{SIMULATION_SOURCE_011}_longer'], source)
-box_counting.merge_msds.go([SIMULATION_SOURCE_002, f'{SIMULATION_SOURCE_002}_longer'])
-box_counting.merge_msds.go([SIMULATION_SOURCE_011, f'{SIMULATION_SOURCE_011}_longer'])
-deadfig, (deadax1, deadax2) = plt.subplots(2, 1)
-box_counting.msd_single.go(f'{SIMULATION_SOURCE_002}_longer_merged', deadax1)
-box_counting.msd_single.go(f'{SIMULATION_SOURCE_011}_longer_merged', deadax2)
-del deadfig, deadax1, deadax2
+# for source in sources:
+#     visualisation.merge_Ds.go([SIMULATION_SOURCE_002, f'{SIMULATION_SOURCE_002}_longer'], source)
+#     visualisation.merge_Ds.go([SIMULATION_SOURCE_011, f'{SIMULATION_SOURCE_011}_longer'], source)
+# box_counting.merge_msds.go([SIMULATION_SOURCE_002, f'{SIMULATION_SOURCE_002}_longer'])
+# box_counting.merge_msds.go([SIMULATION_SOURCE_011, f'{SIMULATION_SOURCE_011}_longer'])
+# deadfig, (deadax1, deadax2) = plt.subplots(2, 1)
+# box_counting.msd_single.go(f'{SIMULATION_SOURCE_002}_longer_merged', deadax1)
+# box_counting.msd_single.go(f'{SIMULATION_SOURCE_011}_longer_merged', deadax2)
+# del deadfig, deadax1, deadax2
 
 MERGE_TYPE_NMSD_FIT = 'merged' # or {MERGE_TYPE}
 MERGE_TYPE_TIMESCALEINT = 'mergedD' # or {MERGE_TYPE}

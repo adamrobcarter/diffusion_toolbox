@@ -19,7 +19,8 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
     max_time_origins *= 2
 
     if file.startswith('sim_nointer'):
-        max_time_origins *= 16
+        # max_time_origins *= 16
+        pass
         
     if 'hydro_011_L' in file or 'brennan_hydro_011_L' in file:
         max_time_origins = 4000

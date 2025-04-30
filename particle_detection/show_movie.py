@@ -5,7 +5,7 @@ import particle_detection.show
 import preprocessing.stack_movie
 
 CROP = None
-HIGHLIGHTS = True
+HIGHLIGHTS = False
 
 def go(file, infile, outfile, SUFFIX=''):
 

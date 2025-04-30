@@ -37,10 +37,10 @@ METHOD_NAME = {
 # select your method here
 # METHOD = DIFF_WITH_PREVIOUS
 # METHOD = DIFF_WITH_ZERO
-METHODS = [NONE, DIFF_WITH_PREVIOUS]
+# METHODS = [NONE, DIFF_WITH_PREVIOUS]
 # METHODS = [NONE, DIFF_WITH_TEN,REMOVE_BACKGROUND, DIFF_WITH_ZERO, DIFF_WITH_PREVIOUS]
 # METHODS = [DIFF_WITH_TEN]
-# METHODS = [NONE]
+METHODS = [NONE]
 # METHOD = REMOVE_BACKGROUND
 
 ADD_DRIFT = False
@@ -258,12 +258,16 @@ def show_single_frame(ax, frame, pixel_size, window_size_x, window_size_y, chann
         cmap = matplotlib.cm.Greys
 
     if frame is not None:
-        ax.imshow(frame, cmap=cmap, interpolation='none', vmin=vmin, vmax=vmax, extent=(0, window_size_x, 0, window_size_y))
-    
-    # ax.set_xlim(0, window_size_x)
-    # ax.set_ylim(0, window_size_y)
-    ax.set_xlim(-window_size_x, window_size_x)
-    ax.set_ylim(-window_size_x, window_size_y)
+        # ax.imshow(frame, cmap=cmap, interpolation='none', vmin=vmin, vmax=vmax, extent=(0, window_size_x, 0, window_size_y))
+        X, Y = np.meshgrid(np.arange(0, window_size_x, pixel_size), np.arange(0, window_size_y, pixel_size), indexing='ij')
+        ax.pcolormesh(X, Y, frame, cmap=cmap, vmin=vmin, vmax=vmax, shading='nearest')
+
+    ax.set_xlim(0, window_size_x)
+    ax.set_ylim(0, window_size_y)
+    # ax.set_xlim(-window_size_x, window_size_x)
+    # ax.set_ylim(-window_size_x, window_size_y)
+    ax.set_aspect('equal')
+
     
     if frame is not None:
         color = 'white' if frame.mean()/(frame.max()-frame.min()) < 0.2 else 'black'
@@ -305,7 +309,7 @@ def go(file, data, outputfilename, add_drift=False, display_small=False, method=
             stack = stack[:, ::-1, :]
 
         # print(stack.shape[1], 'x', stack.shape[2], 'px')
-        # print(stack.min(), stack.max())
+        print('stack min nmax', stack.min(), stack.max())
 
 
         save_array_movie(stack, pixel_size, time_step, file, outputfilename,

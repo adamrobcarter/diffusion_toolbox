@@ -14,6 +14,9 @@ import termplotlib
 import psutil
 import matplotlib.pyplot as plt
 import zipfile
+import joblib
+
+memory = joblib.Memory('/data2/acarter/toolbox/cache', verbose=0)
 
 PLOT_COLOR = 'white'
 # PLOT_COLOR = 'black'
@@ -271,7 +274,7 @@ def add_scale_bar(ax, pixel_size, color='black'):
     image_width = ax.get_xlim()[1] - ax.get_xlim()[0]
     warnings.warn('this is broken!!! at one point we moved from the xlim being px to um')
     # currently working on psiche089_small
-    print('image width', image_width)
+    # print('image width', image_width)
     if pixel_size:
         target_scale_bar_length = image_width / 10 # removed * pixel_size  
         target_scale_bar_length = image_width / 10 * pixel_size # unremoved * pixel_size  
@@ -287,7 +290,7 @@ def add_scale_bar(ax, pixel_size, color='black'):
     else:
     # I had to comment this out - did we move from px to um at some point?
         scale_bar_length_ax = scale_bar_length
-    print('scale bar length ax', scale_bar_length_ax)
+    # print('scale bar length ax', scale_bar_length_ax)
 
     asb = AnchoredSizeBar(ax.transData, scale_bar_length_ax,
                           rf"${scale_bar_length}\mathrm{{\mu m}}$",
@@ -490,8 +493,15 @@ def exponential_integers(mini, maxi, num=50):
     return integers
 
 def exponential_indices(t, num=100):
+    # returns `num` indexes to `t`, such that the values are spaced logarithmically between t[0] (or t[1] if t[0] == 0) and t[-1]
+    
     assert num > 0
-    assert len(t) > num, f'len(t) = {len(t)} !> num = {num}'
+    assert np.isfinite(t).all()
+    assert np.all(t >= 0), f't should not be negative. t.min() = {t.min()}'
+
+    # assert len(t) > num, f'len(t) = {len(t)} !> num = {num}'
+    if len(t) < num:
+        num = len(t)
     # this is as above but it will work for indexing time arrays
     # even if the time interval is not constant
 
@@ -500,7 +510,7 @@ def exponential_indices(t, num=100):
     #     ratio = (t[-1]/t[1]) ** (1/num)
     # else:
     ratio = (t[-1]/t[0]) ** (1/num)
-    assert ratio > 1
+    assert ratio > 1, f'ratio = {ratio}'
 
     points = [1]
     last_t = t[1]
@@ -571,7 +581,8 @@ def add_drift(particles, drift_x, drift_y):
 
     return particles_drifted
 
-def find_drift(particles):
+@memory.cache
+def find_drift(particles, num_dimensions):
     # tactic:
     # for each particle, do a linear fit to where it exists
     # then weight the fits by length
@@ -581,13 +592,13 @@ def find_drift(particles):
     # so we should only fit one function
     # I wonder if there is a clever way to do this with vectors
 
-    assert particles.shape[1] == 4, 'you should provide linked data to find_drift'
-    num_particles = int(particles[:, 3].max())
-    assert particles[:, 3].min() == 0, 'particles should be zero-based'
-
-    drift_xs = []
-    drift_ys = []
-    fit_lens = []
+    assert particles.shape[1] == num_dimensions + 2, 'you should provide linked data to find_drift'
+    
+    ID_COLUMN = num_dimensions + 1
+    TIME_COLUMN = num_dimensions
+    
+    num_particles = int(particles[:, ID_COLUMN].max()) + 1
+    assert particles[:, ID_COLUMN].min() == 0, 'particles should be zero-based'
 
     skip = 1
     if num_particles > 1000:
@@ -596,29 +607,39 @@ def find_drift(particles):
         skip = 25
     used_particles = list(range(0, num_particles, skip))
 
-    for particle in tqdm.tqdm(used_particles):
-        indexes = particles[:, 3] == particle
-        x = particles[indexes, 0]
-        y = particles[indexes, 1]
-        t = particles[indexes, 2]
+    drifts = np.full((num_dimensions, len(used_particles)), np.nan)
+    fit_lens = []
+
+    assert len(used_particles), 'no particles being used'
+
+    for particle_index, particle in enumerate(tqdm.tqdm(used_particles)):
+        row_indexes = particles[:, ID_COLUMN] == particle
+        t = particles[row_indexes, TIME_COLUMN]
 
         if t.size < 2:
             # can't regress with only one point!
             continue
         
-        res_x = scipy.stats.linregress(t, x)
-        res_y = scipy.stats.linregress(t, y)
+        for dimension in range(num_dimensions):
+            res = scipy.stats.linregress(t, particles[row_indexes, dimension])
+            drifts[dimension, particle_index] = res.slope
+        
+        fit_lens.append(row_indexes.sum())
 
-        drift_xs.append(res_x.slope)
-        drift_ys.append(res_y.slope)
-        fit_lens.append(indexes.sum())
+    drift_avg = np.full(num_dimensions, np.nan)
+    drift_std = np.full(num_dimensions, np.nan)
 
-    drift_x = np.average(drift_xs, weights=fit_lens)
-    drift_y = np.average(drift_ys, weights=fit_lens)
-    assert not np.isnan(drift_x)
-    assert not np.isnan(drift_y)
+    assert np.isfinite(drifts).all()
 
-    return drift_x, drift_y
+    for dimension in range(num_dimensions):
+        drift_avg[dimension] = np.average(drifts[dimension, :], weights=fit_lens)
+        # print(np.cov(drifts[dimension, :], aweights=fit_lens))
+        drift_std[dimension] = np.sqrt(np.cov(drifts[dimension, :], aweights=fit_lens))
+        
+        assert not np.isnan(drift_avg[dimension])
+        # assert not np.isnan(drift_std[dimension])
+
+    return drift_avg, drift_std
 
 def remove_drift(particles):
     print('starting drift removal')
@@ -726,9 +747,12 @@ def term_hist(data):
     counts, bin_edges = np.histogram(data, bins=20)
     term_bar(counts, bin_edges)
 
-def term_bar(y, x):
+def term_bar(y, x=None):
+    # note x and y are their normal meanings, despite the axes being switched
     y = np.array(y)
-    x = np.array(x)
+    if x:
+        x = np.array(x)
+    else: x = np.arange(0, y.size+1)
 
     if np.any(y < 0):
         y -= y.min()
@@ -831,36 +855,38 @@ def colormap_colorbar(min=0, max=1):
 def colormap_cool(value, min=0, max=1):
     return matplotlib.cm.summer(np.interp(value, (min, max), (0, 0.8)))
 
+def tab_color(i):
+    colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:grey', 'tab:olive', 'tab:cyan']
+    return colors[i % len(colors)]
 
+# class DisplayScript:
+#     figs = []
 
-class DisplayScript:
-    figs = []
-
-    def go(self, file_or_files):
-        raise NotImplementedError
+#     def go(self, file_or_files):
+#         raise NotImplementedError
     
-    def run(self, *args):
-        self.go(*args)
+#     def run(self, *args):
+#         self.go(*args)
 
-        for figdata in self.figs:
-            path = figdata['path'] + '/' + figdata['name']
-            if type(figdata['file_or_files']) is list:
-                path += '_' + '_'.join(figdata['file_or_files'])
-            else:
-                path += '_' + figdata['file_or_files']
+#         for figdata in self.figs:
+#             path = figdata['path'] + '/' + figdata['name']
+#             if type(figdata['file_or_files']) is list:
+#                 path += '_' + '_'.join(figdata['file_or_files'])
+#             else:
+#                 path += '_' + figdata['file_or_files']
 
-            save_fig(figdata['fig']+'.png', path, dpi=figdata['dpi'])
+#             save_fig(figdata['fig']+'.png', path, dpi=figdata['dpi'])
 
-    def fig(self, path, name, file_or_files, subplots=(1, 1), figsize=None, dpi=100):
-        fig, ax = plt.subplots(*subplots, figsize=figsize)
-        self.figs.append({
-            fig: fig,
-            path: path,
-            name: name,
-            dpi: dpi,
-            file_or_files: file_or_files,
-        })
-        return fig, ax
+#     def fig(self, path, name, file_or_files, subplots=(1, 1), figsize=None, dpi=100):
+#         fig, ax = plt.subplots(*subplots, figsize=figsize)
+#         self.figs.append({
+#             fig: fig,
+#             path: path,
+#             name: name,
+#             dpi: dpi,
+#             file_or_files: file_or_files,
+#         })
+#         return fig, ax
 
 
 def rotate_particles(rotation_degrees, particles, width, height):
@@ -1014,6 +1040,8 @@ def stokes_einstein_v(particle_diameter, particle_material):
     rho_particle = np.nan
     if particle_material == 'SiO2':
         rho_particle = 2.648 # wikipedia
+    else:
+        raise Exception('particle material not found')
     rho_water = 1.0
 
     delta_rho = rho_particle - rho_water # kg m^-3
@@ -1031,4 +1059,8 @@ def stokes_einstein_v(particle_diameter, particle_material):
     
     v = delta_rho * g * d**2 / (18 * viscosity) # m/s
     v_um = v * 1e6
+
     return v_um
+
+def S_k_zero(phi):
+    return (1 - phi)**3 / (1 + phi)

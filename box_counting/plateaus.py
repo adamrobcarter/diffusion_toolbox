@@ -6,19 +6,42 @@ from .msd_single import get_plateau, PLATEAU_SOURCES, PLATEAU_SOURCE_NAMES
 import scipy.optimize
 import visualisation.Ds_overlapped
 import tqdm
+from .D_of_L import T_integrand_func, timescaleintegral_nofit
+import countoscope_theory
+import joblib
+
+memory = joblib.Memory('/data2/acarter/toolbox/box_counting/cache', verbose=0)
 
 markers = {
-    'sDFT': 'none',
+    'sDFT': 'None',
     'var': 'o',
+    'fit': 'x',
 }
 linestyles = {
     'sDFT': '-',
-    'var': 'none',
+    'var': 'none', # None?
 }
+SOURCES = ['var', 'sDFT', 'fit']
+SOURCES = ['var', 'sDFT']
 
-CROP_OFF_L_BELOW = 30
+CROP_OFF_L_BELOW = 10
+
+@memory.cache
+def get_Ds_over_grid(try_plateaus, L, t, nmsd, nmsd_std):
+    Ds = np.full_like(try_plateaus, np.nan)
+
+    for try_plateau_i, try_plateau in enumerate(tqdm.tqdm(try_plateaus)):
+        T_integrand, T_integrand_unc = T_integrand_func(nmsd, nmsd_std, try_plateau, 0)
+        T_integrand_max = T_integrand + T_integrand_unc
+        T_integrand_min = T_integrand - T_integrand_unc
+        D_of_L_nofit2, D_of_L_min_nofit2, D_of_L_max_nofit2 = timescaleintegral_nofit(t, L, T_integrand, T_integrand_min, T_integrand_max)
+        Ds[try_plateau_i] = D_of_L_nofit2
+    return Ds
 
 def go(file, ax, sources, rescale_window=False, label_prefix='', rescale_sigma=True, colors=None):
+
+    if 'zoom' in file:
+        CROP_OFF_L_BELOW = 0
 
     data = common.load(f'box_counting/data/counted_{file}.npz')
     N2_mean        = data['N2_mean']
@@ -44,11 +67,13 @@ def go(file, ax, sources, rescale_window=False, label_prefix='', rescale_sigma=T
     if colors:
         assert len(colors) == len(sources)
 
+    all_plateaus = []
+
     for source_i, source in enumerate(sources):
 
-        if source == 'sDFT':
-            # this is a weird hack so sDFT can have more Ls than box sizes in the counted data
-            box_sizes = np.logspace(np.log10(box_sizes.min()), np.log10(box_sizes.max()), num=100)
+        # if source == 'sDFT':
+        #     # this is a weird hack so sDFT can have more Ls than box sizes in the counted data
+        #     box_sizes_used = np.logspace(np.log10(box_sizes.min()), np.log10(box_sizes.max()), num=100)
 
         plateaus = np.full(box_sizes.shape, np.nan)
         plateaus_unc = np.full(box_sizes.shape, np.nan)
@@ -57,12 +82,29 @@ def go(file, ax, sources, rescale_window=False, label_prefix='', rescale_sigma=T
             if 'target' in source and box_size_index < 10:
                 continue
 
+            L = box_sizes[box_size_index]
+
             def get():
                 if source == 'sDFT':
                     # this is a weird hack so sDFT can have more Ls than box sizes in the counted data
-                    L = box_sizes[box_size_index]
                     N_mean2 = data['density'] * L**2
                     return countoscope_theory.nmsd.plateau_inter_2d(N_mean2, L, lambda k: countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma)), 0
+
+                elif source == 'fit':
+                    assert 'nohydro' in file
+
+                    try_plateaus = np.logspace(np.log10(N_var[box_size_index]*1), np.log10(N_var[box_size_index]*10), num=500)
+
+                    target_D = countoscope_theory.timescaleint.D_of_L(L, D0, phi, sigma)
+
+                    Ds = get_Ds_over_grid(try_plateaus, L, t, N2_mean[box_size_index, :], N2_std[box_size_index, :])
+
+                    closest_index = np.argmin(np.abs(Ds - target_D))
+                    closest_plateau = try_plateaus[closest_index]
+                    print('D dff', target_D - Ds[closest_index], closest_index)
+                    return closest_plateau, 0
+
+
                 else:
                     return get_plateau(
                         method=source, file=file, data=data, box_size_index=box_size_index,
@@ -98,6 +140,8 @@ def go(file, ax, sources, rescale_window=False, label_prefix='', rescale_sigma=T
             ax.errorbar(box_sizes/rescale_x, plateaus/rescale_y, plateaus_unc/rescale_y, label=label, marker=markers.get(source, '.'),
                     color=color, linestyle=linestyles.get(source, 'none'))
 
+        all_plateaus = np.concatenate([all_plateaus, plateaus])
+
     # ax.errorbar(box_sizes/data['particle_diameter'], v_10 * box_sizes**2 / box_sizes[21]**2, label=r'$Var_{10\sigma} L^2/(10\sigma)^2$', marker='.')
 
     ax.legend()
@@ -118,7 +162,7 @@ def go(file, ax, sources, rescale_window=False, label_prefix='', rescale_sigma=T
     if CROP_OFF_L_BELOW:
         first_index = np.argmax(box_sizes > CROP_OFF_L_BELOW)
         ax.set_xlim(box_sizes[first_index]/rescale_x, box_sizes[-1]/rescale_x*1.1)
-        ax.set_ylim(plateaus[first_index]/rescale_y, plateaus[-1]/rescale_y*1.1)
+        ax.set_ylim(plateaus[first_index]/rescale_y, max(all_plateaus)/rescale_y*1.1)
 
         # if 'eleanorlong001' in file:
         #     ax.set_xlim(1e1, 3e2)
@@ -136,7 +180,7 @@ if __name__ == '__main__':
     for file in common.files_from_argv('box_counting/data/', 'counted_'):
         fig, ax = plt.subplots(1, 1)
 
-        go(file, ax, ['var', 'histogram', 'sDFT'])
+        go(file, ax, SOURCES)
         # go(file, ax, PLATEAU_SOURCES)
 
         common.save_fig(fig, f'box_counting/figures_png/plateaus_{file}.png', dpi=200)

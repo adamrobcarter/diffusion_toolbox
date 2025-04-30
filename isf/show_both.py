@@ -325,16 +325,16 @@ def show_single_F_type(
             ax.plot(t[~f_bad], f[~f_bad], color=color, linestyle='', label=f'{Ftype} {file}', marker='.', markersize=markersize)
             ax.plot(t[~f_bad], f[~f_bad], color=color, linestyle='', alpha=bad_alpha,               marker='.', markersize=markersize)
             # good errorbars, bad errorbars
-            ax.errorbar(t[~f_bad], f[~f_bad], yerr=f_unc[~f_bad], color=color, linestyle='', alpha=errorbar_alpha,                 marker='none')
-            ax.errorbar(t[ f_bad], f[ f_bad], yerr=f_unc[ f_bad], color=color, linestyle='', alpha=min(errorbar_alpha, bad_alpha), marker='none')
+            ax.errorbar(t[~f_bad], f[~f_bad], yerr=f_unc[~f_bad], color=color, linestyle='', alpha=errorbar_alpha,                 marker='None')
+            ax.errorbar(t[ f_bad], f[ f_bad], yerr=f_unc[ f_bad], color=color, linestyle='', alpha=min(errorbar_alpha, bad_alpha), marker='None')
 
             # log log axis
             # good points, bad points
             log_ax.plot(t[~f_bad], f[~f_bad], color=color, linestyle='', label=f'{Ftype} {file}', marker='.', markersize=markersize)
             log_ax.plot(t[ f_bad], f[ f_bad], color=color, linestyle='', alpha=bad_alpha,               marker='.', markersize=markersize)
             # good errorbars, bad errobars
-            log_ax.errorbar(t[~f_bad], f[~f_bad], yerr=f_unc[~f_bad], color=color, linestyle='', alpha=errorbar_alpha,                 marker='none')
-            log_ax.errorbar(t[ f_bad], f[ f_bad], yerr=f_unc[ f_bad], color=color, linestyle='', alpha=min(errorbar_alpha, bad_alpha), marker='none')
+            log_ax.errorbar(t[~f_bad], f[~f_bad], yerr=f_unc[~f_bad], color=color, linestyle='', alpha=errorbar_alpha,                 marker='None')
+            log_ax.errorbar(t[ f_bad], f[ f_bad], yerr=f_unc[ f_bad], color=color, linestyle='', alpha=min(errorbar_alpha, bad_alpha), marker='None')
 
             log_ax.set_ylim(f.min()/1.2, f.max()*1.2)
 
@@ -779,6 +779,8 @@ def show_single_F_type(
                     )
         for nth_t_index, nth_t in enumerate(t[1:]):
             assert len(Ds_for_saving_nth), 'nothing to save'
+            if nth_t % 1 == 0:
+                nth_t = int(nth_t) # save "t64" not "t64.0"
             common.save_data(f'visualisation/data/Ds_from_{Ftype}_t{nth_t}_{file}',
                         Ds=Ds_for_saving_nth[nth_t_index], D_uncs=D_uncs_for_saving_nth[nth_t_index], ks=ks_for_saving_nth[nth_t_index],
                         **common_to_save

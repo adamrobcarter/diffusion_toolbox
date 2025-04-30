@@ -8,3 +8,6 @@ for file in common.files_from_argv('particle_detection/data/', 'particles_'):
     print(f'mean num particles, {particles.shape[0]/(particles[:, 2].max()+1):.0f}')
     print(f'{particles[:, 0].min()} <= x <= {particles[:, 0].max()}')
     print(f'{particles[:, 1].min()} <= y <= {particles[:, 1].max()}')
+    if data['dimension'] == 3:
+        print(f'{particles[:, 2].min()} <= z <= {particles[:, 2].max()}')
+        print(f'<z> = {particles[:, 2].mean()}')

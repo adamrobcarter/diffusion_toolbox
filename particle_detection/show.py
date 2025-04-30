@@ -15,6 +15,8 @@ CROP = False
 def add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=None, outline=True):
     # radius can be None
 
+    assert particles.size
+
     particles_at_t = particles[:, 2] == timestep
     # print(particles_at_t.sum())
     if particles_at_t.sum() == 0:
@@ -23,10 +25,8 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=N
     # plt.scatter(particles[particles_at_t, X_INDEX]/pixel_size, particles[particles_at_t, Y_INDEX]/pixel_size, s=50*radius[particles_at_t]**2*pixel_size**2,
     #             facecolors='none', edgecolors='red', alpha=0.5, linewidth=0.8)
 
-    # x = particles[particles_at_t, 1]/pixel_size
-    # y = particles[particles_at_t, 0]/pixel_size
-    x = particles[particles_at_t, 1]
-    y = particles[particles_at_t, 0]
+    x = particles[particles_at_t, 0]
+    y = particles[particles_at_t, 1]
 
     # r = radius[particles_at_t] * np.sqrt(2) # TODO: should this be /pixel_size?
     r = np.full_like(x, 1.5) # you would lose this problem if u actually showed the radius u numpty
@@ -40,7 +40,7 @@ def add_particle_outlines(ax, pixel_size, particles, radius, timestep, channel=N
             return matplotlib.cm.tab20(int(id[i]%20))
         else:
             if channel == 'red':
-                return 'white'
+                return 'grey' # was white
             elif channel == 'green':
                 return 'red'
             return 'red'
@@ -107,8 +107,7 @@ if __name__ == '__main__':
         fig, ax = plt.subplots(1, 1, figsize=figsize)
         ax.set_ylim(particles[:, 0].min(), particles[:, 0].max())
         ax.set_xlim(particles[:, 1].min(), particles[:, 1].max())
-        ax.set_aspect('equal')
-
+        
         frame = stack[0, :, :].transpose([1, 0])[::-1, :]
         # print(frame.shape)
         # frame = frame.transpose([1, 0])

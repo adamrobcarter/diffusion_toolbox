@@ -2,12 +2,13 @@ import numpy as np
 import common
 import tqdm
 
-L = 320
-phi = 0.01
+L = 640
+phi = 0.3
 sigma = 3
-dt = 0.5
+dt = 0.25
 D = 0.04
-num_timesteps = int(24 * 60 * 60 / dt / 24) # 24 hours
+# num_timesteps = int(24 * 60 * 60 / dt / 24) # 24 hours
+num_timesteps = 10000
 
 num_particles = int(L**2 * 4 / np.pi * phi / sigma**2)
 
@@ -44,7 +45,7 @@ for t in tqdm.trange(num_timesteps, desc='forming array'):
 # trajectory which will mess up the MSDs.
 
 phi_str = f'{phi*100:.0f}'.zfill(3)
-filename = f'sim_nointer_{phi_str}'
+filename = f'sim_nointer_{phi_str}_L{L}_dt{dt}'
 common.save_data(f'particle_detection/data/particles_{filename}.npz',
                  particles=trajs[:, (0, 1, 2)],
                  window_size_x=L, window_size_y=L,

@@ -30,3 +30,6 @@ metadata.json
 tmp/*
 presentations/paper1/*
 test.gif
+box_counting/cache/*
+workflows/figures/*
+cache/*
