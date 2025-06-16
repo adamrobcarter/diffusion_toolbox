@@ -216,6 +216,7 @@ def get_D0(file):
                 '_long', '_longer', '_moreoverlap', '_spacing', '_frac_of_window', '_windowed', '_nowindow', '_bhwindow',
                 # '_mixt'
                 '_xk',# '_unmix'
+                '_mirrortile',
                 ]
     if '_mixt' in file:
         warnings.warn('allowing mixt for now, would be good to do a proper msd calculation though')

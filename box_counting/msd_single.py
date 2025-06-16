@@ -370,9 +370,24 @@ def go(file, ax=None, separation_in_label=False,
     for box_size_index in tqdm.tqdm(iter, desc='box sizes'):
         L   = box_sizes[box_size_index]
         sep = sep_sizes[box_size_index]
+
+        if box_size_indices:
+            display = box_size_index in box_size_indices
+        elif SHOW_JUST_ONE_BOX:
+            display = box_size_index == 20
+        elif len(box_sizes) <= max_boxes_on_plot:
+            display = True
+        else:
+            display = box_size_index % (len(box_sizes) // max_boxes_on_plot) == 0
+        
+        if force_display_false:
+            display = False
+            # the user can provide no ax if they want to compute the Ds without plotting
+
         
         L_over_sigma_str = f' = {L/sigma:.2f}σ' if sigma else ''
-        print(f'L = {L:.2g}{L_over_sigma_str}')
+        if display:
+            print(f'L = {L:.2g}{L_over_sigma_str}')
 
 
         delta_N_sq     = N2_mean[box_size_index, :]
@@ -382,8 +397,7 @@ def go(file, ax=None, separation_in_label=False,
 
 
         anomalous = delta_N_sq < 1e-14
-        # anomalous[0] = False # don't want to remove point t=0 as it could legit be zero
-        # print(anomalous)
+        anomalous[0] = False # don't want to remove point t=0 as it could legit be zero
         assert anomalous[1] == False
 
         if np.any(anomalous):
@@ -399,9 +413,9 @@ def go(file, ax=None, separation_in_label=False,
         if nmsd_nan: print('nmsd nanfrac', nmsd_nan)
         nmsd_zero = np.sum(delta_N_sq==0)/delta_N_sq.size
         if nmsd_zero: print('nmsd zero', nmsd_zero)
-        nmsd_negative = np.sum(delta_N_sq<0)/delta_N_sq.size
+        nmsd_negative = np.sum(delta_N_sq[1:]<0)/delta_N_sq[1:].size
         if nmsd_negative: print('nmsd negative', nmsd_negative)
-        nmsd_negative = np.sum(delta_N_sq<1e-14)/delta_N_sq.size
+        nmsd_negative = np.sum(delta_N_sq[1:]<1e-14)/delta_N_sq[1:].size
         if nmsd_negative: print('nmsd negative', nmsd_negative)
         nmsd_inf = np.sum(np.isinf(delta_N_sq))/delta_N_sq.size
         if nmsd_inf: print('nmsd inf', nmsd_inf)
@@ -601,7 +615,8 @@ def go(file, ax=None, separation_in_label=False,
         # Dc, Dc_unc, tsi_replacement_ys = timescaleint_replacement_fitplateau()
         Dc, Dc_unc, tsi_replacement_ys = timescaleint_replacement()
         
-        print(f'  timescaleint replacement D={common.format_val_and_unc(Dc, Dc_unc, latex=False)}')
+        if display:
+            print(f'  timescaleint replacement D={common.format_val_and_unc(Dc, Dc_unc, latex=False)}')
         # Dc_lower, Dc_unc_lower, _ = tsi_replace_func((delta_N_sq-delta_N_sq_err).clip(min=0.1)) # otherwise we could give negatives
         # Dc_upper, Dc_unc_upper, _ = tsi_replace_func(delta_N_sq+delta_N_sq_err)
         # Dc_unc_final = max(Dc_unc, abs(Dc-Dc_lower), abs(Dc-Dc_upper))
@@ -638,8 +653,6 @@ def go(file, ax=None, separation_in_label=False,
             t_theory = t_theory / rescale_x_value
             t        = t        / rescale_x_value
         
-        info = fr'L = {L/sigma:.1f}σ,'
-        
         # linear fit to start
         if DO_LINEAR_FIT_TO_START:
             fit_end = 4
@@ -671,6 +684,8 @@ def go(file, ax=None, separation_in_label=False,
         #     pass
         # else:
         if DO_D_FROM_FIRST_POINT:
+            assert t[1] == time_step
+
             D_from_first_quad = np.pi * L**2 / ( 4 * time_step ) * (1 - np.sqrt(1 - delta_N_sq[1]/(2*N_mean[box_size_index])))**2
             # error propagation for that is complicated (type d/dx A(1-sqrt(1-x/(2B)))^2 into wolfram so let's hack)
             D_unc_from_first_quad = delta_N_sq_err[1] / delta_N_sq[1] * D_from_first_quad
@@ -678,28 +693,14 @@ def go(file, ax=None, separation_in_label=False,
             D_uncs_first_quad_for_saving.append(D_unc_from_first_quad)
             Ls_first_quad_for_saving.append(L)
         
-        if box_size_indices:
-            display = box_size_index in box_size_indices
-        elif SHOW_JUST_ONE_BOX:
-            display = box_size_index == 20
-        elif len(box_sizes) <= max_boxes_on_plot:
-            display = True
-        else:
-            display = box_size_index % (len(box_sizes) // max_boxes_on_plot) == 0
-        
-        if force_display_false:
-            display = False
-            # the user can provide no ax if they want to compute the Ds without plotting
-
         if display:
-            print('box_size_index', box_size_index)
+            # print('  box_size_index', box_size_index)
             # get_plateau(nmsd=N2_mean[box_size_index, :], file=file, L=L, phi=phi, sigma=sigma, display=True, t=t_all)
             
             if LINEAR_Y:
                 if display_i != 0:
                     ax = ax.twinx() 
                 yrange = delta_N_sq.max()
-                ylim_range = yrange * max_boxes_on_plot
                 OVERLAP = 0.5
                 ylim_start =  - OVERLAP * yrange * display_i
                 ylim_end = yrange * (1 + (max_boxes_on_plot - display_i)*OVERLAP)
@@ -752,11 +753,12 @@ def go(file, ax=None, separation_in_label=False,
             if SHOW_D_IN_LEGEND:
                 label += fr', $D_\mathrm{{short\:fit}}={common.format_val_and_unc(D_from_fit, D_from_fit_unc, 2)} \mathrm{{\mu m^2/s}}$'
             # ±{np.sqrt(pcov[0][0]):.3f}$'
-            print('  dN2s', delta_N_sq.size, common.nanfrac(delta_N_sq))
 
             if DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE and delta_N_sq.size > 1000:
                 # print('tt', t)
                 points_to_plot = common.exponential_indices(t, 500)
+                if 0 not in points_to_plot:
+                    points_to_plot = np.concatenate(([0], points_to_plot))
             else:
                 points_to_plot = np.index_exp[:] # this is basically a functional way of writing points_to_plot = [1:]
 

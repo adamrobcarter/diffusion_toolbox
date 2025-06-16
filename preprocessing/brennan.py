@@ -371,7 +371,7 @@ def go_mesu(filepath, suffix='', skip_rsync=False, **kwargs):
 
     phistr = f'{phi*100:.0f}'.zfill(3)
 
-    if 'theta' in 
+    # if 'theta' in 
 
     go(
         f'raw_data/mesu/{filename}',
@@ -430,13 +430,15 @@ if __name__ == '__main__':
     # go_mesu('/store/cartera/2d_monolayer/nohydro_t0.5_short_phi0.1_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
     # go_mesu('/store/cartera/2d_monolayer/nohydro_t0.5_short_phi0.3_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
     # go_mesu('/store/cartera/2d_monolayer/nohydro_t0.5_short_phi0.5_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
+    go_mesu('/store/cartera/2d_monolayer/nohydro_short_phi0.2_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
+    go_mesu('/store/cartera/2d_monolayer/nohydro_short_phi0.4_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
 
     # zconf
     # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_pot_zconf_phi0.114_L640.bin', suffix='_pot_zconf', skip_rsync=True)
 
     # Eleanor drift vs theta interacting
     # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_theta10_phi0.02_L640.bin', suffix='_theta10')
-    go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_theta10_phi0.04_L640.bin', suffix='_theta10')
+    # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_theta10_phi0.04_L640.bin', suffix='_theta10')
     # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_theta10_phi0.06_L640.bin', suffix='_theta10')
     # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_theta10_phi0.08_L640.bin', suffix='_theta10')
     # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_theta10_phi0.1_L640.bin', suffix='_theta10')

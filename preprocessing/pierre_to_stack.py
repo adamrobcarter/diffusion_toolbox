@@ -1,7 +1,8 @@
 import common
 import numpy as np
 
-for directory in ['sim', 'simdownsampled', 'exp']:
+# for directory in ['sim', 'simdownsampled', 'exp']:
+for directory in ['exp']:
     print(f'doing {directory}')
     tifs = common.get_directory_files(f'raw_data/pierre_{directory}', 'tif')
 
@@ -22,6 +23,8 @@ for directory in ['sim', 'simdownsampled', 'exp']:
         particle_diameter = 0.6
     else:
         raise Exception('need to provide pixel size')
+    
+    stack = np.swapaxes(stack, 2, 1)
 
     print('saving')
     np.savez(f'preprocessing/data/stack_pierre_{directory}.npz', stack=stack, 

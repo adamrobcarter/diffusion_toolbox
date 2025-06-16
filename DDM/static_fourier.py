@@ -5,6 +5,7 @@ import scipy.stats
 import scipy.optimize
 import scipy.fft
 import warnings
+import DDM.static_fourier_show
 
 import preprocessing.stack_movie
 
@@ -14,11 +15,11 @@ FRAME_DIFF_TAU = 1
 # REMOVE_BKG = True
 # FRAME_DIFF = False
 
-# FRAME_DIFF = True
-# REMOVE_BKG = False
-
-FRAME_DIFF = False
+FRAME_DIFF = True
 REMOVE_BKG = False
+
+# FRAME_DIFF = False
+# REMOVE_BKG = False
 
 USE_ALL_FRAMES = True
 
@@ -62,7 +63,7 @@ def do_static_fourier(file, remove_bkg, frame_diff):
     del stack
     num_frames = images.shape[0]
 
-    if frame_diff:
+    if frame_diff and images.dtype != np.float32:
         warnings.warn('should use float32 when doing diff?')
 
     assert np.isfinite(images).all()
@@ -126,6 +127,12 @@ if __name__ == '__main__':
 
         # try:
             do_static_fourier(file, remove_bkg=REMOVE_BKG, frame_diff=FRAME_DIFF)
+
+            title = file
+            title += f'_diff{FRAME_DIFF_TAU}' if FRAME_DIFF else ''
+            title += '_bkgrem' if REMOVE_BKG else ''
+            DDM.static_fourier_show.go(title)
+
             # do_static_fourier(file, remove_bkg=False, frame_diff=True)
             # do_static_fourier(file, remove_bkg=True,  frame_diff=False)
             # do_static_fourier(file, remove_bkg=False, frame_diff=False)

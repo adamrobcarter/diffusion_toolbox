@@ -22,7 +22,7 @@ if __name__ == '__main__':
         else:
             color = common.colormap(i, 0, len(files))
 
-        particle_diameter, k_bin_mids, v = show_static_fourier(file, ax, color)
+        particle_diameter, k_bin_mids, v = show_static_fourier(file, ax, color, show_form_factor=True)
 
         ymin = np.nanmin([ymin, v[k_bin_mids>0.1].min()])
         ymax = np.nanmax([ymax, v[k_bin_mids>0.1].max()])

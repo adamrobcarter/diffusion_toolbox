@@ -49,7 +49,6 @@ def get_velocity_step(window_size_x, window_size_y, x, y):
 def get_velocity_const(window_size_x, window_size_y, x, y):
     v = np.full((*x.shape, 2), 1)
     v[..., 1] = 0
-    print(v.shape)
     
     assert np.isfinite(v).all()
     return v
@@ -116,6 +115,7 @@ def go_internal(infile, outfile, v_profile, velocity_multiplier=1):
     newdata = dict(data)
     newdata['particles'] = particles
     newdata['v_profile'] = v_profile
+    newdata['velocity_multiplier'] = velocity_multiplier
     common.save_data(outfile, **newdata)
 
 def go(file, v_profile, velocity_multiplier=1):

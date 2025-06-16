@@ -12,23 +12,31 @@ def go(file):
     assert particles.shape[1] == 3
 
     print('particles.dtype', particles.dtype)
-
     print('creating dataframe')
-    print('particles[:, 2]', particles[:, 2])
+
+    dimension = data.get('dimension', 2)
+    time_column = dimension
+    id_column   = dimension + 1
+    if dimension == 2:
+        columns = ['x', 'y', 'frame']
+        columns_linked = ['x', 'y', 'frame', 'particle']
+    else:
+        columns = ['x', 'y', 'z', 'frame']
+        columns_linked = ['x', 'y', 'z', 'frame', 'particle']
 
     if 'mixt' in file:
         # trackpy needs frame numbers not times
         # so we convert from time to number using the maps frame_to_time and time_to_frame
-        frame_to_time = np.unique(particles[:, 2])
+        frame_to_time = np.unique(particles[:, time_column])
         time_to_frame = lambda time: np.argmax(frame_to_time == time)
 
         for row in tqdm.trange(particles.shape[0], desc='mapping times', leave=False):
-            particles[row, 2] = time_to_frame(particles[row, 2])
+            particles[row, time_column] = time_to_frame(particles[row, time_column])
 
-    assert np.unique(particles[:, 2]).size == particles[:, 2].max() + 1, f'{np.unique(particles[:, 2]).size} != {particles[:, 2].max() + 1}'
+    assert np.unique(particles[:, time_column]).size == particles[:, time_column].max() + 1, f'{np.unique(particles[:, time_column]).size} != {particles[:, time_column].max() + 1}'
     # if they are integers, this should check they're continuous and zero based
 
-    features = pandas.DataFrame(particles, columns=['x', 'y', 'frame'])
+    features = pandas.DataFrame(particles, columns=columns)
     # the dtype of the frame column is float32
     print('created dataframe')
     loaded_df = False
@@ -88,31 +96,30 @@ def go(file):
     print(f'dropped {(num_trajs_before_filter-num_trajs)/num_trajs_before_filter:.2f} of rows in filter_stubs')
     # filtering stubs might seem unneeded but it makes calculation of the MSD much much quicker
 
-    particles = trajs[['x', 'y', 'frame', 'particle']].to_numpy(dtype=particles.dtype)
-    #                   ^    ^   I am aware these are the wrong way round
-    # but it has to be so to work. possibly we introduced this error in the sparticles
-    # tracking, but now we have to be consistant
-    #### ^^^^ this might be one of the things fucking up the show_movie
+    particles = trajs[columns_linked].to_numpy(dtype=particles.dtype)
 
     assert particles.shape[0] > 0, 'no particles in resulting dataset'
-
-    
 
     if 'mixt' in file:
         # trackpy needs frame numbers not times
         # so we convert back from number to time
-
         for row in tqdm.trange(particles.shape[0], desc='remapping times', leave=False):
-            particles[row, 2] = frame_to_time[int(particles[row, 2])]
+            particles[row, time_column] = frame_to_time[int(particles[row, time_column])]
 
     # after filtering stubs, the IDs are now no longer continuous
-
-    IDs = np.unique(particles[:, 3])
+    IDs = np.unique(particles[:, id_column])
+    print('num unique IDs', IDs.size)
     ID_map = {}
     for i, ID in enumerate(IDs):
         ID_map[ID] = i
+
+        # # check that the time coordinate is continous while we're here
+        # this_particle = particles[:, id_column] == ID
+        # assert np.all(np.diff(np.unique(particles[this_particle, time_column])) == 1)
+
     for i in tqdm.trange(particles.shape[0], desc='updating IDs'):
-        particles[i, 3] = ID_map[particles[i, 3]]
+        particles[i, id_column] = ID_map[particles[i, id_column]]
+
     
     if 'pack_frac_given' in data:
         exp_density = 4/np.pi * data['pack_frac_given'] / data['particle_diameter']**2
@@ -146,7 +153,8 @@ def go(file):
             pixel_size=pixel_size,
             particle_diameter=data.get('particle_diameter'), pack_frac_given=data.get('pack_frac_given'),
             pack_frac=data.get('pack_frac'),
-            window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'))
+            window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
+            dimension=dimension)
             # particle_diameter_calced=particle_diameter_calced)
 
 if __name__ == '__main__':

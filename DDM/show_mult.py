@@ -43,14 +43,14 @@ def go(files, discrete_colors, num_displayed_ks=14, do_fit=False, k_index_offset
                 num_displayed_ks=num_displayed_ks, k_index_offset=k_index_offset, particle_diameter=data.get('particle_diameter'),
                 color=color, do_fit=do_fit, plot_label=label, particle_material=data.get('particle_material'), **kwargs)
         
-        assert np.isfinite(ymins).all()
-        assert np.isfinite(ymaxs).all()
-        all_ymins = np.nanmin([all_ymins, ymins], axis=0)
-        all_ymaxs = np.nanmax([all_ymaxs, ymaxs], axis=0)
+    #     assert np.isfinite(ymins).all()
+    #     assert np.isfinite(ymaxs).all()
+    #     all_ymins = np.nanmin([all_ymins, ymins], axis=0)
+    #     all_ymaxs = np.nanmax([all_ymaxs, ymaxs], axis=0)
 
 
-    for i, ax in enumerate(axs):
-        ax.set_ylim(all_ymins[i]*0.95, all_ymaxs[i]*1.05)
+    # for i, ax in enumerate(axs):
+    #     ax.set_ylim(all_ymins[i]*0.95, all_ymaxs[i]*1.05)
         
                 
     return fig

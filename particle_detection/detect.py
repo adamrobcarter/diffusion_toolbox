@@ -24,7 +24,10 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     if num_timesteps > 1:
         stack = stack - stack.mean(axis=0)
     print('stack dtype', stack.dtype)
-    stack = np.interp(stack, (stack.min(), stack.max()), (0, 1)) # convert to 0->1 range
+
+    print('converting stack range')
+    stack = np.interp(stack, (stack.min(), stack.max()), (0, 1))
+    # convert to 0->1 range. why are we doing this?
     print(stack.max(), stack.mean(), 'maxmean', stack.min(), stack.std())
 
     print('stack dtype', stack.dtype)
@@ -145,6 +148,10 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     #                      ^    ^   I am aware these are the wrong way round
     # but it has to be so to work. possibly we introduced this error in the sparticles
     # tracking, but now we have to be consistant
+
+    there is still a switch here which is annoying
+    is this connected to needing the right orientation for faxtor?
+    it would be really good to properly fix this
 
     particles[:, [0, 1]] *= pixel_size
 

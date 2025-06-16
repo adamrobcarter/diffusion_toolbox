@@ -11,6 +11,7 @@ def go(file, N0_source='mean'):
     fig_slice, ax_slice = plt.subplots(1, 1)
 
     used_avs = []
+    used_Ls = []
 
     for box_size_index in range(len(data['box_sizes_x'])):
         # box_size_index = 0
@@ -20,7 +21,7 @@ def go(file, N0_source='mean'):
         y = y_grid[0, :]
         x = x_grid[:, 0]
 
-        print('N1N2 avg', np.nanmean(N1N2))
+        # print('N1N2 avg', np.nanmean(N1N2))
 
         # some of the above can be nan (because different box_size_indexes can have different numbers of boxes)
         # so lets remove nan values
@@ -62,7 +63,7 @@ def go(file, N0_source='mean'):
         v_o2 = L1 * N1N2[:, :, 1] / (N0 * dt) / (1 - np.sqrt(4*0.04*dt)/L2/np.sqrt(np.pi))
         v_o3 = L1 * N1N2[:, :, 1] / (N0 * dt) / (1 - np.sqrt(4*0.04*dt)/L2/np.sqrt(np.pi) - 0)
         
-
+        # what is this 70 thing? wait it's just for that visualisation right?
         slice = np.index_exp[:, 70]
         if 'v_profile' in data:
             slice = np.index_exp[70, :]
@@ -73,8 +74,9 @@ def go(file, N0_source='mean'):
         v_o2_slice = v_o2.mean(axis=0)
         v_o1[slice] = -np.abs(v_o1).max()
 
-        if L1 >= 2.5:
+        if True:
             used_avs.append(v_o2.mean())
+            used_Ls.append(L1)
 
         min_L_theory = 0
 
@@ -114,7 +116,7 @@ def go(file, N0_source='mean'):
     common.save_fig(fig_slice, f'box_counting/figures_png/pnv_slice_{file}.png')
 
     print(f'<N1N2 - N2N1> = {common.format_val_and_unc(np.mean(used_avs), np.std(used_avs))}')
-    return np.mean(used_avs), np.std(used_avs)
+    return used_avs, used_Ls, dt
 
 if __name__ == '__main__':
     for file in common.files_from_argv('box_counting/data/', 'pnv_'):

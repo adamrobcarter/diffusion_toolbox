@@ -15,6 +15,7 @@ import psutil
 import matplotlib.pyplot as plt
 import zipfile
 import joblib
+import argparse
 
 memory = joblib.Memory('/data2/acarter/toolbox/cache', verbose=0)
 
@@ -92,12 +93,13 @@ def load(filename):
         # https://stackoverflow.com/a/43223420/1103752
         with zipfile.ZipFile(filename) as npz:
             data = np.load(f'{filename}', allow_pickle=True) # quite janky to load it again, but I'm not sure how to get the numpy array from the zipfile object
+            #### ^^^^^^ this sounds like a big RAM bad thing - actually I'm not sure if the npz thing does load them into RAM so it might be okay
             
             # keys = data.keys()
             names = npz.namelist()
 
             if len(names) > 50:
-                print(f'  loaded {len(names)} key-value pairs')
+                print(f'  found {len(names)} key-value pairs')
             else:
             # for key in keys:
                 for name in names:
@@ -272,7 +274,7 @@ def save_fig(fig, path, dpi=100, only_plot=False, hide_metadata=False):
 
 def add_scale_bar(ax, pixel_size, color='black'):
     image_width = ax.get_xlim()[1] - ax.get_xlim()[0]
-    warnings.warn('this is broken!!! at one point we moved from the xlim being px to um')
+    # warnings.warn('this is broken!!! at one point we moved from the xlim being px to um')
     # currently working on psiche089_small
     # print('image width', image_width)
     if pixel_size:
@@ -299,9 +301,14 @@ def add_scale_bar(ax, pixel_size, color='black'):
     ax.add_artist(asb)
 
 def save_gif(func, frames, fig, file, fps=1, dpi=300):
+    assert len(frames) > 0, f'frames = {frames}'
+
     if fps > 5:
         warnings.warn(f'asked for fps = {fps:.1f} which seems dangerous. I have set to 5')
         fps = 5
+    if fps < 0.5:
+        warnings.warn(f'asked for fps = {fps:.1f} which seems annoying. I have set to 0.5')
+        fps = 0.5
 
     progress = tqdm.tqdm(total=len(frames)+1) # unsure why +1 but it seems to be needed
 
@@ -323,6 +330,20 @@ def save_gif(func, frames, fig, file, fps=1, dpi=300):
     ani.save(file, dpi=dpi, fps=fps, writer=writer)
     progress.close()
     print(f'saved {file} fps={used_fps:.2g}')
+
+def save_frames(func, frames, fig, folder, file, fps, dpi=300):
+    assert len(frames) > 0, f'frames = {frames}'
+
+    # folder used to be prepended by preprocessing/frames/ but that should be in show_movie.py or whatever
+
+    if not os.path.exists(f'{folder}'):
+        os.makedirs(f'{folder}')
+
+    for i, frame in enumerate(tqdm.tqdm(frames)):
+        func(frame)
+        fig.savefig(f'{folder}/{file}_fps{fps:.1f}_{i:04d}.png', dpi=dpi)
+
+    print(f'saved {folder} ({folder}/{file}_fps{fps:.1f}_{i:04d}.png)')
 
     
 def N2_nointer_2D(t, D0, N_mean, Lx, Ly=None):
@@ -656,7 +677,10 @@ def remove_drift(particles):
 import fnmatch
 
 def files_from_argv(location, prefix):
-    infiles = sys.argv[1:]
+    parser = argparse.ArgumentParser()
+    parser.add_argument('files', nargs='+') # nargs='+' means 1 or more positional args required
+    infiles = parser.parse_args().files
+    # infiles = sys.argv[1:]
 
     assert len(infiles) > 0, f'len(sys.argv[1:]) = {len(sys.argv[1:])}'
 
@@ -1038,11 +1062,13 @@ def stokes_einstein_v(particle_diameter, particle_material):
     d = particle_diameter * 1e-6 # assumed um
 
     rho_particle = np.nan
-    if particle_material == 'SiO2':
-        rho_particle = 2.648 # wikipedia
+    if particle_material == 'SiO2' or  particle_material == 'Si02':
+        rho_particle = 2648 # wikipedia
+    elif particle_material == 'PS':
+        rho_particle = 1050 # random, not checked
     else:
-        raise Exception('particle material not found')
-    rho_water = 1.0
+        raise Exception(f'particle material {particle_material} not found')
+    rho_water = 1000
 
     delta_rho = rho_particle - rho_water # kg m^-3
     # m_star = delta_rho * V_particle # kg
@@ -1064,3 +1090,27 @@ def stokes_einstein_v(particle_diameter, particle_material):
 
 def S_k_zero(phi):
     return (1 - phi)**3 / (1 + phi)
+
+def copy_not_stack(data):
+    # return a copy of the npz minus the 'data' entry
+    
+    newdata = dict() # can't assign to npz dict so we copy it
+    for key in data: # copy data to newdata except data['particles'] cause we wanna save RAM
+        if key == 'stack':
+            pass
+        else:
+            newdata[key] = data[key]
+
+    return newdata
+
+def copy_not_particles(data):
+    # return a copy of the npz minus the 'particles' entry
+    
+    newdata = dict() # can't assign to npz dict so we copy it
+    for key in data: # copy data to newdata except data['particles'] cause we wanna save RAM
+        if key == 'particles':
+            pass
+        else:
+            newdata[key] = data[key]
+
+    return newdata

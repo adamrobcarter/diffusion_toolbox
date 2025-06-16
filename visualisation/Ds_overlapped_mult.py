@@ -40,10 +40,10 @@ SOURCES = [
     # 'timescaleint_fixexponent_var',
     # 'timescaleint_nmsdfitinter'
 
-    'timescaleint_nofit_cropped_var',
+    # 'timescaleint_nofit_cropped_var',
 
     # 'D_of_L_theory',
-    # 'D0Sk_theory'
+    'D0Sk_theory'
 ]
 
 source_names = {
@@ -165,6 +165,8 @@ def show_one_file_and_source(
         no_rescale = True
     
     if no_rescale:
+        # there is a problem here if the MSD file is found for one but not all of the files,
+        # then rescaled and non-rescaled data will be on the same plot
         rescale_y = 1
         if not disable_ylabel: ax.set_ylabel(r'$D$ ($\mathrm{\mu m^2/s}$)')
 
@@ -257,6 +259,7 @@ def show_one_file_and_source(
 
     assert len(Ds) > 0, 'no Ds were found at all'
     assert np.isfinite(Ds).any(), 'Ds were found but they were all nan'
+    print(f'rescaled Ds: min={Ds.min():.3g}, max={Ds.max():.3g}')
 
     if logarithmic_y:
         ax.semilogy()
@@ -378,7 +381,7 @@ if __name__ == '__main__':
         plot_against_k=PLOT_AGAINST_K,
         allow_missing_files=True
     )
-    # ax.set_ylim(0.9, 2.5)
+    ax.set_ylim(0.9, 2.5)
     
     filenames = '_'.join(files)
     common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_mult_{filenames}.png', dpi=200)

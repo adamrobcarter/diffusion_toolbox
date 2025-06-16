@@ -10,6 +10,7 @@ D_ERROR_THRESH = 0.5 # D_unc/D must be smaller than this to save
 SEMILOGX = True
 # THEORY_PLOT_DS = [1, 0.1]
 THEORY_PLOT_DS = []
+DO_FIT = True
 
 def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks, 
          NAME=None, channel=None, do_fit=True, k_index_offset=0, k_index_end_early=0, particle_diameter=None,
@@ -17,8 +18,6 @@ def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks,
          legend_fontsize=9, particle_material=None):
 
     real_ks = []
-
-    D_max = 0
 
     Ds_for_saving = []
     D_uncs_for_saving = []
@@ -62,7 +61,6 @@ def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks,
                     marker='.', linestyle='none', color=color, label=plot_label)
         
         # ax.set_xlim(t[to_plot].min()*0.9, t[to_plot].max()*0.11)
-
         ymins[graph_i] = np.nanmin(F_D_sq[to_plot, k_index])
         ymaxs[graph_i] = np.nanmax(F_D_sq[to_plot, k_index])
         assert np.isfinite(ymins[graph_i])
@@ -112,7 +110,10 @@ def show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, num_displayed_ks,
                 
                 if particle_diameter and particle_material:
                     v_SE = common.stokes_einstein_v(particle_diameter, particle_material)
-                    label += f'\n$v=({common.format_val_and_unc(v/v_SE, v_unc/v_SE)})v_\mathrm{{SE}}$'
+                    if v/v_SE > 0.01:
+                        label += f'\n$v=({common.format_val_and_unc(v/v_SE, v_unc/v_SE)})v_\mathrm{{SE}}$'
+                    else:
+                        label += f'\n$v={common.format_val_and_unc(v, v_unc)}\mathrm{{\mu m/s}}$'
                 else:
                     label += f'\n$v={common.format_val_and_unc(v, v_unc)}\mathrm{{\mu m/s}}$'
 
@@ -228,11 +229,17 @@ if __name__ == '__main__':
 
         show(file, axs, k, F_D_sq, F_D_sq_unc, t, sigma, pixel, NAME=NAME, channel=channel,
              num_displayed_ks=num_displayed_ks, k_index_offset=k_index_offset,
-            particle_diameter=data.get('particle_diameter'),
-            fit_use_flow=FIT_USE_FLOW)
+            particle_diameter=data.get('particle_diameter'), particle_material=data.get('particle_material'),
+            fit_use_flow=FIT_USE_FLOW, do_fit=DO_FIT)
         
         
         suptitle = common.name(file) + ' ' + str(NAME)
         fig.suptitle(f'{suptitle}, $\sigma={sigma}$, pixel$={pixel}$')
         
         common.save_fig(fig, f'DDM/figures_png/ddm_{file}.png')
+
+
+        # fig_2D, ax_2D = plt.subplots(1, 1)
+        # # print(data['F_D_sq_noradial'])
+        # ax_2D.imshow(data['F_D_sq_noradial'][10, :, :])
+        # common.save_fig(fig_2D, f'DDM/figures_png/ddm_2d_{file}.png')

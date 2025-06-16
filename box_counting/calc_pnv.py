@@ -6,7 +6,7 @@ import common
 
 def calc_and_save(file, box_sizes_x, box_sizes_y, sep_sizes_x, sep_sizes_y, data, output_file_name,
                   save_counts=False, extra_to_save={},
-                  save_data=True, skip_processing=False):
+                  save_data=True, skip_processing=False, frame_deltas=[0, 1]):
     t0 = time.time()
 
     if not save_data:
@@ -26,6 +26,7 @@ def calc_and_save(file, box_sizes_x, box_sizes_y, sep_sizes_x, sep_sizes_y, data
 
     results = countoscope.calculate_N1N2(
         data=particles,
+        frame_deltas=frame_deltas,
         window_size_x=window_size_x, window_size_y=window_size_y, 
         box_sizes_x=box_sizes_x, box_sizes_y=box_sizes_y,
         sep_sizes_x=sep_sizes_x, sep_sizes_y=sep_sizes_y,
@@ -55,7 +56,7 @@ def calc_and_save(file, box_sizes_x, box_sizes_y, sep_sizes_x, sep_sizes_y, data
     return output
 
 
-def go(file):
+def go(file, frame_deltas=[0, 1]):
     data = common.load(f'particle_detection/data/particles_{file}.npz')
 
     output_filename = f'box_counting/data/pnv_{file}'
@@ -66,7 +67,7 @@ def go(file):
     # box_sizes_y = np.array([2, 5, 10, 20])
     # spacing_x = np.array([2, 2, 2, 2])
     # spacing_y = np.array([2, 2, 2, 2])
-    box_sizes_x = np.logspace(np.log10(0.5), np.log10(20), num=10)[:9]
+    box_sizes_x = np.logspace(np.log10(0.5), np.log10(20), num=8)
     box_sizes_y = box_sizes_x
     spacing_x = np.full_like(box_sizes_x, 4)
     spacing_y = spacing_x
@@ -75,12 +76,13 @@ def go(file):
 
     t0 = time.time()
     calc_and_save(
-        file=file, data=data,
+        file=file, data=data, frame_deltas=frame_deltas,
         box_sizes_x=box_sizes_x, box_sizes_y=box_sizes_y,
         sep_sizes_x=sep_sizes_x, sep_sizes_y=sep_sizes_y,
         output_file_name=output_filename, save_counts=False,
         save_data=True, extra_to_save=dict(
             v_profile = data['v_profile'],
+            velocity_multiplier = data['velocity_multiplier'],
         ),
     )
     print(f'took {time.time()-t0:.0f}s')

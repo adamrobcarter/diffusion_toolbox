@@ -2,6 +2,7 @@ import common
 import MSD.MSD
 import numpy as np
 import time
+import MSD.show
 
 # no parrelelisation currently
 
@@ -69,6 +70,8 @@ def go(file):
         pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
         computation_time=t1-t0
     )
+
+    MSD.show.go(file)
 
 if __name__ == '__main__':
     for file in common.files_from_argv('particle_linking/data/', 'trajs_'):

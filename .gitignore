@@ -33,3 +33,5 @@ test.gif
 box_counting/cache/*
 workflows/figures/*
 cache/*
+preprocessing/frames/*
+preprocessing/tiffs/*

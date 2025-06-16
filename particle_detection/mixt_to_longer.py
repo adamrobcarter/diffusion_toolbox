@@ -13,12 +13,7 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
     print(f'keeping {to_keep.sum()/to_keep.size}')
 
     print('copying dictionary')
-    newdata = dict() # can't assign to npz dict so we copy it
-    for key in data: # copy data to newdata except data['particles'] cause we wanna save RAM
-        if key == 'particles':
-            pass
-        else:
-            newdata[key] = data[key]
+    newdata = common.copy_not_particles(data)
 
     newdata['particles'] = particles[to_keep, :]
     newdata['particles'][:, 2] /= long_timestep

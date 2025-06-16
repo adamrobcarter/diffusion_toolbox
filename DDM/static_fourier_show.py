@@ -5,13 +5,13 @@ import scipy.stats
 import scipy.optimize
 import scipy.fft
 
-SAVE_TWO_D_PLOT = False
+SAVE_TWO_D_PLOT = True
 
 def form_factor_sphere(q, R):
     Fs = 3 * (np.sin(q*R) - q*R*np.cos(q*R)) / (q*R)**3
     return Fs**2
 
-def show_static_fourier(file, ax, color=None):
+def show_static_fourier(file, ax, color=None, save_2d_plot=False, show_form_factor=True):
 
     data = common.load(f'DDM/data/static_fourier_{file}.npz')
     pixel_size        = data['pixel_size']
@@ -36,17 +36,33 @@ def show_static_fourier(file, ax, color=None):
     # print(a.mean(), a.std())
     # ax.semilogv()
     log_fourier_abs = np.log(fourier_abs)
+    # log_fourier_abs = fourier_abs
     # im = ax.imshow(log_a, vmin=log_a.mean()-2*log_a.std(), vmax=log_a.mean()+2*log_a.std(), extent=(fx.min(), fx.max(), fy.min(), fy.max()), interpolation='none')
-    if SAVE_TWO_D_PLOT:
+    if save_2d_plot:
         fig_2d, ax_2d = plt.subplots(1, 1, figsize=(5, 5))
+        ax_2d.set_aspect('equal')
         # im = ax.imshow(log_a, extent=(fx.min(), fx.max(), fy.min(), fy.max()), interpolation='none')
-        im_2d = ax_2d.pcolormesh(k_x, k_y, log_fourier_abs, shading='nearest')
+        # vmin = np.quantile(log_fourier_abs, 0.001)
+        # vmax = np.quantile(log_fourier_abs, 0.999)
+        # assert np.isfinite(vmin)
+        # assert np.isfinite(vmax)
+        vmin = None
+        vmax = None
+        print('min max', log_fourier_abs.min(), log_fourier_abs.max())
+        # vmin = 0
+        # vmax = 2e2
+        im_2d = ax_2d.pcolormesh(k_x, k_y, log_fourier_abs, shading='nearest', vmin=vmin, vmax=vmax)
         fig_2d.colorbar(im_2d)
         ax_2d.set_title(title)
         # ax.set_xlabel('$k_x$')
         # ax.set_ylabel('$k_y$')
+
+        # if file == 'sin_y':
+        #     ax_2d.set_xlim(-0.2, 0.2)
+        #     ax_2d.set_ylim(-0.2, 0.2)
+
         filename = f'static_fourier_{file}'
-        common.save_fig(fig_2d, f'DDM/figures_png/{filename}.png')
+        common.save_fig(fig_2d, f'DDM/figures_png/{filename}.png', dpi=1200)
 
     ##################################
     # radial average
@@ -60,17 +76,17 @@ def show_static_fourier(file, ax, color=None):
 
     min_k = np.abs(k_x[0, 1] - k_x[0, 0])
 
-    print('f', k.min(), k.max())
+    # print('f', k.min(), k.max())
     bins = np.arange(min_k, k.max()/np.sqrt(2), step=min_k)
-    print('bin_sep', 2*np.pi/(bins[1]-bins[0]))
+    # print('bin_sep', 2*np.pi/(bins[1]-bins[0]))
     # ff = np.abs(fourier)**2
-    print('f, a', k.shape, fourier_abs.shape)
+    # print('f, a', k.shape, fourier_abs.shape)
     k_flat = k.flatten()
     fourier_abs_flat = fourier_abs.flatten()
     
     v, bins, _ = scipy.stats.binned_statistic(k_flat, fourier_abs_flat, bins=bins)
     assert len(bins.shape) == 1
-    print(v)
+    # print(v)
     assert np.isfinite(v).all()
     err, _, _ = scipy.stats.binned_statistic(k.flatten(), fourier_abs.flatten(), statistic='std', bins=bins)
     n, _, _ = scipy.stats.binned_statistic(k.flatten(), fourier_abs.flatten(), statistic='count', bins=bins)
@@ -79,7 +95,8 @@ def show_static_fourier(file, ax, color=None):
     # k = 2 * np.pi * k_bin_mids
     # ax.scatter(k_bin_mids, v, s=2, label=file)
     label = data.get('NAME', file)
-    ax.errorbar(k_bin_mids, v, yerr=err/np.sqrt(n), linestyle='none', color=color, label=label)
+    ax.errorbar(k_bin_mids, v, yerr=err/np.sqrt(n), linestyle='none', color=color, alpha=0.3)
+    ax.scatter(k_bin_mids, v, marker='.', color=color, label=label, s=3)
     ax.semilogy()
     ax.semilogx()
     ax.set_xlabel(r'$k$ ($\mathrm{\mu m}^{-1}$)')
@@ -91,11 +108,13 @@ def show_static_fourier(file, ax, color=None):
     #     ax.vlines(2*np.pi/particle_diameter, v.min(), v.max())
     # ax.vlines(2*np.pi/data['pixel_size'], v.min(), v.max())
 
+
+    # ax.grid(alpha=0.3, which='both', axis='y')
     ax.grid(alpha=0.3)
 
-    end = 2e-1
-    end_index = np.argmax(k > end)
-    print(end_index)
+    # end = 2e-1
+    # end_index = np.argmax(k > end)
+    # print(end_index)
     # func = lambda x, a, b, c: x**a
     # popt, pcov = scipy.optimize.curve_fit(func, k[:end_index], v[:end_index])
     # plt.plot(k[:end_index], func(k[:end_index], *popt), color='black', label=f'k**{popt[0]:.3f}')
@@ -120,16 +139,18 @@ def show_static_fourier(file, ax, color=None):
 
     # common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/static_fourier_av_{file}.pdf', hide_metadata=True)
     
-    if particle_diameter:
+    # particle_diameter = 22
+
+    if particle_diameter and show_form_factor:
         Pq = form_factor_sphere(k_bin_mids, particle_diameter/2)
-        index = np.argmax(k_bin_mids > 1e0)
+        index = np.argmax(k_bin_mids > 1e-0)
         Pq *= v[index] / Pq[index]
         ax.plot(k_bin_mids, Pq, label=f'$P(q)$ ($2R={particle_diameter:.2f}\mathrm{{\mu m}}$)', color='black', linestyle='dotted')
-        print(form_factor_sphere(k_bin_mids, 4))
+        # print(form_factor_sphere(k_bin_mids, 4))
 
-    ax.set_ylim(v.min()/1.2, v.max()*1.2)
-    # if 'psiche' in file:
-    ax.set_ylim(v[k_bin_mids>0.1].min()/1.5, v[k_bin_mids>0.1].max()*1.5)
+    ax.set_ylim(v.min()/10, v.max()*1.2)
+    # # if 'psiche' in file:
+    # ax.set_ylim(v[k_bin_mids>0.1].min()/1.5, v[k_bin_mids>0.1].max()*1.5)
     
     if 'psiche' in file:
         if '_small' in file:
@@ -139,17 +160,19 @@ def show_static_fourier(file, ax, color=None):
     else:
         common.add_exponential_index_indicator(ax, exponent=-4, anchor=(1, 30), xlabel='k')
 
-    plt.legend()
+    ax.legend()
 
     return particle_diameter, k_bin_mids, v # for static_fourier_show_mult
 
 
+def go(file, SAVE_TWO_D_PLOT=False):
+    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+
+    show_static_fourier(file, ax, save_2d_plot=SAVE_TWO_D_PLOT)
+
+    filename = f'static_fourier_av_{file}'
+    common.save_fig(fig, f'DDM/figures_png/{filename}.png', dpi=200)
+
 if __name__ == '__main__':
     for file in common.files_from_argv('DDM/data', 'static_fourier_'):
-
-        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-
-        show_static_fourier(file, ax)
-
-        filename = f'static_fourier_av_{file}'
-        common.save_fig(fig, f'DDM/figures_png/{filename}.png', dpi=200)
+        go(file, SAVE_TWO_D_PLOT)

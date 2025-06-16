@@ -39,11 +39,11 @@ for N0_source in N0_sources:
 
         for v_i, v in enumerate(vs):
             # linked simple method
-            print('v', v)
-            particle_linking.add_drift_periodic.go(f'{file_base}_{phi}_L{L}', 'const', v)
-            data = common.load(f'particle_linking/data/trajs_{file_base}_{phi}_L{L}_drifted_const_v{v}.npz')
-            drift = common.find_drift(data['particles'], data.get('dimension', 2))
-            print('drift', drift)
+            # print('v', v)
+            # particle_linking.add_drift_periodic.go(f'{file_base}_{phi}_L{L}', 'const', v)
+            # data = common.load(f'particle_linking/data/trajs_{file_base}_{phi}_L{L}_drifted_const_v{v}.npz')
+            # drift = common.find_drift(data['particles'], data.get('dimension', 2))
+            # print('drift', drift)
 
             # pnv method
             # particle_detection.add_drift_periodic.go(f'{file_base}_{phi}_L{L}', 'const', v)

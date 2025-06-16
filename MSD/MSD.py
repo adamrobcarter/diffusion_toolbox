@@ -732,6 +732,7 @@ def is_integer(arr):
 
 def calc_incremental_xyz(particles, num_dimensions):
     # version that doesn't need reshaping - probably slower but a lot less memory
+    # needs the time column to be 1-spaced integers (frame number)
 
     time_column = num_dimensions
     id_column = num_dimensions + 1
@@ -739,6 +740,7 @@ def calc_incremental_xyz(particles, num_dimensions):
     assert particles[:, id_column].min() == 0
 
     assert np.all(is_integer(particles[:, time_column])), 'times should be all integer when using this method'
+    assert np.all(np.diff(np.unique(particles[:, time_column])) == 1), 'times seems to be non-contignous'
 
     # need the data are sorted by particle ID
     particles = particles[particles[:, id_column].argsort()]
@@ -786,12 +788,13 @@ def calc_incremental_xyz(particles, num_dimensions):
             # print(data_this_particle[:, 2])
             # assert data_this_particle[0, 2] == 0
             # num_timesteps_this_particle = int(data_this_particle[:, 2].max()) + 1
-            num_timesteps_this_particle = int(data_this_particle[-1, time_column]) + 1
+            num_timesteps_this_particle = data_this_particle.shape[0]
             # print(num_timesteps_this_particle, data_this_particle.shape)
             # print(data_this_particle)
             # [print(data_this_particle[i, :]) for i in range(data_this_particle.shape[0])]
             # print(num_timesteps_this_particle, data_this_particle.shape[0])
-            if num_timesteps_this_particle != data_this_particle.shape[0]:
+
+            if np.any(np.diff(data_this_particle[:, time_column]) != 1):
                 # this means that the timestep was non-contiguous
                 skipped += 1
                 # print(num_timesteps_this_particle, data_this_particle.shape[0])
@@ -821,7 +824,7 @@ def calc_incremental_xyz(particles, num_dimensions):
     progress.close()
 
     print(f'skipped {skipped/num_particles:.2f}')
-    assert skipped < 1.0, 'all particles were skipped'
+    assert skipped/num_particles < 0.5, f'{skipped/num_particles} of particles were skipped'
     # assert skipped/num_particles < 0.7
 
     assert not np.any(np.isnan(msd_sum))

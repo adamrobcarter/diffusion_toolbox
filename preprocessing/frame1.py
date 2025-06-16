@@ -4,6 +4,7 @@ import common
 import sys
 import matplotlib.cm
 import matplotlib.patches
+import argparse
 
 SMALL = False
 REMOVE_BACKGROUND = False
@@ -16,9 +17,12 @@ DIFF_FRAMES = False
 
 SLICES = False
 
+SCALE_BAR = False
+
 # THIS SHOULD USE STACK_MOVIE.PY!!
 
 for file in common.files_from_argv('preprocessing/data/', 'stack_'):
+
     data = common.load(f'preprocessing/data/stack_{file}.npz')
     # data = common.load('data/alice_stack_0.02.npz')
     # data = common.load('data/stack_alice_0.66.npz')
@@ -48,7 +52,6 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
         frame1 = stack[DIFF_FRAMES, :, :] - stack[0, :, :]
     else:
         frame1 = stack[0, :, :]
-    print(frame1[:4, :4])
 
     if REMOVE_BACKGROUND:
         print('subtracting background!!!')
@@ -89,7 +92,8 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     except:
         print('failed to find particle diameter / pack frac for annotations')
 
-    common.add_scale_bar(ax, data['pixel_size'], color=color)
+    if SCALE_BAR:
+        common.add_scale_bar(ax, data['pixel_size'], color=color)
 
 
     if SLICES:

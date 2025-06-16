@@ -8,7 +8,7 @@ background_removed = False
 
 for file in common.files_from_argv('preprocessing/data', 'stack_'):
 
-    assert '_small' not in file, 'you sure you want to go on _small?'
+    # assert '_small' not in file, 'you sure you want to go on _small?'
 
     data = common.load(f'preprocessing/data/stack_{file}.npz')
     stack      = data['stack']
