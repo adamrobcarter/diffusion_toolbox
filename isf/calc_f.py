@@ -37,6 +37,7 @@ def go(file, window=False):
     if '_pot_longer' in file:
         d_frames = [0, 1, 4, 16, 64, 256, 1024]
 
+    d_frames = common.exponential_integers(0, 4096)
     
     isf.calc_both.calc_for_f_type(
         file,

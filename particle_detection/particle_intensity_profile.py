@@ -15,6 +15,7 @@ for file in common.files_from_argv('particle_detection/data/', 'particles_'):
     stack = data_stack['stack']
     x_pixels, y_pixels = np.meshgrid(range(stack.shape[2]), range(stack.shape[1]))
     #                                                  ^ again idk why this needs to be switched
+    #                                                    probably because your meshgrid indexing is not ij
     pixel_size = data_stack['pixel_size']
     
     assert stack[0, :, :].shape == x_pixels.shape, f'{stack[0, :, :].shape} != {x_pixels.shape}'

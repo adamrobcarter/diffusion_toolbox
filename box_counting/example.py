@@ -3,19 +3,22 @@ import matplotlib.pyplot as plt
 import matplotlib.cm
 import matplotlib.patches
 
-def go(file, box, sep, export_destination=None, label_boxes=True):
-    data = common.load(f'particle_detection/data/particles_{file}.npz')
-    particles = data['particles']
+def go(file, box_size_um, sep_size_um, export_destination=None, label_boxes=True):
+    data_particles = common.load(f'particle_detection/data/particles_{file}.npz')
+    particles = data_particles['particles']
 
-    data = common.load(f'preprocessing/data/stack_{file}.npz')
-    stack = data['stack']
-    pixel_size = data['pixel_size']
+    data_stack = common.load(f'preprocessing/data/stack_{file}.npz')
+    stack = data_stack['stack']
+    pixel_size = data_stack['pixel_size']
 
     FRAME = 0
 
+    show(box_size_um, sep_size_um, f'box_counting/figures_png/example_{file}.png', label_boxes, particles, stack, pixel_size, FRAME)
+
+def show(box_size_um, sep_size_um, output_filename, label_boxes, particles, stack, pixel_size, frame, dpi=300):
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
 
-    ax.imshow(stack[0, :, :], cmap=matplotlib.cm.Greys, interpolation='none')
+    ax.imshow(stack[frame, :, :], cmap=matplotlib.cm.Greys, interpolation='none')
     # plt.imshow(stack.min(axis=0))
     
     # excess = stack - stack.min(axis=0)
@@ -24,8 +27,8 @@ def go(file, box, sep, export_destination=None, label_boxes=True):
 
     # common.add_scale_bar(ax, data['pixel_size'], color='black')
 
-    box_size = box / pixel_size
-    sep_size = sep / pixel_size
+    box_size = box_size_um / pixel_size
+    sep_size = sep_size_um / pixel_size
 
     window_size = 2 * 36 + 2.5 * 10
 
@@ -38,13 +41,12 @@ def go(file, box, sep, export_destination=None, label_boxes=True):
 
     window_size = 356
 
-    particles_at_t = particles[particles[:, 2] == FRAME]
+    particles_at_t = particles[particles[:, 2] == frame]
 
     x = sep_size*0.8
     while x < window_size:
         y = sep_size*0.8
         while y < window_size:
-
             N = 0
             for particle in particles_at_t:
                 if x < particle[1]/pixel_size < x+box_size and y < particle[0]/pixel_size < y+box_size:
@@ -65,10 +67,8 @@ def go(file, box, sep, export_destination=None, label_boxes=True):
     ax.set_ylim(000, window_size)
     ax.set_xlim(000, window_size)
 
-    if export_destination:
-        common.save_fig(fig, export_destination, only_plot=True, hide_metadata=True)
-    common.save_fig(fig, f'box_counting/figures_png/example_{file}.png', dpi=300, only_plot=True)
+    common.save_fig(fig, output_filename, dpi=dpi, only_plot=True)
     
 if __name__ == '__main__':
     for file in common.files_from_argv('particle_detection/data', 'particles_'):
-        go(file, 76, 40)
+        go(file, 37, 11)

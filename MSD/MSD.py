@@ -595,11 +595,12 @@ def calc_centre_of_mass_incremental_numba_internal(particles_t0, particles_t1, g
         if particle_ids_at_these_timesteps_size < groupsize:
             continue
 
-        num_groups = particle_ids_at_these_timesteps_size // groupsize
+        num_groups = int(particle_ids_at_these_timesteps_size // groupsize)
         # assert num_groups > 0 # commented for numba
         displacements_at_time = np.full(num_groups, np.nan)
             
         for group_i in range(num_groups):
+            print(group_i*groupsize, (group_i+1)*groupsize, group_i, groupsize)
             data_this_group_t0 = data_t0[group_i*groupsize:(group_i+1)*groupsize, :]
             data_this_group_t1 = data_t1[group_i*groupsize:(group_i+1)*groupsize, :]
 
@@ -827,6 +828,7 @@ def calc_incremental_xyz(particles, num_dimensions):
     assert skipped/num_particles < 0.5, f'{skipped/num_particles} of particles were skipped'
     # assert skipped/num_particles < 0.7
 
+
     assert not np.any(np.isnan(msd_sum))
     assert not np.any(np.isnan(msd_count))
 
@@ -844,6 +846,11 @@ def calc_incremental_xyz(particles, num_dimensions):
     
     avg = msd_sum / msd_count
     std = msd_sum_sq / msd_count - avg**2
+
+    assert np.isclose(avg[:, 0], 0, atol=1e-3).all(), f'msd = {avg[:, 0]} at frame 0'
+    # this atol should maybe depend on if it's translational or rotational diffusion I think
+    # because rotational diffusions in rad are of smaller magnitude than translationals in um (is this definitely true?)
+    # it seems to also depend on the magnitude of the timestep
 
     assert not np.any(np.isnan(avg))
 

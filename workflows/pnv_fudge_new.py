@@ -21,8 +21,8 @@ phi_slice = 0
 
 file_base = 'sim_nohydro'
 L = '320_short'
-# phis = ['001', '010', '020', '030', '040', '050']
-phis = ['001', '050']
+phis = ['001', '010', '020', '030', '040', '050']
+# phis = ['001', '050']
 
 # N0_sources = ['mean', 'var', 'special']
 # N0_sources = ['N0S0']
@@ -36,7 +36,7 @@ for phi_i, phi in enumerate(phis):
     # particle_linking.link.go(f'{file_base}_{phi}_L{L}')
 
     # for v_i, v in enumerate(vs):
-    particle_detection.add_drift_periodic.go(f'{file_base}_{phi}_L{L}', 'const', v)
+    # particle_detection.add_drift_periodic.go(f'{file_base}_{phi}_L{L}', 'const', v)
     
     # linked simple method
     # particle_linking.add_drift_periodic.go(f'{file_base}_{phi}_L{L}', 'const', v)
@@ -45,7 +45,8 @@ for phi_i, phi in enumerate(phis):
     # print('drift', drift)
 
     # pnv method
-    box_counting.calc_pnv.go(f'{file_base}_{phi}_L{L}_drifted_const_v{v}', frame_deltas=range(0, 25))
+    # box_counting.calc_pnv.go(f'{file_base}_{phi}_L{L}_drifted_const_v{v}', frame_deltas=range(0, 25))
+    pass
 
 for N0_source in N0_sources:
     fig, ax_phi = plt.subplots(1, 1, figsize=(4, 4))

@@ -3,13 +3,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize
 import matplotlib.cm
+from DDM.show import plot_single_graph
 
 LABELS_ON_PLOT = False
 
-def go(file, ax, fit_result_in_label=True, target_ks=(0.125, 0.5, 1, 2, 4)):
+def go(file, ax, fit_result_in_label=True, target_ks=(0.125, 0.5, 1, 2, 4), fit_use_flow=False, do_fit=True):
     data = common.load(f'DDM/data/ddm_{file}.npz')
     k         = data['k']
     F_D_sq    = data['F_D_sq']
+    F_D_sq_unc= data['F_D_sq_unc']
     t         = data['t']
 
     real_ks = []
@@ -23,57 +25,64 @@ def go(file, ax, fit_result_in_label=True, target_ks=(0.125, 0.5, 1, 2, 4)):
 
         k_index = np.argmax(k > target_k)
 
-        # label = fr"$k={k:.2f}\mathrm{{\mu m}}^{{-1}}$"
-        color = matplotlib.cm.afmhot((graph_i+0.8)/(len(target_ks)+2))
+        plot_single_graph(ax, t, k, F_D_sq, F_D_sq_unc, k_index,
+                                # plot_label=plot_label, color=color,
+                          do_fit=do_fit,
+                        # particle_diameter=particle_diameter, particle_material=particle_material,
+                          fit_use_flow=fit_use_flow,
+                        )
 
-        target_k = target_ks[graph_i]
-        k_index = np.argmax(k > target_k)
+        # # label = fr"$k={k:.2f}\mathrm{{\mu m}}^{{-1}}$"
+        # color = matplotlib.cm.afmhot((graph_i+0.8)/(len(target_ks)+2))
 
-        func = lambda t, A, B, tau : A * (1 - np.exp(-t/tau)) + B
-        rescale = F_D_sq[1:, k_index].max()
-        F_D_sq_rescaled = F_D_sq[:, k_index] / rescale
-        if np.isnan(F_D_sq_rescaled[1:]).sum()/F_D_sq_rescaled[1:].size == 1.0:
-            continue
+        # target_k = target_ks[graph_i]
+        # k_index = np.argmax(k > target_k)
 
-        weights = np.ones_like(F_D_sq_rescaled[1:])
-        weights[0] = 1/8
-        weights[1] = 1/4
-        weights[2] = 1/2
-        # popt, pcov = scipy.optimize.curve_fit(func, t[1:], F_D_norm[1:], p0=(F_D_norm.max(), F_D_norm.min(), 0.1), maxfev=10000)
-        popt, pcov = scipy.optimize.curve_fit(func, t[1:], F_D_sq_rescaled[1:], sigma=weights, p0=(F_D_sq_rescaled.max(), F_D_sq_rescaled.min(), 0.1), maxfev=10000)
-        t_theory = np.logspace(np.log10(t[1]), np.log10(t[-1]))
-        D_POPT_INDEX = 2
-        D = 1 / (popt[D_POPT_INDEX] * k[k_index]**2)
-        D_unc = 1 / (k[k_index]**2 * popt[D_POPT_INDEX]**2) * np.sqrt(pcov)[D_POPT_INDEX][D_POPT_INDEX]
-        # print(D, D_unc)
-        label = f'fit $D={common.format_val_and_unc(D, D_unc)}$\n$A=${popt[0]*rescale:.2g}\n$B=${popt[1]*rescale:.2g}'
-        theory_curve = func(t_theory, *popt)*rescale
+        # func = lambda t, A, B, tau : A * (1 - np.exp(-t/tau)) + B
+        # rescale = F_D_sq[1:, k_index].max()
+        # F_D_sq_rescaled = F_D_sq[:, k_index] / rescale
+        # if np.isnan(F_D_sq_rescaled[1:]).sum()/F_D_sq_rescaled[1:].size == 1.0:
+        #     continue
+
+        # weights = np.ones_like(F_D_sq_rescaled[1:])
+        # weights[0] = 1/8
+        # weights[1] = 1/4
+        # weights[2] = 1/2
+        # # popt, pcov = scipy.optimize.curve_fit(func, t[1:], F_D_norm[1:], p0=(F_D_norm.max(), F_D_norm.min(), 0.1), maxfev=10000)
+        # popt, pcov = scipy.optimize.curve_fit(func, t[1:], F_D_sq_rescaled[1:], sigma=weights, p0=(F_D_sq_rescaled.max(), F_D_sq_rescaled.min(), 0.1), maxfev=10000)
+        # t_theory = np.logspace(np.log10(t[1]), np.log10(t[-1]))
+        # D_POPT_INDEX = 2
+        # D = 1 / (popt[D_POPT_INDEX] * k[k_index]**2)
+        # D_unc = 1 / (k[k_index]**2 * popt[D_POPT_INDEX]**2) * np.sqrt(pcov)[D_POPT_INDEX][D_POPT_INDEX]
+        # # print(D, D_unc)
+        # label = f'fit $D={common.format_val_and_unc(D, D_unc)}$\n$A=${popt[0]*rescale:.2g}\n$B=${popt[1]*rescale:.2g}'
+        # theory_curve = func(t_theory, *popt)*rescale
         
-        L_label = rf'$k={k[k_index]:.1f}\mathrm{{\mu m}}^{{-1}}$, $2\pi/k={2*np.pi/k[k_index]:.1f}\mathrm{{\mu m}}$'
-        if fit_result_in_label and D > 1e-6 and np.isfinite(D_unc) and np.abs(D_unc)/100 < np.abs(D):
-            L_label += f', $D={common.format_val_and_unc(D, D_unc)}\mathrm{{\mu m^2/s}}$'
+        # L_label = rf'$k={k[k_index]:.1f}\mathrm{{\mu m}}^{{-1}}$, $2\pi/k={2*np.pi/k[k_index]:.1f}\mathrm{{\mu m}}$'
+        # if fit_result_in_label and D > 1e-6 and np.isfinite(D_unc) and np.abs(D_unc)/100 < np.abs(D):
+        #     L_label += f', $D={common.format_val_and_unc(D, D_unc)}\mathrm{{\mu m^2/s}}$'
 
-        # plot data
-        ax.scatter(t[1:], F_D_sq[1:, k_index], s=15, color=color, label=L_label if not LABELS_ON_PLOT else None)
+        # # plot data
+        # ax.scatter(t[1:], F_D_sq[1:, k_index], s=15, color=color, label=L_label if not LABELS_ON_PLOT else None)
 
-        # plot fit
-        ax.plot(t_theory, theory_curve, color='black', zorder=-1)
-        # ax.plot(t_theory, func(t_theory, popt[0], popt[1], 1/(0.03*k[k_index]**2))*rescale, color='grey', label=label, zorder=-1)
+        # # plot fit
+        # ax.plot(t_theory, theory_curve, color='black', zorder=-1)
+        # # ax.plot(t_theory, func(t_theory, popt[0], popt[1], 1/(0.03*k[k_index]**2))*rescale, color='grey', label=label, zorder=-1)
 
-        if LABELS_ON_PLOT:
-            t_index_for_text = int(t_theory.size * (3-graph_i) / 4)
-            print(np.gradient(theory_curve, t_theory)[t_index_for_text])
-            angle = np.arctan(np.gradient(theory_curve, t_theory)[t_index_for_text]) * 180/np.pi
-            # angle = 0
-            print(angle)
-            # angle = 89
-            # angle += 180
-            angle = 58
-            # print(angle)
-            ax.text(t_theory[t_index_for_text+0]*0.7, theory_curve[t_index_for_text+0]*1, L_label,
-                    horizontalalignment='center', color=color, fontsize=9,
-                    # transform_rotates_text=True, rotation=angle, rotation_mode='anchor')
-                    rotation=angle, rotation_mode='anchor')
+        # if LABELS_ON_PLOT:
+        #     t_index_for_text = int(t_theory.size * (3-graph_i) / 4)
+        #     print(np.gradient(theory_curve, t_theory)[t_index_for_text])
+        #     angle = np.arctan(np.gradient(theory_curve, t_theory)[t_index_for_text]) * 180/np.pi
+        #     # angle = 0
+        #     print(angle)
+        #     # angle = 89
+        #     # angle += 180
+        #     angle = 58
+        #     # print(angle)
+        #     ax.text(t_theory[t_index_for_text+0]*0.7, theory_curve[t_index_for_text+0]*1, L_label,
+        #             horizontalalignment='center', color=color, fontsize=9,
+        #             # transform_rotates_text=True, rotation=angle, rotation_mode='anchor')
+        #             rotation=angle, rotation_mode='anchor')
 
     # ax.semilogy()
     # ax.set_title(fr'$k={k[k_index]:.2f}$ ($\approx{2*np.pi/k[k_index]:.2f}\mathrm{{\mu m}}$)')

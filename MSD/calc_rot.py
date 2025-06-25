@@ -18,26 +18,36 @@ def go(file):
 
     t0 = time.time()
 
-    # max_time_origins = 4000
-
-    # t = [0, 0.5, 15.5, 16, 16.5, 32, 64, 128, 256, 512, 1024]
-    # t = [0, 0.5]
-    t = np.unique(particles[:, data.get('dimension', 2)])
-    t_indices = common.exponential_indices(t, num=120)[:80] # remove the big t ones, otherwise it's rather slow
-    t = t[t_indices]
-    t = [0, *t]
-    assert t[0] == 0
-    print('times', np.unique(particles[:, data.get('dimension', 2)]))
-
     # this is hack where we move phi, theta, psi to where x, y, z were
     particles[:, [0, 1, 2]] = particles[:, [5, 6, 7]]
     particles = particles[:, [0, 1, 2, 3, 4]] # remove extra columns
 
-    msd, msd_unc = MSD.MSD.calc_mixt_new_xyz(particles, t, data.get('dimension', 2))
+    # phi in (-pi, pi)
+    # theta in (-pi/2, pi/2)
+    # psi in (-pi, pi)
+
+    # we want all angles to start at zero (for the unwrapping)
+    particles[:, 0] += np.pi
+    particles[:, 1] += np.pi/2
+    particles[:, 2] += np.pi
+
+    particles = common.periodic_unwrap(particles, 3, [np.pi, np.pi/2, np.pi])
+
+    # YOU NEED TO UNWRAP THE ANGLES FOR SURE!
+    print('phi')
+    common.term_hist(particles[:, 0], bins=10)
+    print('theta')
+    common.term_hist(particles[:, 1], bins=10)
+    print('psi')
+    common.term_hist(particles[:, 2], bins=10)
+
+    msd, msd_unc = MSD.MSD.calc_incremental_xyz(particles, data.get('dimension', 2))
     # msd, msd_unc = MSD.MSD.calc_mixt_new(particles, [0, 0.5, 16, 32, 64])
     # msd, msd_unc = MSD.MSD.calc_mixt(particles, [0, 1, 16, 512], max_time_origins)
 
-    assert np.all(msd[:, 0]) == 0, f'msd[0] = {msd[:, 0]}'
+    t = range(0, msd.shape[1]) * data['time_step']
+
+    # assert np.isclose(msd[:, 0], 0, atol=1e-7).all(), f'msd[0] = {msd[:, 0]}'
 
 
     t1 = time.time()

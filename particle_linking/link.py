@@ -8,10 +8,15 @@ def go(file):
     data = common.load(f'particle_detection/data/particles_{file}.npz')
     pixel_size = data.get('pixel_size')
     particles  = data['particles']
+    dimension = data.get('dimension', 2)
 
     assert particles.shape[1] == 3
 
     print('particles.dtype', particles.dtype)
+
+    num_timesteps = np.unique(particles[:, dimension]).size
+    print('av particles per frame', particles.shape[0]/num_timesteps)
+
     print('creating dataframe')
 
     dimension = data.get('dimension', 2)
@@ -72,6 +77,9 @@ def go(file):
         pass
     if file.startswith('sim_nointer'):
         pass
+    if file == 'sophie1':
+        search_range = 50
+
     print('search range', search_range)
     # search_range:
     #   specify a maximum displacement, the farthest a particle can travel between frames. 
@@ -90,10 +98,13 @@ def go(file):
     print(trajs.describe())
 
     print('filtering stubs')
+    min_traj_length = 10
+    # if file == 'sophie1':
+    #     min_traj_length = 1
     num_trajs_before_filter = trajs.shape[0]
-    trajs = trackpy.filter_stubs(trajs, 10)
+    trajs = trackpy.filter_stubs(trajs, min_traj_length)
     num_trajs = trajs.shape[0]
-    print(f'dropped {(num_trajs_before_filter-num_trajs)/num_trajs_before_filter:.2f} of rows in filter_stubs')
+    print(f'dropped {num_trajs_before_filter-num_trajs} = {(num_trajs_before_filter-num_trajs)/num_trajs_before_filter*100:.0f}% of rows in filter_stubs')
     # filtering stubs might seem unneeded but it makes calculation of the MSD much much quicker
 
     particles = trajs[columns_linked].to_numpy(dtype=particles.dtype)
@@ -127,7 +138,8 @@ def go(file):
         print('num trajs', num_trajs, 'avg part per frame', particles.shape[0]/(particles[:, 2].max()+1), 'exp num', exp_num)
 
     
-    num_before = particles.shape[0]
+    num_timesteps = np.unique(particles[:, dimension]).size
+    print('av particles per frame', particles.shape[0]/num_timesteps)
 
     print('particles dtype', particles.dtype)
 

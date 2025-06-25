@@ -368,16 +368,17 @@ COLOR_PHI002_FKT_THEORY      = 'black'
 
 
 #### tracking video ###
-# import particle_detection.show_movie
-# particle_detection.show_movie.go(
-#     'eleanor0.01',
-#     infile = f'particle_linking/data/trajs_eleanor0.01.npz',
-#     outfile = f'{path}/movie_eleanor0.01',
-#     output_type='frames',
-#     crop = 100,
-#     every_nth_frame=10,
-#     annotation_color='white',
-# )
+import particle_detection.show_movie
+particle_detection.show_movie.go(
+    'eleanor0.01',
+    infile = f'particle_linking/data/trajs_eleanor0.01.npz',
+    outfile = f'{path}/movie_eleanor0.01',
+    output_type='frames',
+    crop = 100,
+    every_nth_frame=10,
+    annotation_color='white',
+    dpi = 200,
+)
 # particle_detection.show_movie.go(
 #     'eleanor0.34',
 #     infile = f'particle_linking/data/trajs_eleanor0.34.npz',
@@ -386,6 +387,7 @@ COLOR_PHI002_FKT_THEORY      = 'black'
 #     crop = 100,
 #     every_nth_frame=10,
 #     annotation_color='white',
+#     dpi = 200,
 # )
 
 
@@ -396,4 +398,5 @@ preprocessing.stack_movie.go(
     data,
     outputfilename=f'{path}/movie_pierre_exp',
     output_type='frames',
+    dpi = 200
 )

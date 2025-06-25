@@ -15,7 +15,8 @@ for file in common.files_from_argv('particle_linking/data/', 'trajs_'):
     av_particles_per_frame = particles.shape[0]/num_timesteps
     print('av particles per frame =', av_particles_per_frame)
 
-    density = particles.shape[0] / (num_timesteps * particles[:, 0].max() * particles[:, 1].max())
+    # density = particles.shape[0] / (num_timesteps * particles[:, 0].max() * particles[:, 1].max())
+    density = common.calc_density(particles, data['window_size_x'], data['window_size_y'])
 
     msds = []
     msd_uncs = []

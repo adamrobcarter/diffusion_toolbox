@@ -5,10 +5,10 @@ import particle_detection.show
 import preprocessing.stack_movie
 
 CROP = None
-HIGHLIGHTS = False
+HIGHLIGHTS = True
 
 def go(file, infile, outfile, SUFFIX='', crop=False, every_nth_frame=None, output_type='movie',
-       annotation_color='white',):
+       annotation_color='white', dpi=300, tracks=True):
 
         data_particles = common.load(infile)
         particles = data_particles['particles']
@@ -74,20 +74,20 @@ def go(file, infile, outfile, SUFFIX='', crop=False, every_nth_frame=None, outpu
             window_size_y = crop
         
         def add_outlines(timestep, ax):
-            if particles.shape[1] == 4:
+            if particles.shape[1] == 4 and tracks:
                 particle_detection.show.add_particle_tracks(ax, particles, timestep, dimension=data_particles.get('dimension', 2),
                                                             window_size_x=window_size_x, window_size_y=window_size_y,)
             else:
                 particle_detection.show.add_particle_outlines(
                     ax, particles, timestep, dimension=data_particles.get('dimension', 2),
-                    outline=False, particle_diameter=data_particles['particle_diameter'],
+                    outline=False, particle_diameter=data_particles.get('particle_diameter', 5),
                     window_size_x=window_size_x, window_size_y=window_size_y,)
 
         preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, outfile,
                                                 func=add_outlines, num_timesteps_in_data=num_timesteps,
                                                 window_size_x=window_size_x, window_size_y=window_size_y,
                                                 highlights=HIGHLIGHTS, every_nth_frame=every_nth_frame, output_type=output_type,
-                                                annotation_color=annotation_color)
+                                                annotation_color=annotation_color, dpi=dpi)
         # preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}{SUFFIX}.mp4",
         #                                            func=add_outlines)
         # save_array_movie(stack_copy, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/{filename}.mp4")

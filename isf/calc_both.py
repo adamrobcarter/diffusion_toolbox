@@ -11,7 +11,7 @@ def less_than_or_close(a, b):
 def greater_than_or_close(a, b):
     return a >= b or np.isclose(a, b)
 
-def setup(F_type, file, d_frames, drift_removed=False, max_K=None):
+def setup(F_type, file, d_frames=None, drift_removed=False, max_K=None):
     if F_type == 'F_s':
         filepath = f"particle_linking/data/trajs_{file}.npz"
     else:
@@ -52,7 +52,7 @@ def setup(F_type, file, d_frames, drift_removed=False, max_K=None):
 
     particles_at_frame, times = scattering_functions.get_particles_at_frame(F_type, particles)
 
-    if not d_frames:
+    if d_frames is None:
         d_frames = times[:10]
         # d_frames = common.exponential_integers(1, min(isf.show_both.LONG_END, times-1)) - 1
     else:

@@ -11,8 +11,8 @@ import box_counting.msd_single
 import visualisation.Ds_overlapped
 
 SHOW_THEORY = True
-SHOW_TIMESCALEINTEGRAL_FIT_SHORT = True
-SHOW_TIMESCALEINTEGRAL_FIT_LONG = True
+SHOW_TIMESCALEINTEGRAL_FIT_SHORT = False
+SHOW_TIMESCALEINTEGRAL_FIT_LONG = False
 SHOW_THRESH_LINE = True
 SHOW_NOFIT_CUTOFF = True
 DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE = True
@@ -690,7 +690,7 @@ def go(file, plateau_source, ax=None, legend_fontsize=8, title=None, save_data=F
             ax.text(x1, y2, f'$t^{{{slope}}}$', ha='left', va='center', color=common.FIT_COLOR)
                     
         if show_legend:
-            ax.legend(fontsize=legend_fontsize)
+            ax.legend(fontsize=legend_fontsize, loc='lower right')
         ax.loglog()
         if rescale_x == RESCALE_X_L2:
             ax.set_xlabel('$t/L^2$')
@@ -817,6 +817,6 @@ if __name__ == '__main__':
             ax.set_ylim(1e-3, 1)
 
         ax.set_xlim(0.5, 1e6)
-        ax.set_title(f'plateau: {plateau_source}')
+        ax.set_title(f'{file}, plateau: {plateau_source}')
         
         common.save_fig(integ_fig, f'box_counting/figures_png/integrand_{file}.png', dpi=300)

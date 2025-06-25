@@ -4,7 +4,7 @@ import common
 import sys
 import matplotlib.cm
 import matplotlib.patches
-import argparse
+import preprocessing.stack_movie
 
 SMALL = False
 REMOVE_BACKGROUND = False
@@ -27,73 +27,83 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     # data = common.load('data/alice_stack_0.02.npz')
     # data = common.load('data/stack_alice_0.66.npz')
     stack = data['stack']
+    pixel_size = data['pixel_size']
+    window_size_x = stack.shape[1] * pixel_size
+    window_size_y = stack.shape[2] * pixel_size
 
-    print(stack.shape[1], 'x', stack.shape[2], 'px')
-    print(stack.shape[1]*data['pixel_size'], 'x', stack.shape[2]*data['pixel_size'], 'um')
-
-        
-    # stack = stack - stack.mean(axis=0) # remove space background
-    # stack = stack.mean(axis=0)
-    fig, ax = plt.subplots(1, 1, figsize=(2.3, 2.3) if SMALL else None)
+    frame = stack[0, :, :]
     
+    fig, ax = plt.subplots(1, 1, figsize=(2.3, 2.3) if SMALL else (3, 3))
 
-    if SMALL and file.startswith('eleanor0'):
-        # ax.set_ylim(000, min(500, stack.shape[2]))
-        # ax.set_xlim(000, min(500, stack.shape[1]))
-        stack = stack[:, :500, :500]
-    if SMALL and file == 'pierre_exp':
-        ax.set_ylim(000, 300)
-        ax.set_xlim(000, 300)
-    if SMALL and file.startswith('marine'):
-        ax.set_ylim(000, 150)
-        ax.set_xlim(000, 150)
-
-    if DIFF_FRAMES:
-        frame1 = stack[DIFF_FRAMES, :, :] - stack[0, :, :]
-    else:
-        frame1 = stack[0, :, :]
-
-    if REMOVE_BACKGROUND:
-        print('subtracting background!!!')
-        frame1 = frame1 - stack.mean(axis=0)
-
-    cmap = matplotlib.cm.Greys
-    if file.startswith('marine'):
-        cmap = matplotlib.cm.Greys_r
-
-    # print(frame1.min(), frame1.max(), frame1.mean())
-    # sorted = np.sort(frame1.flatten())
-    ax.imshow(frame1, cmap=cmap, interpolation='none')
-    # plt.imshow(stack.min(axis=0))
     
-    # excess = stack - stack.min(axis=0)
-    # print(stack[:, :, timestep].mean())
-    print(file, frame1.mean()/(frame1.max()-frame1.min()))
+    vmin = np.quantile(frame, 0.01)
+    vmax = np.quantile(frame, 0.98)
 
-    color = 'white' if frame1.mean()/(frame1.max()-frame1.min()) < 0.2 else 'black'
-    # color = 'black'
+    preprocessing.stack_movie.show_single_frame(
+        ax, frame, pixel_size, window_size_x, window_size_y,
+        # channel=None,
+        vmin=vmin, vmax=vmax,
+        # hide_scale_bar=False, annotation_color='black'
+    )
 
 
-    try:
-        if ANNOTATE_PARTICLE_DIAMETER:
-            data2 = common.load(f'particle_detection/data/particles_{file}.npz')
-            sigma = data2.get('particle_diameter')
-            if not sigma or np.isnan(sigma):
-                sigma = data2['particle_diameter_calced']
-                assert not np.isnan(sigma)
-            label = fr'$\sigma={sigma:.2f}\mathrm{{\mu m}}$'
-            ax.text(0.45, 0.05, label, color=color, transform=ax.transAxes,
-                        horizontalalignment='left', verticalalignment='bottom')
+    # if SMALL and file.startswith('eleanor0'):
+    #     # ax.set_ylim(000, min(500, stack.shape[2]))
+    #     # ax.set_xlim(000, min(500, stack.shape[1]))
+    #     stack = stack[:, :500, :500]
+    # if SMALL and file == 'pierre_exp':
+    #     ax.set_ylim(000, 300)
+    #     ax.set_xlim(000, 300)
+    # if SMALL and file.startswith('marine'):
+    #     ax.set_ylim(000, 150)
+    #     ax.set_xlim(000, 150)
+
+    # if DIFF_FRAMES:
+    #     frame1 = stack[DIFF_FRAMES, :, :] - stack[0, :, :]
+    # else:
+    #     frame1 = stack[0, :, :]
+
+    # if REMOVE_BACKGROUND:
+    #     print('subtracting background!!!')
+    #     frame1 = frame1 - stack.mean(axis=0)
+
+    # cmap = matplotlib.cm.Greys
+    # if file.startswith('marine'):
+    #     cmap = matplotlib.cm.Greys_r
+
+    # # print(frame1.min(), frame1.max(), frame1.mean())
+    # # sorted = np.sort(frame1.flatten())
+    # ax.imshow(frame1, cmap=cmap, interpolation='none')
+    # # plt.imshow(stack.min(axis=0))
+    
+    # # excess = stack - stack.min(axis=0)
+    # # print(stack[:, :, timestep].mean())
+    # print(file, frame1.mean()/(frame1.max()-frame1.min()))
+
+    # color = 'white' if frame1.mean()/(frame1.max()-frame1.min()) < 0.2 else 'black'
+    # # color = 'black'
+
+
+    # try:
+    #     if ANNOTATE_PARTICLE_DIAMETER:
+    #         data2 = common.load(f'particle_detection/data/particles_{file}.npz')
+    #         sigma = data2.get('particle_diameter')
+    #         if not sigma or np.isnan(sigma):
+    #             sigma = data2['particle_diameter_calced']
+    #             assert not np.isnan(sigma)
+    #         label = fr'$\sigma={sigma:.2f}\mathrm{{\mu m}}$'
+    #         ax.text(0.45, 0.05, label, color=color, transform=ax.transAxes,
+    #                     horizontalalignment='left', verticalalignment='bottom')
             
-        if ANNOTATE_PACK_FRAC:
-            if pack_frac := data.get('pack_frac_given'):
-                ax.text(0.45, 0.15, f'$\phi={pack_frac:.2f}$', color=color, transform=ax.transAxes,
-                            horizontalalignment='left', verticalalignment='bottom')
-    except:
-        print('failed to find particle diameter / pack frac for annotations')
+    #     if ANNOTATE_PACK_FRAC:
+    #         if pack_frac := data.get('pack_frac_given'):
+    #             ax.text(0.45, 0.15, f'$\phi={pack_frac:.2f}$', color=color, transform=ax.transAxes,
+    #                         horizontalalignment='left', verticalalignment='bottom')
+    # except:
+    #     print('failed to find particle diameter / pack frac for annotations')
 
-    if SCALE_BAR:
-        common.add_scale_bar(ax, data['pixel_size'], color=color)
+    # if SCALE_BAR:
+    #     common.add_scale_bar(ax, data['pixel_size'], color=color)
 
 
     if SLICES:

@@ -5,6 +5,8 @@ import sys
 import matplotlib.cm
 import warnings
 
+"""
+
 HIGHLIGHTS = True # displays 50 frames evenly throughout the stack instead of the first 50
 BACKWARDS = True
 # BACKWARDS = False # plays the stack backwards. DIFF_WITH_ZERO is now compared to the last frame

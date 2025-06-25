@@ -11,6 +11,7 @@ for file in sys.argv[1:]:
         file,
         infile = f'particle_linking/data/trajs_{file}.npz',
         outfile = f'particle_linking/figures_png/movie_{file}.gif',
-        crop = 100,
-        every_nth_frame=10
+        # crop = 100,
+        # every_nth_frame=10
+        tracks = False,
     )

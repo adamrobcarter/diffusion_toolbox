@@ -81,7 +81,9 @@ def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LON
         pack_frac        =data.get('pack_frac'),
         pixel_size       =data.get('pixel_size'),
         window_size_x    =data.get('window_size_x'),
-        window_size_y    =data.get('window_size_y')
+        window_size_y    =data.get('window_size_y'),
+        density          =data.get('density'),
+        N_particles      =data.get('N_particles'),
     )
 
     if t.size > 100:

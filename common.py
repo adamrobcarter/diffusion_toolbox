@@ -277,21 +277,21 @@ def add_scale_bar(ax, pixel_size, color='black'):
     # warnings.warn('this is broken!!! at one point we moved from the xlim being px to um')
     # currently working on psiche089_small
     # print('image width', image_width)
-    if pixel_size:
-        target_scale_bar_length = image_width / 10 # removed * pixel_size  
-        target_scale_bar_length = image_width / 10 * pixel_size # unremoved * pixel_size  
-    else:
-        target_scale_bar_length = image_width / 10
+    # if pixel_size:
+    #     target_scale_bar_length = image_width / 10 # removed * pixel_size  
+    #     target_scale_bar_length = image_width / 10 * pixel_size # unremoved * pixel_size  
+    # else:
+    target_scale_bar_length = image_width / 10
     possible_scale_bar_lengths = (0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000)
 
     takeClosest = lambda num,collection:min(collection,key=lambda x:abs(x-num))
     scale_bar_length = takeClosest(target_scale_bar_length, possible_scale_bar_lengths)
 
-    if pixel_size:
-        scale_bar_length_ax = scale_bar_length/pixel_size
-    else:
+    # if pixel_size:
+    #     scale_bar_length_ax = scale_bar_length/pixel_size
+    # else:
     # I had to comment this out - did we move from px to um at some point?
-        scale_bar_length_ax = scale_bar_length
+    scale_bar_length_ax = scale_bar_length
     # print('scale bar length ax', scale_bar_length_ax)
 
     asb = AnchoredSizeBar(ax.transData, scale_bar_length_ax,
@@ -336,14 +336,17 @@ def save_frames(func, frames, fig, folder, file, fps, dpi=300):
 
     # folder used to be prepended by preprocessing/frames/ but that should be in show_movie.py or whatever
 
+    folder = f'{folder}_fps{fps:.1f}'
+
     if not os.path.exists(f'{folder}'):
         os.makedirs(f'{folder}')
 
     for i, frame in enumerate(tqdm.tqdm(frames)):
         func(frame)
-        fig.savefig(f'{folder}/{file}_fps{fps:.1f}_{i:04d}.png', dpi=dpi)
+        filename = f'{folder}/frame_{i:04d}.png'
+        fig.savefig(filename, dpi=dpi)
 
-    print(f'saved {folder} ({folder}/{file}_fps{fps:.1f}_{i:04d}.png)')
+    print(f'saved {folder} ({filename})')
 
     
 def N2_nointer_2D(t, D0, N_mean, Lx, Ly=None):
@@ -506,11 +509,17 @@ def exponential_integers(mini, maxi, num=50):
     # note: i might return less than num - if the integers are closely spaced I will remove duplicates
     assert mini < maxi, f'I got min={mini}, max={maxi}'
     assert isinstance(num, (int, np.integer)), 'num must be an integer'
-    assert mini != 0, 'min cannot be 0'
+    # assert mini != 0, 'min cannot be 0'
+    add_zero = False
+    if mini == 0:
+        mini = 1
+        add_zero = True
     num = min(num, maxi-mini)
     # assert max-min > num, 'you must request fewer integers than the difference between min and max'
     # print('minmax', min, max)
     integers = np.unique(np.round(10**np.linspace(np.log10(mini), np.log10(maxi), num)).astype('int'))
+    if add_zero:
+        integers = np.concatenate(([0], integers))
     return integers
 
 def exponential_indices(t, num=100):
@@ -677,6 +686,9 @@ def remove_drift(particles):
 import fnmatch
 
 def files_from_argv(location, prefix):
+    if not location.endswith('/'):
+        location = f'{location}/'
+
     parser = argparse.ArgumentParser()
     parser.add_argument('files', nargs='+') # nargs='+' means 1 or more positional args required
     infiles = parser.parse_args().files
@@ -710,6 +722,7 @@ def files_from_argv(location, prefix):
             all_filenames.sort()
 
             filenames = fnmatch.filter(all_filenames, target)
+            assert len(filenames), f'no files found, wildcard searching for {location}{target}'
             
             for filename in filenames:
                 filename_wo_ext = '.'.join(filename.split('.')[:-1])
@@ -725,6 +738,8 @@ def files_from_argv(location, prefix):
 def format_val_and_unc(val, unc, sigfigs=2, latex=True):
     if isinstance(val, np.ndarray):
         assert np.sum(val.shape) < 2, f'You gave an array of shape {val.shape}. Only scalars are allowed'
+
+    assert np.isfinite(val), f'val = {val}'
 
     # print(val.shape, unc.shape)
     if val == 0: # log(0) is undefined
@@ -766,15 +781,15 @@ def add_drift_intensity(stack, drift):
 
     return output
 
-def term_hist(data):
+def term_hist(data, bins=20):
     assert not np.any(np.isnan(data)), 'term_hist: nan found in data'
-    counts, bin_edges = np.histogram(data, bins=20)
+    counts, bin_edges = np.histogram(data, bins=bins)
     term_bar(counts, bin_edges)
 
 def term_bar(y, x=None):
     # note x and y are their normal meanings, despite the axes being switched
     y = np.array(y)
-    if x:
+    if x is not None:
         x = np.array(x)
     else: x = np.arange(0, y.size+1)
 
@@ -877,7 +892,8 @@ def colormap_colorbar(min=0, max=1):
     # there is surely a much better solution to this which is to create a custom colormap that has the range you want
 
 def colormap_cool(value, min=0, max=1):
-    return matplotlib.cm.summer(np.interp(value, (min, max), (0, 0.8)))
+    # return matplotlib.cm.summer(np.interp(value, (min, max), (0, 0.8)))
+    return matplotlib.cm.summer(np.interp(value, (min, max), (0, 1)))
 
 def tab_color(i):
     colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:grey', 'tab:olive', 'tab:cyan']
@@ -1023,7 +1039,7 @@ def calc_density(particles, window_size_x, window_size_y):
     num_timesteps = len(np.unique(particles[:, 2]))
     avg_particles_per_frame = particles.shape[0] / num_timesteps
     density = avg_particles_per_frame / (window_size_x * window_size_y)
-    print('avg part per frame', avg_particles_per_frame)#, 'L^2', orig_width**2)
+    # print('avg part per frame', avg_particles_per_frame)#, 'L^2', orig_width**2)
     return density
 
 def add_exponential_index_indicator(ax, exponent, anchor, xlabel):
@@ -1074,16 +1090,10 @@ def stokes_einstein_v(particle_diameter, particle_material):
     # m_star = delta_rho * V_particle # kg
 
     g = 9.81 # gravity, m s^-2
-    # f = 1e-3 # viscous friction coefficent (from chatgpt sorry) kg m^-1 s^-1
-
-    # v_0 = m_star * g / f # kg * m s^-2 / ( kg m^-1 s^-1 )
-    #                      # kg m s^-2 kg^-1 m s 
-    #                      # m2 s^-1
-
-    # https://pubs.acs.org/doi/pdf/10.1021/j100056a017 eq 5
     viscosity = 1e-3 # wikipedia, kg/m/s
     
-    v = delta_rho * g * d**2 / (18 * viscosity) # m/s
+    v = 2 * delta_rho * g * (d/2)**2 / (9 * viscosity) # m/s
+    # force balance of stokes drag, weight, and bouyancy
     v_um = v * 1e6
 
     return v_um
@@ -1114,3 +1124,78 @@ def copy_not_particles(data):
             newdata[key] = data[key]
 
     return newdata
+
+def periodic_unwrap(particles, num_dimensions, window_size, quiet=False):
+    assert len(window_size) == num_dimensions
+
+    time_column = num_dimensions
+    id_column = num_dimensions + 1
+
+    particles_per_frame = np.bincount(particles[:, time_column].astype('int'))
+    assert np.all(particles_per_frame == particles_per_frame[0])
+    num_particles_per_frame = int(particles_per_frame[0])
+
+    num_timesteps = particles.shape[0] / num_particles_per_frame
+    assert num_timesteps % 1 == 0
+    num_timesteps = int(num_timesteps)
+
+    # sort by ID then time
+    particles = particles[np.lexsort((particles[:, time_column], particles[:, id_column]))]
+    
+    particles_new = np.copy(particles)
+
+    # strategy is to find each time a particle jumps way too far, and then add or subtract the window size to fix
+
+    for particle in tqdm.trange(num_particles_per_frame, desc='periodic unwrapping', disable=quiet):
+        
+        this_particle = particles_new[particle*num_timesteps:(particle+1)*num_timesteps, :]
+        assert np.all(this_particle[:, id_column] == particle)
+
+        for t in range(num_timesteps):
+            row_i = particle*num_timesteps + t
+            assert particles_new[row_i, time_column] == t
+            
+            coord = particles_new[row_i, 0:num_dimensions]
+
+            if t > 0:
+                coord_change = coord - last_coord
+
+                for dimension in range(num_dimensions):
+                    while coord_change[dimension] > window_size[dimension]/2:
+                        particles_new[row_i, dimension] -= window_size[dimension]
+                        
+                        # recalculate the change - if it is more than one window over we will need to do this multiple times
+                        coord_change = particles_new[row_i, 0:num_dimensions] - last_coord
+                        # print(f't={t}', 'moved', particles[row_i, 3], 'down in', 'xy'[dimension])
+                    while coord_change[dimension] < -window_size[dimension]/2:
+                        particles_new[row_i, dimension] += window_size[dimension]
+                        
+                        # recalculate the change - if it is more than one window over we will need to do this multiple times
+                        coord_change = particles_new[row_i, 0:num_dimensions] - last_coord
+                        # print(f't={t}', 'moved', particles[row_i, 3], 'up in', 'xy'[dimension])
+
+            last_coord = particles_new[row_i, 0:num_dimensions]
+
+    assert np.any(particles != particles_new)
+    return particles_new
+
+def save_particles(file, particles, time_step, window_size_x=None, window_size_y=None, **kwargs):
+
+    # we could drop the ID column here
+
+    save_particles_internal(f'particle_detection/data/particles_{file}.npz', particles, time_step, window_size_x=window_size_x, window_size_y=window_size_y, **kwargs)
+
+def save_trajs(file, particles, time_step, window_size_x=None, window_size_y=None, **kwargs):
+
+    save_particles_internal(f'particle_linking/data/trajs_{file}.npz', particles, time_step, window_size_x=window_size_x, window_size_y=window_size_y, **kwargs)
+
+def save_particles_internal(filepath, particles, time_step, window_size_x=None, window_size_y=None, **kwargs):
+    # we should do some proper parameter checking here
+    if window_size_x is None:
+        window_size_x = particles[:, 0].max()
+    if window_size_y is None:
+        window_size_y = particles[:, 1].max()
+
+    save_data(filepath, particles=particles, time_step=time_step, 
+              window_size_x=window_size_x, window_size_y=window_size_y,
+              **kwargs)

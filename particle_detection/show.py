@@ -21,7 +21,7 @@ def find_color(row, bhwindow=False, window_size_x=None, window_size_y=None, chan
         elif channel == 'green':
             c = 'red'
         else:
-            c = 'tab:blue'
+            c = 'red'
 
     if bhwindow:
         alpha = scattering_functions.blackman_harris_window(window_size_x, window_size_y, row[0], row[1])
@@ -77,7 +77,8 @@ def add_particle_tracks(ax, particles, timestep, dimension, window_size_x, windo
     # if before_t.sum() == 0:
     #     raise Exception(f'No particles found at timestep {timestep}')
     
-    for i, id in enumerate(tqdm.tqdm(np.unique(particles[:, dimension + 1]))):
+    for i, id in enumerate(np.unique(particles[:, dimension + 1])):
+    # for i, id in enumerate(tqdm.tqdm(np.unique(particles[:, dimension + 1]))):
 
         particles_this_id = particles[particles[:, 3] == id, :]
         particles_this_time = particles_this_id[particles_this_id[:, 2] <= timestep, :]
@@ -89,8 +90,8 @@ def add_particle_tracks(ax, particles, timestep, dimension, window_size_x, windo
         ax.plot(x, y, linewidth=2)
         # ax.plot(x, 1024 - y) # please don't ask me
 
-        if i > 500:
-            break
+        # if i > 500:
+        #     break
     
     # # particles_before
 
@@ -149,6 +150,7 @@ def go(file, ax, fig, bhwindow=False):
         print('removing background')
         stack = stack - stack.mean(axis=0) # remove space background
             # stack = np.interp(stack, (stack.min(), stack.max()), (0, 1)) # convert to 0->1 range
+        no_stack = False
 
     except FileNotFoundError:
         no_stack = True
@@ -161,7 +163,7 @@ def go(file, ax, fig, bhwindow=False):
 
 
     def add_outlines(timestep, ax):
-        add_particle_outlines(ax, particles, timestep, dimension=data_particles.get('dimension', 2), particle_diameter=data_particles['particle_diameter'],
+        add_particle_outlines(ax, particles, timestep, dimension=data_particles.get('dimension', 2), particle_diameter=data_particles.get('particle_diameter', 3),
                                   channel=channel, outline=False, window_size_x=data_particles['window_size_x'], window_size_y=data_particles['window_size_y'],
                                   bhwindow=bhwindow)
 
@@ -171,15 +173,21 @@ def go(file, ax, fig, bhwindow=False):
     fig.set_size_inches(*figsize)
         # ax.set_xlim(particles[:, 0].min(), particles[:, 0].max())
         # ax.set_ylim(particles[:, 1].min(), particles[:, 1].max())
-    ax.set_xlim(0, data_particles['window_size_x'])
-    ax.set_ylim(0, data_particles['window_size_y'])
+    # if 'unwrap' in file:
+    #     ax.set_xlim(-data_particles['window_size_x'], 2*data_particles['window_size_x'])
+    #     ax.set_ylim(-data_particles['window_size_y'], 2*data_particles['window_size_y'])
+    # else:
+    #     ax.set_xlim(0, data_particles['window_size_x'])
+    #     ax.set_ylim(0, data_particles['window_size_y'])
+    # any ylim here is overridden later
         
 
         # print(frame.shape)
         # frame = frame.transpose([1, 0])
         # print(frame.shape)
     if not no_stack:
-        frame = stack[0, :, :].transpose([1, 0])[::-1, :]
+        frame = stack[0, :, :][::-1, :]
+        print('^^^^^^ ahhh why is this here')
 
         preprocessing.stack_movie.show_single_frame(ax=ax, frame=frame, pixel_size=pixel_size,
                                                         window_size_x=data_particles['window_size_x'], window_size_y=data_particles['window_size_y'],

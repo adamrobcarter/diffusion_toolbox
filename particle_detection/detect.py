@@ -39,6 +39,7 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     separation = None # min separation between features. default diameter + 1
     invert = False
     percentile = None # "Features must have a peak brighter than pixels in this percentile. This helps eliminate spurious peaks. default 64
+    maxmass = None
 
     if file == 'pierre_simdownsampled':
         pass
@@ -98,6 +99,20 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
         # invert = Tru
         # threshold *= 10
 
+    elif file == 'sophie1':
+        diameter = 3
+        minmass = 0.015
+        # invert = Tru
+        threshold /= 4
+        # maxmass = 0.04
+        separation = 10
+
+    elif file == 'faxtor006a_hpf_movavrem':
+        diameter = 7
+        # minmass = 2.8
+        # invert = Tru
+        # threshold *= 10
+
     else:
         raise Exception('you need to provide parameters for this dataset')
 
@@ -123,13 +138,20 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
                              after_locate=update)
     progress.close()
 
+    if maxmass:
+        features = features[features['mass'] < maxmass]
+
     print(features.describe())
 
     print('mass:')
-    counts, bin_edges = np.histogram(features['mass'], bins=20)
-    term_fig = termplotlib.figure()
-    term_fig.hist(counts, bin_edges, force_ascii=False, orientation="horizontal")
-    term_fig.show()
+    # counts, bin_edges = np.histogram(features['mass'], bins=20)
+    # term_fig = termplotlib.figure()
+    # term_fig.hist(counts, bin_edges, force_ascii=False, orientation="horizontal")
+    # term_fig.show()
+    common.term_hist(features['mass'])
+
+
+
 
     # hist_fig, hist_ax = plt.subplots(1, 1, figsize=(3, 3))
     # hist_ax.hist(features['mass'], bins=np.linspace(0, np.max(features['mass']), 20))
@@ -148,10 +170,29 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     #                      ^    ^   I am aware these are the wrong way round
     # but it has to be so to work. possibly we introduced this error in the sparticles
     # tracking, but now we have to be consistant
+    # ANOTHER SWAP
 
-    there is still a switch here which is annoying
-    is this connected to needing the right orientation for faxtor?
-    it would be really good to properly fix this
+    # there is still a switch here which is annoying
+    # is this connected to needing the right orientation for faxtor?
+    # it would be really good to properly fix this
+
+    if file == 'sophie1':
+        pixel_dist_around_particle = 20
+        print('stack mean', stack.mean())
+        intensity_around_threshold = 0.5
+
+        keep_rows = np.full(particles.shape[0], False, dtype=bool)
+
+        for row_i in tqdm.trange(particles.shape[0], desc='filtering basec on intensity around particle'):
+            x = int(round(particles[row_i, 0]))
+            y = int(round(particles[row_i, 1]))
+            pixels_around_particle = stack[max(x-pixel_dist_around_particle, 0):min(x+pixel_dist_around_particle, stack.shape[0]),
+                                        max(y-pixel_dist_around_particle, 0):min(y+pixel_dist_around_particle, stack.shape[1])]
+            mean_intensity = pixels_around_particle.mean()
+
+            if mean_intensity < intensity_around_threshold:
+                keep_rows[row_i] = True
+        particles = particles[keep_rows, :]
 
     particles[:, [0, 1]] *= pixel_size
 

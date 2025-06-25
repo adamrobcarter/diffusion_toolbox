@@ -3,6 +3,8 @@ import common
 import time, os
 import tqdm
 import subprocess
+import multiprocessing
+import functools
 
 # eleanorlong is
 # x min max 0.6982900415999999 293.91458112
@@ -75,7 +77,7 @@ import subprocess
 
 
 def go(infile, outfile, L, pack_frac_given, particle_diameter, dt=None, nth_timestep=1, max_time=None,
-       extra_source_file=None, skiprows=None, multiply_time_by=None):
+       extra_source_file=None, skiprows=None, quiet=False, multiply_time_by=None):
     print(f'loading raw file, last modified {common.get_last_modified_time(infile)} ago')
 
     density = 4/np.pi * pack_frac_given / particle_diameter**2
@@ -83,7 +85,7 @@ def go(infile, outfile, L, pack_frac_given, particle_diameter, dt=None, nth_time
     if max_time:
         max_frame = max_time * dt
         max_rows = int((max_frame + 1) * expected_particles_per_frame)
-        print('max_rows', max_rows)
+        if not quiet: print('max_rows', max_rows)
 
         max_items = max_rows * 3
     else:
@@ -98,9 +100,9 @@ def go(infile, outfile, L, pack_frac_given, particle_diameter, dt=None, nth_time
         data = np.loadtxt(infile, max_rows=max_rows, dtype=np.float32)
     elif infile.endswith('.bin'):
         data = np.fromfile(infile, dtype=np.float32, count=max_items) # there is a parameter to this function for not loading the whole array
-        data = data.reshape((-1, 3))
+        data = data.reshape((-1, 4)) # was 3 but now we save ID
     t1 = time.time()
-    print(data.shape, data.dtype,  f'loaded {common.format_bytes(data.nbytes)} in {t1-t0:.1f}s at {common.format_bytes(data.nbytes/(t1-t0))}/sec')
+    if not quiet: print(data.shape, data.dtype,  f'loaded {common.format_bytes(data.nbytes)} in {t1-t0:.1f}s at {common.format_bytes(data.nbytes/(t1-t0))}/sec')
 
     if dt == None:
         assert multiply_time_by == None
@@ -113,12 +115,12 @@ def go(infile, outfile, L, pack_frac_given, particle_diameter, dt=None, nth_time
         # dt = 0.5, times = [0, 1, 2, 3, ...]
         
     if multiply_time_by:
-        print('doing multiply time by')
+        if not quiet: print('doing multiply time by')
         data[:, 2] *= multiply_time_by
     
     # discard the non-nth step rows
     if nth_timestep > 1:
-        print('doing nth-time')
+        if not quiet: print('doing nth-time')
         data = data[data[:, 2] % nth_timestep == 0, :]
         dt *= nth_timestep
         # we gotta readjust the timestep number now we discarded some timesteps
@@ -126,86 +128,91 @@ def go(infile, outfile, L, pack_frac_given, particle_diameter, dt=None, nth_time
 
     if skiprows:
         #### there is probably a way of doing this with loadtxt/fromfile that would be quicker
-        print(f'doing skiprows ({skiprows})')
-        print(data.shape)
+        if not quiet: print(f'doing skiprows ({skiprows})')
+        if not quiet: print(data.shape)
         data = data[skiprows:, :]
-        print(data.shape)
+        if not quiet: print(data.shape)
         # now need to reset the time column
         data[:, 2] -= data[:, 2].min()
-        print()
+        if not quiet: print()
 
     # we should delete the last timestep cause it may be incomplete
-    print('trimming end')
+    if not quiet: print('trimming end')
     last_timestep = data[:, 2].max()
     data = data[data[:, 2] != last_timestep, :]
     
-    print('xy min max', data[:, 0].min(), data[:, 0].max(), data[:, 1].min(), data[:, 1].max())
+    if not quiet: print('xy min max', data[:, 0].min(), data[:, 0].max(), data[:, 1].min(), data[:, 1].max())
     
     # print(f'loaded in {t1-t0:.0f}s. shape', data.shape, common.arraysize(data))
     # num_timesteps = data[:, 2].max()+1
     times = np.unique(data[:, 2])
     num_timesteps = times.size
-    print(times, num_timesteps)
-    print(f'{num_timesteps:.0f} timesteps, {data[:, 2].max()*dt/60/60:.1f} hours')
+    if not quiet: print(times, num_timesteps)
+    if not quiet: print(f'{num_timesteps:.0f} timesteps, {data[:, 2].max()*dt/60/60:.1f} hours')
     assert num_timesteps > 30
 
     density = common.calc_density(data, L, L)
     pack_frac_calced = np.pi/4 * density * particle_diameter**2
-    print(f'pack_frac_calced={pack_frac_calced:.4f}, pack_frac_given={pack_frac_given:.4f}')
-    if num_timesteps > 1000:
+    if not quiet: print(f'pack_frac_calced={pack_frac_calced:.4f}, pack_frac_given={pack_frac_given:.4f}')
+    if data.shape[0] > 1000 * 50:
         assert np.isclose(pack_frac_calced, pack_frac_given, rtol=0.1), f'pack frac calced {pack_frac_calced}, given {pack_frac_given}'
 
     data[:, 2] -= data[:, 2].min()
     assert data[:, 2].min() == 0
 
     if '_pot' in infile:
-        print('shifting')
+        if not quiet: print('shifting')
         data[:, 0] += L/2
         data[:, 1] += L/2
-        print('xy min max', data[:, 0].min(), data[:, 0].max(), data[:, 1].min(), data[:, 1].max())
+        if not quiet: print('xy min max', data[:, 0].min(), data[:, 0].max(), data[:, 1].min(), data[:, 1].max())
     else:
-        print('periodic wrapping')
+        if not quiet: print('periodic wrapping')
+        # the data should already be inside a periodic box
+        # but sometimes just a small number of points seem to be slightly outside the border
+        # maybe because in the sim the saving is done before the periodic wrapping or something?
         data[:, 0] = data[:, 0] % L
         data[:, 1] = data[:, 1] % L
 
         assert L == L # for the mo
 
-        # print('modded into window:')
-        # common.term_hist(data[:, 1])
-        print('x,y min,max', data[:, 0].min(), data[:, 0].max(), data[:, 1].min(), data[:, 1].max())
+        if not quiet: print('x,y min,max', data[:, 0].min(), data[:, 0].max(), data[:, 1].min(), data[:, 1].max())
         keep = ( data[:, 0] >= 0 ) & ( data[:, 0] <= L ) &  ( data[:, 1] >= 0 ) & ( data[:, 1] <= L ) # I think they should be "<" not "<=" but for some reason this is failing on sim_nohydro_034_L1280
         assert keep.sum() == keep.size
-
-    # if orig_width > out_width:
-    #     num_timesteps = int(data[:, 2].max() + 1)
-    #     common.save_data(f'particle_detection/data/particles_{outfile}_nocrop.npz', particles=data,
-    #                 time_step=0.5, particle_diameter=2.79, pack_frac_given=0.34,
-    #                 window_size_x=orig_width, window_size_y=orig_width,
-    #                 num_timesteps=num_timesteps)
-
-
-    # print('cropped into window:')
-    # common.term_hist(data[keep, 1])
-    # print(f'keeping {keep.sum()/keep.size:.2f} (inside crop)')
-    # data = data[keep, :]
-
-    # print('time2:')
-    # common.term_hist(data[:, 2])
 
     common.save_data(f'particle_detection/data/particles_{outfile}.npz',
         particles=data,
         time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
         window_size_x=L, window_size_y=L, max_time_hours=round(last_timestep*dt/60/60, 2),
         source_file=infile, density=density, extra_source_file=extra_source_file,
+        quiet=quiet,
     )
-
-    if data.shape[1] == 4:
-        common.save_data(f'particle_linking/data/trajs_{outfile}.npz',
-            particles=data,
+    
+    if not '_pot' in infile:
+        data_unwrap = common.periodic_unwrap(data, L, L, quiet=quiet)
+        common.save_data(f'particle_detection/data/particles_{outfile}_unwrap.npz',
+            particles=data_unwrap,
             time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
             window_size_x=L, window_size_y=L, max_time_hours=round(last_timestep*dt/60/60, 2),
             source_file=infile, density=density, extra_source_file=extra_source_file,
+            quiet=quiet,
         )
+        common.save_data(f'particle_linking/data/trajs_{outfile}_unwrap.npz',
+            particles=data_unwrap,
+            time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
+            window_size_x=L, window_size_y=L, max_time_hours=round(last_timestep*dt/60/60, 2),
+            source_file=infile, density=density, extra_source_file=extra_source_file,
+            quiet=quiet,
+        )
+
+    # this used to be here but we can not possibly get the trajs straight from the simulation
+    # without either unwrapping them, or cutting them at the periodic box crossings
+    # if data.shape[1] == 4:
+    #     common.save_data(f'particle_linking/data/trajs_{outfile}.npz',
+    #         particles=data,
+    #         time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
+    #         window_size_x=L, window_size_y=L, max_time_hours=round(last_timestep*dt/60/60, 2),
+    #         source_file=infile, density=density, extra_source_file=extra_source_file,
+    #     )
     
     if data.size > 5e7 or True:
         end_timestep = data[:, 2].max() // 8
@@ -216,15 +223,34 @@ def go(infile, outfile, L, pack_frac_given, particle_diameter, dt=None, nth_time
             time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
             window_size_x=L, window_size_y=L, max_time_hours=round(end_timestep*dt/60/60, 2),
             source_file=infile, density=density, extra_source_file=extra_source_file,
+            quiet=quiet,
         )
 
-        if data.shape[1] == 4:
-            common.save_data(f'particle_linking/data/trajs_{outfile}_div8.npz',
-                particles=data_small,
+        if not '_pot' in infile:
+            data_small_unwrap = common.periodic_unwrap(data_small, L, L, quiet=quiet)
+            common.save_data(f'particle_detection/data/particles_{outfile}_unwrap_div8.npz',
+                particles=data_small_unwrap,
                 time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
                 window_size_x=L, window_size_y=L, max_time_hours=round(end_timestep*dt/60/60, 2),
                 source_file=infile, density=density, extra_source_file=extra_source_file,
+                quiet=quiet,
             )
+            common.save_data(f'particle_linking/data/trajs_{outfile}_unwrap_div8.npz',
+                particles=data_small_unwrap,
+                time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
+                window_size_x=L, window_size_y=L, max_time_hours=round(end_timestep*dt/60/60, 2),
+                source_file=infile, density=density, extra_source_file=extra_source_file,
+                quiet=quiet,
+            )
+        # this used to be here but we can not possibly get the trajs straight from the simulation
+        # without either unwrapping them, or cutting them at the periodic box crossings
+        # if data.shape[1] == 4:
+        #     common.save_data(f'particle_linking/data/trajs_{outfile}_div8.npz',
+        #         particles=data_small,
+        #         time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
+        #         window_size_x=L, window_size_y=L, max_time_hours=round(end_timestep*dt/60/60, 2),
+        #         source_file=infile, density=density, extra_source_file=extra_source_file,
+        #     )
 
             
         end_timestep = data[:, 2].max() // 64
@@ -235,15 +261,34 @@ def go(infile, outfile, L, pack_frac_given, particle_diameter, dt=None, nth_time
             time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
             window_size_x=L, window_size_y=L, max_time_hours=round(end_timestep*dt/60/60, 2),
             source_file=infile, density=density, extra_source_file=extra_source_file,
+            quiet=quiet,
         )
 
-        if data.shape[1] == 4:
-            common.save_data(f'particle_linking/data/trajs_{outfile}_div8.npz',
-                particles=data_small,
+        if not '_pot' in infile:
+            data_small_unwrap = common.periodic_unwrap(data_small, L, L, quiet=quiet)
+            common.save_data(f'particle_detection/data/particles_{outfile}_unwrap_div64.npz',
+                particles=data_small_unwrap,
                 time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
                 window_size_x=L, window_size_y=L, max_time_hours=round(end_timestep*dt/60/60, 2),
                 source_file=infile, density=density, extra_source_file=extra_source_file,
+                quiet=quiet,
             )
+            common.save_data(f'particle_linking/data/trajs_{outfile}_unwrap_div64.npz',
+                particles=data_small_unwrap,
+                time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
+                window_size_x=L, window_size_y=L, max_time_hours=round(end_timestep*dt/60/60, 2),
+                source_file=infile, density=density, extra_source_file=extra_source_file,
+                quiet=quiet,
+            )
+        # this used to be here but we can not possibly get the trajs straight from the simulation
+        # without either unwrapping them, or cutting them at the periodic box crossings
+        # if data.shape[1] == 4:
+        #     common.save_data(f'particle_linking/data/trajs_{outfile}_div8.npz',
+        #         particles=data_small,
+        #         time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
+        #         window_size_x=L, window_size_y=L, max_time_hours=round(end_timestep*dt/60/60, 2),
+        #         source_file=infile, density=density, extra_source_file=extra_source_file,
+        #     )
     print()
     
 # 0.34
@@ -354,13 +399,13 @@ if __name__ == '__main__':
 
 ##### mesu
 
-def go_mesu(filepath, suffix='', skip_rsync=False, **kwargs):
+def go_mesu(filepath, suffix='', skip_rsync=False, quiet=False, **kwargs):
     particle_diameter = 2.972
 
     filename = filepath.split('/')[-1]
     if not skip_rsync:
         rsync_command = ['rsync', f'cartera@login.mesu.sorbonne-universite.fr:{filepath}', f'raw_data/mesu/{filename}', '--progress']
-        print('launching', ' '.join(rsync_command))
+        if not quiet: print('launching', ' '.join(rsync_command))
         subprocess.run(rsync_command, check=True)
 
     filename_no_ext = filename.split('.bin')[0]
@@ -380,8 +425,21 @@ def go_mesu(filepath, suffix='', skip_rsync=False, **kwargs):
         pack_frac_given=phi,
         particle_diameter=particle_diameter,
         extra_source_file=filepath,
+        quiet=quiet,
         **kwargs
     )
+
+processes = []
+process_names = []
+
+def go_mesu_subprocess(*args, **kwargs):
+    kwargs['quiet'] = True
+    # tqdm.__init__ = functools.partialmethod(tqdm.__init__, disable=True)
+    os.environ['TQDM_DISABLE'] = '1'
+    task = multiprocessing.Process(target=go_mesu, args=args, kwargs=kwargs)
+    processes.append(task)
+    process_names.append(args[0][28:])
+    task.start()
 
 if __name__ == '__main__':
     pass
@@ -430,9 +488,9 @@ if __name__ == '__main__':
     # go_mesu('/store/cartera/2d_monolayer/nohydro_t0.5_short_phi0.1_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
     # go_mesu('/store/cartera/2d_monolayer/nohydro_t0.5_short_phi0.3_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
     # go_mesu('/store/cartera/2d_monolayer/nohydro_t0.5_short_phi0.5_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
-    go_mesu('/store/cartera/2d_monolayer/nohydro_short_phi0.2_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
-    go_mesu('/store/cartera/2d_monolayer/nohydro_short_phi0.4_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
-
+    # go_mesu('/store/cartera/2d_monolayer/nohydro_short_phi0.2_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
+    # go_mesu('/store/cartera/2d_monolayer/nohydro_short_phi0.2_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
+    
     # zconf
     # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_pot_zconf_phi0.114_L640.bin', suffix='_pot_zconf', skip_rsync=True)
 
@@ -442,6 +500,36 @@ if __name__ == '__main__':
     # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_theta10_phi0.06_L640.bin', suffix='_theta10')
     # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_theta10_phi0.08_L640.bin', suffix='_theta10')
     # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_theta10_phi0.1_L640.bin', suffix='_theta10')
+
+    # CoM (first one also used by PNV)
+    # go_mesu('/store/cartera/2d_monolayer/nohydro_short_phi0.1_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5, skip_rsync=True)
+    # go_mesu('/store/cartera/2d_monolayer/nohydro_short_phi0.1_L160.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5, skip_rsync=True)
+    # go_mesu('/store/cartera/2d_monolayer/nohydro_short_phi0.1_L640.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5, skip_rsync=True)
+    # go_mesu('/store/cartera/2d_monolayer/nohydro_short_phi0.1_L1280.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
+    # for L in np.logspace(np.log10(100), np.log10(1000), num=10):
+    #     L = int(L)
+    #     go_mesu(f'/store/cartera/2d_monolayer/nohydro_com_phi0.1_L{L}.bin', suffix='_CoM', multiply_time_by=1/0.5, dt=0.5)
+    for L in np.logspace(np.log10(10), np.log10(1000), num=20)[[-1]]:
+        L = int(L)
+        # go_mesu_subprocess(f'/store/cartera/2d_monolayer/nohydro_t1e4_phi0.1_L{L}.bin', suffix='_t1e4', multiply_time_by=1/0.5, dt=0.5)
+        go_mesu(f'/store/cartera/2d_monolayer/nohydro_t1e4_phi0.1_L{L}.bin', suffix='_t1e4', multiply_time_by=1/0.5, dt=0.5, skip_rsync=True)
+    
+    # with multiprocessing.Pool(cores) as pool:
+    #     task = functools.partial(calc_centre_of_mass_onepoint_for_single_timeorigin, groupsize)
+
+        # all_data = []
+
+        # for time_origin in tqdm.trange(num_timesteps-1, desc='preparing data'):
+        #     data_these_timesteps = get_data_at_timestep(data, time_origin)
+        #     all_data.append(data_these_timesteps)
+        #     print('size', common.arraysize(data_these_timesteps, mult=len(all_data)))
+
+        # results = list(tqdm.tqdm(pool.imap(task, get_data_at_timesteps()), total=num_time_origins, desc=f'N={str(groupsize).ljust(3)}'))
+    
+    print(f'{len(processes)} tasks')
+    for i, task in enumerate(processes):
+        task.join() # block
+        print(f'task {i} : {process_names[i]} finished')
 
 """
 #################################

@@ -148,19 +148,20 @@ def fit_msd(t, msd, msd_unc):
         # print(f'short fit: D={popt_short[0]:.4f}')
 
         ######### long fit ###########
-        fitting_points_long = common.exponential_integers(t.size//10, t.size-1)
-        func_long = lambda t, D, a: 4*D*t + a
-        popt_long, pcov_long = scipy.optimize.curve_fit(func_long, t[fitting_points_long], msd[fitting_points_long])
-        
-        t_th_long = np.logspace(np.log10(t[fitting_points_long[1]]), np.log10(t[fitting_points_long[-1]]))
-        fit_long = func_long(t_th_long, *popt_long)
-        ret['long'] = {
-            'D': popt_long[0],
-            'D_unc': np.sqrt(pcov_long[0, 0]),
-            't': t_th_long,
-            'MSD': fit_long,
-        }
-        # print(f'long  fit: D={popt_long[0]:.4f}')
+        if (do_long_fit := False):
+            fitting_points_long = common.exponential_integers(t.size//10, t.size-1)
+            func_long = lambda t, D, a: 4*D*t + a
+            popt_long, pcov_long = scipy.optimize.curve_fit(func_long, t[fitting_points_long], msd[fitting_points_long])
+            
+            t_th_long = np.logspace(np.log10(t[fitting_points_long[1]]), np.log10(t[fitting_points_long[-1]]))
+            fit_long = func_long(t_th_long, *popt_long)
+            ret['long'] = {
+                'D': popt_long[0],
+                'D_unc': np.sqrt(pcov_long[0, 0]),
+                't': t_th_long,
+                'MSD': fit_long,
+            }
+            # print(f'long  fit: D={popt_long[0]:.4f}')
 
     assert msd[1] > 0
     first_point_D = msd[1] / (2 * 2 * t[1])

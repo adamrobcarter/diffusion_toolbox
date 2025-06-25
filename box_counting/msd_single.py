@@ -53,6 +53,8 @@ DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE = True
 REVERSE_PLOT_ORDER = False
 LINESTYLE = 'none'
 
+DO_TIMESCALEINT_REPLACEMENT = False
+
 # if SHOW_JUST_ONE_BOX:
     # LABELS_ON_PLOT = False
 
@@ -612,20 +614,21 @@ def go(file, ax=None, separation_in_label=False,
 
             return D_from_fit2, D_from_fit_unc2, fit_ys
         
-        # Dc, Dc_unc, tsi_replacement_ys = timescaleint_replacement_fitplateau()
-        Dc, Dc_unc, tsi_replacement_ys = timescaleint_replacement()
-        
-        if display:
-            print(f'  timescaleint replacement D={common.format_val_and_unc(Dc, Dc_unc, latex=False)}')
-        # Dc_lower, Dc_unc_lower, _ = tsi_replace_func((delta_N_sq-delta_N_sq_err).clip(min=0.1)) # otherwise we could give negatives
-        # Dc_upper, Dc_unc_upper, _ = tsi_replace_func(delta_N_sq+delta_N_sq_err)
-        # Dc_unc_final = max(Dc_unc, abs(Dc-Dc_lower), abs(Dc-Dc_upper))
-        Dc_unc_final = Dc_unc # errors are way overestimated with the above lines
-        # print(f'  final Dc unc {Dc_unc_final/Dc:.3f}')
+        if DO_TIMESCALEINT_REPLACEMENT:
+            # Dc, Dc_unc, tsi_replacement_ys = timescaleint_replacement_fitplateau()
+            Dc, Dc_unc, tsi_replacement_ys = timescaleint_replacement()
+            
+            if display:
+                print(f'  timescaleint replacement D={common.format_val_and_unc(Dc, Dc_unc, latex=False)}')
+            # Dc_lower, Dc_unc_lower, _ = tsi_replace_func((delta_N_sq-delta_N_sq_err).clip(min=0.1)) # otherwise we could give negatives
+            # Dc_upper, Dc_unc_upper, _ = tsi_replace_func(delta_N_sq+delta_N_sq_err)
+            # Dc_unc_final = max(Dc_unc, abs(Dc-Dc_lower), abs(Dc-Dc_upper))
+            Dc_unc_final = Dc_unc # errors are way overestimated with the above lines
+            # print(f'  final Dc unc {Dc_unc_final/Dc:.3f}')
 
-        Ds_for_saving_collective.append(Dc)
-        D_uncs_for_saving_collective.append(Dc_unc_final)
-        Ls_for_saving_collective.append(L)
+            Ds_for_saving_collective.append(Dc)
+            D_uncs_for_saving_collective.append(Dc_unc_final)
+            Ls_for_saving_collective.append(L)
         
         if rescale_y:
             rescale_y_value = 1
@@ -720,7 +723,7 @@ def go(file, ax=None, separation_in_label=False,
 
             if not rescale_y and SHOW_THEORY_FIT and np.isfinite(phi):
                 ax.plot(t_theory[1:], N2_theory_points[1:], color='gray', linewidth=1, label=type_of_fit if box_size_index==0 else None)
-                ax.plot(t_theory[1:], N2_theory_points_Lh[1:], color='white', linewidth=1, label=type_of_fit if box_size_index==0 else None)
+                ax.plot(t_theory[1:], N2_theory_points_Lh[1:], color=common.FIT_COLOR, linewidth=1, label=type_of_fit if box_size_index==0 else None)
             
             if show_rescaled_theory and box_size_index==0:
                 t_theory_rescaled = np.logspace(-4, 4, num=200)

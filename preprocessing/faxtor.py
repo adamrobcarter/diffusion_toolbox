@@ -28,7 +28,8 @@ def load_tiffs_from_folder(folder, every_nth=1, fraction_of=1, trim_start=0):
         assert len(tiff.shape) == 2, f'{file} has shape {tiff.shape}'
 
         # flip the ting
-        tiff = tiff[::-1, :]
+        # tiff = tiff[::-1, :]
+        tiff = np.swapaxes(tiff, 1, 0)
 
         stack[file_i, :, :] = tiff
 
@@ -641,17 +642,17 @@ def go(flat_folder, dark_folder, sample_folder, name, exposure_time, frame_gap, 
 #     NAME = 'Si 120um, vermiculite 2-10um injected',
 #     every_nth = 5,
 # )
-go(
-    sample_folder = '/data2/acarter/faxtor/SAMPLE_0029/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-    flat_folder   = None,
-    dark_folder   = None,
-    name = 'faxtor029a_part1',
-    exposure_time = 0.03,
-    frame_gap = 0.25,
-    particle_material = 'vermiculite',
-    NAME = 'Si 120um, vermiculite 2-10um injected',
-    fraction_of = 6,
-)
+# go(
+#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0029/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+#     flat_folder   = None,
+#     dark_folder   = None,
+#     name = 'faxtor029a_part1',
+#     exposure_time = 0.03,
+#     frame_gap = 0.25,
+#     particle_material = 'vermiculite',
+#     NAME = 'Si 120um, vermiculite 2-10um injected',
+#     fraction_of = 6,
+# )
 # go(
 #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0029/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
 #     flat_folder   = None,
@@ -675,20 +676,21 @@ go(
 #     particle_material = 'SiO2',
 #     particle_diameter = 4.3,
 #     NAME = 'Si 120um, Si 4.3um injected',
-#     every_nth = 5,
+#     # every_nth = 5,
+#     trim_start = 3800
 # )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0030/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor030b',
-#     exposure_time = 0.03,
-#     frame_gap = 0.5,
-#     particle_material = 'SiO2',
-#     particle_diameter = 4.3,
-#     NAME = 'Si 120um, Si 4.3um injected',
-#     every_nth = 5,
-# )
+go(
+    sample_folder = '/data2/acarter/faxtor/SAMPLE_0030/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
+    flat_folder   = None,
+    dark_folder   = None,
+    name = 'faxtor030b',
+    exposure_time = 0.03,
+    frame_gap = 0.5,
+    particle_material = 'SiO2',
+    particle_diameter = 4.3,
+    NAME = 'Si 120um, Si 4.3um injected',
+    fraction_of=3
+)
 
 # go(
 #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0031/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
@@ -758,7 +760,9 @@ go(
 #     particle_material = 'SiO2',
 #     particle_diameter = 4.3,
 #     NAME = 'Si 85um, Si 4.3um injected',
-#     every_nth = 4,
+#     # every_nth = 4,
+#     trim_start=2700,
+#     fraction_of=3,
 # )
 
 # go(

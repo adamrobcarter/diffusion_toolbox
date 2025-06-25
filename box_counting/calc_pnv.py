@@ -68,8 +68,14 @@ def go(file, frame_deltas=[0, 1]):
     # spacing_x = np.array([2, 2, 2, 2])
     # spacing_y = np.array([2, 2, 2, 2])
     box_sizes_x = np.logspace(np.log10(0.5), np.log10(20), num=8)
+
+    if file.startswith('paul'):
+        box_sizes_x = np.logspace(np.log10(1), np.log10(200), num=8)
+
     box_sizes_y = box_sizes_x
-    spacing_x = np.full_like(box_sizes_x, 4)
+    # spacing_x = np.full_like(box_sizes_x, 4)
+    spacing_x = np.copy(box_sizes_x)
+    spacing_x[spacing_x < 4] = 4
     spacing_y = spacing_x
     sep_sizes_x = spacing_x - box_sizes_x
     sep_sizes_y = spacing_y - box_sizes_y
@@ -81,8 +87,8 @@ def go(file, frame_deltas=[0, 1]):
         sep_sizes_x=sep_sizes_x, sep_sizes_y=sep_sizes_y,
         output_file_name=output_filename, save_counts=False,
         save_data=True, extra_to_save=dict(
-            v_profile = data['v_profile'],
-            velocity_multiplier = data['velocity_multiplier'],
+            v_profile = data.get('v_profile'),
+            velocity_multiplier = data.get('velocity_multiplier'),
         ),
     )
     print(f'took {time.time()-t0:.0f}s')
