@@ -72,13 +72,13 @@ def get_npz_info(npz, key):
     shape, fortran, dtype = np.lib.format._read_array_header(npy, version)
     return key[:-4], shape, dtype
 
-def load(filename):
+def load(filename, quiet=False):
     t0 = time.time()
 
     if not (filename.endswith('.npz') or filename.endswith('.npy')):
         filename += '.npz'
     diff = get_last_modified_time(filename)
-    print(f'loading {filename}, last modified {diff} ago')
+    if not quiet: print(f'loading {filename}, last modified {diff} ago')
     # print(f'loading {filename}, last modified ago')
 
 
@@ -91,6 +91,7 @@ def load(filename):
 
     if filename.endswith('.npz'):
         # https://stackoverflow.com/a/43223420/1103752
+        print('loading', filename)
         with zipfile.ZipFile(filename) as npz:
             data = np.load(f'{filename}', allow_pickle=True) # quite janky to load it again, but I'm not sure how to get the numpy array from the zipfile object
             #### ^^^^^^ this sounds like a big RAM bad thing - actually I'm not sure if the npz thing does load them into RAM so it might be okay
@@ -99,7 +100,7 @@ def load(filename):
             names = npz.namelist()
 
             if len(names) > 50:
-                print(f'  found {len(names)} key-value pairs')
+                if not quiet: print(f'  found {len(names)} key-value pairs')
             else:
             # for key in keys:
                 for name in names:
@@ -107,16 +108,16 @@ def load(filename):
                     
 
                     if shape: # array
-                        print(f'  found  {key.ljust(20)} dtype={str(dtype).ljust(12)} shape={shape}, size={format_bytes(dtype.itemsize*np.prod(shape))}')
+                        if not quiet: print(f'  found  {key.ljust(20)} dtype={str(dtype).ljust(12)} shape={shape}, size={format_bytes(dtype.itemsize*np.prod(shape))}')
                     else: # single value
                         if data[key] != None:
-                            print(f'  loaded {key.ljust(20)} dtype={str(dtype).ljust(12)} value={format_value_for_save_load(data[key])}')
+                            if not quiet: print(f'  loaded {key.ljust(20)} dtype={str(dtype).ljust(12)} value={format_value_for_save_load(data[key])}')
     else:
         data = np.load(f'{filename}', allow_pickle=True)
         print(f'  loaded, dtype={data.dtype}, shape={data.shape}, size={arraysize(data)}')
         
     if (comp_time := time.time() - t0) > 60:
-        print(f'  in {comp_time:.0f}s')
+        if not quiet: print(f'  in {comp_time:.0f}s')
 
     return data
 
@@ -132,8 +133,8 @@ def format_value_for_save_load(value):
     return value
 
 def save_data(filename, quiet=False, **data):
+    print(f'saving {filename}')
     if not quiet:
-        print(f'saving {filename}')
         for key in list(data.keys()): # the `list()` makes a copy, allowing us to modify `data`
             if isinstance(data[key], np.ndarray):
                 if data[key].shape: # array
@@ -150,7 +151,7 @@ def save_data(filename, quiet=False, **data):
                     nparray = np.array(data[key])
                     print(f'  saving {key.ljust(20)} dtype={str(nparray.dtype).ljust(12)} shape={nparray.shape}, size={arraysize(nparray)}')
                 else:
-                    print(f'  saving {key.ljust(20)} type={str(type(data[key])).ljust(12)} value={format_value_for_save_load(data[key])}')
+                    print(f'  saving {key.ljust(20)} type={type(data[key]).__name__.ljust(12)} value={format_value_for_save_load(data[key])}')
     
     np.savez(filename, **data)
 
@@ -630,6 +631,34 @@ def find_drift(particles, num_dimensions):
     num_particles = int(particles[:, ID_COLUMN].max()) + 1
     assert particles[:, ID_COLUMN].min() == 0, 'particles should be zero-based'
 
+    num_particles_per_timestep = np.bincount(particles[:, ID_COLUMN].astype('int'))
+
+    ts = np.unique(particles[:, TIME_COLUMN])
+    assert ts[0] == 0
+
+    if np.all(num_particles_per_timestep == num_particles_per_timestep[0]):
+        print('using fast centre of mass method')
+        # let's just use the centre of mass!
+        # as a hack we just replace `particles` with the centre of mass
+        particles = particles[particles[:, TIME_COLUMN].argsort()] # sort by time
+
+        com = np.full((ts.size, num_dimensions+2), np.nan)
+        for t in ts:
+            t = int(t)
+            particles_at_t = particles[t*num_particles:(t+1)*num_particles, :]
+            assert np.all(particles_at_t[:, TIME_COLUMN] == t)
+
+            for dimension in range(num_dimensions):
+                com[t, dimension] = particles_at_t[:, dimension].mean()
+            com[t, TIME_COLUMN] = t
+            com[t, ID_COLUMN] = 0
+
+        num_particles = 1
+        particles = com
+    else:
+        print('using slow original method')
+
+
     skip = 1
     if num_particles > 1000:
         skip = 5
@@ -686,13 +715,19 @@ def remove_drift(particles):
 import fnmatch
 
 def files_from_argv(location, prefix):
-    if not location.endswith('/'):
-        location = f'{location}/'
-
     parser = argparse.ArgumentParser()
     parser.add_argument('files', nargs='+') # nargs='+' means 1 or more positional args required
     infiles = parser.parse_args().files
     # infiles = sys.argv[1:]
+
+    return files_from_filenames(location, prefix, infiles)
+
+def files_from_filenames(location, prefix, infiles):
+    if type(infiles) is str:
+        infiles = [infiles]
+
+    if not location.endswith('/'):
+        location = f'{location}/'
 
     assert len(infiles) > 0, f'len(sys.argv[1:]) = {len(sys.argv[1:])}'
 
@@ -709,6 +744,14 @@ def files_from_argv(location, prefix):
             return ['sim_nohydro_034_L320', 'sim_nohydro_034_L640', 'sim_nohydro_034_L1280']
         elif infiles[0] == 'g:psiche_emptymatrix_small':
             return [f'psiche{str(i).zfill(3)}' for i in (52, 57, 63, 73, 74, 79, 86, 87, 88, 94, 98, 103, 104, 113, 114, 142, 149, 162, 176, 185, 194)]
+        elif infiles[0] == 'g:sheargrav_tmax1000':
+            return ['sim_shear0_T296_nograv_nowall_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0_T296_theta0_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0_T296_theta10_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0.080357_T296_theta0_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0.080357_T296_theta10_EMRFD_nblobs42_dt0.005_tmax1000']
+        elif infiles[0] == 'g:sheargrav_tmax10000':
+            return ['sim_shear0_T296_nograv_nowall_EMRFD_nblobs42_dt0.005_tmax10000', 'sim_shear0_T296_theta0_EMRFD_nblobs42_dt0.005_tmax10000', 'sim_shear0_T296_theta10_EMRFD_nblobs42_dt0.005_tmax10000', 'sim_shear0.080357_T296_theta0_EMRFD_nblobs42_dt0.005_tmax10000', 'sim_shear0.080357_T296_theta10_EMRFD_nblobs42_dt0.005_tmax10000']
+            # return ['sim_shear0_T298_theta0_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0_T298_theta10_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0.080357_T298_theta0_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0.080357_T298_theta10_EMRFD_nblobs42_dt0.005_tmax1000']
+        elif infiles[0] == 'g:ld_dt':
+            return ['ld_hydro_dpstokes_0.114_L640_dt150', 'ld_hydro_dpstokes_0.114_L640_dt100', 'ld_hydro_dpstokes_0.114_L640_dt50',
+                    'ld_hydro_nbody_0.114_L640_dt150', 'ld_hydro_nbody_0.114_L640_dt100', 'ld_hydro_nbody_0.114_L640_dt50']
         raise Exception('group not found')
 
     outfiles = []
@@ -727,6 +770,7 @@ def files_from_argv(location, prefix):
             for filename in filenames:
                 filename_wo_ext = '.'.join(filename.split('.')[:-1])
                 filename_wo_stem = filename_wo_ext.split(prefix)[1]
+                assert len(filename_wo_stem) > 1
                 outfiles.append(filename_wo_stem)
 
         else:
@@ -797,6 +841,9 @@ def term_bar(y, x=None):
         y -= y.min()
         
     assert x.size == y.size + 1
+
+    # # disable scientific notation on x
+    # x = [f'{v}' for v in x]
 
     term_fig = termplotlib.figure()
     term_fig.hist(y, x, force_ascii=False, orientation="horizontal")
@@ -875,7 +922,7 @@ def colormap(value, min=0, max=1):
     if PLOT_COLOR == 'black':
         return matplotlib.cm.afmhot(np.interp(value, (min, max), (0.25, 0.85)))
     else:
-        return matplotlib.cm.afmhot(np.interp(value, (min, max), (0.2, 0.7)))
+        return matplotlib.cm.afmhot(np.interp(value, (min, max), (0.2, 0.65)))
 
 def colormap_colorbar(min=0, max=1):
     cmap = matplotlib.cm.afmhot
@@ -1028,34 +1075,49 @@ def curve_fit(func, x, y, p0=None, sigma=None, absolute_sigma=None):
     print('fit', mesg)
     return popt, np.diag(np.sqrt(pcov))
 
-def calc_pack_frac(particles, particle_diameter, window_size_x, window_size_y):
-    density = calc_density(particles, window_size_x, window_size_y)
+def calc_pack_frac(particles, particle_diameter, window_size_x, window_size_y, dimension):
+    density = calc_density(particles, window_size_x, window_size_y, dimension)
     pack_frac = np.pi/4 * density * particle_diameter**2
     assert 0 < pack_frac
-    assert pack_frac < 1
+    assert pack_frac < 1, f'pack_frac = {pack_frac}'
     return pack_frac
 
-def calc_density(particles, window_size_x, window_size_y):
-    num_timesteps = len(np.unique(particles[:, 2]))
+def calc_density(particles, window_size_x, window_size_y, dimension):
+    time_column = dimension
+    num_timesteps = len(np.unique(particles[:, time_column]))
+    assert np.all(particles[:, time_column] % 1 == 0), f't[0] = {particles[0, time_column]}, that doesnt look like a frame number'
     avg_particles_per_frame = particles.shape[0] / num_timesteps
     density = avg_particles_per_frame / (window_size_x * window_size_y)
     # print('avg part per frame', avg_particles_per_frame)#, 'L^2', orig_width**2)
+    if avg_particles_per_frame == 1:
+        warnings.warn('found just one particle per frame')
     return density
 
-def add_exponential_index_indicator(ax, exponent, anchor, xlabel):
+def add_exponential_index_indicator(ax, exponent, anchor, xlabel, x_limits=None):
     xlim = ax.get_xlim()
     ylim = ax.get_ylim()
 
     orders_of_mag = 3
     ax.loglog() # doesn't make sense otherwise
-    x0 = anchor[0] / 10**(orders_of_mag)
-    y0 = anchor[1] / 10**(orders_of_mag * exponent)
-    x1 = anchor[0] * 10**(orders_of_mag)
-    y1 = anchor[1] * 10**(orders_of_mag * exponent)
-    print('plot', x0, y0, x1, y1)
-    ax.plot([x0, x1], [y0, y1], color=FIT_COLOR)
+    if x_limits is not None:
+        x0, x1 = x_limits
+    else:
+        x0 = anchor[0] / 10**(orders_of_mag)
+        x1 = anchor[0] * 10**(orders_of_mag)
+    #     x1 = x_limits[1] / 10**(orders_of_mag)
+
+    # first find the coefficent in front of the exponential
+    C = anchor[1] / (anchor[0]**exponent)
+    # now use it
+    y_func = lambda x: C * x**exponent
+    
+    y0 = y_func(x0)
+    y1 = y_func(x1)
+    
+    ax.plot([x0, x1], [y0, y1], color=FIT_COLOR, linewidth=0.7)
+    
     if ylim[0] < anchor[1] < ylim[1]:
-        ax.text(anchor[0]*1.1, anchor[1], f'${xlabel}^{{{exponent:.2f}}}$', color=FIT_COLOR)
+        ax.text(anchor[0]*1.1, anchor[1], f'${xlabel}^{{{exponent}}}$', color=FIT_COLOR, fontsize=12)
 
     # reset xlim and ylim
     ax.set_xlim(*xlim)
@@ -1063,13 +1125,27 @@ def add_exponential_index_indicator(ax, exponent, anchor, xlabel):
 
 def stokes_einstein_D(particle_diameter):
     k_B = scipy.constants.k
-    T = 290 # K
-    eta = 1e-3 # Pa.s
+    T = 300 # K
+    eta = 1.4e-3 # Pa.s
+    warnings.warn('eta must change! rigid sims use 0.00175')
+    # isn't Eleanor's viscosity not this?
     r = particle_diameter * 1e-6 / 2 # assumed um
 
     D =  k_B * T / (6 * np.pi * eta * r) # m^2 / s
     D_um = D * (1e6)**2 # um^2 / s
     return D_um
+
+def stokes_einstein_D_rot(particle_diameter):
+    k_B = scipy.constants.k
+    T = 290 # K
+    eta = 1e-3 # Pa.s
+    # isn't Eleanor's viscosity not this?
+    r = particle_diameter * 1e-6 / 2 # assumed um
+
+    D =  k_B * T / (8 * np.pi * eta * r**3) # 1 / s. is this rad^2 / s or cycles^2 / s or something else? https://pubs.rsc.org/en/content/articlelanding/2014/sm/c4sm00148f
+    return D
+
+
 
 def stokes_einstein_v(particle_diameter, particle_material):
     # https://iopscience.iop.org/article/10.1088/0034-4885/77/5/056602
@@ -1125,14 +1201,24 @@ def copy_not_particles(data):
 
     return newdata
 
-def periodic_unwrap(particles, num_dimensions, window_size, quiet=False):
-    assert len(window_size) == num_dimensions
+def periodic_unwrap(particles, num_dimensions, columns_to_unwrap, unwrap_size, quiet=False):
+    assert len(unwrap_size) == len(columns_to_unwrap)
+    unwrap_size = np.array(unwrap_size)
+    columns_to_unwrap = np.array(columns_to_unwrap)
+    assert particles.shape[1] == num_dimensions + 2, f'particles should have time and ID columns at the end (particles.shape[1] = {particles.shape[1]} != num_dimensions + 2 = {num_dimensions + 2})'
+
+    for column_i, column in enumerate(columns_to_unwrap):
+        column_range = particles[:, column].max() - particles[:, column].min()
+        assert column_range <= unwrap_size[column_i], f'column {column} has a range of {column_range} but you specified it should unwrap by {unwrap_size[column_i]}'
 
     time_column = num_dimensions
     id_column = num_dimensions + 1
 
+    assert time_column not in columns_to_unwrap
+    assert id_column not in columns_to_unwrap
+
     particles_per_frame = np.bincount(particles[:, time_column].astype('int'))
-    assert np.all(particles_per_frame == particles_per_frame[0])
+    assert np.all(particles_per_frame == particles_per_frame[0]), f'particles_per_frame = {particles_per_frame}'
     num_particles_per_frame = int(particles_per_frame[0])
 
     num_timesteps = particles.shape[0] / num_particles_per_frame
@@ -1146,38 +1232,57 @@ def periodic_unwrap(particles, num_dimensions, window_size, quiet=False):
 
     # strategy is to find each time a particle jumps way too far, and then add or subtract the window size to fix
 
-    for particle in tqdm.trange(num_particles_per_frame, desc='periodic unwrapping', disable=quiet):
+    # progress = tqdm.tqdm(total=num_particles_per_frame, desc='periodic unwrapping', disable=quiet)
+
+    for particle in tqdm.trange(num_particles_per_frame):
         
         this_particle = particles_new[particle*num_timesteps:(particle+1)*num_timesteps, :]
         assert np.all(this_particle[:, id_column] == particle)
 
-        for t in range(num_timesteps):
-            row_i = particle*num_timesteps + t
-            assert particles_new[row_i, time_column] == t
-            
-            coord = particles_new[row_i, 0:num_dimensions]
+        unwrap_single_particle(columns_to_unwrap, unwrap_size, time_column, num_timesteps, particles_new, particle)
+    # progress.close()
 
-            if t > 0:
-                coord_change = coord - last_coord
-
-                for dimension in range(num_dimensions):
-                    while coord_change[dimension] > window_size[dimension]/2:
-                        particles_new[row_i, dimension] -= window_size[dimension]
-                        
-                        # recalculate the change - if it is more than one window over we will need to do this multiple times
-                        coord_change = particles_new[row_i, 0:num_dimensions] - last_coord
-                        # print(f't={t}', 'moved', particles[row_i, 3], 'down in', 'xy'[dimension])
-                    while coord_change[dimension] < -window_size[dimension]/2:
-                        particles_new[row_i, dimension] += window_size[dimension]
-                        
-                        # recalculate the change - if it is more than one window over we will need to do this multiple times
-                        coord_change = particles_new[row_i, 0:num_dimensions] - last_coord
-                        # print(f't={t}', 'moved', particles[row_i, 3], 'up in', 'xy'[dimension])
-
-            last_coord = particles_new[row_i, 0:num_dimensions]
-
-    assert np.any(particles != particles_new)
     return particles_new
+
+@numba.njit
+def unwrap_single_particle(columns_to_unwrap, unwrap_size, time_column, num_timesteps, particles_new, particle):
+    last_coord = np.full(len(columns_to_unwrap), np.nan, dtype=particles_new.dtype) # need to formally define this for numba
+    
+    for t in range(num_timesteps):
+        row_i = particle*num_timesteps + t
+        assert particles_new[row_i, time_column] == t
+            
+        coord = particles_new[row_i, columns_to_unwrap]
+
+
+        if t > 0:
+            coord_change = coord - last_coord
+
+            for column_i, column in enumerate(columns_to_unwrap):
+                while_protect = 0
+                while coord_change[column_i] > unwrap_size[column_i]/2:
+                    particles_new[row_i, column] -= unwrap_size[column_i]
+                        
+                        # recalculate the change - if it is more than one window over we will need to do this multiple times
+                    coord_change = particles_new[row_i, columns_to_unwrap] - last_coord
+                        # print(f't={t}', 'moved', particles[row_i, 3], 'down in', 'xy'[dimension])
+
+                    while_protect += 1
+                    assert while_protect < 1e4
+                while_protect = 0
+                while coord_change[column_i] < -unwrap_size[column_i]/2:
+                    particles_new[row_i, column] += unwrap_size[column_i]
+                        
+                        # recalculate the change - if it is more than one window over we will need to do this multiple times
+                    coord_change = particles_new[row_i, columns_to_unwrap] - last_coord
+                        # print(f't={t}', 'moved', particles[row_i, 3], 'up in', 'xy'[dimension])
+                    while_protect += 1
+                    assert while_protect < 1e4
+
+            # assert np.all(np.abs(coord_change) < unwrap_size/2), f'this coord={particles_new[row_i, columns_to_unwrap]}, last_coord={last_coord}, unwrap_size={unwrap_size}' # numba asserts must be constant strings
+            assert np.all(np.abs(coord_change) < unwrap_size/2), f'np.abs(coord_change) < unwrap_size/2 failed'
+
+        last_coord = particles_new[row_i, columns_to_unwrap]
 
 def save_particles(file, particles, time_step, window_size_x=None, window_size_y=None, **kwargs):
 

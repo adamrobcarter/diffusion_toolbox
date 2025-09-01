@@ -6,14 +6,16 @@ import MSD.show
 
 # no parrelelisation currently
 
-def go(file):
-    data = common.load(f'particle_linking/data/trajs_{file}.npz')
+def go(file, quiet=False):
+    data = common.load(f'particle_linking/data/trajs_{file}.npz', quiet=quiet)
     particles = data['particles']
 
     
     time_column = data.get('dimension', 2)
+    assert particles.size
     t = np.unique(particles[:, time_column])
-    t_interval = t[1:] - t[:-1]
+    assert len(t)
+    t_interval = np.diff(t)
     consistent_timesteps = np.all(np.isclose(t_interval, t_interval[0])) # need isclose in case time is irrational
 
     t0 = time.time()
@@ -48,7 +50,7 @@ def go(file):
             timestep *= t_interval[0]
 
         # print('consider "or True" you dummy')
-        print('Calculating incrementally')
+        if not quiet: print('Calculating incrementally')
         # we need the data sorted by ID (col 4) for this
         msd, msd_unc = MSD.MSD.calc_incremental(particles, data.get('dimension', 2))
 
@@ -58,7 +60,7 @@ def go(file):
         msd, msd_unc = MSD.MSD.calc(particles)
     t1 = time.time()
 
-    print('msd', msd[0], msd[1])
+    if not quiet: print('msd', msd[0], msd[1])
     # print(msd[1]/(4*data['time_step']))
 
     assert msd[1] > 0
@@ -68,10 +70,11 @@ def go(file):
     common.save_data(f'MSD/data/msd_{file}', msd=msd, msd_unc=msd_unc, t=t,
         particle_diameter=data.get('particle_diameter'), pack_frac_given=data.get('pack_frac_given'), pack_frac=data.get('pack_frac'),
         pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
-        computation_time=t1-t0
+        computation_time=t1-t0, T=data.get('T'),
+        quiet=quiet
     )
 
-    MSD.show.go(file)
+    MSD.show.go(file, quiet=quiet)
 
 if __name__ == '__main__':
     for file in common.files_from_argv('particle_linking/data/', 'trajs_'):

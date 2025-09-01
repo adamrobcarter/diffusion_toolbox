@@ -5,7 +5,7 @@ import scipy.optimize
 import matplotlib.cm
 
 SHOW_NOLOG_SHORTTIME = False
-NOLOG_SHORTTIME_END = 500
+NOLOG_SHORTTIME_END = 50
 SHOW_ERRORBARS = True
 SHOW_FULL_FIT = False
 FIT_MIN_NUM_TIMESTEPS = 50
@@ -16,6 +16,7 @@ def go(file, show_errorbars=False, show_fit=False, SHOW_SHORT_FIT=True, SHOW_LON
     all_msd_unc    = data['msd_unc']
     t              = data['t']
     num_dimensions = data['dimension']
+    particle_diameter = data['particle_diameter']
 
     print('nan', common.nanfrac(all_msd))
 
@@ -29,16 +30,17 @@ def go(file, show_errorbars=False, show_fit=False, SHOW_SHORT_FIT=True, SHOW_LON
     fig, ax = plt.subplots(1, 1, figsize=(4.5, 4))
 
     for dimension in range(num_dimensions):
-        print('φθψ'[dimension])
+        print('xyz'[dimension])
         # ax.errorbar(t[1:], msd[1:], msd_unc[1:], linestyle='none', marker='none', color='lightskyblue')
         color=common.tab_color(dimension)
 
         msd     = all_msd    [dimension, :]
+        assert t[0] == 0
+        assert np.isclose(msd[0], 0, atol=1e-9)
+        # print('  msd(0)', msd[0])
+
         msd_unc = all_msd_unc[dimension, :]
 
-        ax.plot(t[1:], msd[1:], marker='.', markersize=8, linestyle='none', color=color, label='φθψ'[dimension])
-        if show_errorbars:
-            ax.fill_between(t[1:], msd[1:]-msd_unc[1:], msd[1:]+msd_unc[1:], alpha=0.2, color=color)
         
         # ax.set_xlim(t[1]*0.8, t[-1]/0.8)
         # ax.set_xlim(0, 20)
@@ -60,20 +62,31 @@ def go(file, show_errorbars=False, show_fit=False, SHOW_SHORT_FIT=True, SHOW_LON
         
         fits = fit_msd(t, msd, msd_unc)
 
-        print('  first D=' + common.format_val_and_unc(fits['first']['D'], fits['first']['D_unc'], sigfigs=3))
+        D_th = common.stokes_einstein_D_rot(particle_diameter)
+
+        # probably there is a pi/2 factor
+        dimension_name = 'xyz'[dimension]
+        label = f'{dimension_name}, $D_r = '
+        label += '' + common.format_val_and_unc(fits['first']['D']/D_th, fits['first']['D_unc']/D_th, sigfigs=3) + 'D_{SE}$'
+        ax.plot(t[1:], msd[1:], marker='.', markersize=8, linestyle='none', color=color, label=label)
+        if show_errorbars:
+            ax.fill_between(t[1:], msd[1:]-msd_unc[1:], msd[1:]+msd_unc[1:], alpha=0.2, color=color)
+        
+
+        print('  first     D=' + common.format_val_and_unc(fits['first']['D']/D_th, fits['first']['D_unc']/D_th, sigfigs=3, latex=False) + ' D_SE')
 
         if t.size > FIT_MIN_NUM_TIMESTEPS:
             if show_fit:
                 ax.plot(fits['full']['t'], fits['full']['MSD'], color=common.FIT_COLOR, linewidth=1, label='fit')
-                print('  fit D=' + common.format_val_and_unc(fits['full']['D'], fits['full']['D_unc'], sigfigs=3))
+                print('  fit     D=' + common.format_val_and_unc(fits['full']['D']/D_th, fits['full']['D_unc']/D_th, sigfigs=3, latex=False) + ' D_SE')
 
             if SHOW_SHORT_FIT:
                 ax.plot(fits['short']['t'], fits['short']['MSD'], color=common.FIT_COLOR, linewidth=1, label='short fit')
-                print('  fit short D=' + common.format_val_and_unc(fits['short']['D'], fits['short']['D_unc'], sigfigs=3))
+                print('  fit short D=' + common.format_val_and_unc(fits['short']['D']/D_th, fits['short']['D_unc']/D_th, sigfigs=3, latex=False) + ' D_SE')
 
             if SHOW_LONG_FIT:
                 ax.plot(fits['long']['t'], fits['long']['MSD'], color=common.FIT_COLOR, linewidth=1, label='long fit')
-                print('  fit long D=' + common.format_val_and_unc(fits['long']['D'], fits['long']['D_unc'], sigfigs=3))
+                print('  fit long D=' + common.format_val_and_unc(fits['long']['D']/D_th, fits['long']['D_unc']/D_th, sigfigs=3, latex=False) + ' D_SE')
 
 
         # metadata = dict(
@@ -175,6 +188,6 @@ def fit_msd(t, msd, msd_unc):
     return ret
 
 if __name__ == '__main__':
-    for file in common.files_from_argv('MSD/data', 'msd_'):
+    for file in common.files_from_argv('MSD/data', 'msd_rot_'):
         go(file, show_errorbars=SHOW_ERRORBARS, show_fit=SHOW_FULL_FIT)
         

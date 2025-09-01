@@ -2,16 +2,17 @@ import numpy as np
 import common
 import tqdm
 
-for L in np.logspace(np.log10(10), np.log10(1000), num=20):
+# for L in np.logspace(np.log10(10), np.log10(1000), num=20):
+for L in [100]:
     L = int(L)
 
     phi = 0.1
     sigma = 3
-    dt = 500
+    dt = 0.5
     D = 0.04
     # num_timesteps = int(24 * 60 * 60 / dt / 24) # 24 hours
-    max_t = 1e7
-    t_string = '1e7'
+    max_t = 1e3
+    t_string = '1e3'
     num_timesteps = int(max_t / dt)
 
     num_particles = int(L**2 * 4 / np.pi * phi / sigma**2)
@@ -31,8 +32,7 @@ for L in np.logspace(np.log10(10), np.log10(1000), num=20):
     y = startpoints_y[:, np.newaxis] + np.cumsum(steps_y, axis=1)
 
     # save the unwrapped trajectories now before wrapping
-    phi_str = f'{phi*100:.0f}'.zfill(3)
-    filename = f'sim_nointer_{phi_str}_L{L}_t{t_string}'
+    filename = f'sim_nointer_{phi}_L{L}_t{t_string}'
 
     trajs = np.full((num_particles*num_timesteps, 4), np.nan, dtype=np.float32)
     row = 0

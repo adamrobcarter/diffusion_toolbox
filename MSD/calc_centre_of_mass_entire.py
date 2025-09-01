@@ -53,7 +53,7 @@ for file in common.files_from_argv('particle_detection/data/', 'particles_'):
                      msd=msd, msd_unc=msd_unc,
                      t = list(range(0, num_timesteps)) * data['time_step'],
                     #  density=density, num_time_origins=num_time_origins,
-                     density=common.calc_density(particles, data['window_size_x'], data['window_size_y']),
+                     density=common.calc_density(particles, data['window_size_x'], data['window_size_y'], dimension=data.get('dimension', 2)),
                      N_particles=num_particles_per_frame,
                      particle_diameter=data.get('particle_diameter'),
                      pixel_size=data.get('pixel_size'),

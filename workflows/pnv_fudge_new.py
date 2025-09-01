@@ -29,7 +29,9 @@ phis = ['001', '010', '020', '030', '040', '050']
 N0_sources = ['var', 'N0S0']
 
 v_i = 0
-v = vs[v_i]
+v_true = vs[v_i]
+
+aspects = [0.2, 1, 5]
 
 ## do precaculation
 for phi_i, phi in enumerate(phis):
@@ -45,10 +47,12 @@ for phi_i, phi in enumerate(phis):
     # print('drift', drift)
 
     # pnv method
-    # box_counting.calc_pnv.go(f'{file_base}_{phi}_L{L}_drifted_const_v{v}', frame_deltas=range(0, 25))
+    for aspect in aspects:
+        box_counting.calc_pnv.go(f'{file_base}_{phi}_L{L}_drifted_const_v{v_true}', frame_deltas=[0, 1], aspect=aspect)
     pass
 
-for N0_source in N0_sources:
+# for N0_source in N0_sources:
+for aspect in aspects:
     fig, ax_phi = plt.subplots(1, 1, figsize=(4, 4))
 
     fudge_mean = np.full((len(phis)), np.nan)
@@ -66,36 +70,59 @@ for N0_source in N0_sources:
         # drift = common.find_drift(data['particles'], data.get('dimension', 2))
         
         # pnv method
-        pnv_V, pnv_L, dt = box_counting.show_pnv.go(f'{file_base}_{phi}_L{L}_drifted_const_v{v}', N0_source=N0_source)
-        pnv_vs[phi_i, :len(pnv_V)] = pnv_V
-        if phi_i > 0:
-            assert np.all(pnv_Ls == pnv_Ls)
-        pnv_Ls = pnv_L
+        file = f'{file_base}_{phi}_L{L}_drifted_const_v{v_true}_aspect{aspect}'
+        data = common.load(f'box_counting/data/pnv_{file}.npz')
+        time_step = data['time_step']
+        N1N2 = data['N1N2'] # dimensions are box size, t
+        L1 = data['box_sizes_x']
+        L2 = data['box_sizes_y']
+        N0 = data['N_mean']
+        N1N2mN1N2 = data['N1N2mN1N2']
+        print('N0', N0)
+        print('N1N2mN1N2', N1N2mN1N2)
+        particle_diameter = data['particle_diameter']
 
-        print()
+        N1N2_frame1 = N1N2[:, 1]
 
-    print('min L', v * dt)
+        F = N1N2_frame1 / N0 * L1 / (time_step * v_true)
+
+        pnv_vs[phi_i, :len(F)] = F
+        pnv_Ls = L1
+
+        # pnv_V, pnv_L, time_step = box_counting.show_pnv.go(f'{file_base}_{phi}_L{L}_drifted_const_v{v_true}', N0_source=N0_source)
+        # pnv_vs[phi_i, :len(pnv_V)] = pnv_V
+        # if phi_i > 0:
+        #     assert np.all(pnv_Ls == pnv_Ls)
+        # pnv_Ls = pnv_L
+
+        # print()
+
+    print('min L', v_true * time_step)
     for L_i in range(len(pnv_Ls)):
-        if pnv_Ls[L_i] < v * dt:
+        if pnv_Ls[L_i] < v_true * time_step:
             print('skipped')
             continue
 
-        ax_phi.scatter(phis_value, pnv_vs[:, L_i], label=f'PNV measured L={pnv_Ls[L_i]:.1f}', color=common.colormap(L_i, 0, len(pnv_Ls)))
+
+
+        ax_phi.plot(phis_value, pnv_vs[:, L_i], marker='o', label=f'$L_x={pnv_Ls[L_i]/particle_diameter:.2g}\sigma$', color=common.colormap(L_i, 0, len(pnv_Ls)))
+        ax_phi.plot(phis_value, pnv_vs[:, L_i], marker='o', label=f'$L_x={pnv_Ls[L_i]/particle_diameter:.2g}\sigma$', color=common.colormap(L_i, 0, len(pnv_Ls)))
 
     # ax_phi.errorbar(phis_value, fudge_mean, yerr=fudge_std, label='PNV', marker='o', linestyle='none')
 
     ax_phi.set_xlabel(f'packing fraction')
-    ax_phi.set_ylabel('$v$ ($\mathrm{\mu m s^{-1}}$)')
+    ax_phi.set_ylabel('$F(\phi, L, \sigma)$')
     # ax_phi.set_ylim(0, 2)
 
-    if file_base == 'sim_nointer':
-        ax_phi.set_ylim(0, 1.5*v)
+    # if file_base == 'sim_nointer':
+    #     ax_phi.set_ylim(0, 1.5*v_true)
 
-    ax_phi.hlines(v, *ax_phi.get_xlim(), label='true velocity')
     ax_phi.legend(fontsize=7)
 
     ax_phi.grid(alpha=0.5)
 
-    fig.suptitle({'sim_nointer': 'no interactions', 'sim_nohydro': 'steric interactions'}[file_base] + ', ' + 'N0: ' + N0_source)
+    ax_phi.set_ylim(0, 1.1)
 
-    common.save_fig(fig, f'box_counting/figures_png/fudge_factors_new_{file_base}_{N0_source}.png')
+    fig.suptitle({'sim_nointer': 'no interactions', 'sim_nohydro': 'steric interactions'}[file_base] + f', $L_x/L_y={aspect}$')
+
+    common.save_fig(fig, f'box_counting/figures_png/fudge_factors_new_{file_base}_aspect{aspect}.png')

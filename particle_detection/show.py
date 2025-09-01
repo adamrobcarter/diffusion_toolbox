@@ -11,6 +11,8 @@ import scattering_functions
 # Y_START = 50
 CROP = False
 
+REMOVE_BKG = False
+SHOW_AS_HOLLOW = True
 
 def find_color(row, bhwindow=False, window_size_x=None, window_size_y=None, channel=None):
     if row.size == 4:
@@ -58,7 +60,7 @@ def add_particle_outlines(ax, particles, timestep, dimension, particle_diameter,
     # if cross:
     #     pass
     if outline:
-        circles = [plt.Circle((x[i], y[i]), edgecolor=color, facecolor='none', radius=radius*2, linewidth=3, alpha=alpha*alpha_mult) for i in range(particles_at_t.sum())]
+        circles = [plt.Circle((x[i], y[i]), edgecolor=color, facecolor='none', radius=radius*2, linewidth=0.4, alpha=alpha*alpha_mult) for i in range(particles_at_t.sum())]
         # c = matplotlib.collections.PatchCollection(circles, facecolor='red', alpha=0.5)
         assert len(circles)
         c = matplotlib.collections.PatchCollection(circles, match_original=True)
@@ -147,8 +149,9 @@ def go(file, ax, fig, bhwindow=False):
             # crop
             # stack = stack[:, X_START:X_START+CROP, Y_START:Y_START+CROP]
             # stack = stack[:, :500, :500]
-        print('removing background')
-        stack = stack - stack.mean(axis=0) # remove space background
+        if REMOVE_BKG:
+            print('removing background')
+            stack = stack - stack.mean(axis=0) # remove space background
             # stack = np.interp(stack, (stack.min(), stack.max()), (0, 1)) # convert to 0->1 range
         no_stack = False
 
@@ -164,13 +167,14 @@ def go(file, ax, fig, bhwindow=False):
 
     def add_outlines(timestep, ax):
         add_particle_outlines(ax, particles, timestep, dimension=data_particles.get('dimension', 2), particle_diameter=data_particles.get('particle_diameter', 3),
-                                  channel=channel, outline=False, window_size_x=data_particles['window_size_x'], window_size_y=data_particles['window_size_y'],
+                                  channel=channel, outline=SHOW_AS_HOLLOW, window_size_x=data_particles['window_size_x'], window_size_y=data_particles['window_size_y'],
                                   bhwindow=bhwindow)
 
     figsize = 4 * np.array([data_particles['window_size_x'], data_particles['window_size_y']]) / data_particles['window_size_x']
         # figsize=None
 
-    fig.set_size_inches(*figsize)
+    if fig is not None:
+        fig.set_size_inches(*figsize)
         # ax.set_xlim(particles[:, 0].min(), particles[:, 0].max())
         # ax.set_ylim(particles[:, 1].min(), particles[:, 1].max())
     # if 'unwrap' in file:
@@ -189,7 +193,7 @@ def go(file, ax, fig, bhwindow=False):
         frame = stack[0, :, :][::-1, :]
         print('^^^^^^ ahhh why is this here')
 
-        preprocessing.stack_movie.show_single_frame(ax=ax, frame=frame, pixel_size=pixel_size,
+        preprocessing.stack_movie.show_single_frame(file, ax=ax, frame=frame, pixel_size=pixel_size,
                                                         window_size_x=data_particles['window_size_x'], window_size_y=data_particles['window_size_y'],
                                                         hide_scale_bar=True)
 

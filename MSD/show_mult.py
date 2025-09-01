@@ -12,13 +12,14 @@ for i, file in enumerate(files):
     msd = data['msd']
     msd_unc = data['msd_unc']
     
-    t = np.arange(0, msd.size)
-    n = (msd.size-1) / t
+    t_indexes = np.arange(0, msd.size)
+    n = (msd.size-1) / t_indexes
     msd_unc = msd_unc / np.sqrt(n)
     # ^^ this is based on thinking about how many independent measurements there are
 
 
-    t = np.arange(0, msd.size) * data['time_step']
+    t = data['t']
+    print(t)
 
     color =  matplotlib.cm.afmhot(np.interp(i, (0, len(files)), (0.2, 0.75)))
             

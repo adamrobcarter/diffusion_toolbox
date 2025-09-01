@@ -11,7 +11,7 @@ Lxs = []
 
 D_std_msds = []
 
-for file in (files := common.files_from_argv('visualisation/data', 'Ds_from_MSD_first_')):
+for file in (files := common.files_from_argv('visualisation/data', 'Ds_from_MSD_first_centre_of_mass_entire_')):
     data = common.load(f'visualisation/data/Ds_from_MSD_first_centre_of_mass_entire_{file}.npz')
     # N = 
     D_CoM = data['Ds'][0]
@@ -34,7 +34,7 @@ ax.errorbar(Lxs, D_std_msds, linestyle='none', marker='o', label='standard MSD')
 ax.errorbar(Lxs, Ds,         linestyle='none', marker='o', label='N * CoM MSD')
 ax.loglog()
 
-ax.set_ylim(np.mean(D_std_msd)-0.001, np.mean(D_std_msd)+0.001)
+ax.set_ylim(0.035, 0.045)
 
 ax.set_xlabel('$L_x$')
 ax.set_ylabel('D')

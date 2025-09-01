@@ -1,8 +1,10 @@
 import countoscope_old as countoscope
 import numpy as np
 import time
-import sys
 import common
+
+# ASPECTS = [0.2, 1, 5]
+ASPECTS = [1]
 
 def calc_and_save(file, box_sizes_x, box_sizes_y, sep_sizes_x, sep_sizes_y, data, output_file_name,
                   save_counts=False, extra_to_save={},
@@ -41,7 +43,7 @@ def calc_and_save(file, box_sizes_x, box_sizes_y, sep_sizes_x, sep_sizes_y, data
         sep_sizes_x=sep_sizes_x, sep_sizes_y=sep_sizes_y,
         time_step=time_step, particle_diameter=particle_diameter,
         particle_diameter_calced=particle_diameter_calced, computation_time=time.time()-t0,
-        pack_frac=data.get('pack_frac'), density=data.get('density', common.calc_density(particles, window_size_x, window_size_y)),
+        pack_frac=data.get('pack_frac'), density=data.get('density', common.calc_density(particles, window_size_x, window_size_y, data.get('dimension', 2))),
         pack_frac_given=data.get('pack_frac_given'), max_time_hours=data.get('max_time_hours'),
         window_size_x=window_size_x, window_size_y=window_size_y, pixel_size=data.get('pixel_size'),
         **results._asdict(),
@@ -56,10 +58,10 @@ def calc_and_save(file, box_sizes_x, box_sizes_y, sep_sizes_x, sep_sizes_y, data
     return output
 
 
-def go(file, frame_deltas=[0, 1]):
+def go(file, frame_deltas=[0, 1], aspect=1):
     data = common.load(f'particle_detection/data/particles_{file}.npz')
 
-    output_filename = f'box_counting/data/pnv_{file}'
+    output_filename = f'box_counting/data/pnv_{file}_aspect{aspect}'
         # output_filename += '_moreoverlap'
     output_filename += '.npz'
 
@@ -67,15 +69,17 @@ def go(file, frame_deltas=[0, 1]):
     # box_sizes_y = np.array([2, 5, 10, 20])
     # spacing_x = np.array([2, 2, 2, 2])
     # spacing_y = np.array([2, 2, 2, 2])
-    box_sizes_x = np.logspace(np.log10(0.5), np.log10(20), num=8)
+    box_sizes_x = np.logspace(np.log10(0.5), np.log10(20), num=15)
 
     if file.startswith('paul'):
         box_sizes_x = np.logspace(np.log10(1), np.log10(200), num=8)
 
-    box_sizes_y = box_sizes_x
-    # spacing_x = np.full_like(box_sizes_x, 4)
-    spacing_x = np.copy(box_sizes_x)
-    spacing_x[spacing_x < 4] = 4
+    # do the aspect ratio to get y
+    box_sizes_y = np.copy(box_sizes_x)
+    box_sizes_x *= np.sqrt(aspect)
+    box_sizes_y /= np.sqrt(aspect)
+
+    spacing_x = np.full_like(box_sizes_x, 4)
     spacing_y = spacing_x
     sep_sizes_x = spacing_x - box_sizes_x
     sep_sizes_y = spacing_y - box_sizes_y
@@ -85,7 +89,7 @@ def go(file, frame_deltas=[0, 1]):
         file=file, data=data, frame_deltas=frame_deltas,
         box_sizes_x=box_sizes_x, box_sizes_y=box_sizes_y,
         sep_sizes_x=sep_sizes_x, sep_sizes_y=sep_sizes_y,
-        output_file_name=output_filename, save_counts=False,
+        output_file_name=output_filename, save_counts=True,
         save_data=True, extra_to_save=dict(
             v_profile = data.get('v_profile'),
             velocity_multiplier = data.get('velocity_multiplier'),

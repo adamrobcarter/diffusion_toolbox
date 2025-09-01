@@ -32,13 +32,20 @@ def go(file, window=False):
         # d_frames = [0, 64,]
         d_frames = [0, 1, 4, 16, 64,]
 
-    d_frames = [0, 1, 4, 16, 64, 256, 1024, 4096]
+    d_frames = [0, 1, 4, 16, 64, 256, 1024]
+    # d_frames = [0, 1, 4, 16, 64, 256, 1024]
 
-    if '_pot_longer' in file:
+    if '_pot_longer' in file or file=='eleanor0.34':
         d_frames = [0, 1, 4, 16, 64, 256, 1024]
 
-    d_frames = common.exponential_integers(0, 4096)
-    
+    if 'L2560' in file:
+        d_frames = [0, 1, 4, 16, 64, 256]
+    if 'nbody_open' in file:
+        d_frames = [0, 1, 4, 16, 64]
+
+    # d_frames = common.exponential_integers(0, 4096)
+    # d_frames = d_frames[d_frames < 623]
+    # print("NOVTE 60/2 below")
     isf.calc_both.calc_for_f_type(
         file,
         'F',

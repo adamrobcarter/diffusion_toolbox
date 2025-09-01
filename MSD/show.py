@@ -8,13 +8,14 @@ SHOW_NOLOG_SHORTTIME = False
 NOLOG_SHORTTIME_END = 500
 SHOW_ERRORBARS = True
 
-def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LONG_FIT=False, export_destination=None):
+def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LONG_FIT=False,
+       quiet=False):
     data = common.load(f'MSD/data/msd_{file}.npz')
     msd = data['msd']
     msd_unc = data['msd_unc']
     t = data['t']
 
-    print('nan', common.nanfrac(msd))
+    if not quiet: print('nan', common.nanfrac(msd))
     
     t_indexes = np.arange(0, msd.size)
     n = (msd.size-1) / t_indexes
@@ -43,26 +44,28 @@ def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LON
     ax.set_ylabel(r'$\langle r(t)^2 \rangle$ ($\mathrm{\mu m}$)')
     ax.set_xlabel('$t$ (s)')
 
-    print(f'<x>({t[1]}) = {np.sqrt(msd[1])/0.288:.3g} * 0.288um') # <x>({t[32]}) = {np.sqrt(msd[32])/0.288} * 0.288um'
+    if not quiet: print(f'<x>({t[1]}) = {np.sqrt(msd[1])/0.288:.3g} * 0.288um') # <x>({t[32]}) = {np.sqrt(msd[32])/0.288} * 0.288um'
     
     # common.save_fig(fig, f'/home/acarter/presentations/cin_first/figures/msd_nofit_{file}.pdf', hide_metadata=True)
     
     fits = fit_msd(t, msd, msd_unc)
 
-    print('first D=' + common.format_val_and_unc(fits['first']['D'], fits['first']['D_unc'], sigfigs=3))
+    if not quiet: print('first D=' + common.format_val_and_unc(fits['first']['D'], fits['first']['D_unc'], sigfigs=3))
 
     if t.size > 100:
         if SHOW_FIT:
             ax.plot(fits['full']['t'], fits['full']['MSD'], color=common.FIT_COLOR, linewidth=1, label='fit')
-        print('fit D=' + common.format_val_and_unc(fits['full']['D'], fits['full']['D_unc'], sigfigs=3))
+        if not quiet: print('fit D=' + common.format_val_and_unc(fits['full']['D'], fits['full']['D_unc'], sigfigs=3))
 
         if SHOW_SHORT_FIT:
             ax.plot(fits['short']['t'], fits['short']['MSD'], color=common.FIT_COLOR, linewidth=1, label='short fit')
-        print('fit short D=' + common.format_val_and_unc(fits['short']['D'], fits['short']['D_unc'], sigfigs=3))
+        if not quiet: print('fit short D=' + common.format_val_and_unc(fits['short']['D'], fits['short']['D_unc'], sigfigs=3))
 
         if SHOW_LONG_FIT:
             ax.plot(fits['long']['t'], fits['long']['MSD'], color=common.FIT_COLOR, linewidth=1, label='long fit')
-        print('fit long D=' + common.format_val_and_unc(fits['long']['D'], fits['long']['D_unc'], sigfigs=3))
+        if not quiet: print('fit long D=' + common.format_val_and_unc(fits['long']['D'], fits['long']['D_unc'], sigfigs=3))
+
+    ax.hlines(data.get('window_size_x')**2, *ax.get_xlim(), label='window size', color='black', linestyle='dotted')
 
     ax.legend()
     ax.grid(alpha=0.3)
@@ -70,10 +73,7 @@ def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LON
     filename = f'msd_{file}'
     if SHOW_FIT:
         filename += '_fit'
-    if export_destination:
-        common.save_fig(fig, export_destination, hide_metadata=True)
     common.save_fig(fig, f'MSD/figures_png/{filename}.png')
-
 
     metadata = dict(
         particle_diameter=data.get('particle_diameter'),
@@ -85,6 +85,9 @@ def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LON
         density          =data.get('density'),
         N_particles      =data.get('N_particles'),
     )
+
+    t_diffuse_window = data.get('window_size_x')**2 / (2*2*fits['first']['D'])
+    print(f'time to diffuse across window = {t_diffuse_window/60/60:.1f}hr')
 
     if t.size > 100:
         common.save_data(f'visualisation/data/Ds_from_MSD_{file}',

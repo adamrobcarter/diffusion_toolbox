@@ -4,6 +4,10 @@ import time, os
 import tqdm
 import subprocess
 import itertools
+from scipy.spatial.transform import Rotation
+import matplotlib.pyplot as plt
+import numpy.linalg
+import warnings
 
 def go(infile, outfile, nth_timestep=1, max_time=None,
        extra_source_file=None, skiprows=None, multiply_time_by=None, **kwargs):
@@ -16,6 +20,7 @@ def go(infile, outfile, nth_timestep=1, max_time=None,
     print(particles.shape, particles.dtype,  f'loaded {common.format_bytes(particles.nbytes)} in {t1-t0:.1f}s at {common.format_bytes(particles.nbytes/(t1-t0))}/sec')
 
     TIME_COLUMN = 3
+    ID_COLUMN = 4
 
     if np.isnan(particles).any():
         print('NAN FOUND')
@@ -34,19 +39,108 @@ def go(infile, outfile, nth_timestep=1, max_time=None,
     frame_time_deltas = particles[1:, TIME_COLUMN] - particles[:-1, TIME_COLUMN]
     assert np.all(frame_time_deltas >= 0)
 
-    if particles.shape[1] == 9: # we have quaternion for rotation
-        q_w = particles[:, 5]
-        q_x = particles[:, 6]
-        q_y = particles[:, 7]
-        q_z = particles[:, 8]
-        # convert to euler angles
-        phi   = np.arctan2(2*(q_w*q_x + q_y*q_z), 1 - 2*(q_x**2 + q_y**2))
-        theta = np.arcsin(2*(q_w*q_y - q_x*q_z))
-        psi   = np.arctan2(2*(q_w*q_z + q_x*q_y), 1 - 2*(q_y**2 + q_z**2))
-        particles[:, 5] = phi
-        particles[:, 6] = theta
-        particles[:, 7] = psi
-        particles = particles[:, [0, 1, 2, 3, 4, 5, 6, 7]] # remove extra column
+    assert particles.shape[1] == 9 # we have quaternion for rotation
+
+    last_rot = np.eye(3) # identity matrix
+    last_angles = np.array([0.0, 0.0, 0.0])
+
+    angles = np.full((particles.shape[0], 3), np.nan)
+
+    assert np.all(particles[:, ID_COLUMN] == 0)
+
+    for i in tqdm.trange(particles.shape[0]):
+        rot = Rotation.from_quat(particles[i, [5, 6, 7, 8]], scalar_first=True).as_matrix() # needs scipy >= 1.15
+    
+        rot_change = rot @ np.linalg.inv(last_rot) # rotation change from last frame
+        # rot_change = np.linalg.inv(last_rot) @ rot # rotation change from last frame
+
+        last_rot = rot
+        
+        rot_x = np.array([1, 0, 0]) @ rot_change
+        rot_y = np.array([0, 1, 0]) @ rot_change
+        rot_z = np.array([0, 0, 1]) @ rot_change
+        # we now have 3D vectors that we can project
+
+        about_x_from_y = - np.arctan2(rot_y[2], rot_y[1])
+        about_x_from_z =   np.arctan2(rot_z[1], rot_z[2])
+        if not np.isclose(about_x_from_y, about_x_from_z, atol=1e-1):
+            warnings.warn(f'about_x_from_y-about_x_from_z={about_x_from_y-about_x_from_z}')
+        # assert np.isclose(about_x_from_y, about_x_from_z, atol=1e-1), f'about_x_from_y-about_x_from_z={about_x_from_y-about_x_from_z}'
+
+        about_y_from_z = - np.arctan2(rot_z[0], rot_z[2])
+        about_y_from_x =   np.arctan2(rot_x[2], rot_x[0])
+        if not np.isclose(about_y_from_z, about_y_from_x, atol=1e-1):
+            warnings.warn(f'about_y_from_z-about_y_from_x={about_y_from_z-about_y_from_x}')
+        # assert np.isclose(about_y_from_z, about_y_from_x, atol=1e-1), f'about_y_from_z-about_y_from_x={about_y_from_z-about_y_from_x}'
+
+        about_z_from_x = - np.arctan2(rot_x[1], rot_x[0])
+        about_z_from_y =   np.arctan2(rot_y[0], rot_y[1])
+        if not np.isclose(about_z_from_x, about_z_from_y, atol=1e-1):
+            warnings.warn(f'about_z_from_x-about_z_from_y={about_z_from_x-about_z_from_y}')
+        # assert np.isclose(about_z_from_x, about_z_from_y, atol=1e-1), f'about_z_from_x-about_z_from_y={about_z_from_x-about_z_from_y}'
+
+        angles[i, 0] = last_angles[0] + about_x_from_y
+        angles[i, 1] = last_angles[1] + about_y_from_z
+        angles[i, 2] = last_angles[2] + about_z_from_x
+
+        last_angles[0] = angles[i, 0]
+        last_angles[1] = angles[i, 1]
+        last_angles[2] = angles[i, 2]
+
+
+
+    # rot = Rotation.from_quat(particles[:, [5, 6, 7, 8]], scalar_first=True).as_matrix() # needs scipy >= 1.15
+    
+    # rot_x = np.array([1, 0, 0]) @ rot
+    # rot_y = np.array([0, 1, 0]) @ rot
+    # rot_z = np.array([0, 0, 1]) @ rot
+    # # we now have 3D vectors that we can project
+    # about_z_from_x =   np.arctan2(rot_x[:, 1], rot_x[:, 0])
+    # about_y_from_x = - np.arctan2(rot_x[:, 2], rot_x[:, 0])
+
+    # about_x_from_y =   np.arctan2(rot_y[:, 2], rot_y[:, 1])
+    # about_z_from_y = - np.arctan2(rot_y[:, 0], rot_y[:, 1])
+
+    # about_y_from_z =   np.arctan2(rot_z[:, 0], rot_z[:, 2])
+    # about_x_from_z = - np.arctan2(rot_z[:, 1], rot_z[:, 2])
+
+    # all_angles = np.column_stack((about_z_from_x, about_z_from_y, about_y_from_x, about_y_from_z, about_x_from_y, about_x_from_z, particles[:, 3], particles[:, 4])) # add time and ID columns
+    # all_angles = common.periodic_unwrap(all_angles, 6, [0, 1, 2, 3, 4, 5], [2*np.pi, 2*np.pi, 2*np.pi, 2*np.pi, 2*np.pi, 2*np.pi])
+    
+    # fig, ax = plt.subplots(1, 1)
+    # ax.set_xlim(0, 1000)
+    # ax.set_ylim(-10, 10)
+    # ax.plot(times, all_angles[:, 0], label='about z from x')
+    # ax.plot(times, all_angles[:, 1], label='about z from y')
+    # ax.plot(times, angles[:, 2], label='about y from x')    
+    # ax.plot(times, angles[:, 3], label='about y from z')
+    # ax.plot(times, angles[:, 4], label='about x from y')
+    # ax.plot(times, angles[:, 5], label='about x from z')
+    # ax.plot(times, about_x_from_y, label='about x from y') # bad tz
+    # ax.plot(times, about_x_from_z, label='about x from z') # bad ty
+    # ax.plot(times, about_y_from_z, label='about y from z') # bad tx
+    # ax.plot(times, about_y_from_x, label='about y from x') # bad tz
+    # ax.plot(times, about_z_from_x, label='about z from x') # bad ty
+    # ax.plot(times, about_z_from_y, label='about z from y') # bad tx
+    # ax.plot(times, rot_x[:, 0], label=r'$r_x{}_x$')
+    # ax.plot(times, rot_x[:, 1], label=r'$r_x{}_y$')
+    # ax.plot(times, rot_x[:, 2], label=r'$r_x{}_z$')
+    # ax.plot(times, rot_y[:, 0], label=r'$r_y{}_x$')
+    # ax.plot(times, rot_y[:, 1], label=r'$r_y{}_y$')
+    # ax.plot(times, rot_y[:, 2], label=r'$r_y{}_z$')
+    # ax.plot(times, rot_z[:, 0], label=r'$r_z{}_x$')
+    # ax.plot(times, rot_z[:, 1], label=r'$r_z{}_y$')
+    # ax.plot(times, rot_z[:, 2], label=r'$r_z{}_z$')
+    # ax.legend()
+    # common.save_fig(fig, f'particle_linking/figures_png/rot_{outfile}.png', dpi=300)
+
+    particles[:, 5] = angles[:, 0]
+    particles[:, 6] = angles[:, 1]
+    particles[:, 7] = angles[:, 2]
+    particles = particles[:, [0, 1, 2, 3, 4, 5, 6, 7]] # remove extra column
+
+    # # unwrap the angles
+    # # particles = common.periodic_unwrap(particles, 3, [5, 6, 7], [2*np.pi, np.pi, 2*np.pi])
 
     newdata = common.copy_not_particles(data) # copy so we can modify
     newdata['particles'] = particles
@@ -78,7 +172,7 @@ def go(infile, outfile, nth_timestep=1, max_time=None,
     #     source_file=infile,extra_source_file=extra_source_file,
     #     **kwargs
     # )
-    # print()
+    print()
     
 
 def go_mesu_shear(filepath, suffix='', skip_rsync=False, **kwargs):
@@ -163,5 +257,30 @@ if __name__ == '__main__':
     # go_mesu_shear(f'/store/cartera/shear/shear0_T296_theta0_EMRFD_nblobs162_dt0.01_tmax1000.npz', time_step=0.01) # time_step not needed in future
 
     # monolayer
-    go_mesu_shear('/store/cartera/shear/shear0_T296_theta10_L50_phi0.5_Trap_nblobs42_dt0.01_tmax10.npz')
-    go_mesu_shear('/store/cartera/shear/shear0_T296_theta10_L50_phi0.01_Trap_nblobs42_dt0.01_tmax10.npz')
+    # go_mesu_shear('/store/cartera/shear/shear0_T296_theta10_L50_phi0.5_Trap_nblobs42_dt0.01_tmax10.npz')
+    # go_mesu_shear('/store/cartera/shear/shear0_T296_theta10_L50_phi0.01_Trap_nblobs42_dt0.01_tmax10.npz')
+
+    
+    # go_mesu_shear('/store/cartera/shear/shear0.080357_T298_theta10_EMRFD_nblobs42_dt0.005_tmax1000.npz')
+    # go_mesu_shear('/store/cartera/shear/shear0.080357_T298_theta0_EMRFD_nblobs42_dt0.005_tmax1000.npz')
+    # go_mesu_shear('/store/cartera/shear/shear0_T298_theta10_EMRFD_nblobs42_dt0.005_tmax1000.npz')
+    # go_mesu_shear('/store/cartera/shear/shear0_T298_theta0_EMRFD_nblobs42_dt0.005_tmax1000.npz')
+    # go_mesu_shear('/store/cartera/shear/shear0_T298_nograv_nowall_EMRFD_nblobs42_dt0.005_tmax1000.npz')
+    # be good to compare the wall one with brenner
+    # these with tmax10000 are calculating
+
+    # for theta in [0, 2, 4, 6, 8, 10]:
+    #     go_mesu_shear(f'/store/cartera/shear/shear0_T298_theta{theta}_EMRFD_nblobs42_dt0.005_tmax1000_torque.npz')
+
+    # arbitrary torques nowall nograv
+    # go_mesu_shear(f'/store/cartera/shear/shear0_T0_nograv_nowall_EMRFD_nblobs42_dt0.005_tmax100_torquexy.npz')
+
+    # single particle rotational stuff
+    # go_mesu_shear('/store/cartera/shear/shear0_T296_nograv_nowall_EMRFD_nblobs42_dt0.005_tmax10000.npz')
+    # go_mesu_shear('/store/cartera/shear/shear0_T296_theta0_EMRFD_nblobs42_dt0.005_tmax10000.npz')
+    # go_mesu_shear('/store/cartera/shear/shear0_T296_theta10_EMRFD_nblobs42_dt0.005_tmax10000.npz')
+    # go_mesu_shear('/store/cartera/shear/shear0.080357_T296_theta0_EMRFD_nblobs42_dt0.005_tmax10000.npz')
+    # go_mesu_shear('/store/cartera/shear/shear0.080357_T296_theta10_EMRFD_nblobs42_dt0.005_tmax10000.npz')
+    # go_mesu_shear('/store/cartera/shear/shear0_T296_nograv_nowall_trap_nblobs42_dt0.005_tmax10000.npz')
+    # go_mesu_shear('/store/cartera/shear/shear0_T296_nograv_nowall_EMRFD_nblobs42_dt0.005_tmax1000.npz')
+    # go_mesu_shear('/store/cartera/shear/shear0_T296_nograv_nowall_EMRFD_nblobs42_dt0.005_tmax10000.npz')

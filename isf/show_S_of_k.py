@@ -5,28 +5,30 @@ import countoscope_theory.structure_factor
 import scipy.optimize, scipy.stats
 
 SMALL = False
-SHOW_R_AXIS = False
-FORCE_LOG_X_AXIS = True
+SHOW_R_AXIS = True
+FORCE_LOG_X_AXIS = False
 RESCALE_X_AXIS_BY_DIAMETER = True
 SPLIT_AND_COLOR = False
-SHOW_FIT = True
-SHOW_THEORY = False
+SHOW_FIT = False
+SHOW_THEORY = True
 EARLY_ALPHA = 1
 
-def go(file, ax):
-    data = common.load(f"isf/data/F_first_{file}.npz")
+def go(file, ax, 
+       show_realspace_axis=SHOW_R_AXIS,
+       source='F_first'):
+    data = common.load(f"isf/data/{source}_{file}.npz")
     t                 = data["t"]
     F                 = data["F"] # (num timesteps) x (num k bins)
     F_unc             = data['F_unc']
     k                 = data["k"]
     particle_diameter = data.get('particle_diameter')
-    density           = data['density']
+    density           = data.get('density')
 
     # S = F[0, :, :]
     # k = k[0, :, :]
     # S_unc = F_unc[0, :, :]
     S     = F    [0, :]
-    k     = k    [0, :]
+    # k     = k    [0, :] # no longer needed since k is 1D
     S_unc = F_unc[0, :]
 
     # assert np.any(S > 0.001)
@@ -41,9 +43,9 @@ def go(file, ax):
         # x = k
         rescale_x = 1
 
-    min = np.nanargmin(S)
+    min_S = np.nanargmin(S)
     if file == 'eleanorlong001':
-        min = 6
+        min_S = 6
 
     if SPLIT_AND_COLOR:
         pass
@@ -51,10 +53,10 @@ def go(file, ax):
         # # ax.errorbar(x[start_index:min], S[start_index:min], yerr=F_unc[0, start_index:min], linestyle='none', marker='o', color='tab:green', alpha=0.5)
         # ax.errorbar(x[min:end_index],   S[min:end_index],   yerr=F_unc[0, min:end_index],   linestyle='none', marker='o', color='tab:green')
     else:
-        ax.errorbar(k[min:]/rescale_x, S[min:], yerr=S_unc[min:], linestyle='none', marker='o', color='tab:green')
-        ax.errorbar(k[min:]/rescale_x, S[min:], yerr=S_unc[min:], linestyle='none', marker='o', color='tab:green')
-        ax.errorbar(k[:min]/rescale_x, S[:min], yerr=S_unc[:min], linestyle='none', marker='o', color='tab:green', alpha=EARLY_ALPHA)
-        ax.errorbar(k[:min]/rescale_x, S[:min], yerr=S_unc[:min], linestyle='none', marker='o', color='tab:green', alpha=EARLY_ALPHA)
+        ax.errorbar(k[min_S:]/rescale_x, S[min_S:], yerr=S_unc[min_S:], linestyle='none', marker='o', color='tab:green')
+        ax.errorbar(k[min_S:]/rescale_x, S[min_S:], yerr=S_unc[min_S:], linestyle='none', marker='o', color='tab:green')
+        ax.errorbar(k[:min_S]/rescale_x, S[:min_S], yerr=S_unc[:min_S], linestyle='none', marker='o', color='tab:green', alpha=EARLY_ALPHA)
+        ax.errorbar(k[:min_S]/rescale_x, S[:min_S], yerr=S_unc[:min_S], linestyle='none', marker='o', color='tab:green', alpha=EARLY_ALPHA)
 
     if data['log'] or FORCE_LOG_X_AXIS:
         ax.semilogx()
@@ -70,8 +72,8 @@ def go(file, ax):
             phi = np.pi/4 * density * sigma**2
             return countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma)
 
-        print(f'fitting for k >= {k[min]:.2g}')
-        popt, pcov = scipy.optimize.curve_fit(fit_func, k[min:], S[min:], p0=(2,))
+        print(f'fitting for k >= {k[min_S]:.2g}')
+        popt, pcov = scipy.optimize.curve_fit(fit_func, k[min_S:], S[min_S:], p0=(2,))
         sigma = popt[0]
         sigma_unc = np.sqrt(pcov[0, 0])
         phi_fit = np.pi/4 * density * sigma**2
@@ -85,7 +87,7 @@ def go(file, ax):
 
     if SHOW_THEORY:
         if (pack_frac_given := data.get('pack_frac_given')) and (particle_diameter := data['particle_diameter']):
-            ax.plot(k/rescale_x, countoscope_theory.structure_factor.hard_spheres_2d(x, pack_frac_given, particle_diameter))
+            ax.plot(k/rescale_x, countoscope_theory.structure_factor.hard_spheres_2d(k, pack_frac_given, particle_diameter))
             # ax.plot(x, countoscope_theory.structure_factor.hard_spheres_2d(x, pack_frac_given, 3.09))
     # ax.plot(x_th, countoscope_theory.structure_factor.hard_spheres_2d(x_th, 0.34, 3.03), color='grey', label='$\sigma=3.03$', zorder=10)
 
@@ -117,7 +119,7 @@ def go(file, ax):
     else:
         ax.set_xlabel('$k$')
 
-    if SHOW_R_AXIS:
+    if show_realspace_axis:
         realspace_ax = ax.secondary_xaxis('top', functions=(lambda k: 2*np.pi/k/particle_diameter, lambda r: 2*np.pi*particle_diameter/r))
         realspace_ax.set_xticks([1e1, 1e0, 5e-1])
         realspace_ax.set_xlabel(r'$r/\sigma = 2\pi/k\sigma$')
@@ -128,6 +130,9 @@ def go(file, ax):
     # ax.semilogy()
     # ax.set_ylim(0.05, 10000)
     # ax.set_ylim(0.4, 1.2)
+    ax.set_xlim(0.12, 70)
+    ymin, ymax = ax.get_ylim()
+    ax.set_ylim(max(ymin, 0), min(ymax, 5))
 
     # ax.text(0.7, 0.1, f'$\phi={file[-4:]}$', transform=ax.transAxes)
 

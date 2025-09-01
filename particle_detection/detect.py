@@ -26,9 +26,10 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
     print('stack dtype', stack.dtype)
 
     print('converting stack range')
-    stack = np.interp(stack, (stack.min(), stack.max()), (0, 1))
-    # convert to 0->1 range. why are we doing this?
-    print(stack.max(), stack.mean(), 'maxmean', stack.min(), stack.std())
+    print(f'stack min {stack.min():.3g}, mean {stack.mean():.3g}, max {stack.max():.3g}')
+    stack = np.interp(stack, (stack.min(), stack.max()), (0, 1)).astype(np.float32) # f16 not supported by trackpy
+    # convert to 0->1 range. the trackpy docs say so
+    # print(stack.max(), stack.mean(), 'maxmean', stack.min(), stack.std())
 
     print('stack dtype', stack.dtype)
 
@@ -107,10 +108,10 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
         # maxmass = 0.04
         separation = 10
 
-    elif file == 'faxtor006a_hpf_movavrem':
+    elif file.startswith('faxtor006a'):
         diameter = 7
-        # minmass = 2.8
-        # invert = Tru
+        minmass = 0.4
+        invert = True
         # threshold *= 10
 
     else:
@@ -213,7 +214,7 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
         particles=particles, radius=radius, time_step=time_step,
         threshold=threshold, maxsize=maxsize, minmass=minmass, diameter=diameter, separation=separation,
         computation_time=time.time()-t0, depth_of_field=depth_of_field,
-        pixel_size=pixel_size, num_timesteps=num_timesteps, particle_diameter=particle_diameter,
+        pixel_size=pixel_size, num_timesteps=num_timesteps, particle_diameter=particle_diameter, particle_material=data.get('particle_material'),
         particle_diameter_calced=particle_diameter_calced,
         window_size_x=pixel_size*stack.shape[1], window_size_y=pixel_size*stack.shape[2],
         channel=data.get('channel'), NAME=data.get('NAME'),
@@ -222,7 +223,7 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
 
     print(f'found {(particles.shape[0]/num_timesteps):.0f} particles per frame')
     if particle_diameter is not None and not np.isnan(particle_diameter):
-        pack_frac = common.calc_pack_frac(particles, particle_diameter, stack.shape[0]*pixel_size, stack.shape[1]*pixel_size)
+        pack_frac = common.calc_pack_frac(particles, particle_diameter, stack.shape[0]*pixel_size, stack.shape[1]*pixel_size, data.get('dimension', 2))
         print(f'so packing fraction phi = {pack_frac:.3f}')
 
         to_save['pack_frac'] = pack_frac

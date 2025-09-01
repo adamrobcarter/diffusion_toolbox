@@ -4,9 +4,10 @@ import matplotlib.pyplot as plt
 
 NUM_FRAMES = int(1e10)
 
-fig, ax = plt.subplots(1, 1)
 
 for file_i, file in enumerate(files := common.files_from_argv('particle_linking/data', 'trajs_')):
+    fig, ax = plt.subplots(1, 1)
+
     if '_div' in file:
         continue
     if 'theta0.66' in file:
@@ -26,7 +27,7 @@ for file_i, file in enumerate(files := common.files_from_argv('particle_linking/
         ax.plot(particles[:NUM_FRAMES, TIME_COLUMN], particles[:NUM_FRAMES, dimension], label=fr'{d} $\theta={theta}$')
                 # color=common.colormap(file_i, 0, len(files)))
 
-ax.set_ylabel('$x$')
-ax.set_xlabel('$t$')
-ax.legend(fontsize=8)
-common.save_fig(fig, f'particle_linking/figures_png/x_{file}.png', dpi=300)
+    ax.set_ylabel('$x$')
+    ax.set_xlabel('$t$')
+    ax.legend(fontsize=8)
+    common.save_fig(fig, f'particle_linking/figures_png/x_{file}.png', dpi=300)

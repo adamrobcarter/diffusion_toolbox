@@ -5,18 +5,23 @@ import matplotlib.ticker
 import sys
 import visualisation.Ds_overlapped
 
-SHOW_TWIN_K_AXIS = False
+SHOW_TWIN_K_AXIS = True
 PRESENT_SMALL = False
-PLOT_AGAINST_K = False
+PLOT_AGAINST_K = True
 
 DISCRETE_COLORS = True
 
 ERRORBAR_ALPHA = 0.3
 LEGEND_FONTSIZE = 6
 
+ALLOW_RESCALE_X = True
+ALLOW_RESCALE_Y = True
+SEMILOG_Y = True
+# FORCE_YLIM = None
+FORCE_YLIM = (0.8, 20)
 
 SOURCES = [
-    'f_first_first',
+    # 'f_first_first',
     # 'D0Sk_theory',
     # 'f_t0.5',
     # 'f_t2',
@@ -25,8 +30,10 @@ SOURCES = [
     # 'f_t256',
     # 'f_t1024',
     
+    'f_t64',
     # 'f_t128',
     # 'f_t512',
+    'f_t1024',
     # 'f_t2048',
 
     # 'F_first32_first',
@@ -135,12 +142,15 @@ def show_one_file_and_source(
         label=None, errorbar_alpha=ERRORBAR_ALPHA,
         marker=None, color=None, disable_ylabel=False,
         fade_out_thresh=np.inf, fade_out_alpha=0.5,
+        allow_rescale_x=True, show_twin_k_axis=False,
     ):
     
     try:
         D_MSD, sigma, phi = visualisation.Ds_overlapped.get_D0(file)
+        # print('MSD found')
     except:
         print('RECONSIDER THIS')
+        print('MSD file not found')
         D_MSD = 1
         sigma = None
         phi = None
@@ -170,7 +180,7 @@ def show_one_file_and_source(
         rescale_y = 1
         if not disable_ylabel: ax.set_ylabel(r'$D$ ($\mathrm{\mu m^2/s}$)')
 
-    if diameter:
+    if diameter and allow_rescale_x:
         if PLOT_AGAINST_K:
             rescale_x = 1/diameter
             ax.set_xlabel(r'$k \sigma$')
@@ -276,13 +286,19 @@ def show_one_file_and_source(
         ymin = 0.3
     ax.set_ylim(ymin, ymax)
     
+    # this stuff shouldn't really be here as it's getting excecuted multiple times
     ax.semilogx()
     if PLOT_AGAINST_K:
 
-        if SHOW_TWIN_K_AXIS:
-            realspace_ax = ax.secondary_xaxis('top', functions=(lambda k: 2*np.pi/k, lambda r: 2*np.pi/r))
-            # realspace_ax.set_xticks([1e2, 1e1, 1e0, 1e-1, 1e-2, 1e-3])
-            realspace_ax.set_xlabel(r'$2\pi/k / \sigma$')
+        if show_twin_k_axis:
+            if diameter and allow_rescale_x:
+                realspace_ax = ax.secondary_xaxis('top', functions=(lambda k: 2*np.pi/k, lambda r: 2*np.pi/r))
+                # realspace_ax.set_xticks([1e2, 1e1, 1e0, 1e-1, 1e-2, 1e-3])
+                realspace_ax.set_xlabel(r'$2\pi/k / \sigma$')
+            else:
+                realspace_ax = ax.secondary_xaxis('top', functions=(lambda k: 2*np.pi/k, lambda r: 2*np.pi/r))
+                # realspace_ax.set_xticks([1e2, 1e1, 1e0, 1e-1, 1e-2, 1e-3])
+                realspace_ax.set_xlabel(r'$2\pi/k$')
     else:
         ax.set_xlabel(r'$L / \sigma$')
 
@@ -291,7 +307,8 @@ def go(files_and_sources, ax, plot_against_k=False, legend_fontsize=None,
        discrete_colors=False, logarithmic_y=False, labels=None,
        errorbar_alpha=ERRORBAR_ALPHA, markers=None, source_labels=None,
        allow_rescale_y=True, colors=None, linestyles=None, disable_ylabel=False,
-       fade_out_alpha=0.5, show_Dcoll=False, allow_missing_files=False):
+       fade_out_alpha=0.5, show_Dcoll=False, allow_missing_files=False, allow_rescale_x=False,
+       show_twin_k_axis=SHOW_TWIN_K_AXIS,):
     # colors can be len(files) or len(files) x len(sources)
     
     if colors:
@@ -337,6 +354,7 @@ def go(files_and_sources, ax, plot_against_k=False, legend_fontsize=None,
                 marker=marker, color=color,
                 disable_ylabel=disable_ylabel,
                 fade_out_thresh=None, fade_out_alpha=fade_out_alpha,
+                allow_rescale_x=allow_rescale_x, show_twin_k_axis=show_twin_k_axis,
             )
             
         except FileNotFoundError as err:
@@ -360,7 +378,7 @@ if __name__ == '__main__':
         figsize = (3.2, 2.8)
         figsize = (4, 3)
     else:
-        figsize = (5, 4)
+        figsize = (5, 4.8 if SHOW_TWIN_K_AXIS else 4.2)
     fig, ax = plt.subplots(1, 1, figsize=figsize)
 
     files = common.files_from_argv('isf/data/', 'F_first_')
@@ -370,18 +388,24 @@ if __name__ == '__main__':
     [[files_and_sources.append((file, source)) for source in SOURCES] for file in files]
     colors = []
     [[colors.append(common.tab_color(i)) for source in SOURCES] for i in range(len(files))]
+    
     go(
         files_and_sources,
         ax,
-        linestyles=['-']*len(files_and_sources),
+        # linestyles=['-']*len(files_and_sources),
         legend_fontsize=LEGEND_FONTSIZE,
         # discrete_colors=DISCRETE_COLORS,
         colors=colors,
-        allow_rescale_y=True,
+        allow_rescale_y=ALLOW_RESCALE_Y,
+        allow_rescale_x=ALLOW_RESCALE_X,
         plot_against_k=PLOT_AGAINST_K,
-        allow_missing_files=True
+        allow_missing_files=True,
+        markers=['x', 'o', '']*2,
     )
-    ax.set_ylim(0.9, 2.5)
-    
+    if SEMILOG_Y:
+        ax.semilogy()
+    if FORCE_YLIM:
+        ax.set_ylim(*FORCE_YLIM)
+
     filenames = '_'.join(files)
     common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_mult_{filenames}.png', dpi=200)

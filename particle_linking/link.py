@@ -22,6 +22,10 @@ def go(file):
     dimension = data.get('dimension', 2)
     time_column = dimension
     id_column   = dimension + 1
+
+    print('particles per frame', np.bincount(particles[:, time_column].astype('int')))
+
+
     if dimension == 2:
         columns = ['x', 'y', 'frame']
         columns_linked = ['x', 'y', 'frame', 'particle']
@@ -38,7 +42,7 @@ def go(file):
         for row in tqdm.trange(particles.shape[0], desc='mapping times', leave=False):
             particles[row, time_column] = time_to_frame(particles[row, time_column])
 
-    assert np.unique(particles[:, time_column]).size == particles[:, time_column].max() + 1, f'{np.unique(particles[:, time_column]).size} != {particles[:, time_column].max() + 1}'
+    # assert np.unique(particles[:, time_column]).size == particles[:, time_column].max() + 1, f'{np.unique(particles[:, time_column]).size} != {particles[:, time_column].max() + 1}'
     # if they are integers, this should check they're continuous and zero based
 
     features = pandas.DataFrame(particles, columns=columns)
@@ -46,7 +50,7 @@ def go(file):
     print('created dataframe')
     loaded_df = False
 
-    print(features.dtypes)
+    # print(features.dtypes)
 
 
     # steps are distributed ~ N(0, sqrt(2 D dt)^2)
@@ -79,8 +83,10 @@ def go(file):
         pass
     if file == 'sophie1':
         search_range = 50
+    if file.startswith('faxtor'):
+        search_range = 15
 
-    print('search range', search_range)
+    print(f'search range = {search_range:.3g}um')
     # search_range:
     #   specify a maximum displacement, the farthest a particle can travel between frames. 
     #   we should choose the smallest reasonable value because a large value slows computation time considerably.
@@ -97,6 +103,11 @@ def go(file):
     trajs = trackpy.link(features, search_range=search_range, memory=memory, adaptive_stop=adaptive_stop)
     print(trajs.describe())
 
+    print('trajectory lengths:')
+    traj_lengths = np.bincount(trajs['particle'].to_numpy(dtype='int'))
+    print(traj_lengths)
+    common.term_hist(traj_lengths)
+
     print('filtering stubs')
     min_traj_length = 10
     # if file == 'sophie1':
@@ -106,6 +117,11 @@ def go(file):
     num_trajs = trajs.shape[0]
     print(f'dropped {num_trajs_before_filter-num_trajs} = {(num_trajs_before_filter-num_trajs)/num_trajs_before_filter*100:.0f}% of rows in filter_stubs')
     # filtering stubs might seem unneeded but it makes calculation of the MSD much much quicker
+
+    print('trajectory lengths after filter:')
+    traj_lengths = np.bincount(trajs['particle'].to_numpy(dtype='int'))
+    print(traj_lengths)
+    common.term_hist(traj_lengths, bins=np.arange(0, 100, 5))
 
     particles = trajs[columns_linked].to_numpy(dtype=particles.dtype)
 
@@ -164,7 +180,7 @@ def go(file):
             particles=particles, radius=radius, time_step=data['time_step'],
             pixel_size=pixel_size,
             particle_diameter=data.get('particle_diameter'), pack_frac_given=data.get('pack_frac_given'),
-            pack_frac=data.get('pack_frac'),
+            pack_frac=data.get('pack_frac'), particle_material=data.get('particle_material'),
             window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
             dimension=dimension)
             # particle_diameter_calced=particle_diameter_calced)

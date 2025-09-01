@@ -18,28 +18,19 @@ def go(file):
 
     t0 = time.time()
 
-    # this is hack where we move phi, theta, psi to where x, y, z were
-    particles[:, [0, 1, 2]] = particles[:, [5, 6, 7]]
-    particles = particles[:, [0, 1, 2, 3, 4]] # remove extra columns
-
-    # phi in (-pi, pi)
-    # theta in (-pi/2, pi/2)
-    # psi in (-pi, pi)
-
-    # we want all angles to start at zero (for the unwrapping)
-    particles[:, 0] += np.pi
-    particles[:, 1] += np.pi/2
-    particles[:, 2] += np.pi
-
-    particles = common.periodic_unwrap(particles, 3, [np.pi, np.pi/2, np.pi])
+    # particles = common.periodic_unwrap(particles, 3, [5, 6, 7], [2*np.pi, np.pi, 2*np.pi])
 
     # YOU NEED TO UNWRAP THE ANGLES FOR SURE!
     print('phi')
-    common.term_hist(particles[:, 0], bins=10)
+    common.term_hist(particles[:, 5], bins=10)
     print('theta')
-    common.term_hist(particles[:, 1], bins=10)
+    common.term_hist(particles[:, 6], bins=10)
     print('psi')
-    common.term_hist(particles[:, 2], bins=10)
+    common.term_hist(particles[:, 7], bins=10)
+
+    # this is hack where we move phi, theta, psi to where x, y, z were
+    particles[:, [0, 1, 2]] = particles[:, [5, 6, 7]]
+    particles = particles[:, [0, 1, 2, 3, 4]] # remove extra columns
 
     msd, msd_unc = MSD.MSD.calc_incremental_xyz(particles, data.get('dimension', 2))
     # msd, msd_unc = MSD.MSD.calc_mixt_new(particles, [0, 0.5, 16, 32, 64])

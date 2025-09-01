@@ -151,8 +151,9 @@ def go(infile, outfile, L, pack_frac_given, particle_diameter, dt=None, nth_time
     if not quiet: print(f'{num_timesteps:.0f} timesteps, {data[:, 2].max()*dt/60/60:.1f} hours')
     assert num_timesteps > 30
 
-    density = common.calc_density(data, L, L)
-    pack_frac_calced = np.pi/4 * density * particle_diameter**2
+    density = common.calc_density(data, L, L, dimension=2)
+    print('density', density)
+    pack_frac_calced = common.calc_pack_frac(data, particle_diameter, L, L, dimension=2)
     if not quiet: print(f'pack_frac_calced={pack_frac_calced:.4f}, pack_frac_given={pack_frac_given:.4f}')
     if data.shape[0] > 1000 * 50:
         assert np.isclose(pack_frac_calced, pack_frac_given, rtol=0.1), f'pack frac calced {pack_frac_calced}, given {pack_frac_given}'
@@ -184,11 +185,11 @@ def go(infile, outfile, L, pack_frac_given, particle_diameter, dt=None, nth_time
         time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
         window_size_x=L, window_size_y=L, max_time_hours=round(last_timestep*dt/60/60, 2),
         source_file=infile, density=density, extra_source_file=extra_source_file,
-        quiet=quiet,
+        # quiet=quiet,
     )
     
     if not '_pot' in infile:
-        data_unwrap = common.periodic_unwrap(data, L, L, quiet=quiet)
+        data_unwrap = common.periodic_unwrap(data, 2, [0, 1], [L, L], quiet=quiet)
         common.save_data(f'particle_detection/data/particles_{outfile}_unwrap.npz',
             particles=data_unwrap,
             time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
@@ -217,6 +218,7 @@ def go(infile, outfile, L, pack_frac_given, particle_diameter, dt=None, nth_time
     if data.size > 5e7 or True:
         end_timestep = data[:, 2].max() // 8
         data_small = data[data[:, 2] < end_timestep, :]
+        data_small_unwrap = data_unwrap[data_unwrap[:, 2] < end_timestep, :]
 
         common.save_data(f'particle_detection/data/particles_{outfile}_div8.npz',
             particles=data_small,
@@ -227,7 +229,6 @@ def go(infile, outfile, L, pack_frac_given, particle_diameter, dt=None, nth_time
         )
 
         if not '_pot' in infile:
-            data_small_unwrap = common.periodic_unwrap(data_small, L, L, quiet=quiet)
             common.save_data(f'particle_detection/data/particles_{outfile}_unwrap_div8.npz',
                 particles=data_small_unwrap,
                 time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
@@ -255,6 +256,7 @@ def go(infile, outfile, L, pack_frac_given, particle_diameter, dt=None, nth_time
             
         end_timestep = data[:, 2].max() // 64
         data_small = data_small[data_small[:, 2] < end_timestep, :]
+        data_small_unwrap = data_unwrap[data_unwrap[:, 2] < end_timestep, :]
 
         common.save_data(f'particle_detection/data/particles_{outfile}_div64.npz',
             particles=data_small,
@@ -265,7 +267,6 @@ def go(infile, outfile, L, pack_frac_given, particle_diameter, dt=None, nth_time
         )
 
         if not '_pot' in infile:
-            data_small_unwrap = common.periodic_unwrap(data_small, L, L, quiet=quiet)
             common.save_data(f'particle_detection/data/particles_{outfile}_unwrap_div64.npz',
                 particles=data_small_unwrap,
                 time_step=dt, particle_diameter=particle_diameter, pack_frac_given=pack_frac_given, pack_frac=pack_frac_calced,
@@ -355,25 +356,25 @@ datas = [
     # (544, 0.5, 0.1, '',        1, None, 2.79), # sim_nohydro_011_L320
 ]
 
-if __name__ == '__main__':
-    for L, dt, phi, suffix, nth_timestep, max_time, particle_diameter in datas:
-        phistr = f'{phi*100:.0f}'.zfill(3)
-        # go(f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt', f'sim_nohydro_{phistr}_L{L}{suffix}',  L, L, dt, phi, nth_timestep, max_time)
+# if __name__ == '__main__':
+#     for L, dt, phi, suffix, nth_timestep, max_time, particle_diameter in datas:
+#         phistr = f'{phi*100:.0f}'.zfill(3)
+#         # go(f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt', f'sim_nohydro_{phistr}_L{L}{suffix}',  L, L, dt, phi, nth_timestep, max_time)
         
-        if particle_diameter == 2.972:
-            # new ones
-            file = f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}_s2.972.suspension_phi{phi}_L{L}_s2.972.bin'
-        else:
-            # old ones
-            file = f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt'
+#         if particle_diameter == 2.972:
+#             # new ones
+#             file = f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}_s2.972.suspension_phi{phi}_L{L}_s2.972.bin'
+#         else:
+#             # old ones
+#             file = f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt'
         
-        go(
-            infile = file,
-            outfile = f'sim_nohydro_{phistr}_L{L}{suffix}',
-            L=L, 
-            dt=dt, 
-            pack_frac_given=phi, nth_timestep=nth_timestep, max_time=max_time, particle_diameter=particle_diameter
-        )
+#         go(
+#             infile = file,
+#             outfile = f'sim_nohydro_{phistr}_L{L}{suffix}',
+#             L=L, 
+#             dt=dt, 
+#             pack_frac_given=phi, nth_timestep=nth_timestep, max_time=max_time, particle_diameter=particle_diameter
+#         )
 
 
 # new times (not frames) method
@@ -382,25 +383,24 @@ datas2 = [
     # (1280, 64, 0.5, 0.114, '_mixt', 1, None, 2.972),
 ]
 
-if __name__ == '__main__':
-    for L, t1, t2, phi, suffix, nth_timestep, max_time, particle_diameter in datas2:
-        phistr = f'{phi*100:.0f}'.zfill(3)
-        # go(f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt', f'sim_nohydro_{phistr}_L{L}{suffix}',  L, L, dt, phi, nth_timestep, max_time)
-        go(
-            # new ones:
-        f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_t{t1}_{t2}.suspension_phi{phi}_L{L}_s2.972.bin',
-        # old ones:
-        #    f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt',
-        f'sim_nohydro_{phistr}_L{L}{suffix}',
-        L=L,
-        dt=1,
-        pack_frac_given=phi, nth_timestep=nth_timestep, max_time=max_time, particle_diameter=particle_diameter)
+# if __name__ == '__main__':
+#     for L, t1, t2, phi, suffix, nth_timestep, max_time, particle_diameter in datas2:
+#         phistr = f'{phi*100:.0f}'.zfill(3)
+#         # go(f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt', f'sim_nohydro_{phistr}_L{L}{suffix}',  L, L, dt, phi, nth_timestep, max_time)
+#         go(
+#             # new ones:
+#         f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_t{t1}_{t2}.suspension_phi{phi}_L{L}_s2.972.bin',
+#         # old ones:
+#         #    f'/data2/acarter/sim/RigidMultiblobsWall/Lubrication/Lubrication_Examples/Monolayer/data/nohydro2D_L{L}_dt{dt}.suspension_phi_{phi}_L_{L}_modified.txt',
+#         f'sim_nohydro_{phistr}_L{L}{suffix}',
+#         L=L,
+#         dt=1,
+#         pack_frac_given=phi, nth_timestep=nth_timestep, max_time=max_time, particle_diameter=particle_diameter)
 
 
 ##### mesu
 
 def go_mesu(filepath, suffix='', skip_rsync=False, quiet=False, **kwargs):
-    particle_diameter = 2.972
 
     filename = filepath.split('/')[-1]
     if not skip_rsync:
@@ -414,13 +414,16 @@ def go_mesu(filepath, suffix='', skip_rsync=False, quiet=False, **kwargs):
     phi = float(filename_no_ext.split('phi')[1].split('_')[0])
     hydro = filename_no_ext.split('_')[0]
 
-    phistr = f'{phi*100:.0f}'.zfill(3)
+    if 'sigma' in filename_no_ext:
+        particle_diameter = float(filename_no_ext.split('_sigma')[1].split('_')[0])
+    else:
+        particle_diameter = 2.972
 
-    # if 'theta' in 
-
+    print(f'phi {phi}')
+    
     go(
         f'raw_data/mesu/{filename}',
-        f'sim_{hydro}_{phistr}_L{L}{suffix}',
+        f'sim_{hydro}_{phi}_L{L}{suffix}',
         L=L,
         pack_frac_given=phi,
         particle_diameter=particle_diameter,
@@ -433,13 +436,15 @@ processes = []
 process_names = []
 
 def go_mesu_subprocess(*args, **kwargs):
-    kwargs['quiet'] = True
+    # kwargs['quiet'] = True
     # tqdm.__init__ = functools.partialmethod(tqdm.__init__, disable=True)
-    os.environ['TQDM_DISABLE'] = '1'
+    # os.environ['TQDM_DISABLE'] = '1'
     task = multiprocessing.Process(target=go_mesu, args=args, kwargs=kwargs)
     processes.append(task)
     process_names.append(args[0][28:])
     task.start()
+
+    # chatgpt reccomends using concurrent.futures.ProcessPoolExecutor or multiprocessing.Pool for error handling
 
 if __name__ == '__main__':
     pass
@@ -490,6 +495,8 @@ if __name__ == '__main__':
     # go_mesu('/store/cartera/2d_monolayer/nohydro_t0.5_short_phi0.5_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
     # go_mesu('/store/cartera/2d_monolayer/nohydro_short_phi0.2_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
     # go_mesu('/store/cartera/2d_monolayer/nohydro_short_phi0.2_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5)
+    # for phi in [0.01, 0.1, 0.2]:
+    #     go_mesu_subprocess(f'/store/cartera/2d_monolayer/nohydro_short_phi{phi}_L320.bin', suffix='_short')
     
     # zconf
     # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_pot_zconf_phi0.114_L640.bin', suffix='_pot_zconf', skip_rsync=True)
@@ -500,6 +507,8 @@ if __name__ == '__main__':
     # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_theta10_phi0.06_L640.bin', suffix='_theta10')
     # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_theta10_phi0.08_L640.bin', suffix='_theta10')
     # go_mesu('/store/cartera/2d_monolayer/hydro_t0.5_theta10_phi0.1_L640.bin', suffix='_theta10')
+    # for phi in [0.02, 0.04, 0.06, 0.08, 0.1]:
+    #     go_mesu_subprocess(f'/store/cartera/2d_monolayer/nohydro_t0.5_theta10_phi{phi}_L640.bin', suffix='_theta10', skip_rsync=True)
 
     # CoM (first one also used by PNV)
     # go_mesu('/store/cartera/2d_monolayer/nohydro_short_phi0.1_L320.bin', suffix='_short', multiply_time_by=1/0.5, dt=0.5, skip_rsync=True)
@@ -509,10 +518,9 @@ if __name__ == '__main__':
     # for L in np.logspace(np.log10(100), np.log10(1000), num=10):
     #     L = int(L)
     #     go_mesu(f'/store/cartera/2d_monolayer/nohydro_com_phi0.1_L{L}.bin', suffix='_CoM', multiply_time_by=1/0.5, dt=0.5)
-    for L in np.logspace(np.log10(10), np.log10(1000), num=20)[[-1]]:
-        L = int(L)
-        # go_mesu_subprocess(f'/store/cartera/2d_monolayer/nohydro_t1e4_phi0.1_L{L}.bin', suffix='_t1e4', multiply_time_by=1/0.5, dt=0.5)
-        go_mesu(f'/store/cartera/2d_monolayer/nohydro_t1e4_phi0.1_L{L}.bin', suffix='_t1e4', multiply_time_by=1/0.5, dt=0.5, skip_rsync=True)
+    # for L in np.logspace(np.log10(10), np.log10(1000), num=20):
+    #     L = int(L)
+    #     go_mesu_subprocess(f'/store/cartera/2d_monolayer/nohydro_t1e4_phi0.1_L{L}.bin', suffix='_t1e4')
     
     # with multiprocessing.Pool(cores) as pool:
     #     task = functools.partial(calc_centre_of_mass_onepoint_for_single_timeorigin, groupsize)
@@ -525,11 +533,25 @@ if __name__ == '__main__':
         #     print('size', common.arraysize(data_these_timesteps, mult=len(all_data)))
 
         # results = list(tqdm.tqdm(pool.imap(task, get_data_at_timesteps()), total=num_time_origins, desc=f'N={str(groupsize).ljust(3)}'))
+
+        
+    # for phi in [0.1]:
+    for phi in [0.02, 0.04, 0.06, 0.08, 0.1]:
+        go_mesu(f'/store/cartera/2d_monolayer/hydro_t0.5_10m_sigma5.944_theta10_phi{phi}_L1280.bin', suffix='_theta0_10m_sigma2x')
+    #     go_mesu_subprocess  (f'/store/cartera/2d_monolayer/nohydro_t0.5_10m_theta10_phi{phi}_L640.bin', suffix='_theta10_10m')
+    #     # go_mesu_subprocess(f'/store/cartera/2d_monolayer/hydro_t0.5_1h_theta0_phi{phi}_L640.bin', suffix='_theta0_1h', skip_rsync=True)
     
+
+    # for L in np.logspace(np.log10(10), np.log10(1000), num=5):
+    #     go_mesu(f'/store/cartera/2d_monolayer/hydro_t1e4_phi0.1_L{int(L)}.bin', suffix='_theta0_1e4')
+
     print(f'{len(processes)} tasks')
-    for i, task in enumerate(processes):
+    for i, task in enumerate(tqdm.tqdm(processes, desc='processes')):
         task.join() # block
         print(f'task {i} : {process_names[i]} finished')
+
+
+
 
 """
 #################################

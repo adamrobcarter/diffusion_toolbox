@@ -22,6 +22,6 @@ particles = np.array([[0.5+i, 2, i, 0] for i in range(10)])
 print(particles)
 particles_wrapped = np.copy(particles)
 particles_wrapped[:, 0] = particles_wrapped[:, 0] % 4
-particles_unwrapped = common.periodic_unwrap(particles_wrapped, 4, 4)
+particles_unwrapped = common.periodic_unwrap(particles_wrapped, 2, [0, 1], [4, 4])
 print(particles_unwrapped)
 assert np.all(particles_unwrapped == particles)

@@ -17,6 +17,7 @@ def go(file, num_r_bins, max_r, outputfilename):
 
     gs = np.full((num_timesteps, num_r_bins), np.nan)
 
+    time_column = data.get('dimension', 2)
     
     # fig, ax = plt.subplots(1, 1)
     # ax.set_ylim(0, 2)
@@ -27,7 +28,7 @@ def go(file, num_r_bins, max_r, outputfilename):
 
     for time_origin_index, time_origin in enumerate(tqdm.tqdm(time_origins)):
         # t0 = time.time()
-        particles_at_t = particles[:, 2] == time_origin
+        particles_at_t = particles[:, time_column] == time_origin
         assert particles_at_t.sum() > 0
         # t1 = time.time()
         r_bin_edges, g, avg_density = van_hove.density_correlation(particles[particles_at_t, :], particles[particles_at_t, :], max_r=max_r, num_r_bins=num_r_bins, crop_border=10)

@@ -26,8 +26,7 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
 
     cores = 16 # increasing this above 16 seems risky. if the program freezes, try reducing this
     if 'L1280' in file:
-        cores = 8
-        print('CHANGE TO 4')
+        cores = 4
 
     # if file == 'brennan_hydro_034':
 

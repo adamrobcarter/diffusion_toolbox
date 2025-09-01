@@ -45,9 +45,22 @@ if __name__ == '__main__':
                 # 'f_t4092',
                 # 'f_t16384',
                 
-                'f_t128',
-                'f_t512',
-                'f_t2048',
+                # 'f_t1',
+                # 'f_t4',
+                # 'f_t16',
+                'f_t64',
+                # 'f_t256',
+                'f_t1024',
+                # 'f_t4096',
+                # 'f_t16384',
+                # 'f_t65536',
+
+                # 'f_t2',
+                # 'f_t8',
+                # 'f_t32',
+                # 'f_t128',
+                # 'f_t512',
+                # 'f_t2048',
 
                 # 'F_first32_first',
                 # 'F_s',
@@ -87,13 +100,14 @@ if __name__ == '__main__':
             # logarithmic_y=True, output_filename=filename,
             # ylim=YLIM,
             legend_fontsize=8,
-            # linestyles = ['-']
+            # linestyles = ['-']*len(sources),
+            allow_rescale_x=False,
             )
-        ax.set_ylim(0.7, 10)
+        ax.set_ylim(0.1, 10)
         ax.semilogy()
 
-        common.add_exponential_index_indicator(ax, -1/2, (1, 1), 'k')   
-        common.add_exponential_index_indicator(ax, -1, (1, 1), 'k')    
+        # common.add_exponential_index_indicator(ax, -1/2, (1, 1), 'k')   
+        # common.add_exponential_index_indicator(ax, -1, (1, 1), 'k')    
         
         common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_{file}.png')
 
@@ -210,7 +224,7 @@ linestyle = {
 }
 
 
-def get_D0(file):
+def get_D0(file, quiet=False):
     # we don't do these ones in get_D0_filename cause sometimes we might want to compare these ones
     suffixes = ['_crop', '_trim', '_first', '_smallbins', '_nozero', '_no_overlap',
                 '_long', '_longer', '_moreoverlap', '_spacing', '_frac_of_window', '_windowed', '_nowindow', '_bhwindow',
@@ -228,8 +242,9 @@ def get_D0(file):
         file = file.split('_unmix')[0] + '_mixt'
             
     file = get_D0_filename(file)
+    print(f'MSD file: {file}')
             
-    data = common.load(f"visualisation/data/Ds_from_{D0_SOURCE}_{file}.npz")
+    data = common.load(f"visualisation/data/Ds_from_{D0_SOURCE}_{file}.npz", quiet=quiet)
     D_MSD = data["Ds"][0]
     sigma = data['particle_diameter']
     if 'pack_frac' in data:
@@ -242,11 +257,14 @@ def get_D0(file):
             warnings.warn('pack frac given not in data')
             phi = np.nan
 
-    print(f'D_MSD = {D_MSD}')
+    if not quiet: print(f'D_MSD = {D_MSD}')
     return D_MSD, sigma, phi
 
 def get_D0_filename(file):
     print(f'get_D0_filename({file})')
+
+    if file == 'sim_hydro_011_L640_pot_div8':
+        return 'sim_hydro_011_L640_pot_div64'
 
     if file in ['sim_nohydro_011_L320_test_singlet_mixt', 'sim_nohydro_011_L320_test_mixt', 'sim_nohydro_011_L320_test_singlet']: # remove after this problem solved
         return 'sim_nohydro_011_L640_div64'
@@ -259,11 +277,23 @@ def get_D0_filename(file):
     root = 'visualisation/data/Ds_from_MSD_first'
 
     if os.path.isfile(f'{root}_{file}.npz'):
+        # print(f'found {file}')
         return file
     elif os.path.isfile(f'{root}_{file}_div8.npz'):
+        # print(f'found {file}_div8')
         return f'{file}_div8'
     elif os.path.isfile(f'{root}_{file}_div64.npz'):
+        # print(f'found {file}_div64')
         return f'{file}_div64'
+    elif os.path.isfile(f'{root}_{file}_unwrap.npz'):
+        # print(f'found {file}_unwrap')
+        return f'{file}_unwrap'
+    elif os.path.isfile(f'{root}_{file}_unwrap_div8.npz'):
+        # print(f'found {file}_unwrap_div8')
+        return f'{file}_unwrap_div8'
+    elif os.path.isfile(f'{root}_{file}_unwrap_div64.npz'):
+        # print(f'found {file}_unwrap_div64')
+        return f'{file}_unwrap_div64'
     else:
         raise Exception(f'MSD file not found for {file} ({root}_{file}_div64.npz not found)')
 
@@ -314,7 +344,8 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
         D_uncs = D_MSD / S[:]**2 * S_unc[:]
 
     elif source == 'D0Sk_theory':
-        
+        assert sigma, 'we need sigma for D0Sk theory, probably the MSD file wasnt found'
+        assert np.isfinite(sigma)
         L = np.logspace(np.log10(sigma*1e-1), np.log10(sigma*100), 100)
         L = L[::-1] # so that it's the same order as the others
         k = 2*np.pi/L

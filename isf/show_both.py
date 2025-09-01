@@ -45,7 +45,8 @@ LIN_PLOT_END_TIME_MULT = 50 # controls how much time is plotted on the log f/lin
 def show_single_F_type(
         file, type_index, Ftype, fig, axes,
         num_displayed_ks, mult=False, do_fits=True,
-        markersize=5, errorbar_alpha=0.2, bad_alpha=0.2, color=None
+        markersize=5, errorbar_alpha=0.2, bad_alpha=0.2, color=None,
+        quiet=False,
     ):
     lin_short_axes, lin_axes, log_axes, D_axes = axes
     # lin_short_axes, lin_axes, log_axes, D_axes, extra_axes = axes
@@ -85,11 +86,11 @@ def show_single_F_type(
         load = 'F_first'
     else:
         load = Ftype
-    d = common.load(f"isf/data/{load}_{file}.npz")
+    d = common.load(f"isf/data/{load}_{file}.npz", quiet=quiet)
     t         = d["t"]
     F_all     = d["F"]
     F_unc_all = d['F_unc']
-    k_all     = d["k"]
+    ks     = d["k"]
     particle_diameter = d['particle_diameter']
 
     
@@ -97,11 +98,11 @@ def show_single_F_type(
     D_uncs_for_saving_nth = [[] for i in range(len(t))]
     ks_for_saving_nth     = [[] for i in range(len(t))]
 
-    assert np.isfinite(k_all).all()
+    assert np.isfinite(ks).all()
 
-    ks_2D = len(k_all.shape) == 2
+    ks_2D = len(ks.shape) == 2
 
-    num_ks = k_all.shape[1] if ks_2D else k_all.size
+    num_ks = ks.size
 
     every_nth_k = int(math.ceil(num_ks / num_displayed_ks))
     every_nth_k = max(every_nth_k, 1)
@@ -111,10 +112,10 @@ def show_single_F_type(
     if CROP_AT_SK_MINIMUM:
         S_of_k = F_all[0, :]
         min_index = np.nanargmin(S_of_k)
-        k_at_min = k_all[0, min_index]
+        k_at_min = ks[min_index]
 
     try:
-        D0, _, _ = visualisation.Ds_overlapped.get_D0(file)
+        D0, _, _ = visualisation.Ds_overlapped.get_D0(file, quiet=quiet)
     except Exception as e:
         print(e)
         D0 = None
@@ -129,10 +130,6 @@ def show_single_F_type(
         color = colors[type_index]
 
     for k_index in range(num_ks):
-        if Ftype == 'DDM' or (not ks_2D):
-            ks = k_all
-        else:
-            ks = k_all[0, :]
 
         # k_index = np.argmax(ks >= target_k)
 
@@ -148,6 +145,8 @@ def show_single_F_type(
             display = True
         if graph_i >= len(lin_axes):
             warnings.warn('you have no more free axes')
+            display = False
+        if quiet:
             display = False
 
         # print(f'k: target {target_k:.3f}, real {k:.3f}, index {k_index}, 2pi/k={2*np.pi/k:.1f}um')
@@ -229,6 +228,9 @@ def show_single_F_type(
                 if display: print(f'  first: D={common.format_val_and_unc(D_first, D_unc_first, latex=False)}')
             else:
                 if display: print('  first: skipped (f(k,t) < 0.01)')
+                Ds_for_saving_first    .append(np.nan) # I want Ds_for_saving to always have the same shape, so if the value was bad
+                D_uncs_for_saving_first.append(np.nan) # at least I save nan
+                ks_for_saving_first    .append(k)
 
             # nth point inversion
             for nth_t_index, nth_t in enumerate(t[1:]):
@@ -774,34 +776,41 @@ def show_single_F_type(
 
         assert len(Ds_for_saving_first), 'nothing to save'
         common.save_data(f'visualisation/data/Ds_from_{Ftype}_first_{file}',
-                    Ds=Ds_for_saving_first, D_uncs=D_uncs_for_saving_first, ks=ks_for_saving_first,
-                        **common_to_save
-                    )
+            Ds=Ds_for_saving_first, D_uncs=D_uncs_for_saving_first, ks=ks_for_saving_first,
+            quiet=quiet,
+            **common_to_save
+            )
         for nth_t_index, nth_t in enumerate(t[1:]):
             assert len(Ds_for_saving_nth), 'nothing to save'
             if nth_t % 1 == 0:
                 nth_t = int(nth_t) # save "t64" not "t64.0"
             common.save_data(f'visualisation/data/Ds_from_{Ftype}_t{nth_t}_{file}',
                         Ds=Ds_for_saving_nth[nth_t_index], D_uncs=D_uncs_for_saving_nth[nth_t_index], ks=ks_for_saving_nth[nth_t_index],
+            quiet=quiet,
                         **common_to_save
                         )
         
         if Ftype != 'f_first':
             common.save_data(f'visualisation/data/Ds_from_{Ftype}_{file}',
-                        Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, ks=ks_for_saving,
-                        **common_to_save)
+                Ds=Ds_for_saving, D_uncs=D_uncs_for_saving, ks=ks_for_saving,
+                quiet=quiet,
+                **common_to_save)
             common.save_data(f'visualisation/data/Ds_from_{Ftype}_short_{file}',
-                        Ds=Ds_for_saving_short, D_uncs=D_uncs_for_saving_short, ks=ks_for_saving_short,
-                        **common_to_save)
+                Ds=Ds_for_saving_short, D_uncs=D_uncs_for_saving_short, ks=ks_for_saving_short,
+                quiet=quiet,
+                **common_to_save)
             common.save_data(f'visualisation/data/Ds_from_{Ftype}_long_{file}',
-                        Ds=Ds_for_saving_long, D_uncs=D_uncs_for_saving_long, ks=ks_for_saving_long,
-                        **common_to_save)
+                Ds=Ds_for_saving_long, D_uncs=D_uncs_for_saving_long, ks=ks_for_saving_long,
+                quiet=quiet,
+                **common_to_save)
             common.save_data(f'visualisation/data/Ds_from_{Ftype}_D1_{file}',
-                        Ds=Ds_for_saving_D1, D_uncs=D_uncs_for_saving_D1, ks=ks_for_saving_D1,
-                        **common_to_save)
+                Ds=Ds_for_saving_D1, D_uncs=D_uncs_for_saving_D1, ks=ks_for_saving_D1,
+                quiet=quiet,
+                **common_to_save)
             common.save_data(f'visualisation/data/Ds_from_{Ftype}_D2_{file}',
-                        Ds=Ds_for_saving_D2, D_uncs=D_uncs_for_saving_D2, ks=ks_for_saving_D2,
-                        **common_to_save)
+                Ds=Ds_for_saving_D2, D_uncs=D_uncs_for_saving_D2, ks=ks_for_saving_D2,
+                quiet=quiet,
+                **common_to_save)
 
 if __name__ == '__main__':
     for file in sys.argv[1:]:

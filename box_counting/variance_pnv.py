@@ -9,6 +9,7 @@ for file in common.files_from_argv('box_counting/data', 'pnv_'):
 
     N_mean = data['N_mean']
     N_var  = data['N_var']
+    N1N2mN1N2  = data['N1N2mN1N2']
     L      = data['box_sizes_x']
     phi    = data['pack_frac']
     sigma  = data['particle_diameter']
@@ -17,6 +18,7 @@ for file in common.files_from_argv('box_counting/data', 'pnv_'):
     ax.scatter(L, N_mean, label=r'$\langle N \rangle$')
     ax.scatter(L, N_var, label=r'$\mathrm{Var}(N)$')
     ax.scatter(L, N_mean * common.S_k_zero(phi), label=r'$\langle N \rangle S(k=0)$')
+    ax.scatter(L, -N1N2mN1N2)#, label=r'$\langle N_1N_2 \rangle - \langle N_1 \rangle \langle N_2 \rangle$')
 
     theory_Ls = np.logspace(np.log10(L.min()), np.log10(L.max()))
     theory_plats = np.full_like(theory_Ls, np.nan)

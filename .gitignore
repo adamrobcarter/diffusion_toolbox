@@ -37,3 +37,10 @@ preprocessing/frames/*
 preprocessing/tiffs/*
 ptv/figures/*
 ptv/data/*
+piv/figures/*
+piv/data/*
+vacf/data/*
+vacf/figures/*
+workflows/emrfd.npz
+presentations/libmobility/*
+pygit_logger.log

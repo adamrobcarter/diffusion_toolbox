@@ -2,7 +2,7 @@ import tifffile
 import common
 import sys
 
-for file in sys.argv[1:]:
+for file in common.files_from_argv('preprocessing/data', 'stack_'):
     data = common.load(f'preprocessing/data/stack_{file}.npz')
     stack = data['stack'][:, :, :]
     # stack -= stack.min()

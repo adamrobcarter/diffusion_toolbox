@@ -66,7 +66,7 @@ def speed_string(time_mult, every_nth_frame):
 
 def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
                      window_size_x, window_size_y,
-                     func=lambda timestep, ax : None, nth_frame=1, max_num_frames=50,
+                     func=lambda timestep, ax : None, nth_frame=1, max_num_frames=30,
                      dpi=300,
                      display_small=True, inverse_colors=False, highlights=False,
                      backwards=False, method=NONE, stacks=None, stackcolors=None, channel=None,
@@ -111,7 +111,7 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
     # stack = np.transpose(stack, [0, 2, 1]) # idk why, check on clearly rectangular data like psiche089_slice0
 
 
-    time_mult = 2
+    time_mult = 1
     if file.startswith('marine'):
         time_mult = 0.25
     if file.startswith('marine'):
@@ -312,6 +312,8 @@ def show_single_frame(file, ax, frame, pixel_size, window_size_x, window_size_y,
         cmap = matplotlib.cm.Greys
 
     if frame is not None:
+        if 'faxtor' in file:
+            cmap = matplotlib.cm.Greys_r
         # ax.imshow(frame, cmap=cmap, interpolation='none', vmin=vmin, vmax=vmax, extent=(0, window_size_x, 0, window_size_y))
         X, Y = np.meshgrid(np.linspace(0, frame.shape[0], frame.shape[0])*pixel_size, np.linspace(0, frame.shape[1], frame.shape[1])*pixel_size, indexing='ij')
         # X, Y = np.meshgrid(np.arange(0, window_size_x, pixel_size), np.arange(0, window_size_y, pixel_size), indexing='ij')

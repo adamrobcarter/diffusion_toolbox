@@ -13,5 +13,6 @@ for file in sys.argv[1:]:
         outfile = f'particle_linking/figures_png/movie_{file}.gif',
         # crop = 100,
         # every_nth_frame=10
-        tracks = False,
+        tracks = True,
+        highlights = False
     )

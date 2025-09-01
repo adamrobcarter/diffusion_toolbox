@@ -13,14 +13,17 @@ for i, file in enumerate(files := common.files_from_argv('particle_linking/data/
     a = data['particle_diameter']/2
     z = particles[:, 2]
 
-    bins = np.linspace(1, 1.6, 160)
+    bins = np.linspace(0, 700, 160) # nm
     bin_centers = (bins[1:] + bins[:-1])/2
     
     n_blobs = data['num_blobs']
     T = data['T']
     method = data['method']
     dt = data['dt']
-    counts, bin_edges, _ = ax.hist(z/a, facecolor=common.tab_color(i), density=True, bins=bins, alpha=0.5, label=f'simulation, nblobs = {n_blobs}, T={T}K, {method}, dt={dt}')
+    theta = data['theta']
+    label = f'simulation, nblobs = {n_blobs}, T={T}K, {method}, dt={dt}'
+    label = fr'$\theta={theta:.0f}^\circ$, $\langle z \rangle={(z-a).mean()*1000:.0f}\mathrm{{nm}}$'
+    counts, bin_edges, _ = ax.hist((z-a)*1000, facecolor=common.tab_color(i), density=True, bins=bins, alpha=0.5, label=label)
     # counts, _ = np.histogram(z/a, bins=bins)
     # print(count)
     histogram_area = np.sum(counts * np.diff(bins))
@@ -45,7 +48,7 @@ for i, file in enumerate(files := common.files_from_argv('particle_linking/data/
     # normalisation = np.sum(probability * np.diff(bins))
     assert normalisation > 0
     probability_normalised = probability / normalisation
-    ax.plot(z_over_a_th/a, probability_normalised, label=f'theory, nblobs = {n_blobs}', color=common.tab_color(i))
+    # ax.plot(z_over_a_th/a, probability_normalised, label=f'theory, nblobs = {n_blobs}', color=common.tab_color(i))
     
     # print('diff', np.mean(counts_normalised - probability_normalised))
 

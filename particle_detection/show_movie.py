@@ -5,10 +5,17 @@ import particle_detection.show
 import preprocessing.stack_movie
 
 CROP = None
-HIGHLIGHTS = True
+HIGHLIGHTS = False
 
-def go(file, infile, outfile, SUFFIX='', crop=False, every_nth_frame=None, output_type='movie',
-       annotation_color='white', dpi=300, tracks=True):
+def go(file, infile, outfile, crop=False, every_nth_frame=None, output_type='movie',
+       annotation_color='white', dpi=300, tracks=True, highlights=HIGHLIGHTS):
+        """
+        output_type: 'movie' will produce a gif, 'frames' saves each frame of the movie to a separate .png
+        tracks: True will plot the history of the trajectory not just the current position
+        """
+        
+        if 'trajs' in infile and tracks == False:
+            print('WARNING the colours seem to be messed up when tracks=False')
 
         data_particles = common.load(infile)
         particles = data_particles['particles']
@@ -86,7 +93,7 @@ def go(file, infile, outfile, SUFFIX='', crop=False, every_nth_frame=None, outpu
         preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, outfile,
                                                 func=add_outlines, num_timesteps_in_data=num_timesteps,
                                                 window_size_x=window_size_x, window_size_y=window_size_y,
-                                                highlights=HIGHLIGHTS, every_nth_frame=every_nth_frame, output_type=output_type,
+                                                highlights=highlights, every_nth_frame=every_nth_frame, output_type=output_type,
                                                 annotation_color=annotation_color, dpi=dpi)
         # preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}{SUFFIX}.mp4",
         #                                            func=add_outlines)

@@ -1,8 +1,7 @@
 import isf.calc_both
 import common
 
-for file in common.files_from_argv('particle_detection/data', 'particles_'):
-
+def go(file, quiet=False):
     if '001' in file:
         max_time_origins = 10000
     elif '002' in file:
@@ -27,8 +26,7 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
 
     cores = 16 # increasing this above 16 seems risky. if the program freezes, try reducing this
     if 'L1280' in file:
-        cores = 8
-        print('CHANGE TO 4')
+        cores = 4
 
     # if file == 'brennan_hydro_034':
 
@@ -61,4 +59,9 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
         # file_prefix = 'first32_'
         # window=window,
         # file_suffix='_new',
+        quiet=quiet
     )
+
+if __name__ == '__main__':
+    for file in common.files_from_argv('particle_detection/data', 'particles_'):
+        go(file)
