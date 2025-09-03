@@ -104,17 +104,21 @@ def go(infile, outfile, L, max_time=None,
 
     data_ryker = np.fromfile(infile, dtype=binary_metadata['dtype'], count=max_items) # there is a parameter to this function for not loading the whole array
     data_ryker = data_ryker.reshape((-1, 1+metadata['N_colloids']*3))
-
+    print(f'data_ryker is {data_ryker.shape}, {data_ryker.dtype}, {common.arraysize(data_ryker)}')
     t1 = time.time()
     if not quiet: print(data_ryker.shape, data_ryker.dtype,  f'loaded {common.format_bytes(data_ryker.nbytes)} in {t1-t0:.1f}s at {common.format_bytes(data_ryker.nbytes/(t1-t0))}/sec')
 
     print('reshaping')
+
     num_expected_timesteps = data_ryker.shape[0]
     # assert binary_metadata['n_rows'] == data_ryker.shape[0], f"binary_metadata['n_rows'] = {binary_metadata['n_rows']} != data_ryker.shape[0] = {data_ryker.shape[0]}"
 
     num_colloids = metadata['N_colloids']
     assert num_colloids == binary_metadata['N']
 
+    print(f'creating data, will be {(num_colloids*num_expected_timesteps, 5)} {num_colloids * num_expected_timesteps * 5 * 4/1e9:.1f}GB')
+    assert data_ryker.nbytes + num_colloids * num_expected_timesteps * 5 * 4 < 100e9
+    time.sleep(1) # so the printing buffer can be cleared
     data = np.full((num_colloids*num_expected_timesteps, 5), np.nan, dtype=np.float32)
 
     for t in tqdm.trange(num_expected_timesteps):
@@ -362,6 +366,7 @@ def go_mesu(directory, suffix='', skip_rsync=False, quiet=False, small=False, sh
     json_filepath_local = f'raw_data/mesu/{filename}{suffix}.params.json'
     binary_json_filepath_local = f'raw_data/mesu/{filename}{suffix}.binary.json'
     colloids_filepath_local = f'raw_data/mesu/{filename}{suffix}.bin'
+    kwargs['extra_source_file']=filepath
 
     if not skip_rsync:
         rsync_command = ['rsync', f'cartera@login.mesu.sorbonne-universite.fr:{filepath}', colloids_filepath_local, '--progress']
@@ -376,6 +381,9 @@ def go_mesu(directory, suffix='', skip_rsync=False, quiet=False, small=False, sh
         if not quiet: print('launching', ' '.join(rsync_command))
         subprocess.run(rsync_command, check=True)
         
+    go_after_rsync(suffix, kwargs, json_filepath_local, binary_json_filepath_local, colloids_filepath_local, quiet)
+
+def go_after_rsync(suffix, kwargs, json_filepath_local, binary_json_filepath_local, colloids_filepath_local, quiet=False):
     with open(json_filepath_local) as json_file:
         metadata = json.load(json_file)
     print(metadata)
@@ -383,8 +391,6 @@ def go_mesu(directory, suffix='', skip_rsync=False, quiet=False, small=False, sh
     with open(binary_json_filepath_local) as binary_json_file:
         binary_metadata = json.load(binary_json_file)
     print(binary_metadata)
-
-    filename_no_ext = filename.split('.bin')[0]
 
     L   = int  (metadata['Lx'])
     assert metadata['Lx'] == metadata['Ly']
@@ -399,7 +405,6 @@ def go_mesu(directory, suffix='', skip_rsync=False, quiet=False, small=False, sh
         colloids_filepath_local,
         f'ld_{hydro}_{phi}_L{L}{suffix}',
         L=L,
-        extra_source_file=filepath,
         quiet=quiet,
         metadata=metadata,
         binary_metadata=binary_metadata,
@@ -447,15 +452,17 @@ if __name__ == '__main__':
     # go_mesu('/store/cartera/libmobility_diffusion/solver_NBody_N_122205_L_2560_dt_125_t_604800_64_run_0/')
     # go_mesu('/store/cartera/libmobility_diffusion/solver_DPStokes_N_122205_L_2560_dt_125_t_604800_64_run_0/')
     
-    # nbody open for z confinement
-    # go_mesu('/store/cartera/libmobility_diffusion/solver_NBody_open_N_122205_L_2560_dt_20_t_28800_64_run_0/')
 
     # 5% pack frac
-    go_mesu('/store/cartera/libmobility_diffusion/solver_NBody_N_53599_L_2560_dt_125_t_604800_64_run_0/')
+    # go_mesu('/store/cartera/libmobility_diffusion/solver_NBody_N_53599_L_2560_dt_125_t_604800_64_run_0/')
 
     # vacf
     # go_mesu('/store/cartera/libmobility_diffusion/solver_NBody_N_7638_L_640_dt_25_t_100_0.025_run_0/', suffix='_t100_0.025')
     # don't need this much data, 10s probably would be fine
 
     # libmobility paper
-    # go_mesu('/store/cartera/libmobility_diffusion/solver_NBody_N_122205_L_2560_dt_125_t_450_1_run_0/', suffix='_t450_1')
+    # go_mesu('/store/cartera/libmobility_diffusion/solver_NBody_N_122205_L_2560_dt_125_t_3600_1_run_0/', suffix='_t1h_1')
+    # go_mesu('/store/cartera/libmobility_diffusion/solver_NBody_open_N_122205_L_2560_dt_20_t_3600_1_run_0/', suffix='_t1h_1')
+    # go_mesu('/store/cartera/libmobility_diffusion/solver_NBody_open_N_122205_L_2560_dt_20_t_28800_64_run_1/', suffix='_t8h_64')
+    # libmobility bigboi
+    go_after_rsync('', {}, 'raw_data/brennan/large_diffusion_data/params_partial.json', 'raw_data/brennan/large_diffusion_data/binary_metadata_partial.json', '/data2/acarter/toolbox/raw_data/brennan/large_diffusion_data/colloids_partial.bin')

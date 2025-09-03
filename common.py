@@ -1093,7 +1093,7 @@ def calc_density(particles, window_size_x, window_size_y, dimension):
         warnings.warn('found just one particle per frame')
     return density
 
-def add_exponential_index_indicator(ax, exponent, anchor, xlabel, x_limits=None):
+def add_exponential_index_indicator(ax, exponent, anchor, xlabel, x_limits=None, fontsize=10):
     xlim = ax.get_xlim()
     ylim = ax.get_ylim()
 
@@ -1117,7 +1117,7 @@ def add_exponential_index_indicator(ax, exponent, anchor, xlabel, x_limits=None)
     ax.plot([x0, x1], [y0, y1], color=FIT_COLOR, linewidth=0.7)
     
     if ylim[0] < anchor[1] < ylim[1]:
-        ax.text(anchor[0]*1.1, anchor[1], f'${xlabel}^{{{exponent}}}$', color=FIT_COLOR, fontsize=12)
+        ax.text(anchor[0]*1.1, anchor[1], f'${xlabel}^{{{exponent}}}$', color=FIT_COLOR, fontsize=fontsize)
 
     # reset xlim and ylim
     ax.set_xlim(*xlim)
