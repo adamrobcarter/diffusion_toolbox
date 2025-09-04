@@ -87,7 +87,8 @@ def go(file, ax,
 
     if SHOW_THEORY:
         if (pack_frac_given := data.get('pack_frac_given')) and (particle_diameter := data['particle_diameter']):
-            ax.plot(k/rescale_x, countoscope_theory.structure_factor.hard_spheres_2d(k, pack_frac_given, particle_diameter))
+            k_theory = np.logspace(np.log10(k.min()), np.log10(k.max()), num=200)
+            ax.plot(k_theory/rescale_x, countoscope_theory.structure_factor.hard_spheres_2d(k_theory, pack_frac_given, particle_diameter))
             # ax.plot(x, countoscope_theory.structure_factor.hard_spheres_2d(x, pack_frac_given, 3.09))
     # ax.plot(x_th, countoscope_theory.structure_factor.hard_spheres_2d(x_th, 0.34, 3.03), color='grey', label='$\sigma=3.03$', zorder=10)
 
@@ -143,6 +144,6 @@ if __name__ == '__main__':
 
         fig, ax = plt.subplots(1, 1, figsize=(3.2, 3) if SMALL else (4, 4))
 
-        go(file, ax)
+        go(file, ax, source='F')
         
         common.save_fig(fig, f'isf/figures_png/S_of_k_{file}.png')

@@ -148,9 +148,9 @@ def show_one_file_and_source(
     try:
         D_MSD, sigma, phi = visualisation.Ds_overlapped.get_D0(file)
         # print('MSD found')
-    except:
+    except Exception as err:
         print('RECONSIDER THIS')
-        print('MSD file not found')
+        print(err)
         D_MSD = 1
         sigma = None
         phi = None

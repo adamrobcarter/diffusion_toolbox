@@ -17,7 +17,7 @@ import zipfile
 import joblib
 import argparse
 
-memory = joblib.Memory('/data2/acarter/toolbox/cache', verbose=0)
+memory = joblib.Memory('cache', verbose=0)
 
 PLOT_COLOR = 'white'
 # PLOT_COLOR = 'black'
@@ -74,6 +74,9 @@ def get_npz_info(npz, key):
 
 def load(filename, quiet=False):
     t0 = time.time()
+    
+    toolbox_store = os.environ.get('TOOLBOX_STORE', None)
+    filename = f'{toolbox_store}/{filename}' if toolbox_store else filename
 
     if not (filename.endswith('.npz') or filename.endswith('.npy')):
         filename += '.npz'
@@ -133,14 +136,20 @@ def format_value_for_save_load(value):
     return value
 
 def save_data(filename, quiet=False, **data):
+    toolbox_store = os.environ.get('TOOLBOX_STORE', None)
+    filename = f'{toolbox_store}/{filename}' if toolbox_store else filename
+
+    total_data_size = 0
+
     print(f'saving {filename}')
     if not quiet:
         for key in list(data.keys()): # the `list()` makes a copy, allowing us to modify `data`
             if isinstance(data[key], np.ndarray):
                 if data[key].shape: # array
-                    if data[key].size * data[key].itemsize > 10e9:
+                    if arraysize_raw(data[key]) > 10e9:
                         warnings.warn(f'Saving array of size {arraysize(data[key])}')
                     print(f'  saving {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} shape={data[key].shape}, size={arraysize(data[key])}')
+                    total_data_size += arraysize_raw(data[key])
                 else: # single value
                     print(f'  saving {key.ljust(20)} dtype={str(data[key].dtype).ljust(12)} value={format_value_for_save_load(data[key])}')
             else:
@@ -153,7 +162,11 @@ def save_data(filename, quiet=False, **data):
                 else:
                     print(f'  saving {key.ljust(20)} type={type(data[key]).__name__.ljust(12)} value={format_value_for_save_load(data[key])}')
     
+    t0 = time.time()
     np.savez(filename, **data)
+    t1 = time.time()
+    if dt := t1-t0 > 60:
+        print(f'saved {format_bytes(total_data_size)} in {dt:.0f}s at {format_bytes(total_data_size/dt)}/s')
 
 def arraysize(arr, mult=1):
     size = arraysize_raw(arr) * mult
@@ -252,6 +265,9 @@ def save_fig(fig, path, dpi=100, only_plot=False, hide_metadata=False):
 
     if '--noplot' in sys.argv:
         return
+    
+    toolbox_store = os.environ.get('TOOLBOX_STORE', None)
+    path = f'{toolbox_store}/{path}' if toolbox_store else path
 
     fig.tight_layout()
     args = {}
@@ -1077,12 +1093,17 @@ def curve_fit(func, x, y, p0=None, sigma=None, absolute_sigma=None):
 
 def calc_pack_frac(particles, particle_diameter, window_size_x, window_size_y, dimension):
     density = calc_density(particles, window_size_x, window_size_y, dimension)
+    return calc_pack_frac_from_density(particle_diameter, density)
+
+def calc_pack_frac_from_density(particle_diameter, density):
     pack_frac = np.pi/4 * density * particle_diameter**2
     assert 0 < pack_frac
     assert pack_frac < 1, f'pack_frac = {pack_frac}'
     return pack_frac
 
 def calc_density(particles, window_size_x, window_size_y, dimension):
+    t0 = time.time()
+
     time_column = dimension
     num_timesteps = len(np.unique(particles[:, time_column]))
     assert np.all(particles[:, time_column] % 1 == 0), f't[0] = {particles[0, time_column]}, that doesnt look like a frame number'
@@ -1091,6 +1112,10 @@ def calc_density(particles, window_size_x, window_size_y, dimension):
     # print('avg part per frame', avg_particles_per_frame)#, 'L^2', orig_width**2)
     if avg_particles_per_frame == 1:
         warnings.warn('found just one particle per frame')
+
+    t1 = time.time()
+    if t1 - t0 > 60:
+        print(f'calculated density in {t1-t0:.0f}s')
     return density
 
 def add_exponential_index_indicator(ax, exponent, anchor, xlabel, x_limits=None, fontsize=10):
@@ -1226,15 +1251,23 @@ def periodic_unwrap(particles, num_dimensions, columns_to_unwrap, unwrap_size, q
     num_timesteps = int(num_timesteps)
 
     # sort by ID then time
-    particles = particles[np.lexsort((particles[:, time_column], particles[:, id_column]))]
+    print('sorting')
+    t0 = time.time()
+    # particles = particles[np.lexsort((particles[:, time_column], particles[:, id_column]))]
+    # chatgpt says the below is faster and more memory-efficient
+    particles = particles[np.argsort(particles[:, time_column], kind='mergesort')]
+    particles = particles[np.argsort(particles[:, id_column], kind='mergesort')]
+    # this is gonna be slow but as it's a simulation we could use the fact we know where each row is to come up with a better way
+
+    t1 = time.time()
+    if t1 - t0 > 60:
+        print(f'sorted in {t1 - t0:.0f}s')
     
+    print('copying array')
     particles_new = np.copy(particles)
+    print('copied array')
 
-    # strategy is to find each time a particle jumps way too far, and then add or subtract the window size to fix
-
-    # progress = tqdm.tqdm(total=num_particles_per_frame, desc='periodic unwrapping', disable=quiet)
-
-    for particle in tqdm.trange(num_particles_per_frame):
+    for particle in tqdm.trange(num_particles_per_frame, desc='periodic unwrapping', disable=quiet):
         
         this_particle = particles_new[particle*num_timesteps:(particle+1)*num_timesteps, :]
         assert np.all(this_particle[:, id_column] == particle)
@@ -1246,6 +1279,7 @@ def periodic_unwrap(particles, num_dimensions, columns_to_unwrap, unwrap_size, q
 
 @numba.njit
 def unwrap_single_particle(columns_to_unwrap, unwrap_size, time_column, num_timesteps, particles_new, particle):
+    # strategy is to find each time a particle jumps way too far, and then add or subtract the window size to fix
     last_coord = np.full(len(columns_to_unwrap), np.nan, dtype=particles_new.dtype) # need to formally define this for numba
     
     for t in range(num_timesteps):

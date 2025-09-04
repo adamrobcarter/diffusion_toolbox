@@ -44,3 +44,4 @@ vacf/figures/*
 workflows/emrfd.npz
 presentations/libmobility/*
 pygit_logger.log
+slurm*.out

@@ -3,8 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker
 import sys, warnings, os
-import countoscope_theory.structure_factor
-import countoscope_theory.timescaleint
 import scipy.special
 
 import visualisation.Ds_overlapped_mult
@@ -275,6 +273,10 @@ def get_D0_filename(file):
             file = file.split(suffix)[0]
 
     root = 'visualisation/data/Ds_from_MSD_first'
+    toolbox_store = os.environ.get('TOOLBOX_STORE', None)
+    root = f'{toolbox_store}/{root}' if toolbox_store else root
+
+    print(f'os.path.isfile({root}_{file}_unwrap.npz)', os.path.isfile(f'{root}_{file}_unwrap.npz'))
 
     if os.path.isfile(f'{root}_{file}.npz'):
         # print(f'found {file}')
@@ -349,6 +351,9 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
         L = np.logspace(np.log10(sigma*1e-1), np.log10(sigma*100), 100)
         L = L[::-1] # so that it's the same order as the others
         k = 2*np.pi/L
+        
+        import countoscope_theory.structure_factor # here so we don't get errors running the file on a system without the countsocope_theory if we don't need it
+        # import countoscope_theory.timescaleint
         S = countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma)
 
         if PLOT_AGAINST_K:

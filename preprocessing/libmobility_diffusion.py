@@ -77,7 +77,7 @@ import functools
 
 
 def go(infile, outfile, L, max_time=None,
-       extra_source_file=None, quiet=False, fix_timestep=1, metadata={}, binary_metadata={}):
+       extra_source_file=None, quiet=False, fix_timestep=1, metadata={}, binary_metadata={}, nth_timestep=1):
     print(f'loading raw file, last modified {common.get_last_modified_time(infile)} ago')
 
     metadata['dimension'] = 3
@@ -108,6 +108,11 @@ def go(infile, outfile, L, max_time=None,
     t1 = time.time()
     if not quiet: print(data_ryker.shape, data_ryker.dtype,  f'loaded {common.format_bytes(data_ryker.nbytes)} in {t1-t0:.1f}s at {common.format_bytes(data_ryker.nbytes/(t1-t0))}/sec')
 
+    if nth_timestep:
+        data_ryker = data_ryker[::nth_timestep, :]
+        dt *= nth_timestep
+
+
     print('reshaping')
 
     num_expected_timesteps = data_ryker.shape[0]
@@ -117,11 +122,10 @@ def go(infile, outfile, L, max_time=None,
     assert num_colloids == binary_metadata['N']
 
     print(f'creating data, will be {(num_colloids*num_expected_timesteps, 5)} {num_colloids * num_expected_timesteps * 5 * 4/1e9:.1f}GB')
-    assert data_ryker.nbytes + num_colloids * num_expected_timesteps * 5 * 4 < 100e9
-    time.sleep(1) # so the printing buffer can be cleared
+    # assert data_ryker.nbytes + num_colloids * num_expected_timesteps * 5 * 4 < 100e9
     data = np.full((num_colloids*num_expected_timesteps, 5), np.nan, dtype=np.float32)
 
-    for t in tqdm.trange(num_expected_timesteps):
+    for t in tqdm.trange(num_expected_timesteps, desc='converting format Ryker > Trackpy'):
         xyz_this_timestep = data_ryker[t, 1:]
         starting_row_i = t*num_colloids
         data[starting_row_i:starting_row_i+num_colloids, [0, 1, 2]] = xyz_this_timestep.reshape((num_colloids, 3))
@@ -176,16 +180,17 @@ def go(infile, outfile, L, max_time=None,
     if not quiet: print(f'{num_timesteps:.0f} timesteps, {last_timestep*dt/60/60:.1f} hours')
     # assert num_timesteps > 30
 
+    print('checking particles per frame')
     max_particles_at_frame = num_particles_at_frame.max()
     assert max_particles_at_frame < 1.5 * num_particles_at_frame.mean(), f'max particles at frame {max_particles_at_frame} avg particles at frame {num_particles_at_frame.mean():.1f}'
 
-
+    print('calculating density')
     density = common.calc_density(data, L, L, dimension=3)
-    print('density', density)
-    pack_frac_calced = common.calc_pack_frac(data, particle_diameter, L, L, dimension=3)
+    pack_frac_calced = common.calc_pack_frac_from_density(particle_diameter, density)
     if not quiet: print(f'pack_frac_calced={pack_frac_calced:.4f}, pack_frac_given={pack_frac_given:.4f}')
     if data.shape[0] > 1000 * 50:
         assert np.isclose(pack_frac_calced, pack_frac_given, rtol=0.1), f'pack frac calced {pack_frac_calced}, given {pack_frac_given}'
+    print('density', density)
 
 
     if 'NBody' in metadata['solver_name']:
@@ -223,6 +228,7 @@ def go(infile, outfile, L, max_time=None,
     do_unwrapping = not ('NBody' in metadata['solver_name'])
 
     if do_unwrapping:
+        print('doing unwrapping')
         data_unwrap = common.periodic_unwrap(data, 3, [0, 1], [L, L], quiet=quiet)
         common.save_data(f'particle_detection/data/particles_{outfile}_unwrap.npz',
             particles=data_unwrap,
@@ -381,9 +387,9 @@ def go_mesu(directory, suffix='', skip_rsync=False, quiet=False, small=False, sh
         if not quiet: print('launching', ' '.join(rsync_command))
         subprocess.run(rsync_command, check=True)
         
-    go_after_rsync(suffix, kwargs, json_filepath_local, binary_json_filepath_local, colloids_filepath_local, quiet)
+    go_after_rsync(suffix, json_filepath_local, binary_json_filepath_local, colloids_filepath_local, quiet, **kwargs)
 
-def go_after_rsync(suffix, kwargs, json_filepath_local, binary_json_filepath_local, colloids_filepath_local, quiet=False):
+def go_after_rsync(suffix, json_filepath_local, binary_json_filepath_local, colloids_filepath_local, quiet=False, **kwargs):
     with open(json_filepath_local) as json_file:
         metadata = json.load(json_file)
     print(metadata)
@@ -464,5 +470,18 @@ if __name__ == '__main__':
     # go_mesu('/store/cartera/libmobility_diffusion/solver_NBody_N_122205_L_2560_dt_125_t_3600_1_run_0/', suffix='_t1h_1')
     # go_mesu('/store/cartera/libmobility_diffusion/solver_NBody_open_N_122205_L_2560_dt_20_t_3600_1_run_0/', suffix='_t1h_1')
     # go_mesu('/store/cartera/libmobility_diffusion/solver_NBody_open_N_122205_L_2560_dt_20_t_28800_64_run_1/', suffix='_t8h_64')
-    # libmobility bigboi
-    go_after_rsync('', {}, 'raw_data/brennan/large_diffusion_data/params_partial.json', 'raw_data/brennan/large_diffusion_data/binary_metadata_partial.json', '/data2/acarter/toolbox/raw_data/brennan/large_diffusion_data/colloids_partial.bin')
+    # libmobility bigboi, needs 250GB RAM
+    # go_after_rsync(
+    #     suffix='',
+    #     json_filepath_local='/store/cartera/toolbox/raw_data/brennan/large_diffusion_data/params_partial.json',
+    #     binary_json_filepath_local='/store/cartera/toolbox/raw_data/brennan/large_diffusion_data/binary_metadata_partial.json',
+    #     colloids_filepath_local='/store/cartera/toolbox/raw_data/brennan/large_diffusion_data/colloids_partial.bin',
+    #     nth_timestep=16
+    # )
+    go_after_rsync(
+        suffix='_t1h_64',
+        json_filepath_local='/store/cartera/toolbox/raw_data/brennan/large_diffusion_data/params_partial.json',
+        binary_json_filepath_local='/store/cartera/toolbox/raw_data/brennan/large_diffusion_data/binary_metadata_partial.json',
+        colloids_filepath_local='/store/cartera/toolbox/raw_data/brennan/large_diffusion_data/colloids_partial.bin',
+        nth_timestep=16*8
+    )
