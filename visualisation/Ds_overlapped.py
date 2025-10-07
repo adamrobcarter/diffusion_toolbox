@@ -20,7 +20,7 @@ if __name__ == '__main__':
                 #   'MSD_long',
                 #   'D0Sk', 
                 #   'MSD_short',
-                  'D0Sk_theory',
+                #   'D0Sk_theory',
                 #   'DDM',
                 #   'dominiguez_theory',
                 #   'panzuela_theory',
@@ -32,21 +32,11 @@ if __name__ == '__main__':
                 # 'f',
                 # 'f_first',
                 # 'f_first_first',
-                # 'f_t0.5',
-                # 'f_t2',
-                # 'f_t8',
-                # 'f_t16',
-                # 'f_t32',
-                # 'f_t64',
-                # 'f_t256',
-                # 'f_t1024',
-                # 'f_t4092',
-                # 'f_t16384',
-                
+
                 # 'f_t1',
                 # 'f_t4',
                 # 'f_t16',
-                'f_t64',
+                # 'f_t64',
                 # 'f_t256',
                 'f_t1024',
                 # 'f_t4096',
@@ -87,12 +77,15 @@ if __name__ == '__main__':
                 # 'F_s_first',
             ]
 
-        colors = [common.colormap(i/len(sources)) for i in range(len(sources))]
+        colors = iter([common.colormap(i/len(sources)) for i in range(len(sources))])
         print(colors)
 
         visualisation.Ds_overlapped_mult.go(
-            [(file, source) for source in sources],
-            colors  = colors,
+            [dict(
+                file=file,
+                source=source,
+                color=next(colors),
+            ) for source in sources],
             ax      = ax,
             plot_against_k=PLOT_AGAINST_K,
             # logarithmic_y=True, output_filename=filename,
@@ -101,13 +94,17 @@ if __name__ == '__main__':
             # linestyles = ['-']*len(sources),
             allow_rescale_x=False,
             )
-        ax.set_ylim(0.1, 10)
+        # ax.set_ylim(0.6, 16)
         ax.semilogy()
 
         # common.add_exponential_index_indicator(ax, -1/2, (1, 1), 'k')   
-        # common.add_exponential_index_indicator(ax, -1, (1, 1), 'k')    
+        # common.add_exponential_index_indicator(ax, -1, (0.8, 1), 'k')    
+        # common.add_exponential_index_indicator(ax, -2, (0.8, 1), 'k') 
+        
+        ax.set_title(file)   
         
         common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_{file}.png')
+
 
         # go(file, ['MSD_short', 'boxcounting_collective', 'timescaleint_nofit', 'timescaleint', 'C_N_simplefit'],
         #     PLOT_AGAINST_K=False, TWO_PI=True, logarithmic_y=True)
@@ -228,7 +225,7 @@ def get_D0(file, quiet=False):
                 '_long', '_longer', '_moreoverlap', '_spacing', '_frac_of_window', '_windowed', '_nowindow', '_bhwindow',
                 # '_mixt'
                 '_xk',# '_unmix'
-                '_mirrortile',
+                '_mirrortile', '_fulltime',
                 ]
     if '_mixt' in file:
         warnings.warn('allowing mixt for now, would be good to do a proper msd calculation though')
@@ -239,10 +236,10 @@ def get_D0(file, quiet=False):
     if '_unmix' in file:
         file = file.split('_unmix')[0] + '_mixt'
             
-    file = get_D0_filename(file)
-    print(f'MSD file: {file}')
+    usedfile = get_D0_filename(file)
+    print(f'MSD file: {usedfile}')
             
-    data = common.load(f"visualisation/data/Ds_from_{D0_SOURCE}_{file}.npz", quiet=quiet)
+    data = common.load(f"visualisation/data/Ds_from_{D0_SOURCE}_{usedfile}.npz", quiet=quiet)
     D_MSD = data["Ds"][0]
     sigma = data['particle_diameter']
     if 'pack_frac' in data:
@@ -255,7 +252,7 @@ def get_D0(file, quiet=False):
             warnings.warn('pack frac given not in data')
             phi = np.nan
 
-    if not quiet: print(f'D_MSD = {D_MSD}')
+    if not quiet: print(f'D_MSD = {D_MSD} ({file})')
     return D_MSD, sigma, phi
 
 def get_D0_filename(file):
@@ -278,6 +275,8 @@ def get_D0_filename(file):
 
     print(f'os.path.isfile({root}_{file}_unwrap.npz)', os.path.isfile(f'{root}_{file}_unwrap.npz'))
 
+    print('trying', f'{root}_{file}_unwrap_2d.npz')
+
     if os.path.isfile(f'{root}_{file}.npz'):
         # print(f'found {file}')
         return file
@@ -296,6 +295,12 @@ def get_D0_filename(file):
     elif os.path.isfile(f'{root}_{file}_unwrap_div64.npz'):
         # print(f'found {file}_unwrap_div64')
         return f'{file}_unwrap_div64'
+    elif os.path.isfile(f'{root}_{file}_unwrap_2d.npz'):
+        # print(f'found {file}')
+        return f'{file}_unwrap_2d'
+    elif os.path.isfile(f'{root}_{file}_2d.npz'):
+        # print(f'found {file}')
+        return f'{file}_2d'
     else:
         raise Exception(f'MSD file not found for {file} ({root}_{file}_div64.npz not found)')
 
@@ -348,7 +353,7 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
     elif source == 'D0Sk_theory':
         assert sigma, 'we need sigma for D0Sk theory, probably the MSD file wasnt found'
         assert np.isfinite(sigma)
-        L = np.logspace(np.log10(sigma*1e-1), np.log10(sigma*100), 100)
+        L = np.logspace(np.log10(sigma*1e-2), np.log10(sigma*1e3), 200)
         L = L[::-1] # so that it's the same order as the others
         k = 2*np.pi/L
         
@@ -442,6 +447,18 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
                     xs = 1 / data['ks']
                     # source_label += ' $1/k$'
 
+            # if source == 'f_t1024':
+            #     tau = 1/(data['ks']**2 * Ds)
+            #     t_max = data['max_time_hours'] * 60 * 60
+            #     print(f'decay t_max = {t_max/60/60}h', tau/60/60)
+            #     thresh = 1
+            #     keep = tau < thresh * t_max
+            #     if keep.sum():
+            #         print(f'removing {keep.sum()} points with tau > {thresh*t_max/60/60}hr')
+            #         xs = xs[keep]
+            #         Ds = Ds[keep]
+            #         D_uncs = D_uncs[keep]
+
         elif source.startswith('boxcounting') or source.startswith('timescaleint') or source.startswith('C_N') or source.startswith('NtN0'):
             xs = data['Ls']
             # max_time = data['max_time_hours'] * 60 * 60
@@ -481,6 +498,7 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
             raise Exception(f'you need to specify the x scale for {source}')
 
     print(f'avg D_unc/D0 = {np.nanmean(D_uncs/Ds):.3f}, max =  {np.nanmax(D_uncs/Ds):.3f}')
+    print(Ds)
 
     pixel_size = None
     window_size = None

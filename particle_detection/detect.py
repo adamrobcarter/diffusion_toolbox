@@ -114,6 +114,10 @@ for file in common.files_from_argv('preprocessing/data/', 'stack_'):
         invert = True
         # threshold *= 10
 
+    elif file == 'carlos02':
+        diameter = 9
+        separation = 8
+
     else:
         raise Exception('you need to provide parameters for this dataset')
 

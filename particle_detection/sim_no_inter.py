@@ -3,19 +3,20 @@ import common
 import tqdm
 
 # for L in np.logspace(np.log10(10), np.log10(1000), num=20):
-for L in [100]:
+for L in [1000]:
     L = int(L)
 
-    phi = 0.1
+    phi = 0.02
     sigma = 3
     dt = 0.5
-    D = 0.04
+    D = 0.04*100
     # num_timesteps = int(24 * 60 * 60 / dt / 24) # 24 hours
-    max_t = 1e3
-    t_string = '1e3'
+    max_t = 1e4
+    t_string = '1e4'
     num_timesteps = int(max_t / dt)
 
     num_particles = int(L**2 * 4 / np.pi * phi / sigma**2)
+    print(f'num_particles = {num_particles}')
 
     rng = np.random.default_rng()
 
@@ -40,17 +41,20 @@ for L in [100]:
         for i in range(num_particles):
             trajs[row, :] = [x[i, t], y[i, t], t, i]
             row += 1
+    pack_frac = common.calc_pack_frac(trajs, sigma, L, L, dimension=2)
     common.save_data(f'particle_linking/data/trajs_{filename}_unwrap.npz',
         particles=trajs,
         dimension=2,
         window_size_x=L, window_size_y=L,
-        time_step=dt, particle_diameter=sigma, pack_frac_given=phi
+        time_step=dt, particle_diameter=sigma, pack_frac_given=phi,
+        simulated_D = D, pack_frac = pack_frac,
     )
     common.save_data(f'particle_detection/data/particles_{filename}_unwrap.npz',
         particles=trajs[:, [0, 1, 2]],
         dimension=2,
         window_size_x=L, window_size_y=L,
-        time_step=dt, particle_diameter=sigma, pack_frac_given=phi
+        time_step=dt, particle_diameter=sigma, pack_frac_given=phi,
+        simulated_D = D, pack_frac = pack_frac,
     )
 
     print('modding into box')
@@ -71,7 +75,9 @@ for L in [100]:
     # trajectory which will mess up the MSDs.
 
     common.save_data(f'particle_detection/data/particles_{filename}.npz',
-                    particles=particles[:, (0, 1, 2)],
-                    dimension=2,
-                    window_size_x=L, window_size_y=L,
-                    time_step=dt, particle_diameter=sigma, pack_frac_given=phi)
+        particles=particles[:, (0, 1, 2)],
+        dimension=2,
+        window_size_x=L, window_size_y=L,
+        time_step=dt, particle_diameter=sigma, pack_frac_given=phi,
+        simulated_D = D, pack_frac = pack_frac,
+    )

@@ -85,6 +85,8 @@ def go(file):
         search_range = 50
     if file.startswith('faxtor'):
         search_range = 15
+    if file == 'carlos02':
+        memory = 0
 
     print(f'search range = {search_range:.3g}um')
     # search_range:
@@ -175,6 +177,19 @@ def go(file):
         # ^^^ TODO I don't like this!!!!!!!!! call it diameter or size ffs
     else:
         radius = None
+
+    # check continuity of time coordinate for each particle
+    num_particles = np.unique(particles[:, id_column]).size
+    bad = 0
+    for ID in tqdm.trange(num_particles, desc='checking time continuity'):
+        this_particle = particles[:, id_column] == ID
+        times = np.unique(particles[this_particle, time_column])
+        diffs = np.diff(times)
+        if not np.all(diffs == 1):
+            bad += 1
+            print(times)
+
+    assert bad / num_particles < 0.2, f'{bad} particles ({bad / num_particles:.1%}) had non-continuous time coordinate. Consider setting memory = 0'
     
     common.save_data(f'particle_linking/data/trajs_{file}.npz',
             particles=particles, radius=radius, time_step=data['time_step'],

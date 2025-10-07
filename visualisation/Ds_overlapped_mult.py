@@ -14,11 +14,12 @@ DISCRETE_COLORS = True
 ERRORBAR_ALPHA = 0.3
 LEGEND_FONTSIZE = 6
 
-ALLOW_RESCALE_X = True
-ALLOW_RESCALE_Y = True
+ALLOW_RESCALE_X = False
+ALLOW_RESCALE_Y = False
 SEMILOG_Y = True
 # FORCE_YLIM = None
 FORCE_YLIM = (0.8, 20)
+FORCE_YLIM = (0.008, 2)
 
 SOURCES = [
     # 'f_first_first',
@@ -30,7 +31,7 @@ SOURCES = [
     # 'f_t256',
     # 'f_t1024',
     
-    'f_t64',
+    # 'f_t64',
     # 'f_t128',
     # 'f_t512',
     'f_t1024',
@@ -50,7 +51,7 @@ SOURCES = [
     # 'timescaleint_nofit_cropped_var',
 
     # 'D_of_L_theory',
-    'D0Sk_theory'
+    # 'D0Sk_theory'
 ]
 
 source_names = {
@@ -143,10 +144,12 @@ def show_one_file_and_source(
         marker=None, color=None, disable_ylabel=False,
         fade_out_thresh=np.inf, fade_out_alpha=0.5,
         allow_rescale_x=True, show_twin_k_axis=False,
+        plot_index=np.index_exp[:], msd_file=None
     ):
-    
+    if msd_file is None:
+        msd_file = file
     try:
-        D_MSD, sigma, phi = visualisation.Ds_overlapped.get_D0(file)
+        D_MSD, sigma, phi = visualisation.Ds_overlapped.get_D0(msd_file)
         # print('MSD found')
     except Exception as err:
         print('RECONSIDER THIS')
@@ -166,7 +169,7 @@ def show_one_file_and_source(
     if allow_rescale_y:
         try:
             rescale_y = D_MSD
-            if not disable_ylabel: ax.set_ylabel(r'$D/D_\mathrm{self}$')
+            if not disable_ylabel: ax.set_ylabel(r'$D(k)/D_\mathrm{self}$')
             no_rescale = False
         except FileNotFoundError as err:
             no_rescale = True
@@ -178,7 +181,7 @@ def show_one_file_and_source(
         # there is a problem here if the MSD file is found for one but not all of the files,
         # then rescaled and non-rescaled data will be on the same plot
         rescale_y = 1
-        if not disable_ylabel: ax.set_ylabel(r'$D$ ($\mathrm{\mu m^2/s}$)')
+        if not disable_ylabel: ax.set_ylabel(r'$D(k)$ ($\mathrm{\mu m^2/s}$)')
 
     if diameter and allow_rescale_x:
         if PLOT_AGAINST_K:
@@ -249,9 +252,9 @@ def show_one_file_and_source(
         not_faded = xs < fade_out_thresh
         # THIS NEEDS TO BE PER SOURCE I THINK, A FULL 2D ARRAY
         faded     = xs > fade_out_thresh
-        ax.plot(xs[not_faded], ys[not_faded], linestyle=linestyle, marker=marker, markersize=4, color=color, label=label, zorder=zorder, linewidth=1)
-        ax.plot(xs[faded    ], ys[faded    ], linestyle=linestyle, marker=marker, markersize=4, color=color,                          zorder=zorder, linewidth=1, alpha=fade_out_alpha)
-        ax.errorbar(xs, ys, yerr=yerrs, linestyle='none', marker='None', alpha=errorbar_alpha, color=color, zorder=zorder)
+        ax.plot(xs[not_faded][plot_index], ys[not_faded][plot_index], linestyle=linestyle, marker=marker, markersize=4, color=color, label=label, zorder=zorder, linewidth=1)
+        ax.plot(xs[faded    ][plot_index], ys[faded    ][plot_index], linestyle=linestyle, marker=marker, markersize=4, color=color,                          zorder=zorder, linewidth=1, alpha=fade_out_alpha)
+        ax.errorbar(xs[plot_index], ys[plot_index], yerr=yerrs[plot_index], linestyle='none', marker='None', alpha=errorbar_alpha, color=color, zorder=zorder)
         # print(xs[source], ys)
 
         log_y = np.log10(ys)
@@ -271,20 +274,21 @@ def show_one_file_and_source(
     assert np.isfinite(Ds).any(), 'Ds were found but they were all nan'
     print(f'rescaled Ds: min={Ds.min():.3g}, max={Ds.max():.3g}')
 
-    if logarithmic_y:
-        ax.semilogy()
-        ymin, ymax = ax.get_ylim()
-        if ymax/ymin < 50:
-            ax.yaxis.set_minor_formatter(matplotlib.ticker.LogFormatter()) # prevent scientific notation on axes
-            ax.yaxis.set_major_formatter(matplotlib.ticker.LogFormatter()) # prevent scientific notation on axes
+    # this should also not be here
+    # if logarithmic_y:
+    #     ax.semilogy()
+    #     ymin, ymax = ax.get_ylim()
+    #     if ymax/ymin < 50:
+    #         ax.yaxis.set_minor_formatter(matplotlib.ticker.LogFormatter()) # prevent scientific notation on axes
+    #         ax.yaxis.set_major_formatter(matplotlib.ticker.LogFormatter()) # prevent scientific notation on axes
 
-    ylim_expand = 1.5
-    ymin = max(0.01, np.nanmin(ys[ys > 0])/ylim_expand)
-    print('ymin', ymin, np.nanmin(ys[ys > 0]))
-    ymax = np.nanquantile(ys, 0.95)*ylim_expand*1.2
-    if source == 'MSD_short':
-        ymin = 0.3
-    ax.set_ylim(ymin, ymax)
+    # ylim_expand = 1.5
+    # ymin = max(0.01, np.nanmin(ys[ys > 0])/ylim_expand)
+    # print('ymin', ymin, np.nanmin(ys[ys > 0]))
+    # ymax = np.nanquantile(ys, 0.95)*ylim_expand*1.2
+    # if source == 'MSD_short':
+    #     ymin = 0.3
+    # ax.set_ylim(ymin, ymax)
     
     # this stuff shouldn't really be here as it's getting excecuted multiple times
     ax.semilogx()
@@ -303,58 +307,40 @@ def show_one_file_and_source(
         ax.set_xlabel(r'$L / \sigma$')
 
 
-def go(files_and_sources, ax, plot_against_k=False, legend_fontsize=None,
-       discrete_colors=False, logarithmic_y=False, labels=None,
-       errorbar_alpha=ERRORBAR_ALPHA, markers=None, source_labels=None,
-       allow_rescale_y=True, colors=None, linestyles=None, disable_ylabel=False,
+def go(datas, ax, plot_against_k=False, legend_fontsize=None,
+       discrete_colors=False, logarithmic_y=False,
+       errorbar_alpha=ERRORBAR_ALPHA,
+       allow_rescale_y=True, disable_ylabel=False,
        fade_out_alpha=0.5, show_Dcoll=False, allow_missing_files=False, allow_rescale_x=False,
        show_twin_k_axis=SHOW_TWIN_K_AXIS,):
     # colors can be len(files) or len(files) x len(sources)
     
-    if colors:
-        assert len(colors) == len(files_and_sources)
-    if labels:
-        assert len(labels) == len(files_and_sources)
-    if linestyles:
-        assert len(linestyles) == len(files_and_sources)
+    # if colors:
+    #     assert len(colors) == len(files_and_sources)
+    # if labels:
+    #     assert len(labels) == len(files_and_sources)
+    # if linestyles:
+    #     assert len(linestyles) == len(files_and_sources)
 
-    for i, (file, source) in enumerate(files_and_sources):
-        if labels:
-            label = labels[i]
-        else:
-            label = None
+    for i, data in enumerate(datas):
+        print(data)
+        data = dict(data)
 
-        if type(markers) == str:
-            marker = markers
-        elif type(markers) == list:
-            marker = markers[i]
-        else:
-            marker = None
-
-        if linestyles:
-            linestyle = linestyles[i]
-        else:
-            linestyle = None
-
-        if colors:
-            color = colors[i]
-        else:
+        if 'color' not in data:
             if discrete_colors:
-                color = common.tab_color(i)
+                data['color'] = common.tab_color(i)
             else:
-                color = common.colormap(i, 0, len(files_and_sources))
-        
+                data['color'] = common.colormap(i, 0, len(datas))
+
         try:
             show_one_file_and_source(
-                file, source,
                 PLOT_AGAINST_K=plot_against_k, TWO_PI=True, logarithmic_y=logarithmic_y,
                 ax=ax, show_window=False, show_pixel=False,
-                allow_rescale_y=allow_rescale_y, linestyle=linestyle,
-                label=label, errorbar_alpha=errorbar_alpha,
-                marker=marker, color=color,
+                allow_rescale_y=allow_rescale_y, errorbar_alpha=errorbar_alpha,
                 disable_ylabel=disable_ylabel,
                 fade_out_thresh=None, fade_out_alpha=fade_out_alpha,
                 allow_rescale_x=allow_rescale_x, show_twin_k_axis=show_twin_k_axis,
+                **data
             )
             
         except FileNotFoundError as err:
@@ -363,9 +349,10 @@ def go(files_and_sources, ax, plot_against_k=False, legend_fontsize=None,
             else:
                 raise err
 
-    ax.hlines(1, *ax.get_xlim(), linestyle=(0, (0.7, 0.7)), color='darkgray')
+    ax.hlines(1, *ax.get_xlim(), linestyle=(0, (0.7, 0.7)), color='darkgray', zorder=-10)
 
     legend_margin = -0.015
+    legend_margin = 0
     ax.legend(
         fontsize=legend_fontsize,
         loc='upper left' if not plot_against_k else 'upper right',
@@ -384,23 +371,26 @@ if __name__ == '__main__':
     files = common.files_from_argv('isf/data/', 'F_first_')
 
 
-    files_and_sources = []
-    [[files_and_sources.append((file, source)) for source in SOURCES] for file in files]
+    datas = []
+    [[datas.append(dict(
+        file=file,
+        source=source,
+    )) for source in SOURCES] for file in files]
     colors = []
     [[colors.append(common.tab_color(i)) for source in SOURCES] for i in range(len(files))]
     
     go(
-        files_and_sources,
+        datas,
         ax,
         # linestyles=['-']*len(files_and_sources),
         legend_fontsize=LEGEND_FONTSIZE,
         # discrete_colors=DISCRETE_COLORS,
-        colors=colors,
+        # color=colors,
         allow_rescale_y=ALLOW_RESCALE_Y,
         allow_rescale_x=ALLOW_RESCALE_X,
         plot_against_k=PLOT_AGAINST_K,
         allow_missing_files=True,
-        markers=['x', 'o', '']*2,
+        # markers=['x', 'o', '']*2,
     )
     if SEMILOG_Y:
         ax.semilogy()

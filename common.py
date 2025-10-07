@@ -320,9 +320,9 @@ def add_scale_bar(ax, pixel_size, color='black'):
 def save_gif(func, frames, fig, file, fps=1, dpi=300):
     assert len(frames) > 0, f'frames = {frames}'
 
-    if fps > 5:
-        warnings.warn(f'asked for fps = {fps:.1f} which seems dangerous. I have set to 5')
-        fps = 5
+    if fps > 10:
+        warnings.warn(f'asked for fps = {fps:.1f} which seems dangerous. I have set to 10')
+        fps = 10
     if fps < 0.5:
         warnings.warn(f'asked for fps = {fps:.1f} which seems annoying. I have set to 0.5')
         fps = 0.5
@@ -659,15 +659,16 @@ def find_drift(particles, num_dimensions):
         particles = particles[particles[:, TIME_COLUMN].argsort()] # sort by time
 
         com = np.full((ts.size, num_dimensions+2), np.nan)
-        for t in ts:
-            t = int(t)
-            particles_at_t = particles[t*num_particles:(t+1)*num_particles, :]
-            assert np.all(particles_at_t[:, TIME_COLUMN] == t)
+        
+        for frame in range(ts.size):
+            t = ts[frame]
+            particles_at_t = particles[frame*num_particles:(frame+1)*num_particles, :]
+            assert np.all(particles_at_t[:, TIME_COLUMN] == t), f'particles_at_t[:, TIME_COLUMN] = {particles_at_t[:, TIME_COLUMN]}, t = {t}'
 
             for dimension in range(num_dimensions):
-                com[t, dimension] = particles_at_t[:, dimension].mean()
-            com[t, TIME_COLUMN] = t
-            com[t, ID_COLUMN] = 0
+                com[frame, dimension] = particles_at_t[:, dimension].mean()
+            com[frame, TIME_COLUMN] = t
+            com[frame, ID_COLUMN] = 0
 
         num_particles = 1
         particles = com

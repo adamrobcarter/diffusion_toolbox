@@ -33,12 +33,14 @@ def find_color(row, bhwindow=False, window_size_x=None, window_size_y=None, chan
     return c, alpha
 
 def add_particle_outlines(ax, particles, timestep, dimension, particle_diameter, channel=None, outline=True,
-                          window_size_x=None, window_size_y=None, bhwindow=False):
+                          window_size_x=None, window_size_y=None, bhwindow=False, color=None):
     # radius can be None
 
     assert particles.size
 
-    particles_at_t = particles[:, dimension] == timestep
+    time_column = dimension
+
+    particles_at_t = particles[:, time_column] == timestep
     # print(particles_at_t.sum())
     if particles_at_t.sum() == 0:
         raise Exception(f'No particles found at timestep {timestep}')
@@ -54,8 +56,10 @@ def add_particle_outlines(ax, particles, timestep, dimension, particle_diameter,
     radius = particle_diameter / 2
 
     alpha_mult = 1
-    color, alpha = find_color(particles[particles_at_t, :][0, :], bhwindow=bhwindow, window_size_x=window_size_x, window_size_y=window_size_y, channel=channel)
-
+    if not color:
+        color, alpha = find_color(particles[particles_at_t, :][0, :], bhwindow=bhwindow, window_size_x=window_size_x, window_size_y=window_size_y, channel=channel)
+    else:
+        alpha = 1
     # cross = False
     # if cross:
     #     pass
@@ -79,17 +83,20 @@ def add_particle_tracks(ax, particles, timestep, dimension, window_size_x, windo
     # if before_t.sum() == 0:
     #     raise Exception(f'No particles found at timestep {timestep}')
     
-    for i, id in enumerate(np.unique(particles[:, dimension + 1])):
+    time_column = dimension
+    id_column = dimension + 1
+
+    for i, id in enumerate(np.unique(particles[:, id_column])):
     # for i, id in enumerate(tqdm.tqdm(np.unique(particles[:, dimension + 1]))):
 
-        particles_this_id = particles[particles[:, 3] == id, :]
-        particles_this_time = particles_this_id[particles_this_id[:, 2] <= timestep, :]
+        particles_this_id = particles[particles[:, id_column] == id, :]
+        particles_this_time = particles_this_id[particles_this_id[:, time_column] <= timestep, :]
         x = window_size_x - particles_this_time[:, 0]# - X_START
         ## ^^^^^^^^^^^^^^ this again si because trackpy uses top left as origin
         # not bottom left, really you should correct that in the particle detection
         y = particles_this_time[:, 1]# - Y_START
 
-        ax.plot(x, y, linewidth=2)
+        ax.plot(x, y, linewidth=2, zorder=-1) # zorder so we're behind the lines if we plot them
         # ax.plot(x, 1024 - y) # please don't ask me
 
         # if i > 500:

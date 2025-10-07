@@ -12,8 +12,7 @@ HIDE_ANNOTATIONS = False
 
 SHOW_HISTOGRAMS = False
 
-HIGHLIGHTS = True # displays HIGHLIGHTS_NUMBER frames evenly throughout the stack instead of the first 50
-HIGHLIGHTS_NUMBER = 10
+HIGHLIGHTS = False # displays HIGHLIGHTS_NUMBER frames evenly throughout the stack instead of the first 50
 # HIGHLIGHTS = True
 # BACKWARDS = True
 BACKWARDS = False # plays the stack backwards. DIFF_WITH_ZERO is now compared to the last frame
@@ -26,6 +25,8 @@ NONE = 4
 TWOCHANNEL = 5
 DIFF_WITH_TEN = 6
 FIRSTLAST = 7
+
+MAX_NUM_FRAMES = 25
 
 METHOD_NAME = {
     REMOVE_BACKGROUND: 'i(t) - mean(i)',
@@ -66,7 +67,7 @@ def speed_string(time_mult, every_nth_frame):
 
 def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
                      window_size_x, window_size_y,
-                     func=lambda timestep, ax : None, nth_frame=1, max_num_frames=30,
+                     func=lambda timestep, ax : None, nth_frame=1, max_num_frames=MAX_NUM_FRAMES,
                      dpi=300,
                      display_small=True, inverse_colors=False, highlights=False,
                      backwards=False, method=NONE, stacks=None, stackcolors=None, channel=None,
@@ -76,6 +77,7 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
                      figsize_mult=1.0,
                      every_nth_frame=None,
                      annotation_color=None,
+                     force_fps = None,
                      ):
     if method == NONE:
         assert not backwards
@@ -120,8 +122,7 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
     if every_nth_frame is None:
         if highlights:
             print('HIGHLIGTHS')
-            every_nth_frame = num_timesteps_in_data // HIGHLIGHTS_NUMBER
-            max_num_frames = HIGHLIGHTS_NUMBER
+            every_nth_frame = max(num_timesteps_in_data // max_num_frames, 1)
         else:
             every_nth_frame = 1
 
@@ -131,19 +132,23 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
 
     assert every_nth_frame > 0, f'every_nth_frame = {every_nth_frame}, is your data too short?'
 
-    fps = 1/time_step * time_mult
 
-    if method == FIRSTLAST:
-        fps = 1
+    if force_fps:
+        fps = force_fps
+    else:
+        fps = 1/time_step * time_mult
 
-    # these are cause of the reduce operation
-    if file.endswith('_25'):
-        fps *= 25
-    fps *= nth_frame#*every_nth_frame
+        if method == FIRSTLAST:
+            fps = 1
+
+        # these are cause of the reduce operation
+        if file.endswith('_25'):
+            fps *= 25
+        fps *= nth_frame#*every_nth_frame
 
 
-    if fps < 0.2:
-        warnings.warn(f'fps = {fps}')
+        if fps < 0.2:
+            warnings.warn(f'fps = {fps}')
 
     if not no_stack:
         num_timesteps_in_data = stack.shape[0]
@@ -255,7 +260,7 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
             if SHOW_TIMESTEP:
                 time_string = ''
                 # time_string += f'\nframe = {timestep*nth_frame:.0f}'
-                time_string += f'\nt = {timestep*time_step*nth_frame:.1f}s'
+                time_string += f'\nt = {timestep*time_step*nth_frame:.0f}s'
                 ax.text(0.95, 0.05, time_string, color=color, transform=ax.transAxes, ha='right', fontsize=10)
 
             ax.text(0.05, 0.9, dataset_name, transform=ax.transAxes, fontsize=15, color=color)
