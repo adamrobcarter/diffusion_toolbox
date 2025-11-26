@@ -41,26 +41,27 @@ def load_and_save(source_dirs, nums, skip_rsync=False):
         particles_array=new_data, **new_metadata
     )
 
-# load_and_save(
-#     '/store/cartera/libmobility_diffusion/solver_NBody_N_7638_L_640_single_wall_dt_125_t_3600_32_run_{}/',
-#     range(8),
-#     skip_rsync=True
-# )
-# load_and_save(
-#     '/store/cartera/libmobility_diffusion/solver_NBody_N_7638_L_640_single_wall_dt_125_t_450_32_run_{}/',
-#     range(64),
-#     skip_rsync=True
-# )
-# load_and_save(
-#     '/store/cartera/libmobility_diffusion/solver_NBody_N_30552_L_1280_single_wall_dt_125_t_3600_32_run_{}/',
-#     range(8),
-#     skip_rsync=True
-# )
-# load_and_save(
-#     '/store/cartera/libmobility_diffusion/solver_NBody_N_7638_L_640_single_wall_dt_125_t_1025_32_run_{}/',
-#     range(28),
-# )
-load_and_save(
-    '/store/cartera/libmobility_diffusion/solver_NBody_N_30552_L_1280_single_wall_dt_125_t_1025_32_run_{}/',
-    range(27),
-)
+if __name__ == '__main__':
+    # load_and_save(
+    #     '/store/cartera/libmobility_diffusion/solver_NBody_N_7638_L_640_single_wall_dt_125_t_3600_32_run_{}/',
+    #     range(8),
+    #     skip_rsync=True
+    # )
+    # load_and_save(
+    #     '/store/cartera/libmobility_diffusion/solver_NBody_N_7638_L_640_single_wall_dt_125_t_450_32_run_{}/',
+    #     range(64),
+    #     skip_rsync=True
+    # )
+    # load_and_save(
+    #     '/store/cartera/libmobility_diffusion/solver_NBody_N_30552_L_1280_single_wall_dt_125_t_3600_32_run_{}/',
+    #     range(8),
+    #     skip_rsync=True
+    # )
+    # load_and_save(
+    #     '/store/cartera/libmobility_diffusion/solver_NBody_N_7638_L_640_single_wall_dt_125_t_1025_32_run_{}/',
+    #     range(28),
+    # )
+    load_and_save(
+        '/store/cartera/libmobility_diffusion/solver_NBody_N_30552_L_1280_single_wall_dt_125_t_1025_32_run_{}/',
+        range(27),
+    )
