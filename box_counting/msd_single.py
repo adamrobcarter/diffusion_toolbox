@@ -37,9 +37,12 @@ FORCE_HIDE_LEGEND = False
 SHOW_D_IN_LEGEND = False
 LEGEND_LOCATION = 'upper left'
 
-SHOW_THEORY_FIT = True
-SHOW_PLATEAUS_THEORY = False
-SHOW_VARIANCE = False
+SHOW_RESCALED_THEORY = False # idk what this does
+SHOW_THEORY_SIMULATED_D = False
+
+SHOW_THEORY_FIT = False
+SHOW_PLATEAUS_THEORY = True
+SHOW_VARIANCE = True
 SHOW_MEAN = False
 SHOW_PLATEAUS_OBS = False
 SHOW_PLATEAU_OBS_AREA = False
@@ -443,7 +446,8 @@ def go(file, ax=None, separation_in_label=False,
         # }[file]
 
         # fit to whole thing
-        if True and np.isfinite(phi): # we calculate the fit even if we don't need to, because we use it for getting the angles for labels_on_plot
+        # if True and np.isfinite(phi): # we calculate the fit even if we don't need to, because we use it for getting the angles for labels_on_plot
+        if True:
             if depth_of_field:
                 N2_theory = lambda t, D, N: common.N2_nointer_3D(t, D, N, L, L, depth_of_field)
                 type_of_fit = 'sDFT fit (no inter, 3D)'
@@ -460,7 +464,7 @@ def go(file, ax=None, separation_in_label=False,
                 else:
                     # N2_theory = lambda t, D : countoscope_theory.nmsd.nointer_2d(t, D, N_mean_for_fit, L)
                     # type_of_fit = 'sDFT (no fit) (no inter.)'
-                    pass
+                    assert False
             log_N2_theory = lambda t, *args : np.log(N2_theory(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
             log_N2_theory_Lh = lambda t, *args : np.log(N2_theory_Lh(t, *args)) # we fit to log otherwise the smaller points make less impact to the fit
             
@@ -482,6 +486,9 @@ def go(file, ax=None, separation_in_label=False,
             
             N2_theory_points = N2_theory(t_theory, *popt)
             N2_theory_points_Lh = N2_theory_Lh(t_theory, *popt_Lh)
+            if SHOW_THEORY_SIMULATED_D:
+                N2_theory_simulatedD_points = N2_theory(t_theory, data['simulated_D'])
+                print(N2_theory_simulatedD_points)
             # print('  plats', get_plateau(N2_mean[box_size_index, :], file, L, phi, sigma, t=t_all)[0], N2_theory_points[-1])
 
 
@@ -630,6 +637,7 @@ def go(file, ax=None, separation_in_label=False,
             D_uncs_for_saving_collective.append(Dc_unc_final)
             Ls_for_saving_collective.append(L)
         
+        rescale_y_value = 1
         if rescale_y:
             rescale_y_value = 1
             if rescale_y == RESCALE_Y_N:
@@ -643,6 +651,7 @@ def go(file, ax=None, separation_in_label=False,
             delta_N_sq          /= rescale_y_value
             delta_N_sq_err      /= rescale_y_value
             N2_theory_points    /= rescale_y_value
+            N2_theory_simulatedD_points    /= rescale_y_value
             N2_theory_points_Lh /= rescale_y_value
             tsi_replacement_ys  /= rescale_y_value
 
@@ -725,6 +734,9 @@ def go(file, ax=None, separation_in_label=False,
                 ax.plot(t_theory[1:], N2_theory_points[1:], color='gray', linewidth=1, label=type_of_fit if box_size_index==0 else None)
                 ax.plot(t_theory[1:], N2_theory_points_Lh[1:], color=common.FIT_COLOR, linewidth=1, label=type_of_fit if box_size_index==0 else None)
             
+            if SHOW_THEORY_SIMULATED_D:
+                ax.plot(t_theory[1:], N2_theory_simulatedD_points[1:], color='gray', linewidth=1, label='theory' if box_size_index==0 else None)
+
             if show_rescaled_theory and box_size_index==0:
                 t_theory_rescaled = np.logspace(-4, 4, num=200)
                 theory = N2_theory(t_theory_rescaled, D_MSD)
@@ -944,6 +956,7 @@ if __name__ == '__main__':
            labels_on_plot=LABELS_ON_PLOT,
            rescale_x=RESCALE_X, rescale_y=RESCALE_Y,
            max_boxes_on_plot=MAX_BOXES_ON_PLOT,
+           show_rescaled_theory=SHOW_RESCALED_THEORY
         )
 
         ax.set_ylim(1e-3, 5e2)

@@ -15,7 +15,11 @@ EARLY_ALPHA = 1
 
 def go(file, ax, 
        show_realspace_axis=SHOW_R_AXIS,
-       source='F_first'):
+       source='F_first',
+       data_color='tab:green',
+       theory_color='black',
+       markersize=4,
+    ):
     data = common.load(f"isf/data/{source}_{file}.npz")
     t                 = data["t"]
     F                 = data["F"] # (num timesteps) x (num k bins)
@@ -50,13 +54,13 @@ def go(file, ax,
     if SPLIT_AND_COLOR:
         pass
         # ax.errorbar(x[start_index:min], S[start_index:min], yerr=F_unc[0, start_index:min], linestyle='none', marker='o', color='tab:orange')
-        # # ax.errorbar(x[start_index:min], S[start_index:min], yerr=F_unc[0, start_index:min], linestyle='none', marker='o', color='tab:green', alpha=0.5)
-        # ax.errorbar(x[min:end_index],   S[min:end_index],   yerr=F_unc[0, min:end_index],   linestyle='none', marker='o', color='tab:green')
+        # # ax.errorbar(x[start_index:min], S[start_index:min], yerr=F_unc[0, start_index:min], linestyle='none', marker='o', color=data_color, markersize=markersize, alpha=0.5)
+        # ax.errorbar(x[min:end_index],   S[min:end_index],   yerr=F_unc[0, min:end_index],   linestyle='none', marker='o', color=data_color, markersize=markersize)
     else:
-        ax.errorbar(k[min_S:]/rescale_x, S[min_S:], yerr=S_unc[min_S:], linestyle='none', marker='o', color='tab:green')
-        ax.errorbar(k[min_S:]/rescale_x, S[min_S:], yerr=S_unc[min_S:], linestyle='none', marker='o', color='tab:green')
-        ax.errorbar(k[:min_S]/rescale_x, S[:min_S], yerr=S_unc[:min_S], linestyle='none', marker='o', color='tab:green', alpha=EARLY_ALPHA)
-        ax.errorbar(k[:min_S]/rescale_x, S[:min_S], yerr=S_unc[:min_S], linestyle='none', marker='o', color='tab:green', alpha=EARLY_ALPHA)
+        ax.errorbar(k[min_S:]/rescale_x, S[min_S:], yerr=S_unc[min_S:], linestyle='none', marker='o', color=data_color, markersize=markersize, label='data')
+        ax.errorbar(k[min_S:]/rescale_x, S[min_S:], yerr=S_unc[min_S:], linestyle='none', marker='o', color=data_color, markersize=markersize)
+        ax.errorbar(k[:min_S]/rescale_x, S[:min_S], yerr=S_unc[:min_S], linestyle='none', marker='o', color=data_color, markersize=markersize, alpha=EARLY_ALPHA)
+        ax.errorbar(k[:min_S]/rescale_x, S[:min_S], yerr=S_unc[:min_S], linestyle='none', marker='o', color=data_color, markersize=markersize, alpha=EARLY_ALPHA)
 
     if data['log'] or FORCE_LOG_X_AXIS:
         ax.semilogx()
@@ -80,7 +84,7 @@ def go(file, ax,
         phi_fit_unc = 2 * np.pi/4 * density * sigma**2 * sigma_unc
         # label=f'fit: $\phi={common.format_val_and_unc(popt[0], np.sqrt(pcov[0, 0]), sigfigs=3)}$, $\sigma={common.format_val_and_unc(popt[1], np.sqrt(pcov[1, 1]), sigfigs=3)}$'
         assert np.isfinite(fit_func(x_th, sigma)).all()
-        ax.plot(x_th/rescale_x, fit_func(x_th, sigma), color=common.FIT_COLOR, zorder=10)
+        ax.plot(x_th/rescale_x, fit_func(x_th, sigma), color=common.FIT_COLOR, zorder=10, label='fit')
         print(f'fit gave sigma={common.format_val_and_unc(sigma, sigma_unc, sigfigs=4, latex=False)}, phi={common.format_val_and_unc(phi_fit, phi_fit_unc, sigfigs=4, latex=False)}')
         phi_force = np.pi/4 * density * 2.972**2
         print(f'phi(sigma=2.972) = {phi_force:.4f}')
@@ -88,7 +92,8 @@ def go(file, ax,
     if SHOW_THEORY:
         if (pack_frac_given := data.get('pack_frac_given')) and (particle_diameter := data['particle_diameter']):
             k_theory = np.logspace(np.log10(k.min()), np.log10(k.max()), num=200)
-            ax.plot(k_theory/rescale_x, countoscope_theory.structure_factor.hard_spheres_2d(k_theory, pack_frac_given, particle_diameter))
+            ax.plot(k_theory/rescale_x, countoscope_theory.structure_factor.hard_spheres_2d(k_theory, pack_frac_given, particle_diameter),
+                    color=theory_color, label='theory')
             # ax.plot(x, countoscope_theory.structure_factor.hard_spheres_2d(x, pack_frac_given, 3.09))
     # ax.plot(x_th, countoscope_theory.structure_factor.hard_spheres_2d(x_th, 0.34, 3.03), color='grey', label='$\sigma=3.03$', zorder=10)
 
@@ -114,7 +119,7 @@ def go(file, ax,
     # ax.plot(k[above_2], S[above_2], marker='o')
 
 
-    ax.set_ylabel('$S(k)$')
+    ax.set_ylabel('$F(k, 0) = S(k)$')
     if RESCALE_X_AXIS_BY_DIAMETER:
         ax.set_xlabel('$k\sigma$')
     else:
@@ -136,7 +141,7 @@ def go(file, ax,
     ax.set_ylim(max(ymin, 0), min(ymax, 5))
 
     # ax.text(0.7, 0.1, f'$\phi={file[-4:]}$', transform=ax.transAxes)
-
+    ax.legend(handlelength=1, loc='lower right', fontsize=7)
 
 
 if __name__ == '__main__':

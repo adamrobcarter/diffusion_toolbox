@@ -12,6 +12,9 @@ SHOW_THEORY_FIT = True
 SHOW_PLATEAUS = False
 SHOW_VARIANCE = False
 SHOW_MEAN = False
+LOGLOG = False
+ZOOM_TO_START = True
+# ZOOM_TO_START = False
 
 figsize = (6, 4.5)
 if PRESENT_SMALL:
@@ -21,7 +24,9 @@ if PRESENT_SMALL:
 collapse_x = True
 collapse_y = True
 collapse_x = False
-collapse_y = False
+# collapse_y = False
+
+I_0 = 1100 # from Sophie in slack
 
 for file in common.files_from_argv('intensity_counting/data/', 'counted_'):
 
@@ -41,8 +46,10 @@ for file in common.files_from_argv('intensity_counting/data/', 'counted_'):
     depth_of_field = data.get('depth_of_field')
 
     box_sizes    = data['box_sizes']
-    N_mean       = data['avg_intensities']
-    N_var        = data['variances']
+    I_mean       = data['avg_intensities']
+    I_var        = data['variances']
+
+    print('I_mean', I_mean)
     # sep_sizes    = data['sep_sizes']
 
     num_timesteps = N2_mean.shape[1]
@@ -80,18 +87,19 @@ for file in common.files_from_argv('intensity_counting/data/', 'counted_'):
 
         
         if collapse_y:
-            delta_N_sq       /= N_var[box_size_index]
+            delta_N_sq       /= I_mean[box_size_index] * I_0
+            print(delta_N_sq)
             # delta_N_sq_err   /= N_var[box_size_index]
         if collapse_x:
-            t /= L**2
-            t_theory /= L**2
+            t        = t        / L**2
+            t_theory = t_theory / L**2
 
         anomalous = delta_N_sq < 1e-14
         anomalous[0] = False # don't want to remove point t=0 as it could legit be zero
         if np.any(anomalous):
             print(f'found {anomalous.sum()/delta_N_sq.size*100:.3f}% anomalous')
             delta_N_sq     = delta_N_sq    [~anomalous]
-            delta_N_sq_err = delta_N_sq_err[~anomalous]
+            # delta_N_sq_err = delta_N_sq_err[~anomalous]
             t              = t             [~anomalous]
         
         #, r^2={r2:.2f}
@@ -104,22 +112,23 @@ for file in common.files_from_argv('intensity_counting/data/', 'counted_'):
         color =  matplotlib.cm.afmhot(np.interp(box_size_index, (0, len(box_sizes)), (0.2, 0.75)))
                 
         if SHOW_MEAN:
-            ax.hlines(2*N_mean[box_size_index], t.min(), t.max(), color=color, linewidth=1, linestyle='dashdot', label=r'$2 \langle N \rangle$' if box_size_index==0 else None)
+            ax.hlines(2*I_mean[box_size_index], t.min(), t.max(), color=color, linewidth=1, linestyle='dashdot', label=r'$2 \langle N \rangle$' if box_size_index==0 else None)
         if SHOW_VARIANCE:
-            ax.hlines(2*N_var [box_size_index], t.min(), t.max(), linestyles='dashed', color='grey', linewidth=1, label=r'$2\mathrm{Var}(N)$' if box_size_index==0 else None)
+            ax.hlines(2*I_var [box_size_index], t.min(), t.max(), linestyles='dashed', color='grey', linewidth=1, label=r'$2\mathrm{Var}(N)$' if box_size_index==0 else None)
 
         
         if (not PRESENT_SMALL and len(box_sizes)<15) or box_size_index % (len(box_sizes) // 10) == 0:
             # only plot sometimes
             
             
-            if collapse_x or collapse_y:
-                markersize = 2
-            else:
-                if PRESENT_SMALL:
-                    markersize = 5
-                else:
-                    markersize = 3
+            # if collapse_x or collapse_y:
+            #     markersize = 2
+            # else:
+            #     if PRESENT_SMALL:
+            #         markersize = 5
+            #     else:
+            #         markersize = 3
+            markersize = 5
 
             # actual data
             if LABELS_ON_PLOT:
@@ -128,7 +137,7 @@ for file in common.files_from_argv('intensity_counting/data/', 'counted_'):
                 label = f'L={L:.2f}'
                 # label += f', s={sep:.2f}'
             
-            print(delta_N_sq.size, common.nanfrac(delta_N_sq))
+            print('size, nanfrac', delta_N_sq.size, common.nanfrac(delta_N_sq))
             exp_plot = ax.plot(t[:], delta_N_sq[:], label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1, color=color)
             # exp_plot = ax.errorbar(t[1:], delta_N_sq[1:], yerr=delta_N_sq_err[1:]/np.sqrt(num_of_boxes[box_size_index]), label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
             # exp_plot = ax.errorbar(t[1:], delta_N_sq[1:], yerr=delta_N_sq_err[1:], label=label, linestyle='none', marker='o', markersize=markersize, zorder=-1)
@@ -143,21 +152,35 @@ for file in common.files_from_argv('intensity_counting/data/', 'counted_'):
             #             horizontalalignment='center', color=color, fontsize=9,
             #             transform_rotates_text=True, rotation=angle, rotation_mode='anchor')
             
-    if collapse_y:
-        ax.plot([1e-3, 1e-2], [1e-1, 1e0], color='blue', label='t^1')
-        ax.plot([1e-3, 1e-2], [1e-1, np.sqrt(10)*1e-1], color='green', label='t^1/2')
+    # if collapse_y:
+    #     ax.plot([1e-3, 1e-2], [1e-1, 1e0], color='blue', label='t^1')
+    #     ax.plot([1e-3, 1e-2], [1e-1, np.sqrt(10)*1e-1], color='green', label='t^1/2')
 
     ax.legend(fontsize=6 if not PRESENT_SMALL else 7, loc='lower right')
     # ax.semilogy()
     # ax.set_ylim(0, 0.02)
     # ax.semilogx()
     xlabel = '$t/L^2$' if collapse_x else '$t$ ($\mathrm{s}$)'
-    ylabel = r'$\Delta I^2(t)/\langle N \rangle$' if collapse_y else r'$\langle \Delta I^2(t) \rangle$ ($\mathrm{\mu m^2}$)'
+    ylabel = r'$\Delta I^2(t)/\langle I \rangle$' if collapse_y else r'$\langle \Delta I^2(t) \rangle$ ($\mathrm{\mu m^2}$)'
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     # ax.grid()
-    ax.semilogx()
-    ax.semilogy()
+    if LOGLOG:
+        ax.semilogx()
+        ax.semilogy()
+
+    if ZOOM_TO_START:
+        if collapse_x:
+            pass
+            ax.set_xlim(0, 0.01)
+        else:
+            ax.set_xlim(0, 2)
+
+        if collapse_y:
+            pass
+            ax.set_ylim(0, 0.05)
+        else:
+            ax.set_ylim(0, 100)
     
     title = file
     # title = f'Simulated colloids in RCP spheres\n$\phi={phi:.3f}$'

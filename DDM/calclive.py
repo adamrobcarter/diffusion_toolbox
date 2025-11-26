@@ -20,7 +20,7 @@ for file in common.files_from_argv('preprocessing/data', 'stack_'):
     if background_removed:
         stack = stack - stack.mean(axis=0)
 
-    num_k_bins = 100
+    num_k_bins = 50
 
     # function to save every 10 iterations of the calculation and also at the beginning since we are gready
     def callback(i, k, F_D_sq, F_D_sq_unc, t, F_D_sq_all, time_origins, F_D_sq_noradial, k_x, k_y):

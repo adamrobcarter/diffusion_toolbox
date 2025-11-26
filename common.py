@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import zipfile
 import joblib
 import argparse
+import subprocess
 
 memory = joblib.Memory('cache', verbose=0)
 
@@ -69,7 +70,15 @@ def get_npz_info(npz, key):
 
     npy = npz.open(key)
     version = np.lib.format.read_magic(npy)
-    shape, fortran, dtype = np.lib.format._read_array_header(npy, version)
+    
+
+    if version == (1, 0):
+        shape, fortran, dtype = np.lib.format.read_array_header_1_0(npy)
+    elif version == (2, 0):
+        shape, fortran, dtype = np.lib.format.read_array_header_2_0(npy)
+    else:
+        raise ValueError(f"Unsupported .npy version: {version}")
+    
     return key[:-4], shape, dtype
 
 def load(filename, quiet=False):
@@ -324,8 +333,8 @@ def save_gif(func, frames, fig, file, fps=1, dpi=300):
         warnings.warn(f'asked for fps = {fps:.1f} which seems dangerous. I have set to 10')
         fps = 10
     if fps < 0.5:
-        warnings.warn(f'asked for fps = {fps:.1f} which seems annoying. I have set to 0.5')
-        fps = 0.5
+        warnings.warn(f'asked for fps = {fps:.1f} which seems annoying. I have set to 1')
+        fps = 1
 
     progress = tqdm.tqdm(total=len(frames)+1) # unsure why +1 but it seems to be needed
 
@@ -357,6 +366,7 @@ def save_frames(func, frames, fig, folder, file, fps, dpi=300):
 
     if not os.path.exists(f'{folder}'):
         os.makedirs(f'{folder}')
+        print('created directory', folder)
 
     for i, frame in enumerate(tqdm.tqdm(frames)):
         func(frame)
@@ -812,7 +822,7 @@ def format_val_and_unc(val, unc, sigfigs=2, latex=True):
         digits_after_decimal = 0
     # assert digits_after_decimal
     if latex:
-        return f'{val:.{digits_after_decimal}f} \pm {unc:.{digits_after_decimal}f}'
+        return fr'{val:.{digits_after_decimal}f} \pm {unc:.{digits_after_decimal}f}'
     else:
         return f'{val:.{digits_after_decimal}f}±{unc:.{digits_after_decimal}f}'
 
@@ -1152,11 +1162,12 @@ def add_exponential_index_indicator(ax, exponent, anchor, xlabel, x_limits=None,
 def stokes_einstein_D(particle_diameter):
     k_B = scipy.constants.k
     T = 300 # K
+    # warnings.warn('T=250K is bad! you should get it from the sim!')
     eta = 1.4e-3 # Pa.s
+    # eta = 1.75e-3
     warnings.warn('eta must change! rigid sims use 0.00175')
     # isn't Eleanor's viscosity not this?
     r = particle_diameter * 1e-6 / 2 # assumed um
-
     D =  k_B * T / (6 * np.pi * eta * r) # m^2 / s
     D_um = D * (1e6)**2 # um^2 / s
     return D_um
@@ -1167,25 +1178,26 @@ def stokes_einstein_D_rot(particle_diameter):
     eta = 1e-3 # Pa.s
     # isn't Eleanor's viscosity not this?
     r = particle_diameter * 1e-6 / 2 # assumed um
-
     D =  k_B * T / (8 * np.pi * eta * r**3) # 1 / s. is this rad^2 / s or cycles^2 / s or something else? https://pubs.rsc.org/en/content/articlelanding/2014/sm/c4sm00148f
     return D
 
 
 
-def stokes_einstein_v(particle_diameter, particle_material):
+def stokes_einstein_v(particle_diameter, particle_material=None, rho_particle=None):
     # https://iopscience.iop.org/article/10.1088/0034-4885/77/5/056602
     # V_particle = 4/3 * np.pi * (particle_diameter/2)**3
 
     d = particle_diameter * 1e-6 # assumed um
 
-    rho_particle = np.nan
     if particle_material == 'SiO2' or  particle_material == 'Si02':
         rho_particle = 2648 # wikipedia
     elif particle_material == 'PS':
         rho_particle = 1050 # random, not checked
+    elif particle_material == 'PS':
+        rho_particle = 1050 # random, not checked
     else:
-        raise Exception(f'particle material {particle_material} not found')
+        assert rho_particle is not None, 'you must provide rho_particle if you do not provide particle_material'
+        
     rho_water = 1000
 
     delta_rho = rho_particle - rho_water # kg m^-3
@@ -1339,3 +1351,13 @@ def save_particles_internal(filepath, particles, time_step, window_size_x=None, 
     save_data(filepath, particles=particles, time_step=time_step, 
               window_size_x=window_size_x, window_size_y=window_size_y,
               **kwargs)
+    
+def rsync(filepath_remote, filepath_local, manual=False, quiet=False):
+    rsync_command = ['rsync', f'cartera@login.mesu.sorbonne-universite.fr:{filepath_remote}', filepath_local, '--progress']
+    if manual:
+        print('please run, in a new terminal:')
+        print(' '.join(rsync_command))
+        input()
+    else:
+        if not quiet: print('launching', ' '.join(rsync_command))
+        subprocess.run(rsync_command, check=True)

@@ -11,14 +11,12 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
     msd = data['msd']
     msd_unc = data['msd_unc']
 
-    t = np.arange(0, msd.size)
+    t = data['t']
     n = (msd.size-1) / t
     msd_unc = msd_unc / np.sqrt(n)
     # ^^ this is based on thinking about how many independent measurements there are
 
     fig, ax = plt.subplots(1, 1, figsize=(3.5, 3))
-
-    t = np.arange(0, msd.size) * data['time_step']
 
     END = -200
 
@@ -43,7 +41,7 @@ for file in common.files_from_argv('MSD/data', 'msd_'):
 
     ax.semilogx()
     ax.semilogy()
-    ax.set_ylim(0.0004, 0.03)
+    # ax.set_ylim(0.0004, 0.03)
     # ax.set_ylim(msd[1:].min()*0.6, msd.max()/0.8)
     # ax.set_xlim(t[1]*0.8, t[-1]/0.8)
 

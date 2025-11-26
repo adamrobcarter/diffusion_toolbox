@@ -211,12 +211,12 @@ markers = {
     'D_of_L_theory_Lh': 'none',
 }
 
-linestyle = {
-    'D0Sk_theory': '-',
-    'D_of_L_theory': '-',
-    'D_of_L_theory_Lh': '-',
-    'dominiguez_theory': '-',
-}
+# linestyle = {
+#     'D0Sk_theory': '-',
+#     'D_of_L_theory': '-',
+#     'D_of_L_theory_Lh': '-',
+#     'dominiguez_theory': '-',
+# } seems to be unused
 
 
 def get_D0(file, quiet=False):
@@ -321,6 +321,7 @@ def get_D0_filename(file):
 
 def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
     data = None
+    D0 = None  # for directH
 
     assert type(source) == str
     assert type(file)   == str
@@ -435,7 +436,7 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
             print(f'skipping {source} {file}, no Ds found')
             raise FileNotFoundError(f'skipping {source} {file}, no Ds found')
         
-        if source.startswith('f') or source.startswith('F_s') or source.startswith('F_first') or source.startswith('DDM'):
+        if source.startswith('f') or source.startswith('F_s') or source.startswith('F_first') or source.startswith('DDM') or source == 'H_theory':
             
             if PLOT_AGAINST_K:
                 xs = data['ks']
@@ -486,26 +487,30 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
             ks = 2*np.pi/Ls
             Ds = Ds / data['Ns']
             Ds = Ds / common.structure_factor_2d_hard_spheres(ks, 0.34, 3)
-            # Ds = D_MSD / Ds
-            print('Ds', Ds)
 
             xs = Ls
 
         elif source.startswith('MSD'):
-            xs = []
+            # xs = [np.nan]
+            xs = np.array([1e-10, 1e10])
+            Ds = np.array([Ds[0], Ds[0]])
+            print(data)
 
         else:
             raise Exception(f'you need to specify the x scale for {source}')
 
     print(f'avg D_unc/D0 = {np.nanmean(D_uncs/Ds):.3f}, max =  {np.nanmax(D_uncs/Ds):.3f}')
-    print(Ds)
+
+    # if source == 'H_theory':
+    #     D0 = data['D0'] this was stupid maybe
 
     pixel_size = None
     window_size = None
     pack_frac_calced = None
     pack_frac_given = None
+    diameter = None
     
-    if data:
+    if data: # why would this evaluate to false?
         diameter = data.get('particle_diameter')
     
         if 'pixel_size' in data and data['pixel_size'] != None:
@@ -545,4 +550,6 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
         else:
             D_uncs[errs_too_low] = 0.03 * np.repeat(np.abs(Ds)[np.newaxis, :], 2, axis=0)[errs_too_low]
 
-    return xs, Ds, D_uncs, pixel_size, window_size, pack_frac_given, pack_frac_calced
+    print('getLandD diameter', diameter)
+    print(data['particle_diameter'] if data else 'no data')
+    return xs, Ds, D_uncs, pixel_size, window_size, pack_frac_given, pack_frac_calced, diameter, D0

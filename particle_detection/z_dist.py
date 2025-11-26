@@ -12,6 +12,7 @@ for file in common.files_from_argv('particle_detection/data', 'particles_'):
 
     label = f'{file}\n$z = {z.mean():.3f} \\pm {z.std():.3f} = ({zoa.mean():.3f} \\pm {zoa.std():.3f})a$'
     ax.hist(zoa, bins=50, label=label, alpha=0.7, density=True)
+    print(label)
 
 ax.set_xlabel('$z/a$')
 ax.legend()

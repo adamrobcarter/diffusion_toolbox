@@ -38,10 +38,19 @@ def go(file, window=False):
     if '_pot_longer' in file or file=='eleanor0.34':
         d_frames = [0, 1, 4, 16, 64, 256, 1024]
 
-    if 'L2560' in file:
+    # if 'L2560' in file:
+    if '_32' in file:
+        d_frames = [0, 1, 2, 8, 32, 128, 512]
+    else:
         d_frames = [0, 1, 4, 16, 64, 256]
-    if 'nbody_open' in file:
-        d_frames = [0, 1, 4, 16, 64]
+    # if 'nbody_open' in file:
+    #     d_frames = [0, 1, 4, 16, 64]
+
+    if '_1s' in file:
+        d_frames = [0, 1]
+
+    if file == 'ld_hydro_dpstokes_0.114_L1280_short':
+        d_frames = [0, 2]
 
     # d_frames = common.exponential_integers(0, 4096)
     # d_frames = d_frames[d_frames < 623]

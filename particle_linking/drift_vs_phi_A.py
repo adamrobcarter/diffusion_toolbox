@@ -4,6 +4,9 @@ import numpy as np
 import scipy
 import visualisation.Ds_overlapped
 import re
+import sys
+sys.path.append('/data2/acarter/direct_to_H')
+import run as direct_to_H
 
 fig, ax = plt.subplots(1, 1)
 
@@ -28,7 +31,7 @@ if False:
         hydropart = 'nohydro' if 'nohydro' in file else 'hydro'
         # D0_file = f'sim_{hydropart}_{pack_frac_given}_L640_theta0_1h_unwrap'
         D0_file = file.replace('theta10', 'theta0')
-        D0_file = re.sub('hydro_0\.[0-9]+', 'hydro_0.02', D0_file)
+        D0_file = re.sub(r'hydro_0\.[0-9]+', 'hydro_0.02', D0_file)
         # sim_hydro_0.08_L640_theta0_1h_unwrap
         D, _, _ = visualisation.Ds_overlapped.get_D0(D0_file)
 
@@ -66,11 +69,25 @@ eleanor_As = np.array([0.92, 0.89, 0.95, 1.01, 1.06, 1.11, 1.18])
 ax.scatter(eleanor_phis, eleanor_As, label='exp')
 
 
-ax2 = ax.twinx()
-Sk0s = [common.S_k_zero(phi) for phi in eleanor_phis]
-ax2.plot(eleanor_phis, Sk0s, color='tab:red', )
+# ax2 = ax.twinx()
+# Sk0s = [common.S_k_zero(phi) for phi in eleanor_phis]
+# ax2.plot(eleanor_phis, Sk0s, color='tab:red', )
 
-ax.legend()
+# ax2 = ax.twinx()
+sigma = 2.79
+theory_phis = np.linspace(0, eleanor_phis.max(), num=3)
+rhos = 4/np.pi * theory_phis/sigma**2
+Hs = []
+for rho in rhos:
+    H_distinct, H_self = direct_to_H.do_integral(
+        ks = np.array([1e-4]),
+        a = sigma/2, wall='single_wall', delta=0, rho=rho, z_offset=1.06*sigma/2)
+    Hs.append((H_distinct + H_self)/H_self)
+# ax.plot(theory_phis, Hs, color='tab:red', label=r'$H(k\rightarrow0)/H(k\rightarrow\infty)$ theory (no lub.)')
+ax.set_xlim(-0.002, 0.102)
+ax.set_ylim(0.85, 1.65)
+
+ax.legend(loc='upper left')
 ax.set_xlabel(r'$\phi$')
 ax.set_ylabel(r'$A = v/(\mathrm{{sin}}(\theta) D(\phi \rightarrow 0) \Delta m g / k_B T)$')
 

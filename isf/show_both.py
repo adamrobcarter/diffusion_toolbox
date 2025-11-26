@@ -93,10 +93,14 @@ def show_single_F_type(
     ks     = d["k"]
     particle_diameter = d['particle_diameter']
 
+    print('t =', t)
     
     Ds_for_saving_nth     = [[] for i in range(len(t))]
     D_uncs_for_saving_nth = [[] for i in range(len(t))]
     ks_for_saving_nth     = [[] for i in range(len(t))]
+    Ds_for_saving_nth_dd     = [[] for i in range(len(t))]
+    D_uncs_for_saving_nth_dd = [[] for i in range(len(t))]
+    ks_for_saving_nth_dd     = [[] for i in range(len(t))]
 
     assert np.isfinite(ks).all()
 
@@ -140,9 +144,9 @@ def show_single_F_type(
         display = False
         if k_index % every_nth_k == 0:
             display = True
-            display = False
-        if k_index < 10:
-            display = True
+            # display = False
+        # if k_index < 10: # hack
+        #     display = True
         if graph_i >= len(lin_axes):
             warnings.warn('you have no more free axes')
             display = False
@@ -240,6 +244,19 @@ def show_single_F_type(
                         print(f'  nth: t == {nth_t} not found. t =', t)
 
                 elif f[nth_index] > 1e-2:
+                    D_nth = -1 / (k**2 * t[nth_index]) * np.log(f[nth_index])
+                    D_unc_nth = 1 / (k**2 * t[nth_index]) * f_unc[nth_index] / f[nth_index]
+                    # print(f'  nth D={D_nth:.3g}')
+                    assert D_unc_nth >= 0, f'D_unc_nth={D_unc_nth:.3f} = 1 / ({k:.3f}**2 * {t[nth_index]:.3f} * {f[nth_index]:.3f}) * {f_unc[nth_index]:.3f}'
+                    # print(f'f rel err {f_unc[nth_index]/f[nth_index]:.4f}, D rel err {D_unc_nth/D_nth}')
+                    # print(f'D(f)={D_nth:.3f}, D(f+df)={-1 / (k**2 * t[nth_index]) * np.log(f[nth_index]+f_unc[nth_index]):.3f}, D(f-df)={-1 / (k**2 * t[nth_index]) * np.log(f[nth_index]-f_unc[nth_index]):.3f}')
+                    # print(Ds_for_saving_nth, nth_t_index)
+                    Ds_for_saving_nth    [nth_t_index].append(D_nth)
+                    D_uncs_for_saving_nth[nth_t_index].append(D_unc_nth)
+                    ks_for_saving_nth    [nth_t_index].append(k)
+                    if display: print(f'  nth: D={common.format_val_and_unc(D_nth, D_unc_nth, latex=False)} (nth_index={nth_index})')
+
+                    # derivative method
                     D_nth = -1 / (k**2 * t[nth_index]) * np.log(f[nth_index])
                     D_unc_nth = 1 / (k**2 * t[nth_index]) * f_unc[nth_index] / f[nth_index]
                     # print(f'  nth D={D_nth:.3g}')

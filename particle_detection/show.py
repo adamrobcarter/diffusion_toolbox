@@ -15,6 +15,9 @@ REMOVE_BKG = False
 SHOW_AS_HOLLOW = True
 
 def find_color(row, bhwindow=False, window_size_x=None, window_size_y=None, channel=None):
+    """
+    not used if particle_color param is given
+    """
     if row.size == 4:
         c = matplotlib.cm.tab20(int(row[3]%20))
     else:
@@ -23,7 +26,7 @@ def find_color(row, bhwindow=False, window_size_x=None, window_size_y=None, chan
         elif channel == 'green':
             c = 'red'
         else:
-            c = 'red'
+            c = 'black'
 
     if bhwindow:
         alpha = scattering_functions.blackman_harris_window(window_size_x, window_size_y, row[0], row[1])
@@ -45,8 +48,6 @@ def add_particle_outlines(ax, particles, timestep, dimension, particle_diameter,
     if particles_at_t.sum() == 0:
         raise Exception(f'No particles found at timestep {timestep}')
     # assert particles_at_t.sum() > 0
-    # plt.scatter(particles[particles_at_t, X_INDEX]/pixel_size, particles[particles_at_t, Y_INDEX]/pixel_size, s=50*radius[particles_at_t]**2*pixel_size**2,
-    #             facecolors='none', edgecolors='red', alpha=0.5, linewidth=0.8)
 
     x = window_size_x - particles[particles_at_t, 0]
     # i think this probably happens because when we plot the image the origin is bottom left
@@ -65,7 +66,6 @@ def add_particle_outlines(ax, particles, timestep, dimension, particle_diameter,
     #     pass
     if outline:
         circles = [plt.Circle((x[i], y[i]), edgecolor=color, facecolor='none', radius=radius*2, linewidth=0.4, alpha=alpha*alpha_mult) for i in range(particles_at_t.sum())]
-        # c = matplotlib.collections.PatchCollection(circles, facecolor='red', alpha=0.5)
         assert len(circles)
         c = matplotlib.collections.PatchCollection(circles, match_original=True)
     else:
@@ -102,38 +102,6 @@ def add_particle_tracks(ax, particles, timestep, dimension, window_size_x, windo
         # if i > 500:
         #     break
     
-    # # particles_before
-
-    # x = particles[particles_at_t, 0]
-    # y = particles[particles_at_t, 1]
-
-    # # r = radius[particles_at_t] * np.sqrt(2) # TODO: should this be /pixel_size?
-    # r = np.full_like(x, 1.5) # you would lose this problem if u actually showed the radius u numpty
-    # print('U HARDCODED THE ABOVE NUMBER U NUMPTY')
-    # # warnings.warn('i disabled showing radius')
-    # if dimension == 2 and particles.shape[1] > 3:
-    #     id = particles[particles_at_t, 3]
-    # if dimension == 3 and particles.shape[1] > 4:
-    #     id = particles[particles_at_t, 4]
-
-    # radius = particle_diameter / 2
-
-    # alpha_mult = 1
-
-    # # cross = False
-    # # if cross:
-    # #     pass
-    # if outline:
-    #     circles = [plt.Circle((x[i], y[i]), edgecolor=color(i)[0], facecolor='none', radius=radius*2, linewidth=3, alpha=color(i)[1]*alpha_mult) for i in range(particles_at_t.sum())]
-    #     # c = matplotlib.collections.PatchCollection(circles, facecolor='red', alpha=0.5)
-    #     assert len(circles)
-    #     c = matplotlib.collections.PatchCollection(circles, match_original=True)
-    # else:
-    #     circles = [plt.Circle((x[i], y[i]), facecolor=color(i)[0], radius=radius, alpha=color(i)[1]*alpha_mult) for i in range(particles_at_t.sum())]
-    #     assert len(circles)
-    #     c = matplotlib.collections.PatchCollection(circles, match_original=True)
-
-    # ax.add_collection(c)
 
 def go(file, ax, fig, bhwindow=False):
     # need to pass `fig` so that we can resize it to fit the size of the data

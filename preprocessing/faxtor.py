@@ -204,15 +204,17 @@ def go(flat_folder, dark_folder, sample_folder, name, exposure_time, frame_gap, 
 #     frame_gap = 1,
 #     particle_diameter = 8,
 # )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0007/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
-#     flat_folder   = '/data2/acarter/faxtor/SAMPLE_0007/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
-#     dark_folder   = '/data2/acarter/faxtor/SAMPLE_0007/EXPERIMENT_0000/MEASUREMENT_0005/PCO_EDGE',
-#     name = 'faxtor007',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_diameter = 8,
-# )
+go(
+    sample_folder = '/data2/acarter/faxtor/SAMPLE_0007/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
+    # flat_folder   = '/data2/acarter/faxtor/SAMPLE_0007/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
+    # dark_folder   = '/data2/acarter/faxtor/SAMPLE_0007/EXPERIMENT_0000/MEASUREMENT_0005/PCO_EDGE',
+    flat_folder=   None,
+    dark_folder=   None,
+    name = 'faxtor007',
+    exposure_time = 0.05,
+    frame_gap = 1,
+    particle_diameter = 8,
+)
 # go(
 #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
 #     flat_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
@@ -679,18 +681,18 @@ def go(flat_folder, dark_folder, sample_folder, name, exposure_time, frame_gap, 
 #     # every_nth = 5,
 #     trim_start = 3800
 # )
-go(
-    sample_folder = '/data2/acarter/faxtor/SAMPLE_0030/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
-    flat_folder   = None,
-    dark_folder   = None,
-    name = 'faxtor030b',
-    exposure_time = 0.03,
-    frame_gap = 0.5,
-    particle_material = 'SiO2',
-    particle_diameter = 4.3,
-    NAME = 'Si 120um, Si 4.3um injected',
-    fraction_of=3
-)
+# go(
+#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0030/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
+#     flat_folder   = None,
+#     dark_folder   = None,
+#     name = 'faxtor030b',
+#     exposure_time = 0.03,
+#     frame_gap = 0.5,
+#     particle_material = 'SiO2',
+#     particle_diameter = 4.3,
+#     NAME = 'Si 120um, Si 4.3um injected',
+#     fraction_of=3
+# )
 
 # go(
 #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0031/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',

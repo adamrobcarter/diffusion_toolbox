@@ -3,18 +3,22 @@ import common
 import sys
 import particle_detection.show
 import preprocessing.stack_movie
+import typing
 
 CROP = None
 HIGHLIGHTS = True
 FORCE_FPS = 10
-PARTICLE_COLOR = 'red'
 
-def go(file, infile=None, outfile=None, crop=False, every_nth_frame=None, output_type='movie',
-       annotation_color='white', dpi=300, tracks=False, highlights=False, show_blobs_too=False,
+def go(file, infile=None, outfile=None, crop=False, every_nth_frame=None,
+       output_type : typing.Literal['movie', 'frames'] = 'movie',
+       dpi=300, tracks=False, highlights=False, show_blobs_too=False,
+       particle_color='red',
         **kwargs):
         """
         output_type: 'movie' will produce a gif, 'frames' saves each frame of the movie to a separate .png
         tracks: True will plot the history of the trajectory not just the current position
+
+        annotation_color should be in kwargs if needed
         """
         
         if not infile:
@@ -32,7 +36,8 @@ def go(file, infile=None, outfile=None, crop=False, every_nth_frame=None, output
         print('particles max', particles[:, 1].max(), particles[:, 1].min())
         
         time_step = data_particles['time_step']
-        num_timesteps = particles[:, 2].max() + 1
+        time_column = data_particles.get('dimension', 2)
+        num_timesteps = particles[:, time_column].max() + 1
         assert num_timesteps > 0, f'num_timesteps = {num_timesteps}'
         window_size_x = data_particles['window_size_x']
         window_size_y = data_particles['window_size_y']
@@ -96,13 +101,13 @@ def go(file, infile=None, outfile=None, crop=False, every_nth_frame=None, output
                 particle_detection.show.add_particle_outlines(
                     ax, particles, timestep, dimension=data_particles.get('dimension', 2),
                     outline=False, particle_diameter=data_particles.get('particle_diameter', 5),
-                    window_size_x=window_size_x, window_size_y=window_size_y, color=PARTICLE_COLOR)
+                    window_size_x=window_size_x, window_size_y=window_size_y, color=particle_color)
 
         preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, outfile,
                                                 func=add_outlines, num_timesteps_in_data=num_timesteps,
                                                 window_size_x=window_size_x, window_size_y=window_size_y,
                                                 highlights=highlights, every_nth_frame=every_nth_frame, output_type=output_type,
-                                                annotation_color=annotation_color, dpi=dpi, force_fps=FORCE_FPS,
+                                                dpi=dpi, force_fps=FORCE_FPS,
                                                 **kwargs)
 
 
