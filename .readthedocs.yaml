@@ -15,6 +15,7 @@ build:
     # golang: "1.20"
 
   commands:
+    - pip install sphinx sphinx-rtd-theme
     - sphinx-apidoc -f -o docs/api . --implicit-namespaces # try --separate?
 
 # Build documentation in the "docs/" directory with Sphinx
