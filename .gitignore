@@ -45,3 +45,6 @@ workflows/emrfd.npz
 presentations/libmobility/*
 pygit_logger.log
 slurm*.out
+preprocessing/directH/*.npz
+presentations/figures/*
+docs/api/*.rst

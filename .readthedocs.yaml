@@ -33,3 +33,9 @@ sphinx:
 # python:
 #   install:
 #     - requirements: docs/requirements.txt
+
+# Custom commands before building
+build:
+  image: latest
+  commands:
+    - sphinx-apidoc -f -o docs/api . --implicit-namespaces # try --separate?
