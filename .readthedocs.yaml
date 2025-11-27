@@ -18,6 +18,7 @@ build:
     - pip install sphinx sphinx-rtd-theme
     - sphinx-apidoc -f -o docs/api . --force # try --separate? (previously --implicit-namespaces)
     # - sphinx-apidoc -f -o docs/api . --force 
+    - ls docs/api # for debug
     - mkdir -p $READTHEDOCS_OUTPUT/html/
     - pip install -r docs/requirements.txt
     - sphinx-build -b html docs/ $READTHEDOCS_OUTPUT/html/
