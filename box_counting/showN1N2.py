@@ -148,7 +148,7 @@ def go(file):
     # ax.semilogx()
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-    ax.set_title(f'$\phi = {phi:.1g}$')
+    ax.set_title(fr'$\phi = {phi:.1g}$')
 
     if drift_x != 0:
         # ax.set_xlim(0, 4)
@@ -170,9 +170,9 @@ def go(file):
         ax.set_xlim(-0.01, 0.3)
         ax.set_ylim(-0.02, 0.2)
 
-    title = f'{file}, $\phi_\mathrm{{calc}}={phi:.3f}$'
+    title = fr'{file}, $\phi_\mathrm{{calc}}={phi:.3f}$'
     if not np.isnan(sigma):
-        title += f', $\sigma={sigma:.3f}\mathrm{{\mu m}}$'
+        title += fr', $\sigma={sigma:.3f}\mathrm{{\mu m}}$'
     if sigma_calced := data.get('particle_diameter_calced'):
         title += f', $\sigma_\mathrm{{calc}}={sigma_calced:.3f}\mathrm{{\mu m}}$'
     title += fr', $\nu_x={drift_x}\mathrm{{\mu m/s}}$'
