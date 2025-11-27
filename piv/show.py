@@ -2,7 +2,6 @@ import common
 import numpy as np
 import matplotlib.cm
 import matplotlib.pyplot as plt
-import openpiv.validation
 import tqdm
 
 for file in common.files_from_argv('piv/data/', 'ptv_'):
@@ -13,6 +12,7 @@ for file in common.files_from_argv('piv/data/', 'ptv_'):
     v_x      =  data['v_x']
     signal_to_noise = data['signal_to_noise']
 
+    # import openpiv.validation
     # for frame in tqdm.trange(v_y.shape[0], leave=False):
     #     invalid = openpiv.validation.sig2noise_val(signal_to_noise[frame], threshold = 1.05)
 
