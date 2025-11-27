@@ -48,3 +48,4 @@ slurm*.out
 preprocessing/directH/*.npz
 presentations/figures/*
 docs/api/*.rst
+docs/_build/*

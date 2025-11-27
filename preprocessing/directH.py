@@ -56,15 +56,15 @@ def go(file_base, local_file, **to_save):
     # ax.semilogy()
     common.save_fig(fig, f'preprocessing/figures_png/directH_{file_base}.png')
 
+if __name__ == '__main__':
+    # go_mesu('/store/cartera/direct_to_H/H_of_k_L2560_numkbins60_single_wall_phi0.114_maxk21.81661564992912_individualD_numis100.npz')
+    # go_mesu('/store/cartera/direct_to_H/H_of_k_L2560_numkbins60_single_wall_phi0.114_maxk21.8_myRPY_numis10.npz')
+    # go_mesu('/store/cartera/direct_to_H/H_of_k_L2560_numkbins60_single_wall_phi0.114_maxk21.8_myRPY_numis1000.npz')
+    # go('/store/cartera/direct_to_H/H_of_k_L2560_numkbins60_open_phi0.114_maxk21.8_myRPY_numis1000.npz')
 
-# go_mesu('/store/cartera/direct_to_H/H_of_k_L2560_numkbins60_single_wall_phi0.114_maxk21.81661564992912_individualD_numis100.npz')
-# go_mesu('/store/cartera/direct_to_H/H_of_k_L2560_numkbins60_single_wall_phi0.114_maxk21.8_myRPY_numis10.npz')
-# go_mesu('/store/cartera/direct_to_H/H_of_k_L2560_numkbins60_single_wall_phi0.114_maxk21.8_myRPY_numis1000.npz')
-# go('/store/cartera/direct_to_H/H_of_k_L2560_numkbins60_open_phi0.114_maxk21.8_myRPY_numis1000.npz')
+    # for z in range(10):
+        # go_mesu(f'/store/cartera/direct_to_H/H_of_k_L2560_numkbins60_single_wall_phi0.114_maxk21.8_myRPY_z{z:.1f}a_numis1000.npz')
 
-# for z in range(10):
-    # go_mesu(f'/store/cartera/direct_to_H/H_of_k_L2560_numkbins60_single_wall_phi0.114_maxk21.8_myRPY_z{z:.1f}a_numis1000.npz')
-
-go_isis('/data2/acarter/direct_to_H/' 'data/H_of_k_L2560_numkbins100_single_wall_'          'phi0.114_maxk10.0_theory_zpos1.15a_zwidth0.0a_rcutoff1.0_stepmult1.00_order3.npz')
-# go_isis('/data2/acarter/direct_to_H/' 'data/H_of_k_L2560_numkbins100_single_wall_lubrication_phi0.114_maxk10.0_theory_zpos1.06a_zwidth0.0a_rcutoff1.0_stepmult1.00_order3.npz')
-# go_isis('/data2/acarter/direct_to_H/' 'data/H_of_k_L2560_numkbins60_open_phi0.114_maxk10.0_theory_zpos0.00a_zwidth1.0a_rcutoff1.0_stepmult1.00_order3.npz')
+    go_isis('/data2/acarter/direct_to_H/' 'data/H_of_k_L2560_numkbins100_single_wall_'          'phi0.114_maxk10.0_theory_zpos1.15a_zwidth0.0a_rcutoff1.0_stepmult1.00_order3.npz')
+    # go_isis('/data2/acarter/direct_to_H/' 'data/H_of_k_L2560_numkbins100_single_wall_lubrication_phi0.114_maxk10.0_theory_zpos1.06a_zwidth0.0a_rcutoff1.0_stepmult1.00_order3.npz')
+    # go_isis('/data2/acarter/direct_to_H/' 'data/H_of_k_L2560_numkbins60_open_phi0.114_maxk10.0_theory_zpos0.00a_zwidth1.0a_rcutoff1.0_stepmult1.00_order3.npz')
