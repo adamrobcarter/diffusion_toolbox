@@ -10,8 +10,6 @@ import numba
 import scipy.stats
 import warnings, time
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
-import termplotlib
-import psutil
 import matplotlib.pyplot as plt
 import zipfile
 import joblib
@@ -858,6 +856,8 @@ def term_hist(data, bins=20):
     term_bar(counts, bin_edges)
 
 def term_bar(y, x=None):
+    import termplotlib
+    
     # note x and y are their normal meanings, despite the axes being switched
     y = np.array(y)
     if x is not None:
@@ -878,6 +878,7 @@ def term_bar(y, x=None):
 
     
 def print_memory_use(s=''):
+    import psutil
     pid = os.getpid()
     python_process = psutil.Process(pid)
     memoryUse = python_process.memory_info().rss / 2.0**30  # memory use in GB...I think

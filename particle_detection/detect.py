@@ -4,7 +4,6 @@ import time
 import sys
 import trackpy
 import matplotlib.pyplot as plt
-import termplotlib
 import tqdm
 
 NO_MINMASS = False
@@ -150,10 +149,6 @@ if __name__ == '__main__':
         print(features.describe())
 
         print('mass:')
-        # counts, bin_edges = np.histogram(features['mass'], bins=20)
-        # term_fig = termplotlib.figure()
-        # term_fig.hist(counts, bin_edges, force_ascii=False, orientation="horizontal")
-        # term_fig.show()
         common.term_hist(features['mass'])
 
 
