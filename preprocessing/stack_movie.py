@@ -2,7 +2,7 @@
 generate movies in gif or mp4 format from stacks 
 
 Usage:
-    python -m preprocessing.stack_movie dataset1 [dataset2 ...] [options]
+    ``python -m preprocessing.stack_movie dataset1 [dataset2 ...] [options]``
 
 Options:
 
