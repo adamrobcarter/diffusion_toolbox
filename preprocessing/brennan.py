@@ -1,3 +1,7 @@
+"""
+Test docstring for preprocessing.brennan
+"""
+
 import numpy as np
 import common
 import time, os
