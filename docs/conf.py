@@ -34,6 +34,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     # "sphinx.ext.napoleon",   # for Google/NumPy-style docstrings
+    'sphinx_rtd_theme',
 ]
 
 intersphinx_mapping = {
@@ -64,3 +65,5 @@ epub_show_urls = "footnote"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 # html_static_path = ["_static"]
+
+html_theme = "sphinx_rtd_theme"
