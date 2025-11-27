@@ -221,7 +221,7 @@ def go(files, ax, target_num_box_sizes=None, box_size_indices=None, legend_num_b
     ax.semilogy()
     ax.semilogx()
     xlabel = '$t/L^2$' if collapse_x else '$t$ (s)'
-    ylabel = r'$\Delta N^2(t) / L^2$' if collapse_y else '$\Delta N^2(t)$'
+    ylabel = r'$\Delta N^2(t) / L^2$' if collapse_y else r'$\Delta N^2(t)$'
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
 
