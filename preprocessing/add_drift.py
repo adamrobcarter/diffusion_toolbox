@@ -1,9 +1,9 @@
 import common
 
-for file in common.files_from_argv('preprocessing/data', 'stack'):
-    data = common.load(f'preprocessing/data/stack_{file}.npz')
-    stack = data['stack']
-
+if __name__ == '__main__':
+    for file in common.files_from_argv('preprocessing/data', 'stack'):
+        data = common.load(f'preprocessing/data/stack_{file}.npz')
+        stack = data['stack']
 
     # drift_width_per_stack = 0.1
     # drift_px_per_stack = drift_width_per_stack * stack.shape[1]

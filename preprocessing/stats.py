@@ -2,5 +2,6 @@
 
 import common
 
-for file in common.files_from_argv('preprocessing/data/', 'stack_'):
-    data = common.load(f'preprocessing/data/stack_{file}.npz')
+if __name__ == '__main__':
+    for file in common.files_from_argv('preprocessing/data/', 'stack_'):
+        data = common.load(f'preprocessing/data/stack_{file}.npz')
