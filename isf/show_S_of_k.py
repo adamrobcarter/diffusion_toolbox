@@ -121,7 +121,7 @@ def go(file, ax,
 
     ax.set_ylabel('$F(k, 0) = S(k)$')
     if RESCALE_X_AXIS_BY_DIAMETER:
-        ax.set_xlabel('$k\sigma$')
+        ax.set_xlabel(r'$k\sigma$')
     else:
         ax.set_xlabel('$k$')
 

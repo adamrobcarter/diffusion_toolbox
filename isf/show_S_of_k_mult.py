@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import countoscope_theory.structure_factor
 
+# should probably be merged with show_S_of_k.py
+
 SMALL = False
 SHOW_R_AXIS = False
 SHOW_THEORY = True
@@ -57,7 +59,7 @@ if __name__ == '__main__':
     ax.semilogx()
     ax.set_xlim(0.1, 40)
     ax.set_ylabel('$S(k)$')
-    ax.set_xlabel('$k\sigma$')
+    ax.set_xlabel(r'$k\sigma$')
 
     # ax.text(0.7, 0.1, f'$\phi={file[-4:]}$', transform=ax.transAxes)
 

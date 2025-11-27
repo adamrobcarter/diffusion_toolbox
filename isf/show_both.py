@@ -126,7 +126,7 @@ def show_single_F_type(
 
     def print_D(D):
         if D0 == None:
-            return f'$D={D:.3g}\mathrm{{\mu m^2/s}}$'
+            return fr'$D={D:.3g}\mathrm{{\mu m^2/s}}$'
         else:
             return f'$D={D/D0:.2g}D_0$'
 
@@ -775,9 +775,9 @@ def show_single_F_type(
         sp_ax.set_xlim(0, 20)
 
         sp_ax.set_xlabel('$t$')
-        sp_ax.set_ylabel('$\ln(f) / D_S(k) k^2$')
+        sp_ax.set_ylabel(r'$\ln(f) / D_S(k) k^2$')
         
-        Ds_ax.set_xlabel('$q\sigma$')
+        Ds_ax.set_xlabel(r'$q\sigma$')
         Ds_ax.set_ylabel('$D_0/D_S$')
         # Ds_ax.set_xlim(0, 15)
         # Ds_ax.set_ylim(0, 5)

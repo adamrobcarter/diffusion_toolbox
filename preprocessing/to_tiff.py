@@ -1,3 +1,11 @@
+"""
+Converts the given stack to a tiff file, which will be stored in ``preprocessing/tiffs/``.
+
+Usage:
+    ``python -m preprocessing.to_tiff dataset1 [dataset2 ...]``
+
+"""
+
 import tifffile
 import common
 import sys

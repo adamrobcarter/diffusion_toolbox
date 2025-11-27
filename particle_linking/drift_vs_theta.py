@@ -23,7 +23,7 @@ def go(files, ax):
         zetas.append(z_zeta)
         n_blobs = data['num_blobs']
 
-    ax.errorbar(thetas, drifts, yerr=drift_uncs, linestyle='none', marker='o', label=f'simulation ($n_\mathrm{{blobs}}={n_blobs}$)')
+    ax.errorbar(thetas, drifts, yerr=drift_uncs, linestyle='none', marker='o', label=fr'simulation ($n_\mathrm{{blobs}}={n_blobs}$)')
     for i in range(len(thetas)):
         print(f'θ={thetas[i]}, v={drifts[i]:.5f}um/s')
 

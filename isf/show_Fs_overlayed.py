@@ -141,17 +141,17 @@ def go(file, file_i, ax, target_ks, show_fit=False, colormap=common.colormap_coo
                 popt, pcov = scipy.optimize.curve_fit(log_func, t_for_plot[~bad_for_plot], np.log10(F_for_plot[~bad_for_plot]), sigma=np.log10(F_unc_for_plot[~bad_for_plot]))#,   absolute_sigma=True)
                 t_th = np.logspace(np.log10(t[1]), np.log10(t[-1]))
                 theory_curve = func(t_th, popt)
-                label = '$\mathrm{{exp}}(-k^2D(k)t)$' if graph_i==len(target_ks)-1 else None
+                label = r'$\mathrm{exp}(-k^2D(k)t)$' if graph_i==len(target_ks)-1 else None
                 ax.plot(t_th, PLOT_FUNCTION(theory_curve), color=common.FIT_COLOR, zorder=-1, label=label)
 
         
             if show_theory:
                 if S_OF_K_IS_ONE:
                     S_of_k = 1
-                    label = '$\mathrm{exp}(-k^2 t D_\mathrm{self})$' if graph_i==len(target_ks)-1 else None
+                    label = r'$\mathrm{exp}(-k^2 t D_\mathrm{self})$' if graph_i==len(target_ks)-1 else None
                 else:
                     S_of_k = common.structure_factor_2d_hard_spheres(k, phi, sigma)
-                    label = '$\mathrm{exp}(-k^2 t D_\mathrm{self}/S(k))$' if graph_i==len(target_ks)-1 else None
+                    label = r'$\mathrm{exp}(-k^2 t D_\mathrm{self}/S(k))$' if graph_i==len(target_ks)-1 else None
 
                 func = lambda t, D : np.exp(-t * k**2 * D / S_of_k)
                 t_th = np.logspace(np.log10(t[1]), np.log10(t[-1]))

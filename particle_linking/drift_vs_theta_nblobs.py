@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     fig, ax = plt.subplots(1, 1)
     ax.set_xlabel(r'$\theta$ ($^{\circ}$)')
-    ax.set_ylabel('drift x $\mathrm{\mu m/s}$')
+    ax.set_ylabel(r'drift x $\mathrm{\mu m/s}$')
 
     for nblobs in all_nblobs:
         thetas = []

@@ -116,7 +116,7 @@ for file in sys.argv[1:]:
 
             label = rf'$L = {L}\mathrm{{\mu m}}$'
             # label += f', D={D0:.3f}'
-            label += f', $sep = {sep_sizes[box_size_index]:.1f}\mathrm{{\mu m}}$'
+            label += fr', $sep = {sep_sizes[box_size_index]:.1f}\mathrm{{\mu m}}$'
             label += f', $n = {num_boxes_used[box_size_index]:.0f}$'
             line = integrand_ax.plot(t[1:], T_integrand[1:], label=label, color=color, zorder=5)
             
