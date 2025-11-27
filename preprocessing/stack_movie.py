@@ -1,21 +1,27 @@
 """
-generate movies in gif format from stacks 
+generate movies in gif or mp4 format from stacks 
 
 Usage:
     python -m preprocessing.stack_movie dataset1 [dataset2 ...] [options]
 
 Options:
-    --highlights: generate a movie showing max_num_frames frames evenly distributed throughout the stack
-    --max-num-frames: number of frames in the resultant movie, unless there are fewer frames in the stack
-    --backwards: play the movie backwards
-    --method: method to use for displaying the stack. Choices are:
-        remove_bkg: subtract the mean image from each frame
-        diff_with_zero: subtract the first frame from each frame
-        diff_with_prev: subtract the previous frame from each frame
-        diff_with_ten: subtract the frame 10 frames earlier from each frame
-        firstlast: show only the first and last frames
-    --inverse-colors: black becomes white, white becomes black
-    
+
+--highlights               generate a movie showing max_num_frames frames evenly distributed throughout the stack
+--max-num-frames=<number>  number of frames in the resultant movie, unless there are fewer frames in the stack
+--backwards                play the movie backwards
+--method=<method>          method to use for displaying the stack. Choices are:
+
+                            - remove_bkg      subtract the mean image from each frame
+                            - diff_with_zero  subtract the first frame from each frame
+                            - diff_with_prev  subtract the previous frame from each frame
+                            - diff_with_ten   subtract the frame 10 frames earlier from each frame
+                            - firstlast       show only the first and last frames
+
+--inverse-colors           black becomes white, white becomes black
+--format=<format>          output format, either 'gif' or 'mp4' [default: gif]
+
+the resultant filename will vary depending on the options used
+
 """
 
 import numpy as np
@@ -485,6 +491,7 @@ if __name__ == '__main__':
     parser.add_argument('--max-num-frames', type=int, default=MAX_NUM_FRAMES)
     parser.add_argument('--method', type=str, default=NONE, choices=[REMOVE_BACKGROUND, DIFF_WITH_ZERO, DIFF_WITH_PREVIOUS, DIFF_WITH_TEN, FIRSTLAST])
     parser.add_argument('--inverse-colors', action='store_true')
+    parser.add_argument('--format', choices=['gif', 'mp4'], default='gif')
     args = parser.parse_args()
 
     for file in args.files:
@@ -512,7 +519,7 @@ if __name__ == '__main__':
             if ADD_DRIFT:
                 filename += '_drifted'
             
-            filename += '.gif'
+            filename += f'.{args.format}'
 
             go(
                 file,
