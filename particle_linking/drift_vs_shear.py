@@ -6,7 +6,7 @@ import scipy
 
 def go(files, ax):
     ax.set_xlabel('shear $S$ ($v_z = Sz$)')
-    ax.set_ylabel('drift x ($\mathrm{\mu m/s}$)')
+    ax.set_ylabel(r'drift x ($\mathrm{\mu m/s}$)')
 
     shears = []
     drifts = []
@@ -33,7 +33,7 @@ def go(files, ax):
     print(f'S = {func(target_v, *popt)}')
 
 
-    ax.scatter(shears, drifts, label='simulation ($n_\mathrm{blobs}=642$)')
+    ax.scatter(shears, drifts, label=r'simulation ($n_\mathrm{blobs}=642$)')
     ax.legend()
     # common.save_fig(fig, f'particle_linking/figures_png/drift_vs_shear_{file}_0.png')
 

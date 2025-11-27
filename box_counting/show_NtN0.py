@@ -27,7 +27,7 @@ if __name__ == '__main__':
         for box_size_index in range(NtN0.shape[0]):
             rescale_y = N_sq[box_size_index]
 
-            ax.scatter(t[1:], NtN0[box_size_index, 1:]/rescale_y, color=common.colormap(box_size_index, 0, NtN0.shape[0]), label=f'$L={box_sizes[box_size_index]/sigma:.2g}\sigma$')
+            ax.scatter(t[1:], NtN0[box_size_index, 1:]/rescale_y, color=common.colormap(box_size_index, 0, NtN0.shape[0]), label=fr'$L={box_sizes[box_size_index]/sigma:.2g}\sigma$')
             
             L = box_sizes[box_size_index]
 
@@ -87,7 +87,7 @@ if __name__ == '__main__':
             D_from_first_point.append(D_first_point)
             L_from_first_point.append(L)
 
-            print(f'L={L/sigma:.1f}\sigma')
+            print(fr'L={L/sigma:.1f}\sigma')
             print(f'  <N>={N[box_size_index]:.2g}, <N^2>={N_sq[box_size_index]:.2g}, <N>+<N^2>={N[box_size_index]+N[box_size_index]**2:.2g}')
             print(f'  first D={D_first_point:.4f}')
 

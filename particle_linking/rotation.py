@@ -15,7 +15,7 @@ def go(file):
     t = particles[:, time_column]
     for i in range(3):
         axis = 'xyz'[i]
-        ax.plot(t, particles[:, 5+i], label=f'$\phi_{axis}$')
+        ax.plot(t, particles[:, 5+i], label=fr'$\phi_{axis}$')
 
     ax.legend()
 

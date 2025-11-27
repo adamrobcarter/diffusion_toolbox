@@ -3,7 +3,7 @@ import numpy as np
 import common
 import sDFT_interactions
 import sys
-
+"""should this be deprecated?
 # integrate = lambda *args, **kwargs: scipy.integrate.quad(*args, **kwargs)[0]
 
 collapse_x = True
@@ -163,3 +163,4 @@ ax.text(-0.13, -0.15, command, transform=ax.transAxes, fontsize=8, verticalalign
 fig.tight_layout()
 files = '_'.join(sys.argv[1:])
 fig.savefig(f'box_counting/figures_png/msd_combined_{files}.png', dpi=300)
+"""

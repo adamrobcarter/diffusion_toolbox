@@ -140,9 +140,9 @@ def go(file):
     ax.set_xlim(-0.01, 0.25)
     ax.set_ylim(-0.002, 0.02)
 
-    title = f'{file}, $\phi_\mathrm{{calc}}={phi:.3f}$'
+    title = fr'{file}, $\phi_\mathrm{{calc}}={phi:.3f}$'
     if not np.isnan(sigma):
-        title += f', $\sigma={sigma:.3f}\mathrm{{\mu m}}$'
+        title += fr', $\sigma={sigma:.3f}\mathrm{{\mu m}}$'
     if sigma_calced := data.get('particle_diameter_calced'):
         title += f', $\sigma_\mathrm{{calc}}={sigma_calced:.3f}\mathrm{{\mu m}}$'
     title += fr', $\nu_x={drift_x}\mathrm{{\mu m/s}}$'

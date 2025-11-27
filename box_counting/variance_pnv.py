@@ -34,6 +34,6 @@ if __name__ == '__main__':
         ax.set_xlabel(r'$L$')
         ax.semilogx()
 
-        ax.set_title(f'$\phi$ = {phi:.2f}')
+        ax.set_title(rf'$\phi$ = {phi:.2f}')
 
         common.save_fig(fig, f'box_counting/figures_png/variance_pnv_{file}.png')

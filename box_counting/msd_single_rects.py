@@ -3,7 +3,7 @@ import numpy as np
 import common
 import sDFT_interactions
 import sys
-
+""" is this deprecated?
 # integrate = lambda *args, **kwargs: scipy.integrate.quad(*args, **kwargs)[0]
 
 collapse_x = True
@@ -203,3 +203,4 @@ for file in common.files_from_argv('box_counting/data/', 'counted_'):
 
     fig.tight_layout()
     common.save_fig(fig, f'box_counting/figures_png/msd_{file}.png', dpi=300)
+"""

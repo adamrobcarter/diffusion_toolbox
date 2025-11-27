@@ -46,7 +46,7 @@ def go(file, export_destination=None):
     
     if SHOW_FIT:
         popt, pcov = scipy.optimize.curve_fit(lambda k, phi, s : countoscope_theory.structure_factor.hard_spheres_2d(k, phi, s), x, S, p0=(0.5, 2))
-        ax.plot(x_th, countoscope_theory.structure_factor.hard_spheres_2d(x_th, *popt), color=common.FIT_COLOR, label=f'fit: $\phi={common.format_val_and_unc(popt[0], np.sqrt(pcov[0, 0]), sigfigs=3)}$, $\sigma={common.format_val_and_unc(popt[1], np.sqrt(pcov[1, 1]), sigfigs=3)}$')
+        ax.plot(x_th, countoscope_theory.structure_factor.hard_spheres_2d(x_th, *popt), color=common.FIT_COLOR, label=fr'fit: $\phi={common.format_val_and_unc(popt[0], np.sqrt(pcov[0, 0]), sigfigs=3)}$, $\sigma={common.format_val_and_unc(popt[1], np.sqrt(pcov[1, 1]), sigfigs=3)}$')
     
     if SHOW_THEORY:
         if (pack_frac_given := data['pack_frac_given']) and (particle_diameter := data['particle_diameter']):
@@ -76,7 +76,7 @@ def go(file, export_destination=None):
 
     ax.set_ylabel('$S(k)$')
     if RESCALE_X_AXIS_BY_DIAMETER:
-        ax.set_xlabel('$k\sigma$')
+        ax.set_xlabel(r'$k\sigma$')
     else:
         ax.set_xlabel('$k$')
 

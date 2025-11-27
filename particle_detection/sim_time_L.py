@@ -43,7 +43,7 @@ if __name__ == '__main__':
 
         ax.plot(Ls, ts, marker='o', linestyle=':', label=filegroup_names[filegroup_i])
 
-    ax.text(0.05, 0.5, f'$\phi={pack_frac:.3f}$', transform=ax.transAxes, fontsize=12)
+    ax.text(0.05, 0.5, fr'$\phi={pack_frac:.3f}$', transform=ax.transAxes, fontsize=12)
 
     ax.semilogx()
     ax.semilogy()

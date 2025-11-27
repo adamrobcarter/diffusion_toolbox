@@ -160,7 +160,7 @@ for file in common.files_from_argv('intensity_counting/data/', 'counted_'):
     # ax.semilogy()
     # ax.set_ylim(0, 0.02)
     # ax.semilogx()
-    xlabel = '$t/L^2$' if collapse_x else '$t$ ($\mathrm{s}$)'
+    xlabel = '$t/L^2$' if collapse_x else r'$t$ ($\mathrm{s}$)'
     ylabel = r'$\Delta I^2(t)/\langle I \rangle$' if collapse_y else r'$\langle \Delta I^2(t) \rangle$ ($\mathrm{\mu m^2}$)'
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)

@@ -49,7 +49,7 @@ for file in common.files_from_argv('box_counting/data/', 'pnv_'):
 # 
     # ax_phi.errorbar(phis_value, fudge_mean, yerr=fudge_std, label='PNV', marker='o', linestyle='none')
 
-    var = '\mathrm{{Var}}'
+    var = r'\mathrm{{Var}}'
     # assert np.any(N1 != 0)
     # assert np.any(N2 != 0)
     # sophie2 = (np.nanvar(N1, axis=(1, 2, 3))+np.nanvar(N2, axis=(1, 2, 3)))/2 - np.nanvar(N1*N2, axis=(1, 2, 3))
@@ -59,8 +59,8 @@ for file in common.files_from_argv('box_counting/data/', 'pnv_'):
     # print(sophie3)
     # ax.plot(x, sophie3, marker='o', label=rf'$\sqrt{{{var}(N_1){var}(N_2)}} - {var}(N_1N_2)$')
     
-    ax.set_xlabel(f'$\sqrt{{L_xL_y}}/\sigma$')
-    ax.set_ylabel('$F(\phi, L, \sigma)N_0$')
+    ax.set_xlabel(fr'$\sqrt{{L_xL_y}}/\sigma$')
+    ax.set_ylabel(r'$F(\phi, L, \sigma)N_0$')
     # ax_phi.set_ylim(0, 2)
 
     # if file_base == 'sim_nointer':
@@ -75,6 +75,6 @@ for file in common.files_from_argv('box_counting/data/', 'pnv_'):
     ax.semilogx()
 
     # fig.suptitle(file)
-    ax.set_title(f'$\phi={phi:.3f}$, $L_x/L_y={np.mean(L1/L2)}$')
+    ax.set_title(fr'$\phi={phi:.3f}$, $L_x/L_y={np.mean(L1/L2)}$')
 
     common.save_fig(fig, f'box_counting/figures_png/fudge_factors_vs_L_{file}.png')

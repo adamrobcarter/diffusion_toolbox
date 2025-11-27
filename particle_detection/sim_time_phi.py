@@ -40,11 +40,11 @@ if __name__ == '__main__':
 
         popt, unc = common.curve_fit(lambda x, m, c: m*x + c, phis, ts)
         label = filegroup_names[filegroup_i]
-        label += f' $t={popt[0]:.4f} \phi + {popt[1]:.0f}$'
+        label += fr' $t={popt[0]:.4f} \phi + {popt[1]:.0f}$'
         ax.plot(phis, ts, marker='o', linestyle=':', label=label)
         
 
-    ax.text(0.05, 0.8, f'$L={L/particle_diameter:.0f}\sigma$', transform=ax.transAxes, fontsize=12)
+    ax.text(0.05, 0.8, fr'$L={L/particle_diameter:.0f}\sigma$', transform=ax.transAxes, fontsize=12)
 
     # ax.set_xlabel(f'packing fraction $\phi$ ($N={N_over_phi:.0f}\phi$)')
     ax.set_xlabel('number of particles')
