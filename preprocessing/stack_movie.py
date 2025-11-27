@@ -13,25 +13,19 @@ import matplotlib.cm
 import warnings
 
 DISPLAY_SMALL = False
-INVERSE_COLORS = False
 SHOW_TIMESTEP = True
 HIDE_ANNOTATIONS = False
 
 SHOW_HISTOGRAMS = False
 
-HIGHLIGHTS = True # displays HIGHLIGHTS_NUMBER frames evenly throughout the stack instead of the first 50
-# HIGHLIGHTS = True
-# BACKWARDS = True
-BACKWARDS = False # plays the stack backwards. DIFF_WITH_ZERO is now compared to the last frame
-
 # possible display methods
-REMOVE_BACKGROUND = 1
-DIFF_WITH_ZERO = 2 # frame - frame1
-DIFF_WITH_PREVIOUS = 3
-NONE = 4
-TWOCHANNEL = 5
-DIFF_WITH_TEN = 6
-FIRSTLAST = 7
+REMOVE_BACKGROUND = 'remove_bkg'
+DIFF_WITH_ZERO = 'diff_with_zero'
+DIFF_WITH_PREVIOUS = 'diff_with_prev'
+NONE = ''
+TWOCHANNEL = 5 # deprecated?
+DIFF_WITH_TEN = 'diff_with_ten'
+FIRSTLAST = 'firstlast'
 
 MAX_NUM_FRAMES = 25
 
@@ -456,8 +450,7 @@ def go(file, data=None, outputfilename='please provide me', add_drift=False, dis
 
         save_array_movie(stack, pixel_size, time_step, file, outputfilename,
                          nth_frame=data.get('nth_frame', 1),
-                         display_small=DISPLAY_SMALL, inverse_colors=INVERSE_COLORS,# highlights=highlights,
-                        #  backwards=backward, method=method,
+                         display_small=DISPLAY_SMALL,
                         channel=channel,
                          dataset_name=data.get('NAME'),
                          window_size_x=window_size_x, window_size_y=window_size_y,
@@ -473,59 +466,72 @@ def go(file, data=None, outputfilename='please provide me', add_drift=False, dis
         
 if __name__ == '__main__':
     """
-    preprocessing.stack_movie generates movies (__main__)
+    generate movies in gif format from stacks 
 
     Usage:
-        python -m preprocessing.stack_movie dataset_name
+        python -m preprocessing.stack_movie dataset1 [dataset2 ...] [options]
+
+    Options:
+        --highlights: generate a movie showing max_num_frames frames evenly distributed throughout the stack
+        --max-num-frames: number of frames in the resultant movie, unless there are fewer frames in the stack
+        --backwards: play the movie backwards
+        --method: method to use for displaying the stack. Choices are:
+            remove_bkg: subtract the mean image from each frame
+            diff_with_zero: subtract the first frame from each frame
+            diff_with_prev: subtract the previous frame from each frame
+            diff_with_ten: subtract the frame 10 frames earlier from each frame
+            firstlast: show only the first and last frames
+        --inverse-colors: black becomes white, white becomes black
     """
-    for file in common.files_from_argv('preprocessing/data/', 'stack_'):
-        # num = int(file[6:9])
-        # if num < 114:
-        #     continue
-        
-        # data = common.load(f'preprocessing/data/stack_{file}.npz')
-        
-        # try:
-        if True:
-            for METHOD in METHODS:
-                for crop in [False]:
-                # for crop in [False, True]:
+
+    parser = common.argparser()
+    parser.add_argument('--highlights', action='store_true')
+    parser.add_argument('--backwards', action='store_true')
+    parser.add_argument('--max-num-frames', type=int, default=MAX_NUM_FRAMES)
+    parser.add_argument('--method', type=str, default=NONE, choices=[REMOVE_BACKGROUND, DIFF_WITH_ZERO, DIFF_WITH_PREVIOUS, DIFF_WITH_TEN, FIRSTLAST])
+    parser.add_argument('--inverse-colors', action='store_true')
+    args = parser.parse_args()
+
+    for file in args.files:
+        for crop in [False]:
+    
+            filename = f'preprocessing/figures_png/stack_movie_{file}'
+
+            if crop:
+                filename += '_crop'
+
+            if args.method == REMOVE_BACKGROUND:
+                filename += '_bkgrem'
+            elif args.method == DIFF_WITH_ZERO:
+                filename += '_diffframe1'
+            elif args.method == DIFF_WITH_PREVIOUS:
+                filename += '_diffprev'
+            elif args.method == DIFF_WITH_TEN:
+                filename += '_diff10'
+            if args.method == FIRSTLAST:
+                filename += '_firstlast'
+            if args.highlights:
+                filename += '_highlights'
+            if args.backwards:
+                filename += '_backwards'
+            if ADD_DRIFT:
+                filename += '_drifted'
             
-                    filename = f'preprocessing/figures_png/stack_movie_{file}'
+            filename += '.gif'
 
-                    if crop:
-                        filename += '_crop'
-
-                    if METHOD == REMOVE_BACKGROUND:
-                        filename += '_bkgrem'
-                    elif METHOD == DIFF_WITH_ZERO:
-                        filename += '_diffframe1'
-                    elif METHOD == DIFF_WITH_PREVIOUS:
-                        filename += '_diffprev'
-                    elif METHOD == DIFF_WITH_TEN:
-                        filename += '_diff10'
-                    if METHOD == FIRSTLAST:
-                        filename += '_firstlast'
-                    if HIGHLIGHTS:
-                        filename += '_highlights'
-                    if BACKWARDS:
-                        filename += '_backwards'
-                    if ADD_DRIFT:
-                        filename += '_drifted'
-                    
-                    filename += '.gif'
-
-                    go(
-                        file,
-                        # data, 
-                        outputfilename=filename,
-                        add_drift=ADD_DRIFT,
-                        method=METHOD,
-                        display_small=crop,
-                        highlights=HIGHLIGHTS,
-                        backward=BACKWARDS,
-                        output_type='movie',
-                    )
+            go(
+                file,
+                # data, 
+                outputfilename = filename,
+                add_drift      = ADD_DRIFT,
+                method         = args.method,
+                display_small  = crop,
+                highlights     = args.highlights,
+                backward       = args.backwards,
+                output_type    = 'movie',
+                max_num_frames = args.max_num_frames,
+                inverse_colors = args.inverse_colors,
+            )
         # except Exception as err:
         #     print()
         #     print(err)

@@ -747,6 +747,12 @@ def files_from_argv(location, prefix):
 
     return files_from_filenames(location, prefix, infiles)
 
+def argparser(nofiles=False):
+    parser = argparse.ArgumentParser()
+    if not nofiles:
+        parser.add_argument('files', nargs='+') # nargs='+' means 1 or more positional args required
+    return parser
+
 def files_from_filenames(location, prefix, infiles):
     if type(infiles) is str:
         infiles = [infiles]
