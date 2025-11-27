@@ -1,8 +1,21 @@
 """
-preprocessing.stack_movie generates movies in gif format of image stacks
+generate movies in gif format from stacks 
 
 Usage:
-    python -m preprocessing.stack_movie dataset_name
+    python -m preprocessing.stack_movie dataset1 [dataset2 ...] [options]
+
+Options:
+    --highlights: generate a movie showing max_num_frames frames evenly distributed throughout the stack
+    --max-num-frames: number of frames in the resultant movie, unless there are fewer frames in the stack
+    --backwards: play the movie backwards
+    --method: method to use for displaying the stack. Choices are:
+        remove_bkg: subtract the mean image from each frame
+        diff_with_zero: subtract the first frame from each frame
+        diff_with_prev: subtract the previous frame from each frame
+        diff_with_ten: subtract the frame 10 frames earlier from each frame
+        firstlast: show only the first and last frames
+    --inverse-colors: black becomes white, white becomes black
+    
 """
 
 import numpy as np
@@ -465,24 +478,6 @@ def go(file, data=None, outputfilename='please provide me', add_drift=False, dis
 
         
 if __name__ == '__main__':
-    """
-    generate movies in gif format from stacks 
-
-    Usage:
-        python -m preprocessing.stack_movie dataset1 [dataset2 ...] [options]
-
-    Options:
-        --highlights: generate a movie showing max_num_frames frames evenly distributed throughout the stack
-        --max-num-frames: number of frames in the resultant movie, unless there are fewer frames in the stack
-        --backwards: play the movie backwards
-        --method: method to use for displaying the stack. Choices are:
-            remove_bkg: subtract the mean image from each frame
-            diff_with_zero: subtract the first frame from each frame
-            diff_with_prev: subtract the previous frame from each frame
-            diff_with_ten: subtract the frame 10 frames earlier from each frame
-            firstlast: show only the first and last frames
-        --inverse-colors: black becomes white, white becomes black
-    """
 
     parser = common.argparser()
     parser.add_argument('--highlights', action='store_true')
