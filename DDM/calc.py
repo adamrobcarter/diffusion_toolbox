@@ -1,3 +1,13 @@
+"""
+run Adam's DDM code
+
+Usage:
+    ``python -m DDM.calc dataset1 [dataset2 ...]``
+
+Note that the data is saved continuously during the calculation, so you can run the analysis before it has finished (the noise will just be higher)
+"""
+
+
 import DDM.DDM
 import DDM.show
 import common

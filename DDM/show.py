@@ -1,3 +1,12 @@
+"""
+View the results of the DDM calculation
+
+Usage:
+    ``python -m DDM.show dataset1 [dataset2 ...]``
+
+This generates a plot with a series of subplots, showing |ΔI(q, t)|² vs t for different q values.
+"""
+
 import common
 import matplotlib.pyplot as plt
 import numpy as np
