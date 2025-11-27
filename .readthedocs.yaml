@@ -19,6 +19,7 @@ build:
     - sphinx-apidoc -f -o docs/api . --force # try --separate? (previously --implicit-namespaces)
     # - sphinx-apidoc -f -o docs/api . --force 
     - mkdir -p $READTHEDOCS_OUTPUT/html/
+    - pip install -r docs/requirements.txt
     - sphinx-build -b html docs/ $READTHEDOCS_OUTPUT/html/
 
 
@@ -38,6 +39,6 @@ sphinx:
 # Optional but recommended, declare the Python requirements required
 # to build your documentation
 # See https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
-python:
-  install:
-    - requirements: docs/requirements.txt
+# python:
+#   install:
+#     - requirements: docs/requirements.txt # this doesn't seem to be working
