@@ -9,7 +9,7 @@ Figure are saved in the relevent ``<module>/figures`` folder (older modules use 
 
 Data are saved in `npz format <https://numpy.org/doc/2.2/reference/generated/numpy.savez.html>`__.
 This is a file that can contain multiple named numpy arrays.
- There are three common formats:
+There are three common formats:
 
 - ``stack_<dataset_name>.npz`` contains a video - a stack of frames. Should contain the following objects, but may have more metadata:
   
