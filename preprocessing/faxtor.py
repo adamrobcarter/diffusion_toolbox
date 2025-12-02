@@ -9,6 +9,9 @@ import matplotlib.cm
 
 DTYPE = np.float16
 
+#RAW_DATA_PATH = /data2/acarter/faxtor
+RAW_DATA_PATH = r'D:\RAW'
+
 def load_tiffs_from_folder(folder, every_nth=1, fraction_of=1, trim_start=0):
     assert fraction_of >= 1
     assert every_nth >= 1
@@ -680,7 +683,7 @@ def go(flat_folder, dark_folder, sample_folder, name, exposure_time, frame_gap, 
 #     trim_start = 3800
 # )
 go(
-    sample_folder = '/data2/acarter/faxtor/SAMPLE_0030/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
+    sample_folder = f'{RAW_DATA_PATH}/SAMPLE_0030/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
     flat_folder   = None,
     dark_folder   = None,
     name = 'faxtor030b',
