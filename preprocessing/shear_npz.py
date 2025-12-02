@@ -145,6 +145,14 @@ def go(infile, outfile, nth_timestep=1, max_time=None,
     newdata = common.copy_not_particles(data) # copy so we can modify
     newdata['particles'] = particles
 
+    common.save_data(f'particle_detection/data/particles_{outfile}.npz',
+        **newdata,
+        max_time_hours=round(last_timestep/60/60, 2),
+        source_file=infile, extra_source_file=extra_source_file,
+        dimension=3,
+        **kwargs
+    )
+
     common.save_data(f'particle_linking/data/trajs_{outfile}.npz',
         **newdata,
         max_time_hours=round(last_timestep/60/60, 2),
@@ -284,3 +292,10 @@ if __name__ == '__main__':
     # go_mesu_shear('/store/cartera/shear/shear0_T296_nograv_nowall_trap_nblobs42_dt0.005_tmax10000.npz')
     # go_mesu_shear('/store/cartera/shear/shear0_T296_nograv_nowall_EMRFD_nblobs42_dt0.005_tmax1000.npz')
     # go_mesu_shear('/store/cartera/shear/shear0_T296_nograv_nowall_EMRFD_nblobs42_dt0.005_tmax10000.npz')
+
+    # dec 2025
+    # single particle
+    # go_mesu_shear('/store/cartera/shear/shear0.080357_T300_theta10_EMmid_nblobs42_dt0.005_tmax36000.npz')
+    # go_mesu_shear('/store/cartera/shear/shear0_T300_theta0_EMmid_nblobs42_dt0.005_tmax36000.npz')
+    # go_mesu_shear('/store/cartera/shear/shear0_T300_theta10_EMmid_nblobs42_dt0.005_tmax36000.npz')
+    go_mesu_shear('/store/cartera/shear/shear0.080357_T300_theta0_EMmid_nblobs42_dt0.005_tmax36000.npz')

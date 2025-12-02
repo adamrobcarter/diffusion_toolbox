@@ -783,6 +783,8 @@ def files_from_filenames(location, prefix, infiles):
         elif infiles[0] == 'g:ld_dt':
             return ['ld_hydro_dpstokes_0.114_L640_dt150', 'ld_hydro_dpstokes_0.114_L640_dt100', 'ld_hydro_dpstokes_0.114_L640_dt50',
                     'ld_hydro_nbody_0.114_L640_dt150', 'ld_hydro_nbody_0.114_L640_dt100', 'ld_hydro_nbody_0.114_L640_dt50']
+        elif infiles[0] == 'g:single_shear':
+            return ['sim_shear0.080357_T300_theta10_EMmid_nblobs42_dt0.005_tmax36000', 'sim_shear0_T300_theta0_EMmid_nblobs42_dt0.005_tmax36000', 'sim_shear0_T300_theta10_EMmid_nblobs42_dt0.005_tmax36000', 'sim_shear0.080357_T300_theta0_EMmid_nblobs42_dt0.005_tmax36000']
         raise Exception('group not found')
 
     outfiles = []
