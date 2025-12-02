@@ -6,6 +6,7 @@ Usage
     ``python -m DDM.static_fourier dataset1 [dataset2 ...]``
 
 Options
+
 --remove_bkg  remove background by subtracting mean image
 --frame_diff  calculate not on the raw frames, but differences between two adjacent frames
 """
