@@ -1,3 +1,15 @@
+"""
+calculate the static image structure factor - ie <I(k)*I(k)>.
+Will also generate a plot using `DDM.static_fourier_show`.
+
+Usage
+    ``python -m DDM.static_fourier dataset1 [dataset2 ...]``
+
+Options
+--remove_bkg  remove background by subtracting mean image
+--frame_diff  calculate not on the raw frames, but differences between two adjacent frames
+"""
+
 import common
 import matplotlib.pyplot as plt
 import numpy as np
@@ -123,23 +135,17 @@ def do_static_fourier(file, remove_bkg, frame_diff):
 if __name__ == '__main__':
     errs = []
 
-    for file in common.files_from_argv('preprocessing/data', 'stack_'):
+    parser = common.argparser()
+    parser.add_argument('--remove_bkg', action='store_true', help='remove background by subtracting mean image')
+    parser.add_argument('--frame_diff', action='store_true', help='calculate not on the raw frames, but differences between two adjacent frames')
 
-        # try:
-            do_static_fourier(file, remove_bkg=REMOVE_BKG, frame_diff=FRAME_DIFF)
+    args = parser.parse_args()
 
-            title = file
-            title += f'_diff{FRAME_DIFF_TAU}' if FRAME_DIFF else ''
-            title += '_bkgrem' if REMOVE_BKG else ''
-            DDM.static_fourier_show.go(title)
+    for file in args.files:
 
-            # do_static_fourier(file, remove_bkg=False, frame_diff=True)
-            # do_static_fourier(file, remove_bkg=True,  frame_diff=False)
-            # do_static_fourier(file, remove_bkg=False, frame_diff=False)
-    #     except Exception as e:
-    #         errs.append(e)
+        do_static_fourier(file, remove_bkg=args.remove_bkg, frame_diff=args.frame_diff)
 
-    # if len(errs):
-    #     print(f'{len(errs)} exceptions')
-    #     for e in errs:
-    #         print(f"{type(e).__name__} at line {e.__traceback__.tb_lineno} of {__file__}: {e}")
+        title = file
+        title += f'_diff{FRAME_DIFF_TAU}' if args.frame_diff else ''
+        title += '_bkgrem' if args.remove_bkg else ''
+        DDM.static_fourier_show.go(title)
