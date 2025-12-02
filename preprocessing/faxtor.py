@@ -9,6 +9,9 @@ import matplotlib.cm
 
 DTYPE = np.float16
 
+#RAW_DATA_PATH = /data2/acarter/faxtor
+RAW_DATA_PATH = r'D:\RAW'
+
 def load_tiffs_from_folder(folder, every_nth=1, fraction_of=1, trim_start=0):
     assert fraction_of >= 1
     assert every_nth >= 1
@@ -669,31 +672,31 @@ if __name__ == '__main__':
     #     every_nth = 25,
     # )
 
-    # go(
-    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0030/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-    #     flat_folder   = None,
-    #     dark_folder   = None,
-    #     name = 'faxtor030a',
-    #     exposure_time = 0.03,
-    #     frame_gap = 0.25,
-    #     particle_material = 'SiO2',
-    #     particle_diameter = 4.3,
-    #     NAME = 'Si 120um, Si 4.3um injected',
-    #     # every_nth = 5,
-    #     trim_start = 3800
-    # )
-    # go(
-    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0030/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
-    #     flat_folder   = None,
-    #     dark_folder   = None,
-    #     name = 'faxtor030b',
-    #     exposure_time = 0.03,
-    #     frame_gap = 0.5,
-    #     particle_material = 'SiO2',
-    #     particle_diameter = 4.3,
-    #     NAME = 'Si 120um, Si 4.3um injected',
-    #     fraction_of=3
-    # )
+# go(
+#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0030/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+#     flat_folder   = None,
+#     dark_folder   = None,
+#     name = 'faxtor030a',
+#     exposure_time = 0.03,
+#     frame_gap = 0.25,
+#     particle_material = 'SiO2',
+#     particle_diameter = 4.3,
+#     NAME = 'Si 120um, Si 4.3um injected',
+#     # every_nth = 5,
+#     trim_start = 3800
+# )
+go(
+    sample_folder = f'{RAW_DATA_PATH}/SAMPLE_0030/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
+    flat_folder   = None,
+    dark_folder   = None,
+    name = 'faxtor030b',
+    exposure_time = 0.03,
+    frame_gap = 0.5,
+    particle_material = 'SiO2',
+    particle_diameter = 4.3,
+    NAME = 'Si 120um, Si 4.3um injected',
+    fraction_of=3
+)
 
     # go(
     #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0031/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
