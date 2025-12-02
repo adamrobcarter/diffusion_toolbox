@@ -22,10 +22,12 @@ S_OF_K_IS_ONE = True
 PLOT_FUNCTION = lambda f: f
 PLOT_FUNCTION_ERR = lambda df: df
 PLOT_FUNCTION_NAME = '$f(k, t)$'
+PLOT_FUNCTION_NAME = '$F(k, t)/F(k, 0)$'
 LOGARITHMIC_Y = False
 
 
-def go(file, file_i, ax, target_ks, SHOW_FIT=False, colormap=common.colormap_cool):
+def go(file, file_i, ax, target_ks, show_fit=False, colormap=common.colormap_cool,
+       show_theory=False):
     d = common.load(f"isf/data/F_{file}.npz")
     t         = d["t"]
     F_all     = d["F"]
@@ -126,31 +128,30 @@ def go(file, file_i, ax, target_ks, SHOW_FIT=False, colormap=common.colormap_coo
             else:
                 
                 # label = fr'$k={k:.2g}\mathrm{{\mu m^{{-1}}}}$'
-                label = fr'$k={k*sigma:.2g}/\sigma$'
+                label = fr'$k\sigma={k*sigma:.2g}$'
             ax.errorbar(t_for_plot, PLOT_FUNCTION(F_for_plot), yerr=PLOT_FUNCTION_ERR(F_unc_for_plot), linestyle='', alpha=0.5, color=color)
-            print(t.shape, f.shape)
 
             ax.scatter(t_for_plot[~bad_for_plot], PLOT_FUNCTION(F_for_plot[~bad_for_plot]), label=label, s=15, color=color)
             ax.scatter(t_for_plot[ bad_for_plot], PLOT_FUNCTION(F_for_plot[ bad_for_plot]), alpha=1, s=15, color=color)
         
         
-            if SHOW_FIT:
+            if show_fit:
                 func = lambda t, D : np.exp(-t * k**2 * D)
                 log_func = lambda t, D: np.log10( func(t, D) )
                 popt, pcov = scipy.optimize.curve_fit(log_func, t_for_plot[~bad_for_plot], np.log10(F_for_plot[~bad_for_plot]), sigma=np.log10(F_unc_for_plot[~bad_for_plot]))#,   absolute_sigma=True)
                 t_th = np.logspace(np.log10(t[1]), np.log10(t[-1]))
                 theory_curve = func(t_th, popt)
-                label = 'fit' if graph_i==len(target_ks)-1 else None
+                label = r'$\mathrm{exp}(-k^2D(k)t)$' if graph_i==len(target_ks)-1 else None
                 ax.plot(t_th, PLOT_FUNCTION(theory_curve), color=common.FIT_COLOR, zorder=-1, label=label)
 
         
-            if SHOW_THEORY:
+            if show_theory:
                 if S_OF_K_IS_ONE:
                     S_of_k = 1
-                    label = '$\mathrm{exp}(-k^2 t D_\mathrm{self})$' if graph_i==len(target_ks)-1 else None
+                    label = r'$\mathrm{exp}(-k^2 t D_\mathrm{self})$' if graph_i==len(target_ks)-1 else None
                 else:
                     S_of_k = common.structure_factor_2d_hard_spheres(k, phi, sigma)
-                    label = '$\mathrm{exp}(-k^2 t D_\mathrm{self}/S(k))$' if graph_i==len(target_ks)-1 else None
+                    label = r'$\mathrm{exp}(-k^2 t D_\mathrm{self}/S(k))$' if graph_i==len(target_ks)-1 else None
 
                 func = lambda t, D : np.exp(-t * k**2 * D / S_of_k)
                 t_th = np.logspace(np.log10(t[1]), np.log10(t[-1]))
@@ -161,7 +162,7 @@ def go(file, file_i, ax, target_ks, SHOW_FIT=False, colormap=common.colormap_coo
 
             # ax.set_ylim(5e-4, 3)
             offscreen = f <= 0
-            print(f'offscreen: {offscreen.sum()/offscreen.size}')
+            # print(f'offscreen: {offscreen.sum()/offscreen.size}')
 
             
             if LABELS_ON_PLOT:
@@ -227,7 +228,8 @@ if __name__ == '__main__':
         # if 'longer' in file:
         #     target_ks = (0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2)
 
-        go(file, file_i, ax, target_ks=target_ks)
+        go(file, file_i, ax, target_ks=target_ks,
+           show_theory=SHOW_THEORY)
 
         if not PRESENT_SMALL:
             ax.set_title(f'{PLOT_FUNCTION_NAME}, {file}')

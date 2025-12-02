@@ -93,8 +93,8 @@ for file in common.files_from_argv('box_counting/data/', 'pnv_'):
     ax.plot(L1[1::3]/particle_diameter, d_Var12/d_L, marker='o', label=fr'$-\partial{VAR}_{{12}}(L_1,L_1)/\partial L_1$')
     ax.plot(L1[1::3]/particle_diameter, alpha, marker='o', label=fr'$-{VAR}_{{12}}(2L_1,2L_1)-\partial{VAR}_{{12}}(L_1,L_1)/\partial L_1$')
 
-    ax.set_xlabel(f'$\sqrt{{L_xL_y}}/\sigma$')
-    ax.set_ylabel('$F(\phi, L, \sigma)N_0$')
+    ax.set_xlabel(fr'$\sqrt{{L_xL_y}}/\sigma$')
+    ax.set_ylabel(r'$F(\phi, L, \sigma)N_0$')
     # ax_phi.set_ylim(0, 2)
 
     # if file_base == 'sim_nointer':
@@ -109,6 +109,6 @@ for file in common.files_from_argv('box_counting/data/', 'pnv_'):
     ax.semilogx()
 
     # fig.suptitle(file)
-    ax.set_title(f'$\phi={phi:.3f}$, $L_x/L_y={np.mean(L1/L2)}$')
+    ax.set_title(fr'$\phi={phi:.3f}$, $L_x/L_y={np.mean(L1/L2)}$')
 
     common.save_fig(fig, f'box_counting/figures_png/fudge_factors_vs_L_special_{file}.png')

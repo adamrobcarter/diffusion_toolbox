@@ -1,3 +1,29 @@
+"""
+generate movies in gif or mp4 format from stacks 
+
+Usage:
+    ``python -m preprocessing.stack_movie dataset1 [dataset2 ...] [options]``
+
+Options:
+
+--highlights               generate a movie showing max_num_frames frames evenly distributed throughout the stack
+--max-num-frames=<number>  number of frames in the resultant movie, unless there are fewer frames in the stack
+--backwards                play the movie backwards
+--method=<method>          method to use for displaying the stack. Choices are:
+
+                            - remove_bkg      subtract the mean image from each frame
+                            - diff_with_zero  subtract the first frame from each frame
+                            - diff_with_prev  subtract the previous frame from each frame
+                            - diff_with_ten   subtract the frame 10 frames earlier from each frame
+                            - firstlast       show only the first and last frames
+
+--inverse-colors           black becomes white, white becomes black
+--format=<format>          output format, either 'gif' or 'mp4' [default: gif]
+
+the resultant filename will vary depending on the options used
+
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import common
@@ -6,26 +32,21 @@ import matplotlib.cm
 import warnings
 
 DISPLAY_SMALL = False
-INVERSE_COLORS = False
 SHOW_TIMESTEP = True
 HIDE_ANNOTATIONS = False
 
 SHOW_HISTOGRAMS = False
 
-HIGHLIGHTS = True # displays HIGHLIGHTS_NUMBER frames evenly throughout the stack instead of the first 50
-HIGHLIGHTS_NUMBER = 10
-# HIGHLIGHTS = True
-# BACKWARDS = True
-BACKWARDS = False # plays the stack backwards. DIFF_WITH_ZERO is now compared to the last frame
-
 # possible display methods
-REMOVE_BACKGROUND = 1
-DIFF_WITH_ZERO = 2 # frame - frame1
-DIFF_WITH_PREVIOUS = 3
-NONE = 4
-TWOCHANNEL = 5
-DIFF_WITH_TEN = 6
-FIRSTLAST = 7
+REMOVE_BACKGROUND = 'remove_bkg'
+DIFF_WITH_ZERO = 'diff_with_zero'
+DIFF_WITH_PREVIOUS = 'diff_with_prev'
+NONE = ''
+TWOCHANNEL = 5 # deprecated?
+DIFF_WITH_TEN = 'diff_with_ten'
+FIRSTLAST = 'firstlast'
+
+MAX_NUM_FRAMES = 25
 
 METHOD_NAME = {
     REMOVE_BACKGROUND: 'i(t) - mean(i)',
@@ -66,7 +87,7 @@ def speed_string(time_mult, every_nth_frame):
 
 def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
                      window_size_x, window_size_y,
-                     func=lambda timestep, ax : None, nth_frame=1, max_num_frames=30,
+                     func=lambda timestep, ax : None, nth_frame=1, max_num_frames=MAX_NUM_FRAMES,
                      dpi=300,
                      display_small=True, inverse_colors=False, highlights=False,
                      backwards=False, method=NONE, stacks=None, stackcolors=None, channel=None,
@@ -76,9 +97,42 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
                      figsize_mult=1.0,
                      every_nth_frame=None,
                      annotation_color=None,
+                     force_fps = None,
                      ):
+    """
+    Docstring for save_array_movie
+    
+    :param stack: Description
+    :param pixel_size: Description
+    :param time_step: Description
+    :param file: Description
+    :param outputfilename: Description
+    :param window_size_x: Description
+    :param window_size_y: Description
+    :param func: Description
+    :param nth_frame: Description
+    :param max_num_frames: Description
+    :param dpi: Description
+    :param display_small: Description
+    :param inverse_colors: Description
+    :param highlights: Description
+    :param backwards: Description
+    :param method: Description
+    :param stacks: Description
+    :param stackcolors: Description
+    :param channel: Description
+    :param dataset_name: Description
+    :param num_timesteps_in_data: Description
+    :param output_type: "movie" or "frames"
+    :param figsize_mult: Description
+    :param every_nth_frame: Description
+    :param annotation_color: Description
+    :param force_fps: Description
+    """
+
     if method == NONE:
         assert not backwards
+        
 
 
     no_stack = stack is None
@@ -103,6 +157,7 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
             figsize *= 2
         # if display_small and not : # potentially remove this for marine
         #     figsize = (2.3, 2.3)
+        
 
     figsize = figsize * figsize_mult
     
@@ -120,8 +175,7 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
     if every_nth_frame is None:
         if highlights:
             print('HIGHLIGTHS')
-            every_nth_frame = num_timesteps_in_data // HIGHLIGHTS_NUMBER
-            max_num_frames = HIGHLIGHTS_NUMBER
+            every_nth_frame = max(num_timesteps_in_data // max_num_frames, 1)
         else:
             every_nth_frame = 1
 
@@ -131,19 +185,25 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
 
     assert every_nth_frame > 0, f'every_nth_frame = {every_nth_frame}, is your data too short?'
 
-    fps = 1/time_step * time_mult
 
-    if method == FIRSTLAST:
-        fps = 1
+    if force_fps:
+        fps = force_fps
+    elif highlights:
+        fps = 3
+    else:
+        fps = 1/time_step * time_mult
 
-    # these are cause of the reduce operation
-    if file.endswith('_25'):
-        fps *= 25
-    fps *= nth_frame#*every_nth_frame
+        if method == FIRSTLAST:
+            fps = 1
+
+        # these are cause of the reduce operation
+        if file.endswith('_25'):
+            fps *= 25
+        fps *= nth_frame#*every_nth_frame
 
 
-    if fps < 0.2:
-        warnings.warn(f'fps = {fps}')
+        if fps < 0.2:
+            warnings.warn(f'fps = {fps}')
 
     if not no_stack:
         num_timesteps_in_data = stack.shape[0]
@@ -204,8 +264,20 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
 
     # print('min mean max', usedstack.min(), usedstack.mean(), usedstack.max())
     if not no_stack:
-        vmin = np.quantile(usedstack, 0.01)
-        vmax = np.quantile(usedstack, 0.99)
+        assert np.isfinite(usedstack).all(), 'usedstack has non-finite values'
+        # print("dtype:", usedstack.dtype)
+        # print("size:", usedstack.size)
+        # print("min,max:", usedstack.min(), usedstack.max())
+        # print("abs max:", np.max(np.abs(usedstack)))
+        tmp = usedstack.astype(np.float64) # seems to be a bug inside numpy that requires this
+        # assert np.isfinite(tmp).all(), 'usedstack has non-finite values after conversion to float64'
+        # assert np.isfinite(np.quantile(tmp, 0.01)), 'usedstack has non-finite 1st percentile after conversion to float64'
+        # assert np.isfinite(np.quantile(tmp, 0.99)), 'usedstack has non-finite 1st percentile after conversion to float64'
+        vmin = np.quantile(tmp, 0.01)
+        vmax = np.quantile(tmp, 0.99)
+        assert np.isfinite(vmin), f'vmin = {vmin}'
+        assert np.isfinite(vmax), f'vmax = {vmax}'
+    # vmin, vmax = None, None
 
     print('frames', frames)
 
@@ -239,24 +311,27 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
             else:
                 color = 'white' if frame.mean()/(frame.max()-frame.min()) > 0.2 else 'black' # this used to be usedstack not frame
                                                                                          # also the > used to be a <,
-        
+
             show_single_frame(file, ax, frame, pixel_size, channel=channel, vmin=vmin, vmax=vmax,
                               window_size_x=window_size_x, window_size_y=window_size_y,
                               hide_scale_bar=HIDE_ANNOTATIONS, annotation_color=color)
 
         else:
-            color = 'gray'
+            if annotation_color:
+                color = annotation_color
+            else:
+                color = 'gray'
 
             show_single_frame(file, ax, None, pixel_size, channel=channel, window_size_x=window_size_x, window_size_y=window_size_y,
-                              hide_scale_bar=HIDE_ANNOTATIONS)
+                              hide_scale_bar=HIDE_ANNOTATIONS, annotation_color=color)
         
         time_string = speed_string(time_mult, every_nth_frame*nth_frame)
         if not HIDE_ANNOTATIONS:
             if SHOW_TIMESTEP:
                 time_string = ''
                 # time_string += f'\nframe = {timestep*nth_frame:.0f}'
-                time_string += f'\nt = {timestep*time_step*nth_frame:.1f}s'
-                ax.text(0.95, 0.05, time_string, color=color, transform=ax.transAxes, ha='right', fontsize=10)
+                time_string += f'\nt = {timestep*time_step*nth_frame:.0f}s'
+                ax.text(0.87, 0.02, time_string, color=color, transform=ax.transAxes, ha='left', fontsize=10)
 
             ax.text(0.05, 0.9, dataset_name, transform=ax.transAxes, fontsize=15, color=color)
             
@@ -283,6 +358,7 @@ def save_array_movie(stack, pixel_size, time_step, file, outputfilename,
         assert num_timesteps > 0, f'num_timesteps = usedstack.shape[0] = {num_timesteps}'
 
     if output_type == 'movie':
+        assert outputfilename.endswith('.mp4') or outputfilename.endswith('.gif')
         common.save_gif(show, range(num_timesteps), fig, outputfilename, fps=fps, dpi=dpi)
     elif output_type == 'frames':
         common.save_frames(show, range(num_timesteps), fig, outputfilename, file, fps, dpi=dpi)
@@ -301,6 +377,10 @@ def show_single_frame(file, ax, frame, pixel_size, window_size_x, window_size_y,
     # vmax = 6.2e-2
     # vmin = None
     # vmax = None
+    assert np.isfinite(vmin), f'vmin = {vmin}'
+    assert np.isfinite(vmax), f'vmax = {vmax}'
+    assert np.any(frame > vmin), f'frame min = {frame.min()}, vmin = {vmin}'
+    assert np.any(frame < vmax), f'frame max = {frame.max()}, vmax = {vmax}'
 
     if channel == 'red':
         colors = [(0, 0, 0), (1, 0, 0)] # black > red
@@ -312,12 +392,19 @@ def show_single_frame(file, ax, frame, pixel_size, window_size_x, window_size_y,
         cmap = matplotlib.cm.Greys
 
     if frame is not None:
+        if np.all(frame == 0):
+            warnings.warn('frame is all zero')
+        elif np.all(frame == frame[0,0]):
+            warnings.warn('frame is constant')
+
         if 'faxtor' in file:
             cmap = matplotlib.cm.Greys_r
         # ax.imshow(frame, cmap=cmap, interpolation='none', vmin=vmin, vmax=vmax, extent=(0, window_size_x, 0, window_size_y))
         X, Y = np.meshgrid(np.linspace(0, frame.shape[0], frame.shape[0])*pixel_size, np.linspace(0, frame.shape[1], frame.shape[1])*pixel_size, indexing='ij')
         # X, Y = np.meshgrid(np.arange(0, window_size_x, pixel_size), np.arange(0, window_size_y, pixel_size), indexing='ij')
-        ax.pcolormesh(X, Y, frame, cmap=cmap, vmin=vmin, vmax=vmax, shading='nearest')
+        ax.pcolormesh(X, Y, frame, cmap=cmap,
+                      vmin=vmin, vmax=vmax,
+                      shading='nearest')
 
     if 'unwrap' in file:
         ax.set_xlim(-window_size_x, 2*window_size_x)
@@ -334,8 +421,12 @@ def show_single_frame(file, ax, frame, pixel_size, window_size_x, window_size_y,
    
 
 
-def go(file, data=None, outputfilename='please provide me', add_drift=False, display_small=False, method=NONE, highlights=False, backward=False, flip_y=False,
-       output_type='movie', figsize_mult=1.0, dpi=200, crop=None):
+def go(file, data=None, outputfilename='please provide me', add_drift=False, display_small=False,
+    #    method=NONE,
+    #    highlights=False, backward=False,
+       flip_y=False,
+    #    output_type='movie', figsize_mult=1.0, dpi=200,
+       crop=None, **kwargs):
         
         if data is None:
             # we allow the user to pass in data for legacy reasons 
@@ -378,13 +469,14 @@ def go(file, data=None, outputfilename='please provide me', add_drift=False, dis
 
         save_array_movie(stack, pixel_size, time_step, file, outputfilename,
                          nth_frame=data.get('nth_frame', 1),
-                         display_small=DISPLAY_SMALL, inverse_colors=INVERSE_COLORS, highlights=highlights,
-                         backwards=backward, method=method, channel=channel,
+                         display_small=DISPLAY_SMALL,
+                        channel=channel,
                          dataset_name=data.get('NAME'),
                          window_size_x=window_size_x, window_size_y=window_size_y,
-                         output_type=output_type,
-                         figsize_mult=figsize_mult,
-                         dpi = dpi,
+                        #  output_type=output_type,
+                        #  figsize_mult=figsize_mult,
+                        #  dpi = dpi,
+                         **kwargs
         )
         # save_array_movie(stack, pixel_size, time_step, file, f"/home/acarter/presentations/cmd31/figures/{filename}.mp4",
         #                  nth_frame=data.get('nth_frame', 1))
@@ -392,54 +484,56 @@ def go(file, data=None, outputfilename='please provide me', add_drift=False, dis
 
         
 if __name__ == '__main__':
-    for file in common.files_from_argv('preprocessing/data/', 'stack_'):
-        # num = int(file[6:9])
-        # if num < 114:
-        #     continue
-        
-        data = common.load(f'preprocessing/data/stack_{file}.npz')
-        
-        # try:
-        if True:
-            for METHOD in METHODS:
-                for crop in [False]:
-                # for crop in [False, True]:
+
+    parser = common.argparser()
+    parser.add_argument('--highlights', action='store_true')
+    parser.add_argument('--backwards', action='store_true')
+    parser.add_argument('--max-num-frames', type=int, default=MAX_NUM_FRAMES)
+    parser.add_argument('--method', type=str, default=NONE, choices=[REMOVE_BACKGROUND, DIFF_WITH_ZERO, DIFF_WITH_PREVIOUS, DIFF_WITH_TEN, FIRSTLAST])
+    parser.add_argument('--inverse-colors', action='store_true')
+    parser.add_argument('--format', choices=['gif', 'mp4'], default='gif')
+    args = parser.parse_args()
+
+    for file in args.files:
+        for crop in [False]:
+    
+            filename = f'preprocessing/figures_png/stack_movie_{file}'
+
+            if crop:
+                filename += '_crop'
+
+            if args.method == REMOVE_BACKGROUND:
+                filename += '_bkgrem'
+            elif args.method == DIFF_WITH_ZERO:
+                filename += '_diffframe1'
+            elif args.method == DIFF_WITH_PREVIOUS:
+                filename += '_diffprev'
+            elif args.method == DIFF_WITH_TEN:
+                filename += '_diff10'
+            if args.method == FIRSTLAST:
+                filename += '_firstlast'
+            if args.highlights:
+                filename += '_highlights'
+            if args.backwards:
+                filename += '_backwards'
+            if ADD_DRIFT:
+                filename += '_drifted'
             
-                    filename = f'preprocessing/figures_png/stack_movie_{file}'
+            filename += f'.{args.format}'
 
-                    if crop:
-                        filename += '_crop'
-
-                    if METHOD == REMOVE_BACKGROUND:
-                        filename += '_bkgrem'
-                    elif METHOD == DIFF_WITH_ZERO:
-                        filename += '_diffframe1'
-                    elif METHOD == DIFF_WITH_PREVIOUS:
-                        filename += '_diffprev'
-                    elif METHOD == DIFF_WITH_TEN:
-                        filename += '_diff10'
-                    if METHOD == FIRSTLAST:
-                        filename += '_firstlast'
-                    if HIGHLIGHTS:
-                        filename += '_highlights'
-                    if BACKWARDS:
-                        filename += '_backwards'
-                    if ADD_DRIFT:
-                        filename += '_drifted'
-                    
-                    filename += '.gif'
-
-                    go(
-                        file,
-                        data,
-                        outputfilename=filename,
-                        add_drift=ADD_DRIFT,
-                        method=METHOD,
-                        display_small=crop,
-                        highlights=HIGHLIGHTS,
-                        backward=BACKWARDS,
-                        output_type='movie',
-                    )
+            go(
+                file,
+                # data, 
+                outputfilename = filename,
+                add_drift      = ADD_DRIFT,
+                method         = args.method,
+                display_small  = crop,
+                highlights     = args.highlights,
+                backward       = args.backwards,
+                output_type    = 'movie',
+                max_num_frames = args.max_num_frames,
+                inverse_colors = args.inverse_colors,
+            )
         # except Exception as err:
         #     print()
         #     print(err)

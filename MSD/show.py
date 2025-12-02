@@ -8,12 +8,18 @@ SHOW_NOLOG_SHORTTIME = False
 NOLOG_SHORTTIME_END = 500
 SHOW_ERRORBARS = True
 
-def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LONG_FIT=False,
-       quiet=False):
+def go(file, ax, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LONG_FIT=False,
+       quiet=False, crop_end=False):
     data = common.load(f'MSD/data/msd_{file}.npz')
     msd = data['msd']
     msd_unc = data['msd_unc']
     t = data['t']
+    print('t[:10]', t[:10])
+
+    if crop_end:
+        t = t[:crop_end]
+        msd = msd[:crop_end]
+        msd_unc = msd_unc[:crop_end]
 
     if not quiet: print('nan', common.nanfrac(msd))
     
@@ -22,11 +28,9 @@ def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LON
     msd_unc = msd_unc / np.sqrt(n)
     # ^^ this is based on thinking about how many independent measurements there are
 
-    fig, ax = plt.subplots(1, 1, figsize=(4.5, 4))
-
     # ax.errorbar(t[1:], msd[1:], msd_unc[1:], linestyle='none', marker='none', color='lightskyblue')
     color='tab:blue'
-    ax.plot(t[1:], msd[1:], marker='.', markersize=8, linestyle='none', color=color, label='observations')
+    ax.plot(t[1:], msd[1:], marker='.', markersize=8, linestyle='none', color=color)#, label='observations')
     if show_errorbars:
         ax.fill_between(t[1:], msd[1:]-msd_unc[1:], msd[1:]+msd_unc[1:], alpha=0.2, color=color)
     
@@ -41,7 +45,7 @@ def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LON
         ax.loglog()
         ax.set_ylim(msd[1:].min()*0.6, msd.max()/0.8)
 
-    ax.set_ylabel(r'$\langle r(t)^2 \rangle$ ($\mathrm{\mu m}$)')
+    ax.set_ylabel(r'$\langle r(t)^2 \rangle$ ($\mathrm{\mu m}^2$)')
     ax.set_xlabel('$t$ (s)')
 
     if not quiet: print(f'<x>({t[1]}) = {np.sqrt(msd[1])/0.288:.3g} * 0.288um') # <x>({t[32]}) = {np.sqrt(msd[32])/0.288} * 0.288um'
@@ -50,7 +54,11 @@ def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LON
     
     fits = fit_msd(t, msd, msd_unc)
 
-    if not quiet: print('first D=' + common.format_val_and_unc(fits['first']['D'], fits['first']['D_unc'], sigfigs=3))
+    if not quiet: print('first D =' + common.format_val_and_unc(fits['first']['D'], fits['first']['D_unc'], sigfigs=3))
+    if sigma := data.get('particle_diameter'):
+        D_SE = common.stokes_einstein_D(sigma)
+        if not quiet: print('         =' + common.format_val_and_unc(fits['first']['D']/D_SE, fits['first']['D_unc']/D_SE, sigfigs=3) + ' * D_SE')
+
 
     if t.size > 100:
         if SHOW_FIT:
@@ -65,15 +73,10 @@ def go(file, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LON
             ax.plot(fits['long']['t'], fits['long']['MSD'], color=common.FIT_COLOR, linewidth=1, label='long fit')
         if not quiet: print('fit long D=' + common.format_val_and_unc(fits['long']['D'], fits['long']['D_unc'], sigfigs=3))
 
-    ax.hlines(data.get('window_size_x')**2, *ax.get_xlim(), label='window size', color='black', linestyle='dotted')
+    # ax.hlines(data.get('window_size_x')**2, *ax.get_xlim(), label='window size', color='black', linestyle='dotted')
 
-    ax.legend()
+    # ax.legend()
     ax.grid(alpha=0.3)
-
-    filename = f'msd_{file}'
-    if SHOW_FIT:
-        filename += '_fit'
-    common.save_fig(fig, f'MSD/figures_png/{filename}.png')
 
     metadata = dict(
         particle_diameter=data.get('particle_diameter'),
@@ -169,5 +172,12 @@ def fit_msd(t, msd, msd_unc):
 
 if __name__ == '__main__':
     for file in common.files_from_argv('MSD/data', 'msd_'):
-        go(file, show_errorbars=SHOW_ERRORBARS)
+        fig, ax = plt.subplots(1, 1, figsize=(4.5, 4))
+
+        go(file, ax, show_errorbars=SHOW_ERRORBARS)
+        
+        filename = f'msd_{file}'
+        # if SHOW_FIT:
+        #     filename += '_fit'
+        common.save_fig(fig, f'MSD/figures_png/{filename}.png')
         

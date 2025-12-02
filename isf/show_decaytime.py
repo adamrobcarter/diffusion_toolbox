@@ -112,7 +112,7 @@ def go(file, num_Ts, export_destination=None):
 
             ax.semilogx()
             ax.semilogy()
-            ax.set_xlabel('$k\sigma$')
+            ax.set_xlabel(r'$k\sigma$')
             ax.set_ylabel(r'$\tau=-f / \ln{F(k, t)}$')
 
             ax.set_title(f'$t={t:.1f}s$')
@@ -120,7 +120,7 @@ def go(file, num_Ts, export_destination=None):
         
     ax_single.semilogx()
     ax_single.semilogy()
-    ax_single.set_xlabel('$k\sigma$')
+    ax_single.set_xlabel(r'$k\sigma$')
     ax_single.set_ylabel(r'$\tau=-f / \ln{F(k, t)}$')
     # colorbar = common.colormap_colorbar(displayed_ts[0], displayed_ts[-1])
     colorbar = common.colormap_colorbar(0, num_Ts-1)

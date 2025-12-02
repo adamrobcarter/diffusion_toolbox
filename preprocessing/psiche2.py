@@ -264,11 +264,12 @@ def go(f):
         print(err)
 
         
-for f in tqdm.tqdm(files):
-    go(f)
-for f in tqdm.tqdm(files2):
-    go(f)
+if __name__ == '__main__':
+    for f in tqdm.tqdm(files):
+        go(f)
+    for f in tqdm.tqdm(files2):
+        go(f)
 
-if len(do):
-    left = ' '.join(do)
-    raise Exception(f'Did not find all items: {left}')
+    if len(do):
+        left = ' '.join(do)
+        raise Exception(f'Did not find all items: {left}')

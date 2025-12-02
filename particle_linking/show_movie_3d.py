@@ -19,31 +19,32 @@ def plot_sphere(ax, coord, r):
 
     ax.plot_surface(x, y, z,  rstride=4, cstride=4, color='b')
 
-for file in common.files_from_argv('particle_linking/data', 'trajs_'):
-    data = common.load(f'particle_linking/data/trajs_{file}.npz')
+if __name__ == '__main__':
+    for file in common.files_from_argv('particle_linking/data', 'trajs_'):
+        data = common.load(f'particle_linking/data/trajs_{file}.npz')
 
-    assert data.get('dimension') == 3
-    time_column = 3
-    id_columns = 4
+        assert data.get('dimension') == 3
+        time_column = 3
+        id_columns = 4
 
-    particles = data['particles']
-    num_timesteps = len(np.unique(particles[:, time_column]))
-    timestep = np.unique(particles[:, time_column])[1]
-    print('timestep', timestep, 'num_timesteps', num_timesteps)
-    particles[:, time_column] /= timestep
-    particles[:, time_column] = np.round(particles[:, time_column]) # b/c of irrational timesteps
+        particles = data['particles']
+        num_timesteps = len(np.unique(particles[:, time_column]))
+        timestep = np.unique(particles[:, time_column])[1]
+        print('timestep', timestep, 'num_timesteps', num_timesteps)
+        particles[:, time_column] /= timestep
+        particles[:, time_column] = np.round(particles[:, time_column]) # b/c of irrational timesteps
 
-    fig = plt.figure(figsize=plt.figaspect(1))  # Square figure
-    ax = fig.add_subplot(projection='3d')
-    ax.dist = 5 # zooms in. 10 is the default. smaller == more zoom
+        fig = plt.figure(figsize=plt.figaspect(1))  # Square figure
+        ax = fig.add_subplot(projection='3d')
+        ax.dist = 5 # zooms in. 10 is the default. smaller == more zoom
 
-    def show_frame(frame):
-        ax.clear()
-        particles_t = particles[particles[:, time_column] == frame, :]
+        def show_frame(frame):
+            ax.clear()
+            particles_t = particles[particles[:, time_column] == frame, :]
 
-        for row_i in range(particles_t.shape[0]):
-            plot_sphere(ax, particles_t[row_i, [0, 1, 2]], r=data['particle_diameter']/2)
+            for row_i in range(particles_t.shape[0]):
+                plot_sphere(ax, particles_t[row_i, [0, 1, 2]], r=data['particle_diameter']/2)
 
-        ax.text2D(0.05, 0.95, f't={timestep*frame:.0f}s', transform=ax.transAxes)
+            ax.text2D(0.05, 0.95, f't={timestep*frame:.0f}s', transform=ax.transAxes)
 
-    common.save_gif(show_frame, range(0, num_timesteps, 100), fig, f'particle_linking/figures_png/movie_{file}.gif', fps=10)
+        common.save_gif(show_frame, range(0, num_timesteps, 100), fig, f'particle_linking/figures_png/movie_{file}.gif', fps=10)

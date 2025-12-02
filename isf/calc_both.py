@@ -11,17 +11,21 @@ def less_than_or_close(a, b):
 def greater_than_or_close(a, b):
     return a >= b or np.isclose(a, b)
 
-def setup(F_type, file, d_frames=None, drift_removed=False, max_K=None, quiet=False):
+def load_and_setup(file, F_type='F', d_frames=None, drift_removed=False, max_K=None, quiet=False):
     if F_type == 'F_s':
         filepath = f"particle_linking/data/trajs_{file}.npz"
     else:
         filepath = f"particle_detection/data/particles_{file}.npz"
     data = common.load(filepath, quiet=quiet)
-    particles     = data['particles'].astype(np.float32) # rows of x,y,t
-    pixel_size    = data.get('pixel_size')
-    window_size_x = data['window_size_x']
-    window_size_y = data['window_size_y']
-    dimension     = data.get('dimension', 2)
+
+    return setup(file, data['particles'], data, d_frames, F_type, drift_removed, max_K, quiet) # passing particles and metadata separately might seem weird but we need it when calculating on arrays
+    
+def setup(file, particles, metadata, d_frames, F_type='F', drift_removed=False, max_K=None, quiet=False):
+    particles     = particles.astype(np.float32) # rows of x,y,t
+    pixel_size    = metadata.get('pixel_size')
+    window_size_x = metadata['window_size_x']
+    window_size_y = metadata['window_size_y']
+    dimension     = metadata.get('dimension', 2)
     # assert 'density' in data
     if '_pot' not in file and 'nbody' not in file:
         assert particles[:, 0].min() >= 0
@@ -51,7 +55,12 @@ def setup(F_type, file, d_frames=None, drift_removed=False, max_K=None, quiet=Fa
             max_K = 21.81661564992912 # was 10
             # we use this cause it's the same as used by eleanorlong
 
-    particles_at_frame, times = scattering_functions.get_particles_at_frame(F_type, particles, dimension)
+    if dimension == 2:
+        columns = {'x': 0, 'y': 1, 't': 2}
+    elif dimension == 3:
+        columns = {'x': 0, 'y': 1, 't': 3}
+
+    particles_at_frame, times = scattering_functions.get_particles_at_frame(F_type, particles, columns=columns)
 
     if d_frames is None:
         d_frames = times[:10]
@@ -59,7 +68,7 @@ def setup(F_type, file, d_frames=None, drift_removed=False, max_K=None, quiet=Fa
     else:
        d_frames = np.array(d_frames) # user provided
 
-    return particles_at_frame, times, d_frames, min_K, max_K, data
+    return particles_at_frame, times, d_frames, min_K, max_K, metadata
 
 def calc_for_f_type(
         file,
@@ -85,35 +94,27 @@ def calc_for_f_type(
 
     warnings.warn('is d_frames now d_times?')
 
-    particles_at_frame, times, d_frames, min_K, max_K, data = setup(F_type, file, d_frames, drift_removed, max_K, quiet=quiet)
+    particles_at_frame, times, d_frames, min_K, max_K, data = load_and_setup(file, F_type, d_frames, drift_removed, max_K, quiet=quiet)
 
     if not quiet: print('starting calculation')
     if not quiet: print('particles_at_frame:', common.arraysize(particles_at_frame))
-    while cores > 1 and common.arraysize_raw(particles_at_frame) * cores > 100e9: # note that the actual RAM usage will be much larger
-        cores = int(cores / 2)
-        warnings.warn(f'halved number of cores to {cores}')
 
     if not quiet: print(f'going with min k = ({min_K[0]:.4f}, {min_K[1]:.4f})')
     if not quiet: print('going with d_frames =', d_frames)
 
-    Fs, F_unc, ks, F_unbinned, F_unc_unbinned, k_unbinned, k_x, k_y = scattering_functions.intermediate_scattering(
+    Fs, F_unc, ks, F_unbinned, F_unc_unbinned, k_unbinned, k_x, k_y, d_frames = scattering_functions.intermediate_scattering(
         F_type, num_k_bins, max_time_origins, d_frames, 
         particles_at_frame, times, max_K, min_K, cores=cores,
         use_doublesided_k=use_doublesided_k, window=window,
         Lx=data['window_size_x'], Ly=data['window_size_y'],
         quiet=quiet,
     )
-    if not quiet: print('min K after', np.nanmin(ks))
-    if not quiet: print(k_unbinned.shape)
-    x = k_unbinned.shape[1]//2
-    y = k_unbinned.shape[2]//2
-    if not quiet: print(k_unbinned[1, x-2:x+2, y-2:y+2])
 
     t1 = time.time()
         
     filename = f"isf/data/{F_type}_{file_prefix}{file}{file_suffix}"
-    # if not log:
-    #     filename += '_nolog'
+
+    assert Fs.shape[0] == d_frames.size
 
     to_save = dict(F=Fs, F_unc=F_unc, k=ks, k_x=k_x, k_y=k_y,
         F_unbinned=F_unbinned, k_unbinned=k_unbinned, F_unc_unbinned=F_unc_unbinned,

@@ -60,66 +60,67 @@ def inout(particles_in, probability, lifetime):
             particles = np.delete(particles, deleted_indexes, axis=0)
     return particles
 
-for file in common.files_from_argv('box_counting/data', 'counted_'):
-    # box_sizes_px = np.array([1,  2,  4,  8,  16,  32,  64])
-    # sep_sizes_px = np.array([20, 20, 20, 3,  10, -10, -20])
-    box_sizes_px = np.array([8])
-    sep_sizes_px = np.array([-3])
-    data = common.load(f'particle_detection/data/particles_{file}.npz')
-    data = dict(data)
-    particles = data['particles']
-    l = particles.shape[0]
+if __name__ == '__main__':
+    for file in common.files_from_argv('box_counting/data', 'counted_'):
+        # box_sizes_px = np.array([1,  2,  4,  8,  16,  32,  64])
+        # sep_sizes_px = np.array([20, 20, 20, 3,  10, -10, -20])
+        box_sizes_px = np.array([8])
+        sep_sizes_px = np.array([-3])
+        data = common.load(f'particle_detection/data/particles_{file}.npz')
+        data = dict(data)
+        particles = data['particles']
+        l = particles.shape[0]
 
-    # data['particles'] = inout(particles, 1, 0.9)
-    # print('rows', data['particles'].shape[0])
-    # filename = f'box_counting/data/counted_{file}_inout0.9.npz'
-    # calc_and_save(box_sizes_px, sep_sizes_px, data, filename, extra_to_save={'data_fraction':data['particles'].shape[0]/l})
+        # data['particles'] = inout(particles, 1, 0.9)
+        # print('rows', data['particles'].shape[0])
+        # filename = f'box_counting/data/counted_{file}_inout0.9.npz'
+        # calc_and_save(box_sizes_px, sep_sizes_px, data, filename, extra_to_save={'data_fraction':data['particles'].shape[0]/l})
 
-    # data['particles'] = inout(particles, 1, 0.5)
-    # print('rows', data['particles'].shape[0])
-    # filename = f'box_counting/data/counted_{file}_inout0.5.npz'
-    # calc_and_save(box_sizes_px, sep_sizes_px, data, filename, extra_to_save={'data_fraction':data['particles'].shape[0]/l})
+        # data['particles'] = inout(particles, 1, 0.5)
+        # print('rows', data['particles'].shape[0])
+        # filename = f'box_counting/data/counted_{file}_inout0.5.npz'
+        # calc_and_save(box_sizes_px, sep_sizes_px, data, filename, extra_to_save={'data_fraction':data['particles'].shape[0]/l})
 
-    data['particles'] = inout(particles, 1, 0.1)
-    print('rows', data['particles'].shape[0])
-    filename = f'box_counting/data/counted_{file}_inout0.1.npz'
-    calc_and_save(box_sizes_px, sep_sizes_px, data, filename, extra_to_save={'data_fraction':data['particles'].shape[0]/l})
+        data['particles'] = inout(particles, 1, 0.1)
+        print('rows', data['particles'].shape[0])
+        filename = f'box_counting/data/counted_{file}_inout0.1.npz'
+        calc_and_save(box_sizes_px, sep_sizes_px, data, filename, extra_to_save={'data_fraction':data['particles'].shape[0]/l})
 
-    data['particles'] = inout(particles, 1, 0.01)
-    print('rows', data['particles'].shape[0])
-    filename = f'box_counting/data/counted_{file}_inout0.01.npz'
-    calc_and_save(box_sizes_px, sep_sizes_px, data, filename, extra_to_save={'data_fraction':data['particles'].shape[0]/l})
+        data['particles'] = inout(particles, 1, 0.01)
+        print('rows', data['particles'].shape[0])
+        filename = f'box_counting/data/counted_{file}_inout0.01.npz'
+        calc_and_save(box_sizes_px, sep_sizes_px, data, filename, extra_to_save={'data_fraction':data['particles'].shape[0]/l})
 
-    data['particles'] = inout(particles, 1, 0.005)
-    print('rows', data['particles'].shape[0])
-    filename = f'box_counting/data/counted_{file}_inout0.005.npz'
-    calc_and_save(box_sizes_px, sep_sizes_px, data, filename, extra_to_save={'data_fraction':data['particles'].shape[0]/l})
+        data['particles'] = inout(particles, 1, 0.005)
+        print('rows', data['particles'].shape[0])
+        filename = f'box_counting/data/counted_{file}_inout0.005.npz'
+        calc_and_save(box_sizes_px, sep_sizes_px, data, filename, extra_to_save={'data_fraction':data['particles'].shape[0]/l})
 
-    data['particles'] = inout(particles, 1, 1)
-    print('rows', data['particles'].shape[0])
-    filename = f'box_counting/data/counted_{file}_inout1.npz'
-    calc_and_save(box_sizes_px, sep_sizes_px, data, filename, extra_to_save={'data_fraction':data['particles'].shape[0]/l})
+        data['particles'] = inout(particles, 1, 1)
+        print('rows', data['particles'].shape[0])
+        filename = f'box_counting/data/counted_{file}_inout1.npz'
+        calc_and_save(box_sizes_px, sep_sizes_px, data, filename, extra_to_save={'data_fraction':data['particles'].shape[0]/l})
 
-# particles = np.array([
-#     [0, 0, 1, 1],
-#     [0, 0, 2, 1],
-#     [0, 0, 3, 1],
-#     [0, 0, 4, 1],
-#     [0, 0, 5, 1],
-#     [0, 0, 6, 1],
-#     [0, 0, 7, 1],
-#     [0, 0, 8, 1],
-#     [0, 0, 1, 0],
-#     [0, 0, 2, 0],
-#     [0, 0, 3, 0],
-#     [0, 0, 4, 0],
-#     [0, 0, 5, 0],
-#     [0, 0, 6, 0],
-#     [0, 0, 7, 0],
-#     [0, 0, 8, 0],
-# ])
-# print(inout(particles, 0.5))
-# print(inout(particles, 0.5))
-# print(inout(particles, 0.5))
-# print(inout(particles, 0.5))
-# print(inout(particles, 0.5))
+    # particles = np.array([
+    #     [0, 0, 1, 1],
+    #     [0, 0, 2, 1],
+    #     [0, 0, 3, 1],
+    #     [0, 0, 4, 1],
+    #     [0, 0, 5, 1],
+    #     [0, 0, 6, 1],
+    #     [0, 0, 7, 1],
+    #     [0, 0, 8, 1],
+    #     [0, 0, 1, 0],
+    #     [0, 0, 2, 0],
+    #     [0, 0, 3, 0],
+    #     [0, 0, 4, 0],
+    #     [0, 0, 5, 0],
+    #     [0, 0, 6, 0],
+    #     [0, 0, 7, 0],
+    #     [0, 0, 8, 0],
+    # ])
+    # print(inout(particles, 0.5))
+    # print(inout(particles, 0.5))
+    # print(inout(particles, 0.5))
+    # print(inout(particles, 0.5))
+    # print(inout(particles, 0.5))

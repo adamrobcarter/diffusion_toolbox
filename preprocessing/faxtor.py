@@ -172,502 +172,505 @@ def go(flat_folder, dark_folder, sample_folder, name, exposure_time, frame_gap, 
 #     common.save_data(f'preprocessing/data/stack_{name}_filter.npz',       stack=stack_highpass,      pixel_size=0.65, time_step=time_step, **kwargs)
 #     common.save_data(f'preprocessing/data/stack_{name}_filter_small.npz', stack=stack_highpass[:50], pixel_size=0.65, time_step=time_step, **kwargs)
 
-# go(
-#     flat_folder   = '/data2/acarter/faxtor/SAMPLE_0003/MEASUREMENT_0007/PCO_EDGE',
-#     dark_folder   = '/data2/acarter/faxtor/SAMPLE_0003/MEASUREMENT_0006/PCO_EDGE',
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0003/MEASUREMENT_0008/PCO_EDGE',
-#     name = 'faxtor003',
-# )
-# go(
-#     flat_folder   = '/data2/acarter/faxtor/SAMPLE_0003/MEASUREMENT_0007/PCO_EDGE',
-#     dark_folder   = '/data2/acarter/faxtor/SAMPLE_0003/MEASUREMENT_0006/PCO_EDGE',
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0003/MEASUREMENT_0008/PCO_EDGE',
-#     name = 'faxtor003',
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0006/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor006a',
-#     exposure_time = 0.05,
-#     frame_gap = 0.25,
-#     particle_diameter = 7.75,
-#     particle_material = 'SiO2',
-#     trim_start = 5000,
-#     # every_nth = 2,
-#     fraction_of = 2,
-#     NAME = 'Si 120um, Si 7.75um injected',
-# )
-# go(
-#     flat_folder   = '/data2/acarter/faxtor/SAMPLE_0006/EXPERIMENT_0000/MEASUREMENT_0008/PCO_EDGE',
-#     dark_folder   = '/data2/acarter/faxtor/SAMPLE_0006/EXPERIMENT_0000/MEASUREMENT_0009/PCO_EDGE',
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0006/EXPERIMENT_0000/MEASUREMENT_0007/PCO_EDGE',
-#     name = 'faxtor006b',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_diameter = 8,
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0007/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
-#     flat_folder   = '/data2/acarter/faxtor/SAMPLE_0007/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
-#     dark_folder   = '/data2/acarter/faxtor/SAMPLE_0007/EXPERIMENT_0000/MEASUREMENT_0005/PCO_EDGE',
-#     name = 'faxtor007',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_diameter = 8,
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
-#     dark_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
-#     name = 'faxtor008',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_diameter = 8,
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor_flat',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0012/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder = '/data2/acarter/faxtor/SAMPLE_0012/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
-#     dark_folder = '/data2/acarter/faxtor/SAMPLE_0012/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
-#     name = 'faxtor012',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_diameter = 4,
-#     NAME = '4um PS 0.25g/L'
-# )
-# go_filter(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0012/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     name = 'faxtor012',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_diameter = 4,
-#     NAME = '4um PS 0.25g/L'
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0013/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder = '/data2/acarter/faxtor/SAMPLE_0013/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
-#     dark_folder = '/data2/acarter/faxtor/SAMPLE_0013/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
-#     name = 'faxtor013',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_diameter = 3,
-#     NAME = '3um PS 0.1g/L'
-# )
-# go_filter(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0013/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     name = 'faxtor013',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_diameter = 3,
-#     NAME = '3um PS 0.1g/L'
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0015/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = '/data2/acarter/faxtor/SAMPLE_0015/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
-#     dark_folder   = '/data2/acarter/faxtor/SAMPLE_0015/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
-#     name = 'faxtor015',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     # particle_diameter = 3,
-#     # NAME = '3um PS 0.1g/L'
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0013/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor_flat_long',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     # particle_diameter = 3,
-#     NAME = 'long flatfield',
-#     every_nth = 8,
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0014/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = '/data2/acarter/faxtor/SAMPLE_0014/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
-#     dark_folder   = '/data2/acarter/faxtor/SAMPLE_0014/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
-#     name = 'faxtor014',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_diameter = 3,
-#     NAME = '3um PS 50g/L',
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0013/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = '/data2/acarter/faxtor/SAMPLE_0013/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
-#     dark_folder   = '/data2/acarter/faxtor/SAMPLE_0013/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
-#     name = 'faxtor013',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_diameter = 3,
-#     NAME = '3um PS 0.1g/L',
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     # flat_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
-#     # dark_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor008',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_diameter = 8,
-#     NAME = '8um PS 2g/L',
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0010/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     # flat_folder   = '/data2/acarter/faxtor/SAMPLE_0010/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
-#     # dark_folder   = '/data2/acarter/faxtor/SAMPLE_0010/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor010',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_diameter = 8,
-#     particle_material = 'PS',
-#     NAME = '8um PS 50g/L',
-# # )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0006/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
-#     # flat_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
-#     # dark_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor006a',
-#     exposure_time = 0.05,
-#     frame_gap = 0.25,
-#     particle_diameter = 8,
-#     particle_material = 'SiO2',
-#     NAME = 'Si 120um, Si 8um injected',
-#     # every_nth = 16,
-#     # fraction_of = 16,
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0015/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     # flat_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
-#     # dark_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor015a',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_material = 'vermiculite',
-#     NAME = 'vermiculite 2-10um bulk',
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0015/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
-#     # flat_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
-#     # dark_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor015b',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_material = 'vermiculite',
-#     NAME = 'vermiculite 2-10um bulk (bottom)',
-# )
+if __name__ == '__main__':
+    # go(
+    #     flat_folder   = '/data2/acarter/faxtor/SAMPLE_0003/MEASUREMENT_0007/PCO_EDGE',
+    #     dark_folder   = '/data2/acarter/faxtor/SAMPLE_0003/MEASUREMENT_0006/PCO_EDGE',
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0003/MEASUREMENT_0008/PCO_EDGE',
+    #     name = 'faxtor003',
+    # )
+    # go(
+    #     flat_folder   = '/data2/acarter/faxtor/SAMPLE_0003/MEASUREMENT_0007/PCO_EDGE',
+    #     dark_folder   = '/data2/acarter/faxtor/SAMPLE_0003/MEASUREMENT_0006/PCO_EDGE',
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0003/MEASUREMENT_0008/PCO_EDGE',
+    #     name = 'faxtor003',
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0006/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor006a',
+    #     exposure_time = 0.05,
+    #     frame_gap = 0.25,
+    #     particle_diameter = 7.75,
+    #     particle_material = 'SiO2',
+    #     trim_start = 5000,
+    #     # every_nth = 2,
+    #     fraction_of = 2,
+    #     NAME = 'Si 120um, Si 7.75um injected',
+    # )
+    # go(
+    #     flat_folder   = '/data2/acarter/faxtor/SAMPLE_0006/EXPERIMENT_0000/MEASUREMENT_0008/PCO_EDGE',
+    #     dark_folder   = '/data2/acarter/faxtor/SAMPLE_0006/EXPERIMENT_0000/MEASUREMENT_0009/PCO_EDGE',
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0006/EXPERIMENT_0000/MEASUREMENT_0007/PCO_EDGE',
+    #     name = 'faxtor006b',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_diameter = 8,
+    # )
+    go(
+        sample_folder = '/data2/acarter/faxtor/SAMPLE_0007/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
+        # flat_folder   = '/data2/acarter/faxtor/SAMPLE_0007/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
+        # dark_folder   = '/data2/acarter/faxtor/SAMPLE_0007/EXPERIMENT_0000/MEASUREMENT_0005/PCO_EDGE',
+        flat_folder=   None,
+        dark_folder=   None,
+        name = 'faxtor007',
+        exposure_time = 0.05,
+        frame_gap = 1,
+        particle_diameter = 8,
+    )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
+    #     dark_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
+    #     name = 'faxtor008',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_diameter = 8,
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor_flat',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0012/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder = '/data2/acarter/faxtor/SAMPLE_0012/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
+    #     dark_folder = '/data2/acarter/faxtor/SAMPLE_0012/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
+    #     name = 'faxtor012',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_diameter = 4,
+    #     NAME = '4um PS 0.25g/L'
+    # )
+    # go_filter(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0012/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     name = 'faxtor012',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_diameter = 4,
+    #     NAME = '4um PS 0.25g/L'
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0013/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder = '/data2/acarter/faxtor/SAMPLE_0013/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
+    #     dark_folder = '/data2/acarter/faxtor/SAMPLE_0013/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
+    #     name = 'faxtor013',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_diameter = 3,
+    #     NAME = '3um PS 0.1g/L'
+    # )
+    # go_filter(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0013/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     name = 'faxtor013',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_diameter = 3,
+    #     NAME = '3um PS 0.1g/L'
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0015/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = '/data2/acarter/faxtor/SAMPLE_0015/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
+    #     dark_folder   = '/data2/acarter/faxtor/SAMPLE_0015/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
+    #     name = 'faxtor015',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     # particle_diameter = 3,
+    #     # NAME = '3um PS 0.1g/L'
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0013/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor_flat_long',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     # particle_diameter = 3,
+    #     NAME = 'long flatfield',
+    #     every_nth = 8,
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0014/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = '/data2/acarter/faxtor/SAMPLE_0014/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
+    #     dark_folder   = '/data2/acarter/faxtor/SAMPLE_0014/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
+    #     name = 'faxtor014',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_diameter = 3,
+    #     NAME = '3um PS 50g/L',
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0013/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = '/data2/acarter/faxtor/SAMPLE_0013/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
+    #     dark_folder   = '/data2/acarter/faxtor/SAMPLE_0013/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
+    #     name = 'faxtor013',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_diameter = 3,
+    #     NAME = '3um PS 0.1g/L',
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     # flat_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
+    #     # dark_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor008',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_diameter = 8,
+    #     NAME = '8um PS 2g/L',
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0010/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     # flat_folder   = '/data2/acarter/faxtor/SAMPLE_0010/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
+    #     # dark_folder   = '/data2/acarter/faxtor/SAMPLE_0010/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor010',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_diameter = 8,
+    #     particle_material = 'PS',
+    #     NAME = '8um PS 50g/L',
+    # # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0006/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
+    #     # flat_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
+    #     # dark_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor006a',
+    #     exposure_time = 0.05,
+    #     frame_gap = 0.25,
+    #     particle_diameter = 8,
+    #     particle_material = 'SiO2',
+    #     NAME = 'Si 120um, Si 8um injected',
+    #     # every_nth = 16,
+    #     # fraction_of = 16,
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0015/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     # flat_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
+    #     # dark_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor015a',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_material = 'vermiculite',
+    #     NAME = 'vermiculite 2-10um bulk',
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0015/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
+    #     # flat_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
+    #     # dark_folder   = '/data2/acarter/faxtor/SAMPLE_0008/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor015b',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_material = 'vermiculite',
+    #     NAME = 'vermiculite 2-10um bulk (bottom)',
+    # )
 
 
 
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0016/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor016a',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_material = 'PS',
-#     particle_diameter = 8,
-#     NAME = 'Si 120um, 8um PS (1g/L)',
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0016/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor016b',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_material = 'PS',
-#     particle_diameter = 8,
-#     NAME = 'Si 120um, 8um PS (1g/L), bottom',
-# )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0016/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor016a',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_material = 'PS',
+    #     particle_diameter = 8,
+    #     NAME = 'Si 120um, 8um PS (1g/L)',
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0016/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor016b',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_material = 'PS',
+    #     particle_diameter = 8,
+    #     NAME = 'Si 120um, 8um PS (1g/L), bottom',
+    # )
 
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0017/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor017a',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_material = 'PS',
-#     particle_diameter = 4,
-#     NAME = 'Si 120um, 4um PS (0.0625g/L)',
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0017/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor017b',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_material = 'PS',
-#     particle_diameter = 4,
-#     NAME = 'Si 120um, 4um PS (0.0625g/L), interface',
-# )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0017/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor017a',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_material = 'PS',
+    #     particle_diameter = 4,
+    #     NAME = 'Si 120um, 4um PS (0.0625g/L)',
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0017/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor017b',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_material = 'PS',
+    #     particle_diameter = 4,
+    #     NAME = 'Si 120um, 4um PS (0.0625g/L), interface',
+    # )
 
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0018/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor018',
-#     exposure_time = 0.05,
-#     frame_gap = 10,
-#     particle_material = 'PS',
-#     particle_diameter = 8,
-#     NAME = 'Si 120um, 8um PS (0.5g/L)',
-#     every_nth = 5,
-# )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0018/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor018',
+    #     exposure_time = 0.05,
+    #     frame_gap = 10,
+    #     particle_material = 'PS',
+    #     particle_diameter = 8,
+    #     NAME = 'Si 120um, 8um PS (0.5g/L)',
+    #     every_nth = 5,
+    # )
 
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0019/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor019a',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_material = 'PS',
-#     particle_diameter = 8,
-#     NAME = 'vermiculite 100-200um, 8um PS (2g/L)',
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0019/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor019b',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_material = 'PS',
-#     particle_diameter = 8,
-#     NAME = 'vermiculite 100-200um, 8um PS (2g/L)',
-# )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0019/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor019a',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_material = 'PS',
+    #     particle_diameter = 8,
+    #     NAME = 'vermiculite 100-200um, 8um PS (2g/L)',
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0019/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor019b',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_material = 'PS',
+    #     particle_diameter = 8,
+    #     NAME = 'vermiculite 100-200um, 8um PS (2g/L)',
+    # )
 
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0020/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor020a',
-#     exposure_time = 0.05,
-#     frame_gap = 10,
-#     particle_material = 'PS',
-#     particle_diameter = 8,
-#     NAME = 'muscovite 100-200um, 8um PS (1g/L)',
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0020/EXPERIMENT_0000/MEASUREMENT_0007/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor020b',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_material = 'PS',
-#     particle_diameter = 8,
-#     NAME = 'muscovite 100-200um, 8um PS (1g/L)',
-# )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0020/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor020a',
+    #     exposure_time = 0.05,
+    #     frame_gap = 10,
+    #     particle_material = 'PS',
+    #     particle_diameter = 8,
+    #     NAME = 'muscovite 100-200um, 8um PS (1g/L)',
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0020/EXPERIMENT_0000/MEASUREMENT_0007/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor020b',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_material = 'PS',
+    #     particle_diameter = 8,
+    #     NAME = 'muscovite 100-200um, 8um PS (1g/L)',
+    # )
 
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0021/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor021a',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_material = 'PS',
-#     particle_diameter = 3,
-#     NAME = 'Si 120um, 3um PS (0.1 g/L)',
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0021/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor021b',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_material = 'PS',
-#     particle_diameter = 3,
-#     NAME = 'Si 120um, 3um PS (0.1 g/L)',
-# )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0021/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor021a',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_material = 'PS',
+    #     particle_diameter = 3,
+    #     NAME = 'Si 120um, 3um PS (0.1 g/L)',
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0021/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor021b',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_material = 'PS',
+    #     particle_diameter = 3,
+    #     NAME = 'Si 120um, 3um PS (0.1 g/L)',
+    # )
 
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0022/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor022a',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_material = 'PS',
-#     particle_diameter = 4,
-#     NAME = 'Si 120um, 4um PS (0.125 g/L)',
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0022/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor022b',
-#     exposure_time = 0.05,
-#     frame_gap = 5,
-#     particle_material = 'PS',
-#     particle_diameter = 4,
-#     NAME = 'Si 120um, 4um PS (0.125 g/L)',
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0022/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor022c',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_material = 'PS',
-#     particle_diameter = 4,
-#     NAME = 'Si 120um, 4um PS (0.125 g/L)',
-# )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0022/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor022a',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_material = 'PS',
+    #     particle_diameter = 4,
+    #     NAME = 'Si 120um, 4um PS (0.125 g/L)',
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0022/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor022b',
+    #     exposure_time = 0.05,
+    #     frame_gap = 5,
+    #     particle_material = 'PS',
+    #     particle_diameter = 4,
+    #     NAME = 'Si 120um, 4um PS (0.125 g/L)',
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0022/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor022c',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_material = 'PS',
+    #     particle_diameter = 4,
+    #     NAME = 'Si 120um, 4um PS (0.125 g/L)',
+    # )
 
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0023/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor023a',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_material = 'PS',
-#     particle_diameter = 4,
-#     NAME = 'Si 120um, 4um PS (0.25 g/L)',
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0023/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor023a',
-#     exposure_time = 0.05,
-#     frame_gap = 5,
-#     particle_material = 'PS',
-#     particle_diameter = 4,
-#     NAME = 'Si 120um, 4um PS (0.25 g/L)',
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0023/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor023c',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_material = 'PS',
-#     particle_diameter = 4,
-#     NAME = 'Si 120um, 4um PS (0.25 g/L), interface',
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0023/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor023d',
-#     exposure_time = 0.05,
-#     frame_gap = 5,
-#     particle_material = 'PS',
-#     particle_diameter = 4,
-#     NAME = 'Si 120um, 4um PS (0.25 g/L), interface',
-# )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0023/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor023a',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_material = 'PS',
+    #     particle_diameter = 4,
+    #     NAME = 'Si 120um, 4um PS (0.25 g/L)',
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0023/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor023a',
+    #     exposure_time = 0.05,
+    #     frame_gap = 5,
+    #     particle_material = 'PS',
+    #     particle_diameter = 4,
+    #     NAME = 'Si 120um, 4um PS (0.25 g/L)',
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0023/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor023c',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_material = 'PS',
+    #     particle_diameter = 4,
+    #     NAME = 'Si 120um, 4um PS (0.25 g/L), interface',
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0023/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor023d',
+    #     exposure_time = 0.05,
+    #     frame_gap = 5,
+    #     particle_material = 'PS',
+    #     particle_diameter = 4,
+    #     NAME = 'Si 120um, 4um PS (0.25 g/L), interface',
+    # )
 
-# ## 25 is faxtor_manual.py (manual moving sample out the way for darks)
+    # ## 25 is faxtor_manual.py (manual moving sample out the way for darks)
 
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0026/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor026c',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_material = 'PS',
-#     particle_diameter = 8,
-#     NAME = 'Si 120um, 8um PS injected',
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0026/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor026d',
-#     exposure_time = 0.05,
-#     frame_gap = 1,
-#     particle_material = 'PS',
-#     particle_diameter = 8,
-#     NAME = 'Si 120um, 8um PS injected, top',
-# )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0026/EXPERIMENT_0000/MEASUREMENT_0003/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor026c',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_material = 'PS',
+    #     particle_diameter = 8,
+    #     NAME = 'Si 120um, 8um PS injected',
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0026/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor026d',
+    #     exposure_time = 0.05,
+    #     frame_gap = 1,
+    #     particle_material = 'PS',
+    #     particle_diameter = 8,
+    #     NAME = 'Si 120um, 8um PS injected, top',
+    # )
 
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0028/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor028a',
-#     exposure_time = 0.03,
-#     frame_gap = 0.25,
-#     particle_material = 'PS',
-#     particle_diameter = 8,
-#     NAME = 'Si 120um, 8um PS injected',
-#     every_nth = 5,
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0028/EXPERIMENT_0000/MEASUREMENT_0005/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor028b',
-#     exposure_time = 0.03,
-#     frame_gap = 0.25,
-#     particle_material = 'PS',
-#     particle_diameter = 8,
-#     NAME = 'Si 120um, 8um PS injected',
-#     every_nth = 5,
-# )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0028/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor028a',
+    #     exposure_time = 0.03,
+    #     frame_gap = 0.25,
+    #     particle_material = 'PS',
+    #     particle_diameter = 8,
+    #     NAME = 'Si 120um, 8um PS injected',
+    #     every_nth = 5,
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0028/EXPERIMENT_0000/MEASUREMENT_0005/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor028b',
+    #     exposure_time = 0.03,
+    #     frame_gap = 0.25,
+    #     particle_material = 'PS',
+    #     particle_diameter = 8,
+    #     NAME = 'Si 120um, 8um PS injected',
+    #     every_nth = 5,
+    # )
 
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0029/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor029a',
-#     exposure_time = 0.03,
-#     frame_gap = 0.25,
-#     particle_material = 'vermiculite',
-#     NAME = 'Si 120um, vermiculite 2-10um injected',
-#     every_nth = 5,
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0029/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor029a_part1',
-#     exposure_time = 0.03,
-#     frame_gap = 0.25,
-#     particle_material = 'vermiculite',
-#     NAME = 'Si 120um, vermiculite 2-10um injected',
-#     fraction_of = 6,
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0029/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor029b',
-#     exposure_time = 0.03,
-#     frame_gap = 0.25,
-#     particle_material = 'vermiculite',
-#     NAME = 'Si 120um, vermiculite 2-10um injected',
-#     # fraction_of = 5,
-#     every_nth = 25,
-# )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0029/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor029a',
+    #     exposure_time = 0.03,
+    #     frame_gap = 0.25,
+    #     particle_material = 'vermiculite',
+    #     NAME = 'Si 120um, vermiculite 2-10um injected',
+    #     every_nth = 5,
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0029/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor029a_part1',
+    #     exposure_time = 0.03,
+    #     frame_gap = 0.25,
+    #     particle_material = 'vermiculite',
+    #     NAME = 'Si 120um, vermiculite 2-10um injected',
+    #     fraction_of = 6,
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0029/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor029b',
+    #     exposure_time = 0.03,
+    #     frame_gap = 0.25,
+    #     particle_material = 'vermiculite',
+    #     NAME = 'Si 120um, vermiculite 2-10um injected',
+    #     # fraction_of = 5,
+    #     every_nth = 25,
+    # )
 
 # go(
 #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0030/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
@@ -695,139 +698,139 @@ go(
     fraction_of=3
 )
 
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0031/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor031',
-#     exposure_time = 0.03,
-#     frame_gap = 0.5,
-#     particle_material = 'vermiculite',
-#     NAME = 'vermiculite 2-10um bulk',
-#     every_nth = 5,
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0032/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor032',
-#     exposure_time = 0.03,
-#     frame_gap = 0.5,
-#     particle_material = 'vermiculite',
-#     NAME = 'vermiculite 2-10um bulk',
-#     every_nth = 5,
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0033/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor033',
-#     exposure_time = 0.03,
-#     frame_gap = 0.5,
-#     particle_material = 'vermiculite',
-#     NAME = 'Si 85um, vermiculite 2-10um injected',
-#     every_nth = 2,
-# )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0031/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor031',
+    #     exposure_time = 0.03,
+    #     frame_gap = 0.5,
+    #     particle_material = 'vermiculite',
+    #     NAME = 'vermiculite 2-10um bulk',
+    #     every_nth = 5,
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0032/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor032',
+    #     exposure_time = 0.03,
+    #     frame_gap = 0.5,
+    #     particle_material = 'vermiculite',
+    #     NAME = 'vermiculite 2-10um bulk',
+    #     every_nth = 5,
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0033/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor033',
+    #     exposure_time = 0.03,
+    #     frame_gap = 0.5,
+    #     particle_material = 'vermiculite',
+    #     NAME = 'Si 85um, vermiculite 2-10um injected',
+    #     every_nth = 2,
+    # )
 
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0034/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor034',
-#     exposure_time = 0.03,
-#     frame_gap = 0.25,
-#     particle_material = 'SiO2',
-#     particle_diameter = 7.75,
-#     NAME = 'Si 85um, Si 7.75um injected',
-#     trim_start = 2500,
-#     every_nth = 1,
-#     fraction_of = 2,
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0034/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor034flat',
-#     exposure_time = 0.05,
-#     frame_gap = 0,
-#     NAME = 'flatfield',
-# )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0034/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor034',
+    #     exposure_time = 0.03,
+    #     frame_gap = 0.25,
+    #     particle_material = 'SiO2',
+    #     particle_diameter = 7.75,
+    #     NAME = 'Si 85um, Si 7.75um injected',
+    #     trim_start = 2500,
+    #     every_nth = 1,
+    #     fraction_of = 2,
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0034/EXPERIMENT_0000/MEASUREMENT_0002/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor034flat',
+    #     exposure_time = 0.05,
+    #     frame_gap = 0,
+    #     NAME = 'flatfield',
+    # )
 
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0035/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor035',
-#     exposure_time = 0.03,
-#     frame_gap = 0.5,
-#     particle_material = 'SiO2',
-#     particle_diameter = 4.3,
-#     NAME = 'Si 85um, Si 4.3um injected',
-#     # every_nth = 4,
-#     trim_start=2700,
-#     fraction_of=3,
-# )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0035/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor035',
+    #     exposure_time = 0.03,
+    #     frame_gap = 0.5,
+    #     particle_material = 'SiO2',
+    #     particle_diameter = 4.3,
+    #     NAME = 'Si 85um, Si 4.3um injected',
+    #     # every_nth = 4,
+    #     trim_start=2700,
+    #     fraction_of=3,
+    # )
 
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0036/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor036',
-#     exposure_time = 0.03,
-#     frame_gap = 0.5,
-#     particle_material = 'PS',
-#     particle_diameter = 8,
-#     NAME = 'Si 120um, PS 8um injected',
-#     fraction_of = 5,
-# )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0036/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor036',
+    #     exposure_time = 0.03,
+    #     frame_gap = 0.5,
+    #     particle_material = 'PS',
+    #     particle_diameter = 8,
+    #     NAME = 'Si 120um, PS 8um injected',
+    #     fraction_of = 5,
+    # )
 
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0037/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor037',
-#     exposure_time = 0.03,
-#     frame_gap = 0.5,
-#     particle_material = 'PS',
-#     particle_diameter = 8,
-#     NAME = 'Si 85um, PS 8um injected',
-#     fraction_of = 5,
-# )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0037/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor037',
+    #     exposure_time = 0.03,
+    #     frame_gap = 0.5,
+    #     particle_material = 'PS',
+    #     particle_diameter = 8,
+    #     NAME = 'Si 85um, PS 8um injected',
+    #     fraction_of = 5,
+    # )
 
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0038/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor038a',
-#     exposure_time = 0.03,
-#     frame_gap = 0.5,
-#     particle_material = 'PS',
-#     particle_diameter = 4,
-#     NAME = 'Si 120um, PS 4um injected',
-#     fraction_of = 5,
-# )
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0038/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor038b',
-#     exposure_time = 0.03,
-#     frame_gap = 0.5,
-#     particle_material = 'PS',
-#     particle_diameter = 4,
-#     NAME = 'Si 120um, PS 4um injected, scintillator back',
-#     fraction_of = 5,
-# )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0038/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor038a',
+    #     exposure_time = 0.03,
+    #     frame_gap = 0.5,
+    #     particle_material = 'PS',
+    #     particle_diameter = 4,
+    #     NAME = 'Si 120um, PS 4um injected',
+    #     fraction_of = 5,
+    # )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0038/EXPERIMENT_0000/MEASUREMENT_0004/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor038b',
+    #     exposure_time = 0.03,
+    #     frame_gap = 0.5,
+    #     particle_material = 'PS',
+    #     particle_diameter = 4,
+    #     NAME = 'Si 120um, PS 4um injected, scintillator back',
+    #     fraction_of = 5,
+    # )
 
-# go(
-#     sample_folder = '/data2/acarter/faxtor/SAMPLE_0039/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
-#     flat_folder   = None,
-#     dark_folder   = None,
-#     name = 'faxtor039',
-#     exposure_time = 0.03,
-#     frame_gap = 0.5,
-#     particle_material = 'PS',
-#     particle_diameter = 4,
-#     NAME = 'Si 85um, PS 4um injected',
-#     fraction_of = 5,
-# )
+    # go(
+    #     sample_folder = '/data2/acarter/faxtor/SAMPLE_0039/EXPERIMENT_0000/MEASUREMENT_0001/PCO_EDGE',
+    #     flat_folder   = None,
+    #     dark_folder   = None,
+    #     name = 'faxtor039',
+    #     exposure_time = 0.03,
+    #     frame_gap = 0.5,
+    #     particle_material = 'PS',
+    #     particle_diameter = 4,
+    #     NAME = 'Si 85um, PS 4um injected',
+    #     fraction_of = 5,
+    # )

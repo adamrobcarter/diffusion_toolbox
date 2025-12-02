@@ -40,14 +40,15 @@ def go(file, quiet=False):
 
     elif particles.size > 1e6 or True:
 
-        timestep = data.get('time_step', 1)
+        timestep = data['time_step']
         
         if t_interval[0] != 1:
+            print('converting time')
             particles[:, time_column] /= t_interval[0]
             # if the timestep was irrational these might not be integer, so we fix that
             particles[:, time_column] = np.round(particles[:, time_column])
 
-            timestep *= t_interval[0]
+            timestep *= t_interval[0] # wtf is this?
 
         # print('consider "or True" you dummy')
         if not quiet: print('Calculating incrementally')
@@ -58,6 +59,7 @@ def go(file, quiet=False):
 
     else:
         msd, msd_unc = MSD.MSD.calc(particles)
+        assert False
     t1 = time.time()
 
     if not quiet: print('msd', msd[0], msd[1])
@@ -67,6 +69,10 @@ def go(file, quiet=False):
 
     assert common.nanfrac(msd[1:]) == 0, f'nanfrac(msd[1:]) = {common.nanfrac(msd[1:])}'
 
+    
+    assert t[0] == 0
+    assert t[1] == timestep
+
     common.save_data(f'MSD/data/msd_{file}', msd=msd, msd_unc=msd_unc, t=t,
         particle_diameter=data.get('particle_diameter'), pack_frac_given=data.get('pack_frac_given'), pack_frac=data.get('pack_frac'),
         pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'),
@@ -74,7 +80,7 @@ def go(file, quiet=False):
         quiet=quiet
     )
 
-    MSD.show.go(file, quiet=quiet)
+    # MSD.show.go(file, quiet=quiet)
 
 if __name__ == '__main__':
     for file in common.files_from_argv('particle_linking/data/', 'trajs_'):

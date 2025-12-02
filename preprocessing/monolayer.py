@@ -31,6 +31,15 @@ def go(infile, outfile, L, pack_frac_given, particle_diameter, nth_timestep=1,
     if not quiet: print(data.shape, data.dtype,  f'loaded {common.format_bytes(data.nbytes)} in {t1-t0:.1f}s at {common.format_bytes(data.nbytes/(t1-t0))}/sec')
 
     saved_time_step = all_data['saved_time_step']
+
+    # i made a stupid bug where the 0th timestep is nan or something
+    full_nan_rows = np.isnan(data).all(axis=1)
+    if full_nan_rows.sum():
+        print(f'removing {full_nan_rows.sum()} ({full_nan_rows.sum()/full_nan_rows.size:.2%}) fully nan rows')
+        data = data[~full_nan_rows, :]
+
+    data[:, time_column] -= data[:, time_column].min()
+
     # if dt == None:
     #     assert multiply_time_by == None
     #     assert 'mixt' not in infile
@@ -73,6 +82,7 @@ def go(infile, outfile, L, pack_frac_given, particle_diameter, nth_timestep=1,
     # print(f'loaded in {t1-t0:.0f}s. shape', data.shape, common.arraysize(data))
     # num_timesteps = data[:, time_colum].max()+1
     times = np.unique(data[:, time_column])
+    print(times)
     num_timesteps = times.size
     if not quiet: print(times, num_timesteps)
     if not quiet: print(f'{num_timesteps:.0f} timesteps, {data[:, time_column].max()*saved_time_step/60/60:.1f} hours')
@@ -390,8 +400,23 @@ if __name__ == '__main__':
     # )
 
     # vacf
+    # go_mesu_npz(
+    #     '/store/cartera/2d_monolayer/nohydro_phi0.01_L640_t2s_0.0005.npz',
+    #     suffix=f'_t2s_0.0005',
+    #     # skip_rsync=True
+    # )
+
+    # libmobility paper
+    # go_mesu_npz(
+    #     '/store/cartera/2d_monolayer/nohydro_phi0.114_L2560_t8h_64.npz',
+    #     suffix=f'_t8h_64',
+    # )
+    # go_mesu_npz(
+    #     '/store/cartera/2d_monolayer/nohydro_phi0.114_L2560_t1h_1.npz',
+    #     suffix=f'_t1h_1',
+    #     skip_rsync=True
+    # )
     go_mesu_npz(
-        '/store/cartera/2d_monolayer/nohydro_phi0.01_L640_t2s_0.0005.npz',
-        suffix=f'_t2s_0.0005',
-        # skip_rsync=True
+        '/store/cartera/2d_monolayer/nohydro_phi0.114_L5120_t10m_1.npz',
+        suffix=f'_t10m_1',
     )

@@ -1,8 +1,8 @@
-import openpiv.pyprocess, openpiv.validation
 import numpy as np
 import tqdm
 
 def go(stack, time_step, interrogation_window):
+    import openpiv.pyprocess, openpiv.validation # here for readthedocs
     overlap = [interrogation_window/2, interrogation_window/2]
 
     u = []

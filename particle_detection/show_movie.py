@@ -3,16 +3,27 @@ import common
 import sys
 import particle_detection.show
 import preprocessing.stack_movie
+import typing
 
 CROP = None
-HIGHLIGHTS = False
+HIGHLIGHTS = True
+FORCE_FPS = 10
 
-def go(file, infile, outfile, crop=False, every_nth_frame=None, output_type='movie',
-       annotation_color='white', dpi=300, tracks=True, highlights=HIGHLIGHTS):
+def go(file, infile=None, outfile=None, crop=False, every_nth_frame=None,
+       output_type : typing.Literal['movie', 'frames'] = 'movie',
+       dpi=300, tracks=False, highlights=False, show_blobs_too=False,
+       particle_color='red',
+        **kwargs):
         """
         output_type: 'movie' will produce a gif, 'frames' saves each frame of the movie to a separate .png
         tracks: True will plot the history of the trajectory not just the current position
+
+        annotation_color should be in kwargs if needed
         """
+        
+        if not infile:
+            infile = f'particle_detection/data/particles_{file}.npz'
+        assert outfile
         
         if 'trajs' in infile and tracks == False:
             print('WARNING the colours seem to be messed up when tracks=False')
@@ -25,7 +36,8 @@ def go(file, infile, outfile, crop=False, every_nth_frame=None, output_type='mov
         print('particles max', particles[:, 1].max(), particles[:, 1].min())
         
         time_step = data_particles['time_step']
-        num_timesteps = particles[:, 2].max() + 1
+        time_column = data_particles.get('dimension', 2)
+        num_timesteps = particles[:, time_column].max() + 1
         assert num_timesteps > 0, f'num_timesteps = {num_timesteps}'
         window_size_x = data_particles['window_size_x']
         window_size_y = data_particles['window_size_y']
@@ -81,31 +93,30 @@ def go(file, infile, outfile, crop=False, every_nth_frame=None, output_type='mov
             window_size_y = crop
         
         def add_outlines(timestep, ax):
-            if particles.shape[1] == 4 and tracks:
+            if tracks:
+                assert particles is not None
                 particle_detection.show.add_particle_tracks(ax, particles, timestep, dimension=data_particles.get('dimension', 2),
-                                                            window_size_x=window_size_x, window_size_y=window_size_y,)
-            else:
+                                                            window_size_x=window_size_x, window_size_y=window_size_y)
+            if not tracks or show_blobs_too:
                 particle_detection.show.add_particle_outlines(
                     ax, particles, timestep, dimension=data_particles.get('dimension', 2),
                     outline=False, particle_diameter=data_particles.get('particle_diameter', 5),
-                    window_size_x=window_size_x, window_size_y=window_size_y,)
+                    window_size_x=window_size_x, window_size_y=window_size_y, color=particle_color)
 
         preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, outfile,
                                                 func=add_outlines, num_timesteps_in_data=num_timesteps,
                                                 window_size_x=window_size_x, window_size_y=window_size_y,
                                                 highlights=highlights, every_nth_frame=every_nth_frame, output_type=output_type,
-                                                annotation_color=annotation_color, dpi=dpi)
-        # preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/figures/{filename}{SUFFIX}.mp4",
-        #                                            func=add_outlines)
-        # save_array_movie(stack_copy, pixel_size, time_step, file, f"/home/acarter/presentations/cin_first/{filename}.mp4")
-
+                                                dpi=dpi, force_fps=FORCE_FPS,
+                                                **kwargs)
 
 
 if __name__ == '__main__':
 
     for file in sys.argv[1:]:
+        highlights = '_highlights' if HIGHLIGHTS else ''
         go(
             file,
-            infile = f'particle_detection/data/particles_{file}.npz',
-            outfile = f'particle_detection/figures_png/movie_{file}.gif'
+            outfile = f'particle_detection/figures_png/movie_{file}{highlights}.gif',
+            highlights=HIGHLIGHTS
         )

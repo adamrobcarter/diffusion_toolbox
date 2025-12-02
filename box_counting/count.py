@@ -35,6 +35,13 @@ def calc_and_save(file, box_sizes, sep_sizes, data, output_file_name, particles=
         raise Exception('should this be deprecated, and this conditional removed?')
     # print('particles', particles)
 
+    density = data.get('density', common.calc_density(particles, window_size_x, window_size_y, dimension=data.get('dimension', 2)))
+
+    print('particles.shape', particles.shape)
+    if data['dimension'] == 3:
+        # this is a quick hack to remove the extra dimension without having to change the countoscope lib code
+        particles = particles[:, [0, 1, 3]]
+
     if '_pot' in file:
         print('cropping')
         keep_x = (0 <= particles[:, 0]) & (particles[:, 0] <= window_size_x)
@@ -97,9 +104,10 @@ def calc_and_save(file, box_sizes, sep_sizes, data, output_file_name, particles=
                 particle_diameter_calced=particle_diameter_calced, computation_time=time.time()-t0,
                 depth_of_field=depth_of_field,
                 box_coords=results.box_coords,
-                pack_frac=data.get('pack_frac'), density=data.get('density', common.calc_density(particles, window_size_x, window_size_y)),
+                pack_frac=data.get('pack_frac'), density=density,
                 pack_frac_given=data.get('pack_frac_given'), max_time_hours=data.get('max_time_hours'),
                 window_size_x=window_size_x, window_size_y=window_size_y, pixel_size=data.get('pixel_size'),
+                simulated_D = data.get('simulated_D'),
                 **extra_to_save)
 
     if save_data:
@@ -120,6 +128,8 @@ def get_box_spacing(file):
         return 7
 
     elif file.startswith('sim_') or file.startswith('brennan'):
+        if '100' in file:
+            return 7
         if '160' in file:
             return 7
         elif '320' in file:

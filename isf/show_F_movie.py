@@ -26,7 +26,7 @@ for file in sys.argv[1:]:
         ax.set_xlim(k[0, 0], k[0, -1])
 
         ax.plot(k[0, :], F[t_index, :]/F[0, :], marker='.', linestyle='none')
-        ax.text(0.65, 0.9, f'$t={t[t_index]}\mathrm{{s}}$', transform=ax.transAxes)
+        ax.text(0.65, 0.9, fr'$t={t[t_index]}\mathrm{{s}}$', transform=ax.transAxes)
     
 
     common.save_gif(func, range(len(t)), fig, f'isf/figures_png/F_{file}.gif', fps=4)

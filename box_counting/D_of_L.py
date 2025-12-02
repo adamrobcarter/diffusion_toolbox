@@ -12,7 +12,7 @@ import visualisation.Ds_overlapped
 
 SHOW_THEORY = True
 SHOW_TIMESCALEINTEGRAL_FIT_SHORT = False
-SHOW_TIMESCALEINTEGRAL_FIT_LONG = False
+SHOW_TIMESCALEINTEGRAL_FIT_LONG = True
 SHOW_THRESH_LINE = True
 SHOW_NOFIT_CUTOFF = True
 DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE = True
@@ -384,6 +384,18 @@ def get_M1_M2(file, L, t, T_integrand, plateau_source):
             M2_index = min(int(1800 * np.sqrt(L)), t.shape[0]-1)
             M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
         M2_index = max(M2_index, MIN_M2_INDEX)
+
+    elif file.startswith('ld_'):
+        # c = 1e-7
+        # m = 1
+        # thresh_line = c * t**m
+        # M2_index = np.argmax(T_integrand < thresh_line)
+        # assert M2_index != 0
+        # M1_t = t[M2_index] / 2
+        # M1_index = np.argmax(t > M1_t)
+        
+        M2_index = min(int(1800 * np.sqrt(L)), t.shape[0]-1)
+        M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
         
     else:
         raise Exception('you need to define the parameters for this dataset')
@@ -596,18 +608,23 @@ def go(file, plateau_source, ax=None, legend_fontsize=8, title=None, save_data=F
             if labels_on_plot: label = None
 
             # plot actual data
-            if DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE and T_integrand.size > 1000:
+            if DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE and T_integrand.size > 100:
                 points_to_plot = common.exponential_indices(t, num=1000)
             else:
-                assert False # remove after paper publication
                 points_to_plot = np.index_exp[1:] # this is basically a functional way of writing points_to_plot = [1:]
+                hide_data_after_nofit_cutoff = False
+                print('i secretly disabled hide_data_after_nofit_cutoff') # without this we get an error because `points_to_plot[points_to_plot <= points_to_plot[above_nofit_cutoff]]` doesn't really make sense if points_to_plot is just an index_exp I think
                 
             if hide_data_after_nofit_cutoff:
                 above_nofit_cutoff = np.argmax(T_integrand[points_to_plot] < NOFIT_CROP_THRESHOLD/200)
                 print('above nofit cutoff', above_nofit_cutoff)
                 if above_nofit_cutoff: # it will return zero if none are above
+                    print(points_to_plot)
+                    print(above_nofit_cutoff)
+                    # print(points_to_plot.shape, above_nofit_cutoff.shape)
                     points_to_plot = points_to_plot[points_to_plot <= points_to_plot[above_nofit_cutoff]]
-                
+            
+            print(points_to_plot)
             plot_solid = points_to_plot[points_to_plot <= M2_index]
             plot_alpha = points_to_plot[points_to_plot >  M2_index]
 
@@ -690,7 +707,7 @@ def go(file, plateau_source, ax=None, legend_fontsize=8, title=None, save_data=F
             ax.text(x1, y2, f'$t^{{{slope}}}$', ha='left', va='center', color=common.FIT_COLOR)
                     
         if show_legend:
-            ax.legend(fontsize=legend_fontsize, loc='lower right')
+            ax.legend(fontsize=legend_fontsize, loc='lower left')
         ax.loglog()
         if rescale_x == RESCALE_X_L2:
             ax.set_xlabel('$t/L^2$')

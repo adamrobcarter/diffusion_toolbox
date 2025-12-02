@@ -1,1 +1,1 @@
-run all scrips from the top level dir with eg `python -m preprocessing.eleanor_to_stack`. No, idk how python imports work either.
+Documentation is available [here](https://diffusion-toolbox.readthedocs.io/en/latest/modules.html)

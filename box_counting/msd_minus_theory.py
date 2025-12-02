@@ -269,7 +269,7 @@ def go(file, ax=None, separation_in_label=False,
             if sigma and not np.isnan(sigma):
                 label = rf'$L={L/sigma:.2g}\sigma$'
                 if separation_in_label:
-                    label += f', $s={sep/sigma:.2g}\sigma$'
+                    label += fr', $s={sep/sigma:.2g}\sigma$'
             else:
                 label = rf'$L={L:.2g}$'
                 if separation_in_label:
@@ -302,11 +302,11 @@ def go(file, ax=None, separation_in_label=False,
         
         ax.semilogx()
         if rescale_x == RESCALE_X_L:
-            xlabel = '$t/L ($\mathrm{s/\mu m})$'
+            xlabel = r'$t/L ($\mathrm{s/\mu m})$'
         elif rescale_x == RESCALE_X_L2:
-            xlabel = '$t/L^2$ ($\mathrm{s/\mu m^2}$)'
+            xlabel = r'$t/L^2$ ($\mathrm{s/\mu m^2}$)'
         else:
-            xlabel = '$t$ ($\mathrm{s}$)'
+            xlabel = r'$t$ ($\mathrm{s}$)'
         if rescale_y == None:
             ylabel = r'$\langle \Delta N^2(t) \rangle$ ($\mathrm{\mu m^2}$)'
         elif rescale_y == RESCALE_Y_N:
@@ -323,11 +323,11 @@ def go(file, ax=None, separation_in_label=False,
         title = file
         # title = f'Simulated colloids in RCP spheres\n$\phi={phi:.3f}$'
         if not np.isnan(phi):
-            title += f', $\phi_\mathrm{{calc}}={phi:.3f}$'
+            title += fr', $\phi_\mathrm{{calc}}={phi:.3f}$'
         if not np.isnan(sigma):
-            title += f', $\sigma={sigma:.2f}\mathrm{{\mu m}}$'
+            title += fr', $\sigma={sigma:.2f}\mathrm{{\mu m}}$'
         if sigma_calced := data.get('particle_diameter_calced'):
-            title += f', $\sigma_\mathrm{{calc}}={sigma_calced:.3f}\mathrm{{\mu m}}$'
+            title += fr', $\sigma_\mathrm{{calc}}={sigma_calced:.3f}\mathrm{{\mu m}}$'
             # print('sigma calced hidden from legend')
         if show_title:
             ax.set_title(title)

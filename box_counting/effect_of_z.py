@@ -12,14 +12,15 @@ import numpy as np
 #         N2_theory = common.N2_nointer_3D(t, D, N, L, L, Lz)
 #         plt.plot(t, N2_theory, label=f'Lz/L = {z_mult:.2f}')
 
-for D, z_mult in ((1, 1), (4, 1), (1, 1/4)):
-    L = 1
-    Lz = L * z_mult
-    t = np.logspace(-4, 2)
-    N = 1
-    N2_theory = common.N2_nointer_3D(t, D, N, L, L, Lz)
-    plt.plot(t, N2_theory, label=f'Lz/L = {z_mult:.2f}, D={D}')
+if __name__ == '__main__':
+    for D, z_mult in ((1, 1), (4, 1), (1, 1/4)):
+        L = 1
+        Lz = L * z_mult
+        t = np.logspace(-4, 2)
+        N = 1
+        N2_theory = common.N2_nointer_3D(t, D, N, L, L, Lz)
+        plt.plot(t, N2_theory, label=f'Lz/L = {z_mult:.2f}, D={D}')
 
-plt.loglog()
-plt.legend()
-common.save_fig(plt.gcf(), 'box_counting/figures_png/effect_of_z.png')
+    plt.loglog()
+    plt.legend()
+    common.save_fig(plt.gcf(), 'box_counting/figures_png/effect_of_z.png')

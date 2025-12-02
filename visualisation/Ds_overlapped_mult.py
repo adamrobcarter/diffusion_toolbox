@@ -12,13 +12,14 @@ PLOT_AGAINST_K = True
 DISCRETE_COLORS = True
 
 ERRORBAR_ALPHA = 0.3
-LEGEND_FONTSIZE = 6
+LEGEND_FONTSIZE = 4
 
-ALLOW_RESCALE_X = True
-ALLOW_RESCALE_Y = True
+ALLOW_RESCALE_X = False
+ALLOW_RESCALE_Y = False
 SEMILOG_Y = True
 # FORCE_YLIM = None
 FORCE_YLIM = (0.8, 20)
+FORCE_YLIM = (0.04, 2)
 
 SOURCES = [
     # 'f_first_first',
@@ -30,10 +31,10 @@ SOURCES = [
     # 'f_t256',
     # 'f_t1024',
     
-    'f_t64',
+    # 'f_t64',
     # 'f_t128',
     # 'f_t512',
-    'f_t1024',
+    # 'f_t1024',
     # 'f_t2048',
 
     # 'F_first32_first',
@@ -50,7 +51,9 @@ SOURCES = [
     # 'timescaleint_nofit_cropped_var',
 
     # 'D_of_L_theory',
-    'D0Sk_theory'
+    # 'D0Sk_theory',
+
+    'H'
 ]
 
 source_names = {
@@ -60,9 +63,9 @@ source_names = {
     'f': '$f(k, t)$',
     'Fs': '$F_s(k, t)$',
     'f_short': '$f(k, t)$ short',
-    'Fs_short': '$F_s(k, \mathrm{short})$',
+    'Fs_short': r'$F_s(k, \mathrm{short})$',
     'f_long': '$f(k, t)$ long',
-    'Fs_long': '$F_s(k, \mathrm{long})$',
+    'Fs_long': r'$F_s(k, \mathrm{long})$',
     'boxcounting': 'counting full fit',
     'MSD': 'MSD',
     'MSD_short': 'MSD',
@@ -132,6 +135,7 @@ linestyles = {
     'D_of_L_theory': '-',
     'D_of_L_theory_Lh': '-',
     'dominiguez_theory': '-',
+    'MSD_first': 'dotted',
 }
 
 def show_one_file_and_source(
@@ -139,14 +143,17 @@ def show_one_file_and_source(
         ax,
         show_pixel=True, show_window=True, crop_end=None,
         allow_rescale_y=True, linestyle=None,
-        label=None, errorbar_alpha=ERRORBAR_ALPHA,
-        marker=None, color=None, disable_ylabel=False,
+        errorbar_alpha=ERRORBAR_ALPHA,
+        disable_ylabel=False,
         fade_out_thresh=np.inf, fade_out_alpha=0.5,
         allow_rescale_x=True, show_twin_k_axis=False,
+        plot_index=np.index_exp[:], msd_file=None,
+        **kwargs
     ):
-    
+    if msd_file is None:
+        msd_file = file
     try:
-        D_MSD, sigma, phi = visualisation.Ds_overlapped.get_D0(file)
+        D_MSD, sigma, phi = visualisation.Ds_overlapped.get_D0(msd_file)
         # print('MSD found')
     except Exception as err:
         print('RECONSIDER THIS')
@@ -154,32 +161,50 @@ def show_one_file_and_source(
         D_MSD = 1
         sigma = None
         phi = None
-        allow_rescale_y = False
+        if source != 'H_theory':
+            # this is messy and we should rethink
+            # basically get get L and D needs to be able to reply with D/D0 or just D
+            allow_rescale_y = False
+            # assert False
 
     diameter = sigma
+    print('diameter', diameter)
 
     # get all the data
     # for source in sources:
-    xs, Ds, D_uncs, pixel_size, window_size, pack_frac_given, pack_frac_calced = visualisation.Ds_overlapped.get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD=D_MSD, sigma=sigma, phi=phi)
-
+    xs, Ds, D_uncs, pixel_size, window_size, pack_frac_given, pack_frac_calced, diameter_other, D0 = visualisation.Ds_overlapped.get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD=D_MSD, sigma=sigma, phi=phi)
+    
+    if diameter is None:
+        diameter = diameter_other # dirty hack. need to think about where the diameter should come from. probably from get_L_and_D always
+    
+    if D0:
+        print('got D0 for H')
+        D_MSD = D0 # this is messy and we should rethink it
+        # for H_theory, I don't want to try and load D0, we canculate it in directH.py
+        print(Ds[-1]/D0)
 
     if allow_rescale_y:
         try:
             rescale_y = D_MSD
-            if not disable_ylabel: ax.set_ylabel(r'$D/D_\mathrm{self}$')
+            print('rescale_y in', rescale_y)
+            if not disable_ylabel: ax.set_ylabel(r'$D(k)/D_\mathrm{self}$')
             no_rescale = False
         except FileNotFoundError as err:
+            print('count not find MSD file to rescale y-axis')
             no_rescale = True
             print(err)
     else:
+        print('not allowing rescale y-axis')
         no_rescale = True
     
     if no_rescale:
         # there is a problem here if the MSD file is found for one but not all of the files,
         # then rescaled and non-rescaled data will be on the same plot
         rescale_y = 1
-        if not disable_ylabel: ax.set_ylabel(r'$D$ ($\mathrm{\mu m^2/s}$)')
+        if not disable_ylabel: ax.set_ylabel(r'$D(k)$ ($\mathrm{\mu m^2/s}$)')
 
+    print('rescale_y', rescale_y)
+                  
     if diameter and allow_rescale_x:
         if PLOT_AGAINST_K:
             rescale_x = 1/diameter
@@ -188,6 +213,8 @@ def show_one_file_and_source(
             rescale_x = diameter
             ax.set_xlabel(r'$L/\sigma$')
     else:
+        if not diameter:
+            print('no diameter found, cannot rescale x-axis', diameter)
         # assert False
         rescale_x = 1
         if PLOT_AGAINST_K:
@@ -213,17 +240,19 @@ def show_one_file_and_source(
     #         ax.hlines(x, xmin, xmax, label=r'$(1+\phi)/(1-\phi)^3$', color='gray')
 
     # do the actual plotting
-    if not label:
-        label = f'{file} {source_names.get(source, source)}'# if not source.startswith('MSD') else None
+    if 'label' not in kwargs:
+        kwargs['label'] = f'{file} {source_names.get(source, source)}'# if not source.startswith('MSD') else None
 
     xs /= rescale_x
+    print('Ds', Ds[-1], 'rescale_y', rescale_y)
     ys = Ds / rescale_y
+    print('ys', ys[-1])
     yerrs = D_uncs / rescale_y
 
     if source in ['MSD_short', 'MSD_first']:
-        ax.hlines(ys[0], xmin, xmax, color=color, linestyle='dotted', label=label)
+        ax.hlines(ys[0], xmin, xmax, linestyle='dotted', **kwargs)
         print('MSD errors hacked')
-        ax.fill_between(ax.get_xlim(), ys[0]*0.97, ys[0]*1.03, facecolor=color, alpha=errorbar_alpha)
+        # ax.fill_between(ax.get_xlim(), ys[0]*0.97, ys[0]*1.03, facecolor=color, alpha=errorbar_alpha)
 
     else:
         if crop_end:
@@ -234,24 +263,29 @@ def show_one_file_and_source(
                 yerrs = yerrs [:, :crop_end]
             else:
                 yerrs  = yerrs [:crop_end]
-        zorder = -1 if 'theory' in source else 0
+                
         if not linestyle:
-            linestyle = linestyles.get(source, 'none') # try 'None' if this errors out
+            default_linestyle = '-' if 'theory' in source else 'none'
+            linestyle = linestyles.get(source, default_linestyle) # try 'None' if this errors out
             
-        if not marker:
-            marker = marker_index.get(source, 'o')
+        if 'marker' not in kwargs:
+            kwargs['marker'] = marker_index.get(source, 'o')
         if 'theory' in source:
-            marker = 'None'
-        
+            kwargs['marker'] = 'None'
+
         # print(source, 'linestyles', use_linestyle, 'marker', marker)
         # print(file, source, 'plotting', ys.size, ys)
         fade_out_thresh = np.inf
         not_faded = xs < fade_out_thresh
         # THIS NEEDS TO BE PER SOURCE I THINK, A FULL 2D ARRAY
         faded     = xs > fade_out_thresh
-        ax.plot(xs[not_faded], ys[not_faded], linestyle=linestyle, marker=marker, markersize=4, color=color, label=label, zorder=zorder, linewidth=1)
-        ax.plot(xs[faded    ], ys[faded    ], linestyle=linestyle, marker=marker, markersize=4, color=color,                          zorder=zorder, linewidth=1, alpha=fade_out_alpha)
-        ax.errorbar(xs, ys, yerr=yerrs, linestyle='none', marker='None', alpha=errorbar_alpha, color=color, zorder=zorder)
+        ax.plot(xs[not_faded][plot_index], ys[not_faded][plot_index], linestyle=linestyle, markersize=4,  linewidth=1, **kwargs)
+        if 'alpha' in kwargs: # this gets in the way of fade_out_alpha
+            del kwargs['alpha']
+        del kwargs['label'] # no label for the errorbar or faded
+        ax.plot(xs[faded    ][plot_index], ys[faded    ][plot_index], linestyle=linestyle, markersize=4,                           linewidth=1, alpha=fade_out_alpha, **kwargs)
+        del kwargs['marker'] # we want to force no marker for the errorbar
+        ax.errorbar(xs[plot_index], ys[plot_index], yerr=yerrs[plot_index], linestyle='none', marker='None', alpha=errorbar_alpha, **kwargs)
         # print(xs[source], ys)
 
         log_y = np.log10(ys)
@@ -271,20 +305,21 @@ def show_one_file_and_source(
     assert np.isfinite(Ds).any(), 'Ds were found but they were all nan'
     print(f'rescaled Ds: min={Ds.min():.3g}, max={Ds.max():.3g}')
 
-    if logarithmic_y:
-        ax.semilogy()
-        ymin, ymax = ax.get_ylim()
-        if ymax/ymin < 50:
-            ax.yaxis.set_minor_formatter(matplotlib.ticker.LogFormatter()) # prevent scientific notation on axes
-            ax.yaxis.set_major_formatter(matplotlib.ticker.LogFormatter()) # prevent scientific notation on axes
+    # this should also not be here
+    # if logarithmic_y:
+    #     ax.semilogy()
+    #     ymin, ymax = ax.get_ylim()
+    #     if ymax/ymin < 50:
+    #         ax.yaxis.set_minor_formatter(matplotlib.ticker.LogFormatter()) # prevent scientific notation on axes
+    #         ax.yaxis.set_major_formatter(matplotlib.ticker.LogFormatter()) # prevent scientific notation on axes
 
-    ylim_expand = 1.5
-    ymin = max(0.01, np.nanmin(ys[ys > 0])/ylim_expand)
-    print('ymin', ymin, np.nanmin(ys[ys > 0]))
-    ymax = np.nanquantile(ys, 0.95)*ylim_expand*1.2
-    if source == 'MSD_short':
-        ymin = 0.3
-    ax.set_ylim(ymin, ymax)
+    # ylim_expand = 1.5
+    # ymin = max(0.01, np.nanmin(ys[ys > 0])/ylim_expand)
+    # print('ymin', ymin, np.nanmin(ys[ys > 0]))
+    # ymax = np.nanquantile(ys, 0.95)*ylim_expand*1.2
+    # if source == 'MSD_short':
+    #     ymin = 0.3
+    # ax.set_ylim(ymin, ymax)
     
     # this stuff shouldn't really be here as it's getting excecuted multiple times
     ax.semilogx()
@@ -303,58 +338,40 @@ def show_one_file_and_source(
         ax.set_xlabel(r'$L / \sigma$')
 
 
-def go(files_and_sources, ax, plot_against_k=False, legend_fontsize=None,
-       discrete_colors=False, logarithmic_y=False, labels=None,
-       errorbar_alpha=ERRORBAR_ALPHA, markers=None, source_labels=None,
-       allow_rescale_y=True, colors=None, linestyles=None, disable_ylabel=False,
+def go(datas, ax, plot_against_k=False, legend_fontsize=None,
+       discrete_colors=False, logarithmic_y=False,
+       errorbar_alpha=ERRORBAR_ALPHA,
+       allow_rescale_y=True, disable_ylabel=False,
        fade_out_alpha=0.5, show_Dcoll=False, allow_missing_files=False, allow_rescale_x=False,
        show_twin_k_axis=SHOW_TWIN_K_AXIS,):
     # colors can be len(files) or len(files) x len(sources)
     
-    if colors:
-        assert len(colors) == len(files_and_sources)
-    if labels:
-        assert len(labels) == len(files_and_sources)
-    if linestyles:
-        assert len(linestyles) == len(files_and_sources)
+    # if colors:
+    #     assert len(colors) == len(files_and_sources)
+    # if labels:
+    #     assert len(labels) == len(files_and_sources)
+    # if linestyles:
+    #     assert len(linestyles) == len(files_and_sources)
 
-    for i, (file, source) in enumerate(files_and_sources):
-        if labels:
-            label = labels[i]
-        else:
-            label = None
+    for i, data in enumerate(datas):
+        print(data)
+        data = dict(data)
 
-        if type(markers) == str:
-            marker = markers
-        elif type(markers) == list:
-            marker = markers[i]
-        else:
-            marker = None
-
-        if linestyles:
-            linestyle = linestyles[i]
-        else:
-            linestyle = None
-
-        if colors:
-            color = colors[i]
-        else:
+        if 'color' not in data:
             if discrete_colors:
-                color = common.tab_color(i)
+                data['color'] = common.tab_color(i)
             else:
-                color = common.colormap(i, 0, len(files_and_sources))
-        
+                data['color'] = common.colormap(i, 0, len(datas))
+
         try:
             show_one_file_and_source(
-                file, source,
                 PLOT_AGAINST_K=plot_against_k, TWO_PI=True, logarithmic_y=logarithmic_y,
                 ax=ax, show_window=False, show_pixel=False,
-                allow_rescale_y=allow_rescale_y, linestyle=linestyle,
-                label=label, errorbar_alpha=errorbar_alpha,
-                marker=marker, color=color,
+                allow_rescale_y=allow_rescale_y, errorbar_alpha=errorbar_alpha,
                 disable_ylabel=disable_ylabel,
                 fade_out_thresh=None, fade_out_alpha=fade_out_alpha,
                 allow_rescale_x=allow_rescale_x, show_twin_k_axis=show_twin_k_axis,
+                **data
             )
             
         except FileNotFoundError as err:
@@ -363,9 +380,11 @@ def go(files_and_sources, ax, plot_against_k=False, legend_fontsize=None,
             else:
                 raise err
 
-    ax.hlines(1, *ax.get_xlim(), linestyle=(0, (0.7, 0.7)), color='darkgray')
+    if allow_rescale_y:
+        ax.hlines(1, *ax.get_xlim(), linestyle=(0, (0.7, 0.7)), color='darkgray', zorder=-10)
 
     legend_margin = -0.015
+    legend_margin = 0
     ax.legend(
         fontsize=legend_fontsize,
         loc='upper left' if not plot_against_k else 'upper right',
@@ -381,31 +400,36 @@ if __name__ == '__main__':
         figsize = (5, 4.8 if SHOW_TWIN_K_AXIS else 4.2)
     fig, ax = plt.subplots(1, 1, figsize=figsize)
 
-    files = common.files_from_argv('isf/data/', 'F_first_')
+    print('THIS IS BAD')
+    # files = common.files_from_argv('isf/data/', 'F_first_')
+    files = common.files_from_argv('visualisation/data/', 'Ds_from_H_')
 
 
-    files_and_sources = []
-    [[files_and_sources.append((file, source)) for source in SOURCES] for file in files]
+    datas = []
+    [[datas.append(dict(
+        file=file,
+        source=source,
+    )) for source in SOURCES] for file in files]
     colors = []
     [[colors.append(common.tab_color(i)) for source in SOURCES] for i in range(len(files))]
     
     go(
-        files_and_sources,
+        datas,
         ax,
         # linestyles=['-']*len(files_and_sources),
         legend_fontsize=LEGEND_FONTSIZE,
         # discrete_colors=DISCRETE_COLORS,
-        colors=colors,
+        # color=colors,
         allow_rescale_y=ALLOW_RESCALE_Y,
         allow_rescale_x=ALLOW_RESCALE_X,
         plot_against_k=PLOT_AGAINST_K,
         allow_missing_files=True,
-        markers=['x', 'o', '']*2,
+        # markers=['x', 'o', '']*2,
     )
     if SEMILOG_Y:
         ax.semilogy()
     if FORCE_YLIM:
         ax.set_ylim(*FORCE_YLIM)
 
-    filenames = '_'.join(files)
+    filenames = '_'.join(files)[:100]
     common.save_fig(fig, f'visualisation/figures_png/Ds_overlapped_mult_{filenames}.png', dpi=200)
