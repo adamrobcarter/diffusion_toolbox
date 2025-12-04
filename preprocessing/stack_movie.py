@@ -377,11 +377,13 @@ def show_single_frame(file, ax, frame, pixel_size, window_size_x, window_size_y,
     # vmax = 6.2e-2
     # vmin = None
     # vmax = None
-    assert np.isfinite(vmin), f'vmin = {vmin}'
-    assert np.isfinite(vmax), f'vmax = {vmax}'
-    assert np.any(frame > vmin), f'frame min = {frame.min()}, vmin = {vmin}'
-    assert np.any(frame < vmax), f'frame max = {frame.max()}, vmax = {vmax}'
-
+    if vmin is not None:
+        assert np.isfinite(vmin), f'vmin = {vmin}'
+        assert np.any(frame > vmin), f'frame min = {frame.min()}, vmin = {vmin}'
+    if vmax is not None:
+        assert np.isfinite(vmax), f'vmax = {vmax}'
+        assert np.any(frame < vmax), f'frame max = {frame.max()}, vmax = {vmax}'
+        
     if channel == 'red':
         colors = [(0, 0, 0), (1, 0, 0)] # black > red
         cmap = matplotlib.colors.LinearSegmentedColormap.from_list("Custom", colors, N=20)
@@ -529,7 +531,7 @@ if __name__ == '__main__':
                 method         = args.method,
                 display_small  = crop,
                 highlights     = args.highlights,
-                backward       = args.backwards,
+                backwards      = args.backwards,
                 output_type    = 'movie',
                 max_num_frames = args.max_num_frames,
                 inverse_colors = args.inverse_colors,
