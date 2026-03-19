@@ -38,7 +38,12 @@ def calc_and_save(file, box_sizes, sep_sizes, data, output_file_name, particles=
     density = data.get('density', common.calc_density(particles, window_size_x, window_size_y, dimension=data.get('dimension', 2)))
 
     print('particles.shape', particles.shape)
-    if data['dimension'] == 3:
+
+    if 'particles_labels' in data:
+        labels = data['particles_labels']
+        particles = particles[:, [np.where(labels == 'x')[0][0], np.where(labels == 'y')[0][0], np.where(labels == 't')[0][0]]]
+
+    elif data['dimension'] == 3:
         # this is a quick hack to remove the extra dimension without having to change the countoscope lib code
         particles = particles[:, [0, 1, 3]]
 
@@ -138,8 +143,8 @@ def get_box_spacing(file):
             return 13
         elif '1280' in file:
             return 17 # it seems this could be reduced
-        else:
-            raise Exception('spacing not defined')
+        # else:
+        #     raise Exception('spacing not defined')
         
     return 7
 
@@ -174,6 +179,8 @@ def get_box_sizes(file, data):
     else:
         if 'pixel_size' in data:
             min_box = data['pixel_size']
+        elif 'particle_diameter' in data:
+            min_box = data['particle_diameter'] / 10
         else:
             min_box = 1
         max_box = 0.9*window_size

@@ -35,13 +35,15 @@ def find_color(row, bhwindow=False, window_size_x=None, window_size_y=None, chan
 
     return c, alpha
 
-def add_particle_outlines(ax, particles, timestep, dimension, particle_diameter, channel=None, outline=True,
+def add_particle_outlines(ax, particles, data, timestep, particle_diameter, channel=None, outline=True,
                           window_size_x=None, window_size_y=None, bhwindow=False, color=None):
     # radius can be None
 
     assert particles.size
 
-    time_column = dimension
+    time_column = common.get_particles_column('t', data)
+    x_column = common.get_particles_column('x', data)
+    y_column = common.get_particles_column('y', data)
 
     particles_at_t = particles[:, time_column] == timestep
     # print(particles_at_t.sum())
@@ -49,10 +51,17 @@ def add_particle_outlines(ax, particles, timestep, dimension, particle_diameter,
         raise Exception(f'No particles found at timestep {timestep}')
     # assert particles_at_t.sum() > 0
 
-    x = window_size_x - particles[particles_at_t, 0]
+    x = particles[particles_at_t, x_column]
+    y = particles[particles_at_t, y_column]
+
+    assert np.all(x <= window_size_x), f'max x = {x.max()}, window_size_x = {window_size_x}'
+    assert np.all(x >= 0),             f'min x = {x.min()}'
+    assert np.all(y <= window_size_y), f'max y = {y.max()}, window_size_y = {window_size_y}'
+    assert np.all(y >= 0),             f'min y = {y.min()}'
+
+    x = window_size_x - x
     # i think this probably happens because when we plot the image the origin is bottom left
     # but when trackpy does the positions it's top left, or something
-    y = particles[particles_at_t, 1]
 
     radius = particle_diameter / 2
 
@@ -77,6 +86,7 @@ def add_particle_outlines(ax, particles, timestep, dimension, particle_diameter,
 
 def add_particle_tracks(ax, particles, timestep, dimension, window_size_x, window_size_y):
     assert particles.size
+    assert particles.size < 1e8, 'trying to plot tracks for this big a dataset is foolish'
 
     # before_t = particles[:, dimension] <= timestep
     
@@ -141,7 +151,7 @@ def go(file, ax, fig, bhwindow=False):
 
 
     def add_outlines(timestep, ax):
-        add_particle_outlines(ax, particles, timestep, dimension=data_particles.get('dimension', 2), particle_diameter=data_particles.get('particle_diameter', 3),
+        add_particle_outlines(ax, particles, data_particles, timestep, particle_diameter=data_particles.get('particle_diameter', 3),
                                   channel=channel, outline=SHOW_AS_HOLLOW, window_size_x=data_particles['window_size_x'], window_size_y=data_particles['window_size_y'],
                                   bhwindow=bhwindow)
 
@@ -172,7 +182,6 @@ def go(file, ax, fig, bhwindow=False):
                                                         window_size_x=data_particles['window_size_x'], window_size_y=data_particles['window_size_y'],
                                                         hide_scale_bar=True)
 
-    print('adding outlines')
     add_outlines(0, ax)
 
 if __name__ == '__main__':

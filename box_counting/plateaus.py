@@ -40,8 +40,8 @@ def get_Ds_over_grid(try_plateaus, L, t, nmsd, nmsd_std):
 
 def go(file, ax, sources, rescale_window=False, label_prefix='', rescale_sigma=True, colors=None):
 
-    if 'zoom' in file:
-        CROP_OFF_L_BELOW = 0
+    # if 'zoom' in file:
+    #     CROP_OFF_L_BELOW = 0
 
     data = common.load(f'box_counting/data/counted_{file}.npz')
     N2_mean        = data['N2_mean']
@@ -150,14 +150,14 @@ def go(file, ax, sources, rescale_window=False, label_prefix='', rescale_sigma=T
     ax.semilogx()
 
     if rescale_window:
-        ax.set_ylabel('$\mathrm{plateau}/L_x{}^2$')
+        ax.set_ylabel(r'$\mathrm{plateau}/L_x{}^2$')
         if rescale_sigma:
             raise NotImplemented()
         else:
             ax.set_xlabel('$L/L_x$')
     else:
         ax.set_ylabel('plateau')
-        ax.set_xlabel('$L/\sigma$')
+        ax.set_xlabel(r'$L/\sigma$')
         
     if CROP_OFF_L_BELOW:
         first_index = np.argmax(box_sizes > CROP_OFF_L_BELOW)

@@ -5,11 +5,11 @@ import countoscope_theory.structure_factor
 import scipy.optimize, scipy.stats
 
 SMALL = False
-SHOW_R_AXIS = True
+SHOW_R_AXIS = False
 FORCE_LOG_X_AXIS = False
 RESCALE_X_AXIS_BY_DIAMETER = True
 SPLIT_AND_COLOR = False
-SHOW_FIT = False
+SHOW_FIT = True
 SHOW_THEORY = True
 EARLY_ALPHA = 1
 
@@ -72,6 +72,8 @@ def go(file, ax,
     # ax.plot(x_th, countoscope_theory.structure_factor.hard_spheres_2d(x_th, *popt), color='grey', label=f'fit ($\phi={common.format_val_and_unc(popt[0], np.sqrt(pcov[0, 0]), sigfigs=3)}$, $\sigma={common.format_val_and_unc(popt[1], np.sqrt(pcov[1, 1]), sigfigs=3)}$)')
     
     if SHOW_FIT:
+        assert density, f'density = {density}'
+
         def fit_func(k, sigma):
             phi = np.pi/4 * density * sigma**2
             return countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma)
@@ -84,16 +86,22 @@ def go(file, ax,
         phi_fit_unc = 2 * np.pi/4 * density * sigma**2 * sigma_unc
         # label=f'fit: $\phi={common.format_val_and_unc(popt[0], np.sqrt(pcov[0, 0]), sigfigs=3)}$, $\sigma={common.format_val_and_unc(popt[1], np.sqrt(pcov[1, 1]), sigfigs=3)}$'
         assert np.isfinite(fit_func(x_th, sigma)).all()
-        ax.plot(x_th/rescale_x, fit_func(x_th, sigma), color=common.FIT_COLOR, zorder=10, label='fit')
-        print(f'fit gave sigma={common.format_val_and_unc(sigma, sigma_unc, sigfigs=4, latex=False)}, phi={common.format_val_and_unc(phi_fit, phi_fit_unc, sigfigs=4, latex=False)}')
+        label = fr'fit $\sigma={common.format_val_and_unc(sigma, sigma_unc, sigfigs=3)}$'
+        ax.plot(x_th/rescale_x, fit_func(x_th, sigma), color=common.FIT_COLOR, zorder=10, label=label)
+        print(f'fit gave sigma={common.format_val_and_unc(sigma, sigma_unc, sigfigs=4, latex=False)}, phi({sigma:.3g})={common.format_val_and_unc(phi_fit, phi_fit_unc, sigfigs=4, latex=False)}')
         phi_force = np.pi/4 * density * 2.972**2
         print(f'phi(sigma=2.972) = {phi_force:.4f}')
 
     if SHOW_THEORY:
-        if (pack_frac_given := data.get('pack_frac_given')) and (particle_diameter := data['particle_diameter']):
+        pack_frac_given = None
+        if 'pack_frac_given' in data:
+            pack_frac_given = data['pack_frac_given']
+        elif 'pack_frac' in data:
+            pack_frac_given = data['pack_frac']
+        if pack_frac_given and (particle_diameter := data['particle_diameter']):
             k_theory = np.logspace(np.log10(k.min()), np.log10(k.max()), num=200)
             ax.plot(k_theory/rescale_x, countoscope_theory.structure_factor.hard_spheres_2d(k_theory, pack_frac_given, particle_diameter),
-                    color=theory_color, label='theory')
+                    color=theory_color, label=fr'theory $\sigma={particle_diameter}$')
             # ax.plot(x, countoscope_theory.structure_factor.hard_spheres_2d(x, pack_frac_given, 3.09))
     # ax.plot(x_th, countoscope_theory.structure_factor.hard_spheres_2d(x_th, 0.34, 3.03), color='grey', label='$\sigma=3.03$', zorder=10)
 
@@ -141,14 +149,15 @@ def go(file, ax,
     ax.set_ylim(max(ymin, 0), min(ymax, 5))
 
     # ax.text(0.7, 0.1, f'$\phi={file[-4:]}$', transform=ax.transAxes)
-    ax.legend(handlelength=1, loc='lower right', fontsize=7)
-
+    ax.legend(handlelength=1, fontsize=9)
+    ax.axhline(1, color='gray', linestyle=':')
 
 if __name__ == '__main__':
     for file in common.files_from_argv('isf/data', 'F_'):
 
         fig, ax = plt.subplots(1, 1, figsize=(3.2, 3) if SMALL else (4, 4))
 
-        go(file, ax, source='F')
+        # go(file, ax, source='F')
+        go(file, ax, source='F_first', theory_color='gray')
         
         common.save_fig(fig, f'isf/figures_png/S_of_k_{file}.png')

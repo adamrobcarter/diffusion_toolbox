@@ -1,7 +1,7 @@
 import common
 import numpy as np
 import time
-import sys
+import warnings
 import trackpy
 import matplotlib.pyplot as plt
 import tqdm
@@ -131,6 +131,8 @@ if __name__ == '__main__':
         print('starting detector')
 
         assert diameter is not None, "you haven't yet provided `diameter`"
+        if percentile:
+            warnings.warn('percentile is not yet passed, so it is being ignored')
 
         # features = trackpy.batch(stack[:100], 11, processes=16)
         trackpy.quiet() # turns off reporting every frame as it's processed

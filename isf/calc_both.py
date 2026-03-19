@@ -25,15 +25,17 @@ def setup(file, particles, metadata, d_frames, F_type='F', drift_removed=False, 
     pixel_size    = metadata.get('pixel_size')
     window_size_x = metadata['window_size_x']
     window_size_y = metadata['window_size_y']
-    dimension     = metadata.get('dimension', 2)
+    
+    columns = {'x': common.get_particles_column('x', metadata), 'y': common.get_particles_column('y', metadata), 't': common.get_particles_column('t', metadata)}
+
     # assert 'density' in data
     if '_pot' not in file and 'nbody' not in file:
-        assert particles[:, 0].min() >= 0
-        assert particles[:, 1].min() >= 0
-        assert less_than_or_close(particles[:, 0].max(), window_size_x), f'particles[:, 0].max() = {particles[:, 0].max()}, window_size_x={window_size_x}'
-        assert less_than_or_close(particles[:, 1].max(), window_size_y), f'particles[:, 1].max() = {particles[:, 1].max()}, window_size_y={window_size_y}'
+        assert particles[:, columns['x']].min() >= 0
+        assert particles[:, columns['y']].min() >= 0
+        assert less_than_or_close(particles[:, columns['x']].max(), window_size_x), f'particles[:, x].max() = {particles[:, columns["x"]].max()}, window_size_x={window_size_x}'
+        assert less_than_or_close(particles[:, columns['y']].max(), window_size_y), f'particles[:, y].max() = {particles[:, columns["y"]].max()}, window_size_y={window_size_y}'
     
-    times = int(particles[:, 2].max() + 1)
+    times = int(particles[:, columns['t']].max() + 1)
 
     if drift_removed:
         particles = common.remove_drift(particles)
@@ -50,15 +52,13 @@ def setup(file, particles, metadata, d_frames, F_type='F', drift_removed=False, 
     if not max_K:
         if pixel_size:
             max_K = 2 * np.pi / pixel_size
+        elif sigma := metadata['particle_diameter']:
+            max_K = 2 * np.pi / (sigma / 10)
         else:
             if not quiet: print('Pixel size not given, using max_K = 21.81661564992912')
             max_K = 21.81661564992912 # was 10
             # we use this cause it's the same as used by eleanorlong
 
-    if dimension == 2:
-        columns = {'x': 0, 'y': 1, 't': 2}
-    elif dimension == 3:
-        columns = {'x': 0, 'y': 1, 't': 3}
 
     particles_at_frame, times = scattering_functions.get_particles_at_frame(F_type, particles, columns=columns)
 
@@ -99,7 +99,7 @@ def calc_for_f_type(
     if not quiet: print('starting calculation')
     if not quiet: print('particles_at_frame:', common.arraysize(particles_at_frame))
 
-    if not quiet: print(f'going with min k = ({min_K[0]:.4f}, {min_K[1]:.4f})')
+    if not quiet: print(f'going with min k = ({min_K[0]:.4f}, {min_K[1]:.4f}), max k = {max_K:.4f}')
     if not quiet: print('going with d_frames =', d_frames)
 
     Fs, F_unc, ks, F_unbinned, F_unc_unbinned, k_unbinned, k_x, k_y, d_frames = scattering_functions.intermediate_scattering(

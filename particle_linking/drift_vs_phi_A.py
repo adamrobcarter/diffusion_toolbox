@@ -63,9 +63,7 @@ if __name__ == '__main__':
     # phis = np.array(phis)
 
     # eleanor_phis = np.array([0.068, 0.216, 0.256, 0.299, 0.307, 0.357, 0.453, 0.545, 0.545])
-    # eleanor_vs = np.array([0.692, 0.875, 0.862, 0.898, 0.94, 0.982, 1.12, 1.17, 1.19])
-    eleanor_phis = np.array([0.01, 0.02, 0.03, 0.04, 0.05, 0.07, 0.1])
-    eleanor_As = np.array([0.92, 0.89, 0.95, 1.01, 1.06, 1.11, 1.18])
+    # eleanor_vs = np.array([0.692, 0.875, 0.862, 0.898, 0.94, 0.982, 1.12, 1.17, 1.19])    
 
     ax.scatter(eleanor_phis, eleanor_As, label='exp')
 

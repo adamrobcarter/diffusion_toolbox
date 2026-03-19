@@ -43,7 +43,7 @@ def plot_single_graph(ax, t, k, F_D_sq, F_D_sq_unc, k_index, plot_label=None, co
     # assert np.isfinite(ymins[graph_i])
     # assert np.isfinite(ymaxs[graph_i])
 
-    return_fit = False
+    return_fit = do_fit
 
     print('do fit', do_fit)
 

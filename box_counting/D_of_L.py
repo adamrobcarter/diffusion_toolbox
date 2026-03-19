@@ -23,7 +23,7 @@ LABELS_ON_PLOT = False
 LABELS_ON_PLOT_Y_SHIFT = 1.2
 LABELS_ON_PLOT_X_SHIFT = 1.3
 
-MAX_NUM_BOXES = 10
+MAX_NUM_BOXES = 20
 
 UNC_INCLUDES_NMSD_UNC = False
 UNC_INCLUDES_VAR_UNC  = True
@@ -397,6 +397,26 @@ def get_M1_M2(file, L, t, T_integrand, plateau_source):
         M2_index = min(int(1800 * np.sqrt(L)), t.shape[0]-1)
         M1_index = M2_index // 2 # t is linear so we can just halve the index to halve the time
         
+    elif file == 'eleanorsmall016long':
+        c = 8e-6
+        m = 1
+        thresh_line = c * t**m
+        M2_index = np.argmax(T_integrand < thresh_line)
+        M2_index = max(M2_index, MIN_M2_INDEX)
+        assert M2_index != 0
+        M1_t = t[M2_index] / 2
+        M1_index = np.argmax(t > M1_t)
+    elif file == 'eleanorsmall016short':
+        c = 1e-4
+        m = 1
+        thresh_line = c * t**m
+        M2_index = np.argmax(T_integrand < thresh_line)
+        M2_index = max(M2_index, MIN_M2_INDEX)
+        assert M2_index != 0
+        M1_t = t[M2_index] / 2
+        # print('t', t, 'M1_t', M1_t)
+        M1_index = np.argmax(t > M1_t)
+
     else:
         raise Exception('you need to define the parameters for this dataset')
 
@@ -525,7 +545,7 @@ def go(file, plateau_source, ax=None, legend_fontsize=8, title=None, save_data=F
         C_N_over_plateau_unc = np.sqrt(C_N_over_plateau_unc_sq)
 
         M1_index, M2_index, thresh_line = get_M1_M2(file, L, t, T_integrand, plateau_source)
-        print(thresh_line, show_thresh_line, ax)
+        
         if thresh_line is not None and show_thresh_line and ax:
             ax.plot(t, thresh_line)
         else:
@@ -598,9 +618,9 @@ def go(file, plateau_source, ax=None, legend_fontsize=8, title=None, save_data=F
             
             sep = sep_sizes[box_size_index]
             if sigma := data.get('particle_diameter'):
-                label = f'$L={L/sigma:.2g}\sigma$'
+                label = fr'$L={L/sigma:.2g}\sigma$'
                 if sep_in_label:
-                    label += f', $s={sep/sigma:.2g}\sigma$'
+                    label += fr', $s={sep/sigma:.2g}\sigma$'
             else:
                 label = f'L={L:.2f}'
                 if sep_in_label:
@@ -619,12 +639,8 @@ def go(file, plateau_source, ax=None, legend_fontsize=8, title=None, save_data=F
                 above_nofit_cutoff = np.argmax(T_integrand[points_to_plot] < NOFIT_CROP_THRESHOLD/200)
                 print('above nofit cutoff', above_nofit_cutoff)
                 if above_nofit_cutoff: # it will return zero if none are above
-                    print(points_to_plot)
-                    print(above_nofit_cutoff)
-                    # print(points_to_plot.shape, above_nofit_cutoff.shape)
                     points_to_plot = points_to_plot[points_to_plot <= points_to_plot[above_nofit_cutoff]]
             
-            print(points_to_plot)
             plot_solid = points_to_plot[points_to_plot <= M2_index]
             plot_alpha = points_to_plot[points_to_plot >  M2_index]
 

@@ -17,9 +17,9 @@ LEGEND_FONTSIZE = 4
 ALLOW_RESCALE_X = False
 ALLOW_RESCALE_Y = False
 SEMILOG_Y = True
-# FORCE_YLIM = None
-FORCE_YLIM = (0.8, 20)
-FORCE_YLIM = (0.04, 2)
+FORCE_YLIM = None
+# FORCE_YLIM = (0.8, 20)
+# FORCE_YLIM = (0.04, 2)
 
 SOURCES = [
     # 'f_first_first',
@@ -43,17 +43,17 @@ SOURCES = [
     # 'f',
     # 'f_long',
     # 'MSD_first',
-    # 'boxcounting_collective_var',
-    # 'timescaleint_var',
-    # 'timescaleint_fixexponent_var',
-    # 'timescaleint_nmsdfitinter'
+    'boxcounting_collective_var',
+    'timescaleint_var',
+    'timescaleint_fixexponent_var',
+    'timescaleint_nmsdfitinter'
 
-    # 'timescaleint_nofit_cropped_var',
+    'timescaleint_nofit_cropped_var',
 
     # 'D_of_L_theory',
     # 'D0Sk_theory',
 
-    'H'
+    # 'H'
 ]
 
 source_names = {
@@ -142,46 +142,33 @@ def show_one_file_and_source(
         file, source, PLOT_AGAINST_K, TWO_PI, logarithmic_y,
         ax,
         show_pixel=True, show_window=True, crop_end=None,
-        allow_rescale_y=True, linestyle=None,
+        allow_rescale_y=True,
         errorbar_alpha=ERRORBAR_ALPHA,
         disable_ylabel=False,
         fade_out_thresh=np.inf, fade_out_alpha=0.5,
         allow_rescale_x=True, show_twin_k_axis=False,
-        plot_index=np.index_exp[:], msd_file=None,
+        plot_index=np.index_exp[:], msd=None,
         **kwargs
     ):
-    if msd_file is None:
-        msd_file = file
-    try:
-        D_MSD, sigma, phi = visualisation.Ds_overlapped.get_D0(msd_file)
-        # print('MSD found')
-    except Exception as err:
-        print('RECONSIDER THIS')
-        print(err)
-        D_MSD = 1
+    if type(msd) is float or type(msd) is int:
+        D_MSD = msd
         sigma = None
         phi = None
-        if source != 'H_theory':
-            # this is messy and we should rethink
-            # basically get get L and D needs to be able to reply with D/D0 or just D
-            allow_rescale_y = False
-            # assert False
-
-    diameter = sigma
-    print('diameter', diameter)
+    elif type(msd) is str:
+        D_MSD, _, _ = visualisation.Ds_overlapped.get_D0(msd)
+    else:
+        D_MSD = None
+        # we take D_MSD to be the first D datapoint (will do this later)
 
     # get all the data
     # for source in sources:
-    xs, Ds, D_uncs, pixel_size, window_size, pack_frac_given, pack_frac_calced, diameter_other, D0 = visualisation.Ds_overlapped.get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD=D_MSD, sigma=sigma, phi=phi)
+    xs, Ds, D_uncs, pixel_size, window_size, phi, sigma = visualisation.Ds_overlapped.get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD=D_MSD, **kwargs)
     
-    if diameter is None:
-        diameter = diameter_other # dirty hack. need to think about where the diameter should come from. probably from get_L_and_D always
-    
-    if D0:
-        print('got D0 for H')
-        D_MSD = D0 # this is messy and we should rethink it
-        # for H_theory, I don't want to try and load D0, we canculate it in directH.py
-        print(Ds[-1]/D0)
+    if D_MSD is None:
+        if PLOT_AGAINST_K:
+            D_MSD = Ds[np.argmax(xs)]
+        else:
+            D_MSD = Ds[np.argmin(xs)]
 
     if allow_rescale_y:
         try:
@@ -205,16 +192,14 @@ def show_one_file_and_source(
 
     print('rescale_y', rescale_y)
                   
-    if diameter and allow_rescale_x:
+    if sigma and allow_rescale_x:
         if PLOT_AGAINST_K:
-            rescale_x = 1/diameter
+            rescale_x = 1/sigma
             ax.set_xlabel(r'$k \sigma$')
         else:
-            rescale_x = diameter
+            rescale_x = sigma
             ax.set_xlabel(r'$L/\sigma$')
     else:
-        if not diameter:
-            print('no diameter found, cannot rescale x-axis', diameter)
         # assert False
         rescale_x = 1
         if PLOT_AGAINST_K:
@@ -244,13 +229,14 @@ def show_one_file_and_source(
         kwargs['label'] = f'{file} {source_names.get(source, source)}'# if not source.startswith('MSD') else None
 
     xs /= rescale_x
-    print('Ds', Ds[-1], 'rescale_y', rescale_y)
     ys = Ds / rescale_y
-    print('ys', ys[-1])
     yerrs = D_uncs / rescale_y
+                
+    if 'linestyle' not in kwargs:
+        kwargs['linestyle'] = '-' if 'theory' in source else 'none'
 
     if source in ['MSD_short', 'MSD_first']:
-        ax.hlines(ys[0], xmin, xmax, linestyle='dotted', **kwargs)
+        ax.hlines(ys[0], xmin, xmax, **kwargs)
         print('MSD errors hacked')
         # ax.fill_between(ax.get_xlim(), ys[0]*0.97, ys[0]*1.03, facecolor=color, alpha=errorbar_alpha)
 
@@ -263,36 +249,42 @@ def show_one_file_and_source(
                 yerrs = yerrs [:, :crop_end]
             else:
                 yerrs  = yerrs [:crop_end]
-                
-        if not linestyle:
-            default_linestyle = '-' if 'theory' in source else 'none'
-            linestyle = linestyles.get(source, default_linestyle) # try 'None' if this errors out
-            
         if 'marker' not in kwargs:
             kwargs['marker'] = marker_index.get(source, 'o')
         if 'theory' in source:
             kwargs['marker'] = 'None'
 
-        # print(source, 'linestyles', use_linestyle, 'marker', marker)
-        # print(file, source, 'plotting', ys.size, ys)
+        if len(yerrs.shape) == 2: # remember we can have up and down errorbars different like this
+            yerrs_plot_index = yerrs[:, plot_index[0]] # idk why the [0] is needed
+        else:
+            yerrs_plot_index = yerrs[plot_index]
+
         fade_out_thresh = np.inf
         not_faded = xs < fade_out_thresh
         # THIS NEEDS TO BE PER SOURCE I THINK, A FULL 2D ARRAY
         faded     = xs > fade_out_thresh
-        ax.plot(xs[not_faded][plot_index], ys[not_faded][plot_index], linestyle=linestyle, markersize=4,  linewidth=1, **kwargs)
-        if 'alpha' in kwargs: # this gets in the way of fade_out_alpha
-            del kwargs['alpha']
-        del kwargs['label'] # no label for the errorbar or faded
-        ax.plot(xs[faded    ][plot_index], ys[faded    ][plot_index], linestyle=linestyle, markersize=4,                           linewidth=1, alpha=fade_out_alpha, **kwargs)
-        del kwargs['marker'] # we want to force no marker for the errorbar
-        ax.errorbar(xs[plot_index], ys[plot_index], yerr=yerrs[plot_index], linestyle='none', marker='None', alpha=errorbar_alpha, **kwargs)
-        # print(xs[source], ys)
+
+        ax.plot(
+            xs[not_faded][plot_index], ys[not_faded][plot_index],
+            linestyle=kwargs.get('linestyle'), markersize=4, linewidth=1,
+            color=kwargs.get('color', None), marker=kwargs.get('marker', None), label=kwargs.get('label', None),
+            alpha=kwargs.get('alpha', None),
+        )
+
+        ax.plot(
+            xs[faded][plot_index], ys[faded][plot_index],
+            linestyle=kwargs.get('linestyle'), markersize=4, linewidth=1,
+            alpha=fade_out_alpha, 
+            color=kwargs.get('color', None), marker=kwargs.get('marker', None),
+        )
+        ax.errorbar(
+            xs[plot_index], ys[plot_index], yerr=yerrs_plot_index,
+            linestyle='none', marker='None', alpha=errorbar_alpha, 
+            color=kwargs.get('color', None),
+        )
 
         log_y = np.log10(ys)
         err = np.sum((log_y[1:]-log_y[:-1])**2)
-        # print('sum err', file, err)
-
-    # assert not np.any(np.isnan(Ds)), 'nan was found in Ds'=
 
             
     if not PLOT_AGAINST_K:
@@ -354,7 +346,6 @@ def go(datas, ax, plot_against_k=False, legend_fontsize=None,
     #     assert len(linestyles) == len(files_and_sources)
 
     for i, data in enumerate(datas):
-        print(data)
         data = dict(data)
 
         if 'color' not in data:
@@ -381,7 +372,7 @@ def go(datas, ax, plot_against_k=False, legend_fontsize=None,
                 raise err
 
     if allow_rescale_y:
-        ax.hlines(1, *ax.get_xlim(), linestyle=(0, (0.7, 0.7)), color='darkgray', zorder=-10)
+        ax.axhline(1, linestyle=(0, (0.7, 0.7)), color='darkgray', zorder=-10)
 
     legend_margin = -0.015
     legend_margin = 0

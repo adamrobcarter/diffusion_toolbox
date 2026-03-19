@@ -392,12 +392,17 @@ def get_name(metadata, suffix='', prefix=''):
     t_final = metadata['T_final']
     t_save = metadata['t_save']
     dt_ms = int(metadata['dt'] * 1000)
-    t_part = f't{format_time(t_final)}_{format_time(t_save)}_dt{dt_ms}'
+    t_part = f't{common.format_time(t_final)}_{common.format_time(t_save)}_dt{dt_ms}'
 
     if metadata['lubrication'] == False:
         t_part += '_nolub'
 
-    output_name = f'{prefix}ld_{hydro}_{phi}_{wall_str}_L{L}_{t_part}{suffix}'
+    if metadata['a'] != 1.395:
+        a_part = f'_a{metadata["a"]}'
+    else:
+        a_part = ''
+
+    output_name = f'{prefix}ld_{hydro}_{phi}_{wall_str}_L{L}_{t_part}{a_part}{suffix}'
     return output_name
 
 processes = []
@@ -523,4 +528,28 @@ if __name__ == '__main__':
     # load_and_save('/store/cartera/libmobility_diffusion/solver_Self_N_1031_L_300_open_dt_50_t_600_1_run_0/')
     # load_and_save('/store/cartera/libmobility_diffusion/solver_DPStokes_N_1031_L_300_open_dt_100_t_600_1_run_0/')
     # load_and_save('/store/cartera/libmobility_diffusion/solver_Self_N_2863_L_500_open_dt_50_t_3600_12_run_0/')
-    load_and_save('/store/cartera/libmobility_diffusion/solver_DPStokes_N_2863_L_500_open_dt_100_t_3600_20_run_0/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_DPStokes_N_2863_L_500_open_dt_100_t_3600_20_run_0/')
+
+    # for P(z)
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_255_L_500_single_wall_dt_125_t_10_0.125_a_2.5_run_0/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_255_L_400_single_wall_dt_125_t_8_0.125_a_2.0_run_0/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_255_L_300_single_wall_dt_125_t_6_0.125_a_1.5_run_0/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_255_L_200_single_wall_dt_50_t_4_0.05_a_1.0_run_0/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_255_L_100_single_wall_dt_5_t_2_0.02_a_0.5_run_0/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_255_L_50_single_wall_dt_0_t_1_0.01_a_0.25_run_0/')
+
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_1274_L_500_single_wall_dt_125_t_10_0.125_a_2.5_run_0/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_1274_L_400_single_wall_dt_125_t_8_0.125_a_2.0_run_0/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_1274_L_300_single_wall_dt_125_t_6_0.125_a_1.5_run_0/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_1274_L_200_single_wall_dt_50_t_4_0.05_a_1.0_run_0/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_1274_L_100_single_wall_dt_5_t_2_0.02_a_0.5_run_0/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_1274_L_50_single_wall_dt_0_t_1_0.01_a_0.25_run_0/')
+
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_6367_L_500_single_wall_dt_125_t_10_0.125_a_2.5_run_0/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_6367_L_400_single_wall_dt_125_t_8_0.125_a_2.0_run_0/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_6367_L_300_single_wall_dt_125_t_6_0.125_a_1.5_run_0/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_6367_L_200_single_wall_dt_50_t_4_0.05_a_1.0_run_0/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_6367_L_100_single_wall_dt_5_t_2_0.02_a_0.5_run_0/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_6367_L_50_single_wall_dt_0_t_1_0.01_a_0.25_run_0/')
+
+    load_and_save('/store/cartera/libmobility_diffusion/solver_DPStokes_N_67_L_64_single_wall_dt_125_t_60_1_a_1.395_run_10/')

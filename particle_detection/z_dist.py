@@ -17,5 +17,5 @@ if __name__ == '__main__':
         print(label)
 
     ax.set_xlabel('$z/a$')
-    ax.legend()
+    ax.legend(fontsize=8)
     common.save_fig(fig, f'particle_detection/figures_png/z_dist_{file}.png')

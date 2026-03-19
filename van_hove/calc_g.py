@@ -9,15 +9,15 @@ def go(file, num_r_bins, max_r, outputfilename):
     data = common.load(f'particle_detection/data/particles_{file}.npz')
     particles = data['particles']
 
-    num_timesteps = int(particles[:, 2].max()) + 1
 
     # num_r_bins = 100
     # max_r = 12
     num_time_origins = 20 # computation time linear in this
 
-    gs = np.full((num_timesteps, num_r_bins), np.nan)
 
-    time_column = data.get('dimension', 2)
+    time_column = common.get_particles_column('t', data)
+    num_timesteps = int(particles[:, time_column].max()) + 1
+    gs = np.full((num_timesteps, num_r_bins), np.nan)
     
     # fig, ax = plt.subplots(1, 1)
     # ax.set_ylim(0, 2)
@@ -53,19 +53,22 @@ def go(file, num_r_bins, max_r, outputfilename):
         pack_frac_given=data.get('pack_frac_given')
     )
 
+if __name__ == '__main__':
+    parser = common.argparser()
+    args = parser.parse_args()
     
-for file in sys.argv[1:]:
-    outputfilename = f'van_hove/data/g_{file}'
-    num_r_bins = 300 # computation time (probably) linear in this
-    max_r = 30 # computation time independent of this
-    go(file, num_r_bins, max_r, outputfilename)
-    
-    # outputfilename = f'van_hove/data/g_{file}_a'
-    # num_r_bins = 100 # computation time (probably) linear in this
-    # max_r = 12 # computation time independent of this
-    # go(file, num_r_bins, max_r, outputfilename)
-    
-    # outputfilename = f'van_hove/data/g_{file}_b'
-    # num_r_bins = 200 # computation time (probably) linear in this
-    # max_r = 12 # computation time independent of this
-    # go(file, num_r_bins, max_r, outputfilename)
+    for file in args.files:
+        outputfilename = f'van_hove/data/g_{file}'
+        num_r_bins = 300 # computation time (probably) linear in this
+        max_r = 30 # computation time independent of this
+        go(file, num_r_bins, max_r, outputfilename)
+        
+        # outputfilename = f'van_hove/data/g_{file}_a'
+        # num_r_bins = 100 # computation time (probably) linear in this
+        # max_r = 12 # computation time independent of this
+        # go(file, num_r_bins, max_r, outputfilename)
+        
+        # outputfilename = f'van_hove/data/g_{file}_b'
+        # num_r_bins = 200 # computation time (probably) linear in this
+        # max_r = 12 # computation time independent of this
+        # go(file, num_r_bins, max_r, outputfilename)

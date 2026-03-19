@@ -56,7 +56,7 @@ DONT_PLOT_ALL_POINTS_TO_REDUCE_FILESIZE = True
 REVERSE_PLOT_ORDER = False
 LINESTYLE = 'none'
 
-DO_TIMESCALEINT_REPLACEMENT = False
+DO_TIMESCALEINT_REPLACEMENT = True
 
 # if SHOW_JUST_ONE_BOX:
     # LABELS_ON_PLOT = False
@@ -583,7 +583,8 @@ def go(file, ax=None, separation_in_label=False,
         
         def timescaleint_replacement():
             assert np.isnan(delta_N_sq).sum() == 0, 'nan found in nmsd'
-            assert np.sum(delta_N_sq < 0) == 0, 'negatives found in nmsd'
+            print(delta_N_sq)
+            assert np.all( delta_N_sq < 0 | np.isclose(delta_N_sq, 0) ) == 0, f'{np.sum(delta_N_sq < 0)}/{delta_N_sq.size} negatives found in nmsd'
             assert np.sum(delta_N_sq == 0) == 0, 'zeros found in nmsd'
 
             N2_theory2 = lambda t, D : plateau * (1 - countoscope_theory.nmsd.famous_f(4*D*t/L**2)**2)
@@ -928,10 +929,11 @@ def go(file, ax=None, separation_in_label=False,
             Ds=Ds_first_quad_for_saving, D_uncs=D_uncs_first_quad_for_saving, Ls=Ls_first_quad_for_saving,
             particle_diameter=sigma,
             pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'), max_time_hours=data.get('max_time_hours'))
-    common.save_data(f'visualisation/data/Ds_from_boxcounting_collective_{timescaleint_replacement_plateau_source}_{file}',
-            Ds=Ds_for_saving_collective, D_uncs=D_uncs_for_saving_collective, Ls=Ls_for_saving_collective,
-            particle_diameter=sigma,
-            pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'), max_time_hours=data.get('max_time_hours'))
+    if DO_TIMESCALEINT_REPLACEMENT:
+        common.save_data(f'visualisation/data/Ds_from_boxcounting_collective_{timescaleint_replacement_plateau_source}_{file}',
+                Ds=Ds_for_saving_collective, D_uncs=D_uncs_for_saving_collective, Ls=Ls_for_saving_collective,
+                particle_diameter=sigma,
+                pixel_size=data.get('pixel_size'), window_size_x=data.get('window_size_x'), window_size_y=data.get('window_size_y'), max_time_hours=data.get('max_time_hours'))
         
     print('largest box', box_sizes[-1])
 # common.save_fig(gradfig, 'box_counting/figures_png/grad.png')

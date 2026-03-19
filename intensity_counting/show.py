@@ -26,7 +26,9 @@ collapse_y = True
 collapse_x = False
 # collapse_y = False
 
-I_0 = 1100 # from Sophie in slack
+
+# I_0 = 1100 # from Sophie in slack
+I_0 = 1
 
 for file in common.files_from_argv('intensity_counting/data/', 'counted_'):
 
@@ -49,7 +51,8 @@ for file in common.files_from_argv('intensity_counting/data/', 'counted_'):
     I_mean       = data['avg_intensities']
     I_var        = data['variances']
 
-    print('I_mean', I_mean)
+    for i in range(box_sizes.size):
+        print(f'L={box_sizes[i]:5.1f}um: <I>={I_mean[i]:8.3g}, Var(I)={I_var[i]:8.3g}')
     # sep_sizes    = data['sep_sizes']
 
     num_timesteps = N2_mean.shape[1]
@@ -178,9 +181,10 @@ for file in common.files_from_argv('intensity_counting/data/', 'counted_'):
 
         if collapse_y:
             pass
-            ax.set_ylim(0, 0.05)
+            ax.set_ylim(0, 40)
         else:
-            ax.set_ylim(0, 100)
+            pass
+            # ax.set_ylim(0, 100)
     
     title = file
     # title = f'Simulated colloids in RCP spheres\n$\phi={phi:.3f}$'

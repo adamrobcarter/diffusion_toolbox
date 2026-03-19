@@ -13,9 +13,13 @@ def go(file, quiet=False):
     
     time_column = data.get('dimension', 2)
     assert particles.size
-    t = np.unique(particles[:, time_column])
+    t = np.unique(particles[:, time_column]) # unique returns sorted values
     assert len(t)
     t_interval = np.diff(t)
+
+    values, counts = np.unique(t_interval, return_counts=True)
+    print('time intervals and counts:', list(zip(values, counts)))
+
     consistent_timesteps = np.all(np.isclose(t_interval, t_interval[0])) # need isclose in case time is irrational
 
     t0 = time.time()

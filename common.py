@@ -636,8 +636,17 @@ def add_drift(particles, drift_x, drift_y):
 
     return particles_drifted
 
+def find_drift(data):
+    particles = data['particles']
+    num_dimensions = particles_num_dimensions(data)
+
+    ID_COLUMN   = get_particles_column('id', data)
+    TIME_COLUMN = get_particles_column('t',  data)
+    
+    return find_drift_internal(particles, num_dimensions, ID_COLUMN, TIME_COLUMN)
+
 @memory.cache
-def find_drift(particles, num_dimensions):
+def find_drift_internal(particles, num_dimensions, ID_COLUMN, TIME_COLUMN):
     # tactic:
     # for each particle, do a linear fit to where it exists
     # then weight the fits by length
@@ -647,11 +656,6 @@ def find_drift(particles, num_dimensions):
     # so we should only fit one function
     # I wonder if there is a clever way to do this with vectors
 
-    assert particles.shape[1] == num_dimensions + 2, 'you should provide linked data to find_drift'
-    
-    ID_COLUMN = num_dimensions + 1
-    TIME_COLUMN = num_dimensions
-    
     num_particles = int(particles[:, ID_COLUMN].max()) + 1
     assert particles[:, ID_COLUMN].min() == 0, 'particles should be zero-based'
 
@@ -750,42 +754,91 @@ def files_from_argv(location, prefix):
 def argparser(nofiles=False):
     parser = argparse.ArgumentParser()
     if not nofiles:
-        parser.add_argument('files', nargs='+') # nargs='+' means 1 or more positional args required
+        parser.add_argument('files', nargs='+', action=ReplaceGroup) # nargs='+' means 1 or more positional args required
     return parser
 
+class ReplaceGroup(argparse.Action):
+    """
+    this is a way of doing replace_group on all the file arguments but also keeping a flat list
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        result = []
+        for value in values:
+            expanded = replace_group(value)
+            if isinstance(expanded, (list, tuple)):
+                result.extend(expanded)
+            else:
+                result.append(expanded)
+
+        setattr(namespace, self.dest, result)
+
+def expand_file_groups(infiles):
+    # replace_group returns a list, so we gotta flatten here
+    files = [file for infile in infiles for file in replace_group(infile)]
+    return files
+
+def replace_group(file):
+    """
+    This gets called separately for each command line file argument
+
+    always returns a list of files (even if just one)
+    """
+    if file.startswith('g:'):
+        if file == 'g:el001_crop':
+            return ['eleanorlong001_crop1.0', 'eleanorlong001_crop0.5', 'eleanorlong001_crop0.25', 'eleanorlong001_crop0.125', 'eleanorlong001_crop0.0625']
+        elif file == 'g:el034_crop':
+            return ['eleanorlong034_crop1.0', 'eleanorlong034_crop0.5', 'eleanorlong034_crop0.25', 'eleanorlong034_crop0.125', 'eleanorlong034_crop0.0625']
+        elif file == 'g:sim_nohydro_001':
+            return ['sim_nohydro_001_L160', 'sim_nohydro_001_L320', 'sim_nohydro_001_L640', 'sim_nohydro_001_L1280']
+        elif file == 'g:sim_nohydro_010':
+            return ['sim_nohydro_010_L160', 'sim_nohydro_010_L320', 'sim_nohydro_010_L640']
+        elif file == 'g:sim_nohydro_034':
+            return ['sim_nohydro_034_L320', 'sim_nohydro_034_L640', 'sim_nohydro_034_L1280']
+        elif file == 'g:psiche_emptymatrix_small':
+            return [f'psiche{str(i).zfill(3)}' for i in (52, 57, 63, 73, 74, 79, 86, 87, 88, 94, 98, 103, 104, 113, 114, 142, 149, 162, 176, 185, 194)]
+        elif file == 'g:sheargrav_tmax1000':
+            return ['sim_shear0_T296_nograv_nowall_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0_T296_theta0_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0_T296_theta10_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0.080357_T296_theta0_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0.080357_T296_theta10_EMRFD_nblobs42_dt0.005_tmax1000']
+        elif file == 'g:sheargrav_tmax10000':
+            return ['sim_shear0_T296_nograv_nowall_EMRFD_nblobs42_dt0.005_tmax10000', 'sim_shear0_T296_theta0_EMRFD_nblobs42_dt0.005_tmax10000', 'sim_shear0_T296_theta10_EMRFD_nblobs42_dt0.005_tmax10000', 'sim_shear0.080357_T296_theta0_EMRFD_nblobs42_dt0.005_tmax10000', 'sim_shear0.080357_T296_theta10_EMRFD_nblobs42_dt0.005_tmax10000']
+            # return ['sim_shear0_T298_theta0_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0_T298_theta10_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0.080357_T298_theta0_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0.080357_T298_theta10_EMRFD_nblobs42_dt0.005_tmax1000']
+        elif file == 'g:ld_dt':
+            return ['ld_hydro_dpstokes_0.114_L640_dt150', 'ld_hydro_dpstokes_0.114_L640_dt100', 'ld_hydro_dpstokes_0.114_L640_dt50',
+                    'ld_hydro_nbody_0.114_L640_dt150', 'ld_hydro_nbody_0.114_L640_dt100', 'ld_hydro_nbody_0.114_L640_dt50']
+        
+        elif file == 'g:single_shear':
+            return ['sim_shear0.080357_T300_theta10_EMmid_nblobs42_dt0.005_tmax36000', 'sim_shear0_T300_theta0_EMmid_nblobs42_dt0.005_tmax36000']
+        elif file == 'g:single_shear_all':
+            return ['sim_shear0.080357_T300_theta10_EMmid_nblobs42_dt0.005_tmax36000', 'sim_shear0_T300_theta0_EMmid_nblobs42_dt0.005_tmax36000', 'sim_shear0_T300_theta10_EMmid_nblobs42_dt0.005_tmax36000', 'sim_shear0.080357_T300_theta0_EMmid_nblobs42_dt0.005_tmax36000']
+        elif file == 'g:shear_multi':
+            return ['shear0_T300_theta0_L100_phi0.5_multi_EMmid_nblobs42_dt0.005_tmax60', 'shear0.080357_T300_theta10_L100_phi0.5_multi_EMmid_nblobs42_dt0.005_tmax60']
+        elif file == 'g:shear_multi_all':
+            return ['shear0_T300_theta0_L100_phi0.5_multi_EMmid_nblobs42_dt0.005_tmax60', 'shear0.080357_T300_theta10_L100_phi0.5_multi_EMmid_nblobs42_dt0.005_tmax60', 'shear0_T300_theta10_L100_phi0.5_multi_EMmid_nblobs42_dt0.005_tmax60', 'shear0.080357_T300_theta0_L100_phi0.5_multi_EMmid_nblobs42_dt0.005_tmax60']
+
+        elif file == 'g:varied_a_0.02':
+            return ['ld_nbody_flat_0.02_singlewall_L50_t1s_0s_dt0_a0.25', 'ld_nbody_flat_0.02_singlewall_L100_t2s_0s_dt5_a0.5', 'ld_nbody_flat_0.02_singlewall_L200_t4s_0s_dt50_a1.0', 'ld_nbody_flat_0.02_singlewall_L300_t6s_0s_dt125_a1.5', 'ld_nbody_flat_0.02_singlewall_L400_t8s_0s_dt125_a2.0', 'ld_nbody_flat_0.02_singlewall_L500_t10s_0s_dt125_a2.5']
+        elif file == 'g:varied_a_0.1':
+            return ['ld_nbody_flat_0.1_singlewall_L50_t1s_0s_dt0_a0.25', 'ld_nbody_flat_0.1_singlewall_L100_t2s_0s_dt5_a0.5', 'ld_nbody_flat_0.1_singlewall_L200_t4s_0s_dt50_a1.0', 'ld_nbody_flat_0.1_singlewall_L300_t6s_0s_dt125_a1.5', 'ld_nbody_flat_0.1_singlewall_L400_t8s_0s_dt125_a2.0', 'ld_nbody_flat_0.1_singlewall_L500_t10s_0s_dt125_a2.5']
+        elif file == 'g:varied_a_0.5':
+            return ['ld_nbody_flat_0.5_singlewall_L50_t1s_0s_dt0_a0.25', 'ld_nbody_flat_0.5_singlewall_L100_t2s_0s_dt5_a0.5', 'ld_nbody_flat_0.5_singlewall_L200_t4s_0s_dt50_a1.0', 'ld_nbody_flat_0.5_singlewall_L300_t6s_0s_dt125_a1.5', 'ld_nbody_flat_0.5_singlewall_L400_t8s_0s_dt125_a2.0', 'ld_nbody_flat_0.5_singlewall_L500_t10s_0s_dt125_a2.5']
+        elif file == 'g:donev':
+            return ['ld_hydro_nbody_0.114_L2560_t1h_1', 'ld_hydro_nbody_0.114_L2560', 'ld_hydro_nbody_open_0.114_L2560_t1h_1', 'ld_hydro_nbody_open_0.114_L2560_t8h_32']
+        raise Exception('group not found')
+    else:
+        return [file]
+
 def files_from_filenames(location, prefix, infiles):
+    print('infiles', type(infiles), infiles)
     if type(infiles) is str:
         infiles = [infiles]
+    print('infiles', type(infiles), infiles)
 
     if not location.endswith('/'):
         location = f'{location}/'
 
     assert len(infiles) > 0, f'len(sys.argv[1:]) = {len(sys.argv[1:])}'
 
-    if infiles[0].startswith('g:'):
-        if infiles[0] == 'g:el001_crop':
-            return ['eleanorlong001_crop1.0', 'eleanorlong001_crop0.5', 'eleanorlong001_crop0.25', 'eleanorlong001_crop0.125', 'eleanorlong001_crop0.0625']
-        elif infiles[0] == 'g:el034_crop':
-            return ['eleanorlong034_crop1.0', 'eleanorlong034_crop0.5', 'eleanorlong034_crop0.25', 'eleanorlong034_crop0.125', 'eleanorlong034_crop0.0625']
-        elif infiles[0] == 'g:sim_nohydro_001':
-            return ['sim_nohydro_001_L160', 'sim_nohydro_001_L320', 'sim_nohydro_001_L640', 'sim_nohydro_001_L1280']
-        elif infiles[0] == 'g:sim_nohydro_010':
-            return ['sim_nohydro_010_L160', 'sim_nohydro_010_L320', 'sim_nohydro_010_L640']
-        elif infiles[0] == 'g:sim_nohydro_034':
-            return ['sim_nohydro_034_L320', 'sim_nohydro_034_L640', 'sim_nohydro_034_L1280']
-        elif infiles[0] == 'g:psiche_emptymatrix_small':
-            return [f'psiche{str(i).zfill(3)}' for i in (52, 57, 63, 73, 74, 79, 86, 87, 88, 94, 98, 103, 104, 113, 114, 142, 149, 162, 176, 185, 194)]
-        elif infiles[0] == 'g:sheargrav_tmax1000':
-            return ['sim_shear0_T296_nograv_nowall_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0_T296_theta0_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0_T296_theta10_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0.080357_T296_theta0_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0.080357_T296_theta10_EMRFD_nblobs42_dt0.005_tmax1000']
-        elif infiles[0] == 'g:sheargrav_tmax10000':
-            return ['sim_shear0_T296_nograv_nowall_EMRFD_nblobs42_dt0.005_tmax10000', 'sim_shear0_T296_theta0_EMRFD_nblobs42_dt0.005_tmax10000', 'sim_shear0_T296_theta10_EMRFD_nblobs42_dt0.005_tmax10000', 'sim_shear0.080357_T296_theta0_EMRFD_nblobs42_dt0.005_tmax10000', 'sim_shear0.080357_T296_theta10_EMRFD_nblobs42_dt0.005_tmax10000']
-            # return ['sim_shear0_T298_theta0_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0_T298_theta10_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0.080357_T298_theta0_EMRFD_nblobs42_dt0.005_tmax1000', 'sim_shear0.080357_T298_theta10_EMRFD_nblobs42_dt0.005_tmax1000']
-        elif infiles[0] == 'g:ld_dt':
-            return ['ld_hydro_dpstokes_0.114_L640_dt150', 'ld_hydro_dpstokes_0.114_L640_dt100', 'ld_hydro_dpstokes_0.114_L640_dt50',
-                    'ld_hydro_nbody_0.114_L640_dt150', 'ld_hydro_nbody_0.114_L640_dt100', 'ld_hydro_nbody_0.114_L640_dt50']
-        elif infiles[0] == 'g:single_shear':
-            return ['sim_shear0.080357_T300_theta10_EMmid_nblobs42_dt0.005_tmax36000', 'sim_shear0_T300_theta0_EMmid_nblobs42_dt0.005_tmax36000', 'sim_shear0_T300_theta10_EMmid_nblobs42_dt0.005_tmax36000', 'sim_shear0.080357_T300_theta0_EMmid_nblobs42_dt0.005_tmax36000']
-        raise Exception('group not found')
+    infiles = expand_file_groups(infiles)
+    print('infiles3', type(infiles), infiles)
 
     outfiles = []
 
@@ -810,6 +863,7 @@ def files_from_filenames(location, prefix, infiles):
             outfiles.append(infile)
 
     assert len(outfiles), f'no files found. searching for {prefix}'
+    print('outfiles', type(outfiles), outfiles)
     return outfiles
 
 def format_val_and_unc(val, unc, sigfigs=2, latex=True):
@@ -830,7 +884,7 @@ def format_val_and_unc(val, unc, sigfigs=2, latex=True):
     if latex:
         return fr'{val:.{digits_after_decimal}f} \pm {unc:.{digits_after_decimal}f}'
     else:
-        return f'{val:.{digits_after_decimal}f}±{unc:.{digits_after_decimal}f}'
+        return f'{val: .{digits_after_decimal}f}±{unc:.{digits_after_decimal}f}'
 
 def nanfrac(arr):
     return np.isnan(arr).sum() / arr.size
@@ -1123,10 +1177,11 @@ def calc_pack_frac_from_density(particle_diameter, density):
 
 def calc_density(particles, window_size_x, window_size_y, dimension):
     t0 = time.time()
+    assert np.isfinite(particles).all(), f"only {np.isfinite(particles).sum()} = {np.isfinite(particles).sum()/particles.size:.1%} of particles were finite"
 
     time_column = dimension
     num_timesteps = len(np.unique(particles[:, time_column]))
-    assert np.all(particles[:, time_column] % 1 == 0), f't[0] = {particles[0, time_column]}, that doesnt look like a frame number'
+    assert np.all(particles[:, time_column] % 1 == 0), f't = {particles[:, time_column]}, that doesnt look like a frame number'
     avg_particles_per_frame = particles.shape[0] / num_timesteps
     density = avg_particles_per_frame / (window_size_x * window_size_y)
     # print('avg part per frame', avg_particles_per_frame)#, 'L^2', orig_width**2)
@@ -1171,8 +1226,10 @@ def add_exponential_index_indicator(ax, exponent, anchor, xlabel, x_limits=None,
 def stokes_einstein_D(particle_diameter):
     k_B = scipy.constants.k
     T = 300 # K
+    T = 273+25
     # warnings.warn('T=250K is bad! you should get it from the sim!')
     eta = 1.4e-3 # Pa.s
+    eta = 0.88e-3
     # eta = 1.75e-3
     warnings.warn('eta must change! rigid sims use 0.00175')
     # isn't Eleanor's viscosity not this?
@@ -1220,6 +1277,31 @@ def stokes_einstein_v(particle_diameter, particle_material=None, rho_particle=No
     v_um = v * 1e6
 
     return v_um
+
+def gravitational_height(particle_diameter, particle_material=None, rho_particle=None, T=300):
+
+    d = particle_diameter * 1e-6 # assumed um
+
+    if particle_material == 'SiO2' or  particle_material == 'Si02':
+        rho_particle = 2648 # wikipedia
+    elif particle_material == 'PS':
+        rho_particle = 1050 # random, not checked
+    elif particle_material == 'PS':
+        rho_particle = 1050 # random, not checked
+    else:
+        assert rho_particle is not None, 'you must provide rho_particle if you do not provide particle_material'
+        
+    rho_water = 1000
+
+    delta_rho = rho_particle - rho_water # kg m^-3
+    # m_star = delta_rho * V_particle # kg
+
+    g = 9.81 # gravity, m s^-2
+
+    mg = delta_rho * g * (4/3) * np.pi * (d/2)**3 # N
+    kT = scipy.constants.k * T # J
+    return (d/2 + kT / mg) * 1e6 # um
+
 
 def S_k_zero(phi):
     return (1 - phi)**3 / (1 + phi)
@@ -1340,24 +1422,48 @@ def unwrap_single_particle(columns_to_unwrap, unwrap_size, time_column, num_time
 
         last_coord = particles_new[row_i, columns_to_unwrap]
 
-def save_particles(file, particles, time_step, window_size_x=None, window_size_y=None, **kwargs):
-
+def save_particles(file, particles, particles_labels, time_step=None, window_size_x=None, window_size_y=None, **kwargs):
     # we could drop the ID column here
+    save_particles_internal(f'particle_detection/data/particles_{file}.npz', particles, particles_labels, time_step, window_size_x=window_size_x, window_size_y=window_size_y, **kwargs)
 
-    save_particles_internal(f'particle_detection/data/particles_{file}.npz', particles, time_step, window_size_x=window_size_x, window_size_y=window_size_y, **kwargs)
+def save_trajs(file, particles, particles_labels, time_step=None, window_size_x=None, window_size_y=None, **kwargs):
+    
+    id_column = get_particles_column('id', particles_labels=particles_labels)
+    particles[:, id_column] -= particles[:, id_column].min() # make zero-based
 
-def save_trajs(file, particles, time_step, window_size_x=None, window_size_y=None, **kwargs):
+    save_particles_internal(f'particle_linking/data/trajs_{file}.npz', particles, particles_labels, time_step, window_size_x=window_size_x, window_size_y=window_size_y, **kwargs)
 
-    save_particles_internal(f'particle_linking/data/trajs_{file}.npz', particles, time_step, window_size_x=window_size_x, window_size_y=window_size_y, **kwargs)
-
-def save_particles_internal(filepath, particles, time_step, window_size_x=None, window_size_y=None, **kwargs):
+def save_particles_internal(filepath, particles, particles_labels, time_step, window_size_x=None, window_size_y=None, **kwargs):
     # we should do some proper parameter checking here
-    if window_size_x is None:
-        window_size_x = particles[:, 0].max()
-    if window_size_y is None:
-        window_size_y = particles[:, 1].max()
+    x_column  = get_particles_column('x',  particles_labels=particles_labels)
+    y_column  = get_particles_column('y',  particles_labels=particles_labels)
+    t_column  = get_particles_column('t',  particles_labels=particles_labels)
 
-    save_data(filepath, particles=particles, time_step=time_step, 
+    if window_size_x is None:
+        window_size_x = particles[:, x_column].max()
+    if window_size_y is None:
+        window_size_y = particles[:, y_column].max()
+
+    if time_step is None:
+        assert 'time_step' in kwargs, 'you must provide time_step either as a parameter or as a kwarg'
+
+    if 'density' not in kwargs:
+        kwargs['density'] = calc_density(particles, window_size_x, window_size_y, particles_num_dimensions({'particles_labels': particles_labels}))
+    
+    if 'pack_frac' not in kwargs and 'particle_diameter' in kwargs:
+        kwargs['pack_frac'] = calc_pack_frac(particles, kwargs['particle_diameter'], window_size_x, window_size_y, particles_num_dimensions({'particles_labels': particles_labels}))
+
+    assert np.all(particles[:, x_column] >= 0),             f'min x = {particles[:, x_column].min()}'
+    assert np.all(particles[:, x_column] <= window_size_x), f'max x = {particles[:, x_column].max()}, window_size_x = {window_size_x}'
+    assert np.all(particles[:, y_column] >= 0),             f'min y = {particles[:, y_column].min()}'
+    assert np.all(particles[:, y_column] <= window_size_y), f'max y = {particles[:, y_column].max()}, window_size_y = {window_size_y}'
+
+    num_timesteps = int(particles[:, t_column].max())
+    kwargs['max_time_hours'] = num_timesteps * time_step / 60 / 60
+    
+    particles[:, t_column ] -= particles[:, t_column ].min() # make zero-based
+
+    save_data(filepath, particles=particles, particles_labels=particles_labels, time_step=time_step, 
               window_size_x=window_size_x, window_size_y=window_size_y,
               **kwargs)
     
@@ -1370,3 +1476,74 @@ def rsync(filepath_remote, filepath_local, manual=False, quiet=False):
     else:
         if not quiet: print('launching', ' '.join(rsync_command))
         subprocess.run(rsync_command, check=True)
+
+def get_particles_column(column_name, data=None, particles_labels=None, dimension=None):
+    """
+    get the index of the given column name in a particles array.
+    provide either data (which should contain 'particles_labels' or 'dimension'),
+    or provide particles_labels or dimension directly.
+    """
+    assert (data is not None) or (particles_labels is not None) or (dimension is not None), 'you must provide either data, particles_labels, or dimension'
+
+    if data:
+        if 'particles_labels' in data:
+            particles_labels = data['particles_labels']
+        elif 'dimension' in data:
+            dimension = data['dimension']
+
+    if particles_labels is not None:
+        particles_labels = np.array(particles_labels)
+        column_index = np.where(particles_labels == column_name)
+        assert len(column_index[0]) == 1, f'column_name {column_name} not found in particles_labels {particles_labels}'
+        return column_index[0][0]
+    
+    elif dimension is not None:
+        # legacy
+        return {
+            'x': 0,
+            'y': 1,
+            'z': 2 if dimension == 3 else np.nan,
+            't': dimension,
+            'id': dimension + 1,
+        }[column_name]
+    
+    else:
+        # even more legacy
+        return {
+            'x': 0,
+            'y': 1,
+            't': 2,
+            'id': 3,
+        }[column_name]
+    
+def particles_has_z(data):
+    """
+    Does this data include z coordinates?
+    """
+    return particles_num_dimensions(data) == 3
+
+
+def particles_num_dimensions(data):
+    """
+    How many translational dimensions in the given dataset?
+    """
+    if 'particles_labels' in data:
+        return 3 if 'z' in data['particles_labels'] else 2
+    
+    elif 'dimension' in data:
+        return data['dimension']
+    
+    else:
+        raise Exception('cannot determine number of dimensions')
+
+
+
+def format_time(t):
+    if t < 1:
+        return f'{t*1000:.0f}ms'
+    elif t < 60:
+        return f'{t:.0f}s'
+    elif t < 60 * 60:
+        return f'{t/60:.0f}m'
+    else:
+        return f'{t/(60*60):.0f}h'

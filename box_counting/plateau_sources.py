@@ -31,15 +31,16 @@ def go(file, sources, axs, Ds_overlapped_kwargs={}, D_of_L_kwargs={}, file_for_D
         if True:
             box_counting.D_of_L.go(
                 f'{file}',
-                box_size_indices=[0, 3, 6, 9, 12],
+                # box_size_indices=[0, 3, 6, 9, 12],
                 **all_D_of_L_kwargs
             )
+        if False:
             box_counting.D_of_L.go(
                 f'{file}_longer',
                 box_size_indices=[15, 18, 21, 24, 27],
                 **all_D_of_L_kwargs
             )
-        else:
+        if False:
             box_counting.D_of_L.go(
                 f'{file}_longer_merged',
                 **all_D_of_L_kwargs
@@ -49,19 +50,40 @@ def go(file, sources, axs, Ds_overlapped_kwargs={}, D_of_L_kwargs={}, file_for_D
         print()
         print('doing Ds_overlapped')
         visualisation.Ds_overlapped_mult.go(
-            files   = [f'{file}_longer_merged', f'{file}_longer_mergedD'],
-            sources = [
-                f'boxcounting_collective_{method}',
-                f'timescaleint_nofit_cropped_{method}',
-                'D_of_L_theory'
+            [
+                dict(
+                    file = file,
+                    source = f'boxcounting_collective_{method}',
+                    label = 'fit'
+                ),
+                dict(
+                    file = file,
+                    source = f'timescaleint_nofit_cropped_{method}',
+                    label = 'tsi'
+                ),
+                dict(
+                    file = file,
+                    source = f'D_of_L_theory',
+                    label = 'theory',
+                    color = 'black',
+                    linestyle = 'dashed',
+                    marker='none'
+                ),
             ],
+            # files   = [f'{file}_longer_merged', f'{file}_longer_mergedD'],
+            # sources = [
+            #     f'boxcounting_collective_{method}',
+            #     f'timescaleint_nofit_cropped_{method}',
+            #     'D_of_L_theory'
+            # ],
             ax=axs[1][method_index],
-            legend_fontsize=7,
-            file_labels = ['', ''],
+            legend_fontsize=8,
+            # file_labels = ['', ''],
             disable_ylabel=False if method_index == 0 else True,
             **Ds_overlapped_kwargs
         )
         axs[1][method_index].set_yscale('linear')
+        axs[1][method_index].set_ylim(0, 30)
         # if file == 'eleanorlong001':
         #     axs[1][method_index].set_ylim(0.9*0.04, 1*0.07)
         # else:

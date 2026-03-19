@@ -37,14 +37,16 @@ if __name__ == '__main__':
 
     print('saving')
     common.save_data(f'particle_detection/data/particles_eleanorlong034.npz', particles=particles,
-                time_step=0.5, particle_diameter=particle_diameter, pixel_size=PIXEL,
-                window_size_x=window_size_x, window_size_y=window_size_y,
-                pack_frac_given=0.342, density=density, max_time_hours=max_time_hours,
-                )
+        time_step=0.5, particle_diameter=particle_diameter, pixel_size=PIXEL,
+        window_size_x=window_size_x, window_size_y=window_size_y,
+        pack_frac_given=0.342, density=density, max_time_hours=max_time_hours,
+        particles_labels = ['x', 'y', 't'],
+    )
     # np.save(f'particle_detection/data/particles_eleanorlong.npy', data_param)
     common.save_data(f'particle_linking/data/trajs_eleanorlong034.npz', particles=particles,
-            time_step=0.5, particle_diameter=particle_diameter, pixel_size=PIXEL,
-                window_size_x=window_size_x, window_size_y=window_size_y,
-                pack_frac_given=0.342, density=density, max_time_hours=max_time_hours,
-            )
+        time_step=0.5, particle_diameter=particle_diameter, pixel_size=PIXEL,
+        window_size_x=window_size_x, window_size_y=window_size_y,
+        pack_frac_given=0.342, density=density, max_time_hours=max_time_hours,
+        particles_labels = ['x', 'y', 't'],
+    )
     print('done')

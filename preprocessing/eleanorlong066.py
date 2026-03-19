@@ -29,7 +29,7 @@ if __name__ == '__main__':
         # first_time = data[0, 2]
         # print('times', last_time, first_time, data[-1, 2])
 
-        data[:, 2] += i*1000
+        # data[:, 2] += i*1000
         particles[last_index:last_index+arr.shape[0], :] = data
         last_index += arr.shape[0]
 
@@ -58,11 +58,21 @@ if __name__ == '__main__':
     t1 = time.time()
     print(f'took {t1-t0:.0f}s')
 
+    metadata = dict(
+        time_step=0.5,
+        particle_diameter=particle_diameter,
+        pixel_size=pixel_size,
+        window_size_x=window_size_x, window_size_y=window_size_y,
+        pack_frac_given=0.656,
+        particles_labels = ['x', 'y', 't'],
+    )
+
     t0 = time.time()
-    common.save_data(f'particle_detection/data/particles_eleanorlong066.npz', particles=particles,
-            time_step=0.5, particle_diameter=particle_diameter, pixel_size=pixel_size,
-            window_size_x=window_size_x, window_size_y=window_size_y,
-            pack_frac_given=0.656)
+    common.save_data(f'particle_detection/data/particles_eleanorlong066.npz',
+        particles=particles,
+        max_time_hours=num_timesteps*0.5/60/60,
+        **metadata
+    )
     t1 = time.time()
     print(f'took {t1-t0:.0f}s')
 
@@ -70,10 +80,11 @@ if __name__ == '__main__':
     particles = particles[particles[:, 2] < end_timestep, :]
 
     t0 = time.time()
-    common.save_data(f'particle_detection/data/particles_eleanorlong066_div2.npz', particles=particles,
-            time_step=0.5, particle_diameter=2.82, pixel_size=pixel_size,
-            window_size_x=window_size_x, window_size_y=window_size_y,
-            pack_frac_given=0.656)
+    common.save_data(f'particle_detection/data/particles_eleanorlong066_div2.npz',
+        particles=particles,
+        max_time_hours=end_timestep*0.5/60/60,
+        **metadata
+    )
     t1 = time.time()
     print(f'took {t1-t0:.0f}s')
 
@@ -81,10 +92,11 @@ if __name__ == '__main__':
     particles = particles[particles[:, 2] < end_timestep, :]
 
     t0 = time.time()
-    common.save_data(f'particle_detection/data/particles_eleanorlong066_div4.npz', particles=particles,
-            time_step=0.5, particle_diameter=2.82, pixel_size=pixel_size,
-            window_size_x=window_size_x, window_size_y=window_size_y,
-            pack_frac_given=0.656)
+    common.save_data(f'particle_detection/data/particles_eleanorlong066_div4.npz',
+        particles=particles,
+        max_time_hours=end_timestep*0.5/60/60,
+        **metadata
+    )
     t1 = time.time()
     print(f'took {t1-t0:.0f}s')
 
@@ -92,10 +104,11 @@ if __name__ == '__main__':
     particles = particles[particles[:, 2] < end_timestep, :]
 
     t0 = time.time()
-    common.save_data(f'particle_detection/data/particles_eleanorlong066_div8.npz', particles=particles,
-            time_step=0.5, particle_diameter=2.82, pixel_size=pixel_size,
-            window_size_x=window_size_x, window_size_y=window_size_y,
-            pack_frac_given=0.656)
+    common.save_data(f'particle_detection/data/particles_eleanorlong066_div8.npz',
+        particles=particles,
+        max_time_hours=end_timestep*0.5/60/60,
+        **metadata
+    )
     t1 = time.time()
     print(f'took {t1-t0:.0f}s')
 

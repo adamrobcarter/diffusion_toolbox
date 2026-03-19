@@ -9,10 +9,14 @@ import visualisation.Ds_overlapped_mult
 
 D0_SOURCE = 'MSD_first'
 # D0_SOURCE = 'MSD_short'
-PLOT_AGAINST_K = True
 
 if __name__ == '__main__':
-    for file in sys.argv[1:]:
+    argparser = common.argparser()
+    argparser.add_argument('--against_k', action='store_true', help='Plot against k instead of L')
+    args = argparser.parse_args()
+    plot_against_k = args.against_k
+
+    for file in args.files:
         fig, ax = plt.subplots(1, 1, figsize=(5.5, 4.5))
 
         sources = [
@@ -21,6 +25,7 @@ if __name__ == '__main__':
                 #   'D0Sk', 
                 #   'MSD_short',
                 #   'D0Sk_theory',
+                # 'D0_theory',
                 #   'DDM',
                 #   'dominiguez_theory',
                 #   'panzuela_theory',
@@ -38,7 +43,7 @@ if __name__ == '__main__':
                 # 'f_t16',
                 # 'f_t64',
                 # 'f_t256',
-                'f_t1024',
+                # 'f_t1024',
                 # 'f_t4096',
                 # 'f_t16384',
                 # 'f_t65536',
@@ -61,6 +66,10 @@ if __name__ == '__main__':
                 #   'timescaleint_nmsdfitinter',
 
                 #   'timescaleint_nofit_cropped_var',
+                #   'C_N_simplefit_var',
+                # #   'timescaleint_nofit_var',
+                #   'timescaleint_fixexponent_var',
+                #   'timescaleint_var',
 
                 #   'timescaleint_nofit_cropped_sDFT',
                 #   'timescaleint_fixexponent_cutoff',
@@ -75,10 +84,17 @@ if __name__ == '__main__':
                 # 'NtN0_first',
                 # 'NtN0_fit',
                 # 'F_s_first',
+
+                # 'f_t10',
+                # 'f_t40',
+                # 'f_t160',
+                # 'f_t640',
+                # 'f_t2560',
+
+                # 'DDM'
             ]
 
         colors = iter([common.colormap(i/len(sources)) for i in range(len(sources))])
-        print(colors)
 
         visualisation.Ds_overlapped_mult.go(
             [dict(
@@ -87,7 +103,7 @@ if __name__ == '__main__':
                 color=next(colors),
             ) for source in sources],
             ax      = ax,
-            plot_against_k=PLOT_AGAINST_K,
+            plot_against_k=plot_against_k,
             # logarithmic_y=True, output_filename=filename,
             # ylim=YLIM,
             legend_fontsize=8,
@@ -319,9 +335,11 @@ def get_D0_filename(file):
 
     return file
 
-def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
+def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, **kwargs):
     data = None
-    D0 = None  # for directH
+
+    phi = None
+    sigma = None
 
     assert type(source) == str
     assert type(file)   == str
@@ -351,9 +369,33 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
         Ds = D_MSD / S[:]
         D_uncs = D_MSD / S[:]**2 * S_unc[:]
 
-    elif source == 'D0Sk_theory':
-        assert sigma, 'we need sigma for D0Sk theory, probably the MSD file wasnt found'
+    elif source == 'D0_theory':
+        sigma = kwargs['sigma']
+
+        assert sigma, 'we need sigma for D0 theory, probably the MSD file wasnt found'
         assert np.isfinite(sigma)
+        L = np.logspace(np.log10(sigma*1e-2), np.log10(sigma*1e3), 200)
+        L = L[::-1] # so that it's the same order as the others
+        k = 2*np.pi/L
+        
+
+        if PLOT_AGAINST_K:
+            xs = k
+        else:
+            if TWO_PI:
+                xs = 2 * np.pi / k
+                # source_label += ' $2\pi/k$'
+            else:
+                xs = 1 / k
+                # source_label += ' $1/k$'
+
+        Ds = D_MSD
+        D_uncs = np.zeros_like(Ds)
+
+    elif source == 'D0Sk_theory':
+        sigma = kwargs['sigma']
+        phi   = kwargs['phi']
+        
         L = np.logspace(np.log10(sigma*1e-2), np.log10(sigma*1e3), 200)
         L = L[::-1] # so that it's the same order as the others
         k = 2*np.pi/L
@@ -375,9 +417,38 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
         Ds = D_MSD / S
         D_uncs = np.zeros_like(Ds)
 
-    elif source == 'D_of_L_theory':
+    elif source == 'Dk_theory_hydro':
+        sigma = kwargs['sigma']
+        phi   = kwargs['phi']
 
-        L = np.logspace(np.log10(sigma*0.5e-1), np.log10(sigma*5e1), 100)
+        H_data = common.load(kwargs['hydro_source_file'])
+        print(H_data.keys())
+        k = H_data['k']
+        H = H_data['H']
+        
+        import countoscope_theory.structure_factor # here so we don't get errors running the file on a system without the countsocope_theory if we don't need it
+        # import countoscope_theory.timescaleint
+        S = countoscope_theory.structure_factor.hard_spheres_2d(k, phi, sigma)
+
+        if PLOT_AGAINST_K:
+            xs = k
+        else:
+            if TWO_PI:
+                xs = 2 * np.pi / k
+                # source_label += ' $2\pi/k$'
+            else:
+                xs = 1 / k
+                # source_label += ' $1/k$'
+
+        Ds = D_MSD * H / S
+        D_uncs = np.zeros_like(Ds)
+
+    elif source == 'D_of_L_theory':
+        import countoscope_theory.timescaleint
+        sigma = kwargs['sigma']
+        phi   = kwargs['phi']
+
+        L = np.logspace(np.log10(kwargs.get('Lmin', 0.1)), np.log10(kwargs.get('Lmax', 100)), 100)
         L = L[::-1] # so that it's the same order as the others
         D = countoscope_theory.timescaleint.D_of_L(L, D_MSD, phi, sigma)
 
@@ -385,14 +456,32 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
         Ds = D
         D_uncs = np.zeros_like(Ds)
 
-    elif source == 'D_of_L_theory_Lh':
+    # elif source == 'D_of_L_theory_Lh':
+    #     import countoscope_theory.timescaleint
 
-        L = np.logspace(np.log10(sigma*0.5e-1), np.log10(sigma*5e1), 100)
+    #     L = np.logspace(np.log10(kwargs.get('Lmin', 0.1)), np.log10(kwargs.get('Lmax', 100)), 100)
+    #     L = L[::-1] # so that it's the same order as the others
+    #     D = countoscope_theory.timescaleint.D_of_L_Lh(L, 1, phi, sigma)
+
+    #     xs = L
+    #     Ds = D * D_MSD
+    #     D_uncs = np.zeros_like(Ds)
+
+    elif source == 'D_of_L_theory_hydro':
+        import countoscope_theory.timescaleint
+        assert 'sigma' in kwargs, 'need sigma in kwargs for D_of_L_theory_hydro'
+        assert 'phi'   in kwargs, 'need phi in kwargs for D_of_L_theory_hydro'
+        assert 'hydro_source_file' in kwargs, 'need hydro_source_file in kwargs for D_of_L_theory_hydro'
+        sigma = kwargs['sigma']
+        phi   = kwargs['phi']
+        D0 = common.stokes_einstein_D(sigma)
+
+        L = np.logspace(np.log10(kwargs.get('Lmin', 0.1)), np.log10(kwargs.get('Lmax', 100)), 100)
         L = L[::-1] # so that it's the same order as the others
-        D = countoscope_theory.timescaleint.D_of_L_Lh(L, 1, phi, sigma)
+        D = countoscope_theory.timescaleint.D_of_L_hydro(L, D0, phi, sigma, kwargs['hydro_source_file'])
 
         xs = L
-        Ds = D * D_MSD
+        Ds = D
         D_uncs = np.zeros_like(Ds)
 
     elif source == 'dominiguez_theory':
@@ -469,7 +558,7 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
             # T_of_L = countoscope_theory.timescaleint.T_of_L(xs, D_MSD, phi, sigma)
             # keep = 10 * T_of_L < max_time
 
-            num_before = xs.size
+            # num_before = xs.size
             # xs = xs[keep]
             # Ds = Ds[keep]
             # if len(D_uncs.shape) == 1:
@@ -478,7 +567,7 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
             #     D_uncs = D_uncs[:, keep]
             # assert xs.size, 'we dropped all points'
             
-            print(f'kept L<{xs[-1]/sigma:.2g}σ ({xs.size/num_before:.2f})')
+            # print(f'kept L<{xs[-1]/sigma:.2g}σ ({xs.size/num_before:.2f})')
             
             assert not PLOT_AGAINST_K
 
@@ -494,7 +583,6 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
             # xs = [np.nan]
             xs = np.array([1e-10, 1e10])
             Ds = np.array([Ds[0], Ds[0]])
-            print(data)
 
         else:
             raise Exception(f'you need to specify the x scale for {source}')
@@ -550,6 +638,7 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, phi, sigma):
         else:
             D_uncs[errs_too_low] = 0.03 * np.repeat(np.abs(Ds)[np.newaxis, :], 2, axis=0)[errs_too_low]
 
-    print('getLandD diameter', diameter)
-    print(data['particle_diameter'] if data else 'no data')
-    return xs, Ds, D_uncs, pixel_size, window_size, pack_frac_given, pack_frac_calced, diameter, D0
+    Ds     *= kwargs.get('mult', 1)
+    D_uncs *= kwargs.get('mult', 1)
+
+    return xs, Ds, D_uncs, pixel_size, window_size, phi, sigma

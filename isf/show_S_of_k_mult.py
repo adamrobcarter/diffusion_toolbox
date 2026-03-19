@@ -16,7 +16,7 @@ if __name__ == '__main__':
     particle_diameter_global = None
 
     def go(file, color):
-        global pack_frac, particle_diameter_global, k
+        global pack_frac, particle_diameter_global, k # needed to assert they are the same across files
 
         data = common.load(f"isf/data/F_first_{file}.npz")
         t                 = data["t"]
@@ -52,14 +52,16 @@ if __name__ == '__main__':
 
 
     if SHOW_THEORY:
-        ax.plot(particle_diameter_global*k, countoscope_theory.structure_factor.hard_spheres_2d(k, pack_frac, particle_diameter_global), color='black')
+        k_theory = np.logspace(np.log10(k.min()), np.log10(k.max()), num=500)
+        ax.plot(particle_diameter_global*k_theory, countoscope_theory.structure_factor.hard_spheres_2d(k_theory, pack_frac, particle_diameter_global), color='black')
 
-    ax.set_ylim(0.3, 1.2)
-    ax.legend(fontsize=8)
+    # ax.set_ylim(0.3, 1.2)
+    ax.legend(fontsize=5)
     ax.semilogx()
-    ax.set_xlim(0.1, 40)
+    # ax.set_xlim(0.1, 40)
     ax.set_ylabel('$S(k)$')
     ax.set_xlabel(r'$k\sigma$')
+    ax.axhline(1, color='gray', linestyle=':')
 
     # ax.text(0.7, 0.1, f'$\phi={file[-4:]}$', transform=ax.transAxes)
 

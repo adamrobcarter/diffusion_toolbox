@@ -173,6 +173,7 @@ ax_label(axs['b'], 'b', x=0.95)
 axs['b'].xaxis.labelpad = -5
 
 
+common.save_fig(fig, f'{figs}/collective_diffusion.svg', hide_metadata=True)
 common.save_fig(fig, f'{figs}/collective_diffusion.pdf', hide_metadata=True)
 common.save_fig(fig, f'{figs}/collective_diffusion.png', hide_metadata=True, dpi=300)
 

@@ -36,7 +36,7 @@ def go(file, infile=None, outfile=None, crop=False, every_nth_frame=None,
         print('particles max', particles[:, 1].max(), particles[:, 1].min())
         
         time_step = data_particles['time_step']
-        time_column = data_particles.get('dimension', 2)
+        time_column = common.get_particles_column('t', data_particles)
         num_timesteps = particles[:, time_column].max() + 1
         assert num_timesteps > 0, f'num_timesteps = {num_timesteps}'
         window_size_x = data_particles['window_size_x']
@@ -46,7 +46,8 @@ def go(file, infile=None, outfile=None, crop=False, every_nth_frame=None,
             data_stack = common.load(f'preprocessing/data/stack_{file}.npz')
 
         except FileNotFoundError:
-            num_timesteps = int(particles[:, data_particles.get('dimension', 2)].max() - 1)
+            num_timesteps = int(particles[:, common.get_particles_column('t', data_particles)].max() - 1)
+            print(particles[:, common.get_particles_column('t', data_particles)])
             assert num_timesteps > 0, f'num_timesteps = {num_timesteps}'
             stack = None
             pixel_size = None
@@ -99,7 +100,7 @@ def go(file, infile=None, outfile=None, crop=False, every_nth_frame=None,
                                                             window_size_x=window_size_x, window_size_y=window_size_y)
             if not tracks or show_blobs_too:
                 particle_detection.show.add_particle_outlines(
-                    ax, particles, timestep, dimension=data_particles.get('dimension', 2),
+                    ax, particles, data_particles, timestep,
                     outline=False, particle_diameter=data_particles.get('particle_diameter', 5),
                     window_size_x=window_size_x, window_size_y=window_size_y, color=particle_color)
 
@@ -112,11 +113,14 @@ def go(file, infile=None, outfile=None, crop=False, every_nth_frame=None,
 
 
 if __name__ == '__main__':
+    parser = common.argparser()
+    parser.add_argument('--highlights', action='store_true')
+    args = parser.parse_args()
 
-    for file in sys.argv[1:]:
-        highlights = '_highlights' if HIGHLIGHTS else ''
+    for file in args.files:
+        highlights = '_highlights' if args.highlights else ''
         go(
             file,
             outfile = f'particle_detection/figures_png/movie_{file}{highlights}.gif',
-            highlights=HIGHLIGHTS
+            highlights=args.highlights
         )

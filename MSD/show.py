@@ -75,6 +75,36 @@ def go(file, ax, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW
 
     # ax.hlines(data.get('window_size_x')**2, *ax.get_xlim(), label='window size', color='black', linestyle='dotted')
 
+
+    # go from D to get height (assuming it's above a wall)
+    import rigiddynamics
+    a = data['particle_diameter'] / 2
+    z = np.linspace(1.0, 5.0, num=1000) * a
+    lub_corr = 1 - 0.85 * data['pack_frac']
+    print(f'lubrication correction = {lub_corr:.3f}')
+    wall_corr = rigiddynamics.theory.Dt_correction_para(a/z)
+    D_SE = common.stokes_einstein_D(data['particle_diameter'])
+    print('D_SE', D_SE, 'lub_corr', lub_corr, 'D_SE * lub_corr', D_SE * lub_corr)
+    # print('D_SE estimated', fits['first']['D'] / lub_corr)
+    D = lub_corr * wall_corr * D_SE
+    height = np.interp(fits['first']['D'], D, z)
+    
+    if height <= z.min() or height >= z.max():
+        if not quiet:
+            print('height is outside of interpolation range, cannot determine height above wall')
+    else:
+        height_unc = (fits['first']['D_unc'] / fits['first']['D']) * height
+        if not quiet:
+            print(f'height above wall = {common.format_val_and_unc(height, height_unc, latex=False, sigfigs=3)} um')
+            print(f'                  = {common.format_val_and_unc(height/a, height_unc/a, latex=False, sigfigs=3)} a')
+            print(f'gap = {common.format_val_and_unc(height - a, height_unc, latex=False, sigfigs=3)} um')
+            print(f'    = {common.format_val_and_unc((height - a)/a, height_unc/a, latex=False, sigfigs=3)} a')
+            
+            if file.startswith('eleanor'):
+                kBT = scipy.constants.k * 298
+                mg = 4/3*np.pi*(a*1e-6)**3 * (1510 - 970) * scipy.constants.g # values from Eleanor in Slack/Soft Matter SI
+                print(f'kBT/mg = {kBT/mg*1e6:.3f} um')
+
     # ax.legend()
     ax.grid(alpha=0.3)
 
@@ -89,8 +119,9 @@ def go(file, ax, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW
         N_particles      =data.get('N_particles'),
     )
 
-    t_diffuse_window = data.get('window_size_x')**2 / (2*2*fits['first']['D'])
-    print(f'time to diffuse across window = {t_diffuse_window/60/60:.1f}hr')
+    if 'window_size_x' in data and data['window_size_x']:
+        t_diffuse_window = data.get('window_size_x')**2 / (2*2*fits['first']['D'])
+        print(f'time to diffuse across window = {t_diffuse_window/60/60:.1f}hr')
 
     if t.size > 100:
         common.save_data(f'visualisation/data/Ds_from_MSD_{file}',
@@ -166,6 +197,9 @@ def fit_msd(t, msd, msd_unc):
         'D': first_point_D,
         'D_unc': first_point_D_unc
     }
+
+
+
     # print(f'first p  : D={first_point_D:.4f}')
 
     return ret

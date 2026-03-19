@@ -1,3 +1,11 @@
+"""
+Run the intensity countoscope
+
+Options:
+
+--every=N  only use every Nth frame
+"""
+
 # import intensity_counting.intensity_countoscope as intensity_countoscope
 import sys
 sys.path.append('/home/acarter/intensity_countoscope')
@@ -12,10 +20,12 @@ print(intensity_countoscope.__file__)
 files = ['sim', 'sim_downsampled', 'alice_0.02', 'alice_0.34', 'alice_0.66']
 files = ['eleanor', 'sim', 'alice_0.02']
 
-EVERY = 2
-
 if __name__ == '__main__':
-    for file in common.files_from_argv('preprocessing/data', 'stack_'):
+    parser = common.argparser()
+    parser.add_argument('--every', type=int, default=1)
+    args = parser.parse_args()
+
+    for file in args.files:
         data = common.load(f'preprocessing/data/stack_{file}.npz')
         stack             = data['stack']
         pixel_size        = data['pixel_size']
@@ -24,15 +34,17 @@ if __name__ == '__main__':
 
         assert np.all(stack >= 0)
 
-        progress = tqdm.tqdm(total=stack.shape[0]*(stack.shape[0]-1)//2, desc='checking for identical frames')
-        for i in range(stack.shape[0]):
-            for j in range(i+1, stack.shape[0]):
-                diff = np.abs(stack[i, :, :] - stack[j, :, :])
-                assert diff.sum() > 0
-                if diff.sum() < 100000:
-                    print(diff.sum())
-                # assert not np.allclose(stack[i, :, :], stack[j, :, :]), f'frames {i} and {j} are identical'
-                progress.update()
+        # progress = tqdm.tqdm(total=stack.shape[0]*(stack.shape[0]-1)//2, desc='checking for identical frames')
+        # for i in range(stack.shape[0]):
+        #     for j in range(i+1, stack.shape[0]):
+        #         diff = np.abs(stack[i, :, :] - stack[j, :, :])
+        #         assert diff.sum() > 0
+        #         if diff.sum() < 100000:
+        #             print(diff.sum())
+        #         # assert not np.allclose(stack[i, :, :], stack[j, :, :]), f'frames {i} and {j} are identical'
+        #         progress.update()
+
+
         # if file == 'eleanorlong':
         #     pixel_size = 0.17 # so the boxes are the same size as aliceXXX
 
@@ -40,21 +52,24 @@ if __name__ == '__main__':
 
 
         box_sizes_px = np.array([ 1,  2,  4,  8, 16, 32])
-        sep_sizes_px = 60 - box_sizes_px
+        sep_sizes_px = 5 - box_sizes_px
 
         box_sizes = box_sizes_px * pixel_size
         sep_sizes = sep_sizes_px * pixel_size
 
+        # box_sizes = np.array([8, 20, 35, 48, 64, 85, 128, 160, 240, 320, 400])
+        # sep_sizes = 5 - box_sizes
+
         # print('subtracting mean')
         # stack = stack - stack.mean(axis=0)
 
-        stack = stack[::EVERY, :, :]
+        stack = stack[::args.every, :, :]
 
         box_sizes, counted_intensity_diffs, avg_intensities, variances, all_counts = intensity_countoscope.go(stack, box_sizes, sep_sizes, pixel_size)
 
         filename = f'intensity_counting/data/counted_{file}'
-        if EVERY != 1:
-            filename += f'_every{EVERY}'
+        if args.every != 1:
+            filename += f'_every{args.every}'
         filename += '.npz'
         common.save_data(filename,
                         box_sizes=box_sizes, sep_sizes=sep_sizes, counted_intensity_diffs=counted_intensity_diffs, 
