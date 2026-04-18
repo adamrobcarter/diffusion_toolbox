@@ -914,7 +914,7 @@ def add_drift_intensity(stack, drift):
 
 def term_hist(data, bins=20, quantile=0.995):
     assert not np.any(np.isnan(data)), 'term_hist: nan found in data'
-    bin_locs = np.linspace(np.quantile(data, 1-quantile), np.quantile(data, quantile))
+    bin_locs = np.linspace(np.quantile(data, 1-quantile), np.quantile(data, quantile), num=bins)
     counts, bin_edges = np.histogram(data, bins=bin_locs)
     term_bar(counts, bin_edges)
 

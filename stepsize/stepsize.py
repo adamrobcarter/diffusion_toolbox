@@ -26,6 +26,9 @@ def calc(particles, crop_left, crop_right):
     all_steps_y = np.full(particles.shape[0] - num_particles, np.nan)
     all_steps_next_index = 0
 
+    all_velocities_y  = np.full(particles.shape[0] - num_particles, np.nan)
+    # this is a way of making a weighted average of the velocity per trajectory (not step size per step)
+
     while start_index < particles.shape[0]-1:
         current_id = particles[start_index, 3]
         end_index = start_index + 1
@@ -66,6 +69,7 @@ def calc(particles, crop_left, crop_right):
 
                     all_steps_x[all_steps_next_index:all_steps_next_index+x_steps.size] = x_steps
                     all_steps_y[all_steps_next_index:all_steps_next_index+x_steps.size] = y_steps
+                    all_velocities_y[all_steps_next_index:all_steps_next_index+x_steps.size] = y_steps.mean()
                     all_steps_next_index += x_steps.size
                     in_crop += 1
 
@@ -81,11 +85,15 @@ def calc(particles, crop_left, crop_right):
 
     all_steps_x = all_steps_x[:all_steps_next_index]
     all_steps_y = all_steps_y[:all_steps_next_index]
+    all_velocities_y = all_velocities_y[:all_steps_next_index]
 
-    print("x speed:")
+    print("x steps:")
     common.term_hist(all_steps_x)
-    print("y speed:")
+    print("y steps:")
     common.term_hist(all_steps_y)
+    print("y speed:")
+    common.term_hist(all_velocities_y, quantile=0.999)
 
-    print(f"step x = {all_steps_x.mean():.3f} +- {all_steps_x.std():.3f}")
-    print(f"step y = {all_steps_y.mean():.3f} +- {all_steps_y.std():.3f}")
+    print(f"step x  = {all_steps_x.mean():.3f} +- {all_steps_x.std():.3f}")
+    print(f"step y  = {all_steps_y.mean():.3f} +- {all_steps_y.std():.3f}")
+    print(f"speed y = {all_velocities_y.mean():.3f} +- {all_velocities_y.std():.3f}")
