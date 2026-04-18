@@ -42,7 +42,96 @@ if __name__ == '__main__':
         percentile = None # "Features must have a peak brighter than pixels in this percentile. This helps eliminate spurious peaks. default 64
         maxmass = None
 
-        if file == 'pierre_simdownsampled':
+        if file.startswith("faxtor2"):
+            invert=True
+            if (file.startswith("faxtor2_0011_0000_0006") or file.startswith("faxtor2_0011_0000_0007") or file.startswith("faxtor2_0011_0000_0008") or file.startswith("faxtor2_0011_0000_0009")
+                 or file.startswith("faxtor2_0011_0000_0010") or file.startswith("faxtor2_0009")):
+                 # 9um Si in PMMA
+                 diameter=17
+                 minmass=1
+            elif file.startswith("faxtor2_0023_0000_0002"):
+                 # 9um Si in bulk
+                 diameter=17
+                 minmass=2
+            elif (file.startswith("faxtor2_0034")):
+                 # 9um Si in Si
+                 assert "rolling" in file
+                 diameter=17
+                 minmass=0.6
+            elif (file.startswith("faxtor2_0036") or file.startswith("faxtor2_0044")):
+                 # 9um Si in Si
+                 assert "rolling" in file
+                 diameter=17
+                 minmass=0.4
+            elif (file.startswith("faxtor2_0056")):
+                 # 9um Si in Si
+                 assert "rolling" in file
+                 diameter=17
+                 minmass=0.3
+            elif file.startswith("faxtor2_0032"):
+                 # 9um Si in Si
+                 diameter=17
+                 minmass=0.2
+
+            elif (file.startswith("faxtor2_0010_0000_") or file.startswith("faxtor2_0007") or file.startswith("faxtor2_0002_0002_0002")
+                 or file.startswith("faxtor2_0004") or file.startswith("faxtor2_0047")):
+                 # 7um Si in PMMA
+                 if file.startswith("faxtor2_0002_0002_0002"):
+                     minmass=0.8
+                 else:
+                     minmass=1
+                 diameter=15
+            elif (file.startswith("faxtor2_0022_0002_0006") or file.startswith("faxtor2_0031") or file.startswith("faxtor2_0029")
+                 or file.startswith("faxtor2_0045_0001")):
+                 # Si 7um in bulk
+                 diameter=15
+                 minmass=0.8
+            elif (file.startswith("faxtor2_0032") or file.startswith("faxtor2_0045")):
+                 # Si 7um in Si
+                 diameter=15
+                 minmass=0.2
+            elif (file.startswith("faxtor2_0054")):
+                 # Si 7um in Si
+                 diameter=15
+                 minmass=0.05
+
+            elif file.startswith("faxtor2_0020_0000_0005"):
+                 # 4um Si in PMMA
+                 diameter=9
+                 minmass=0.2
+            elif file.startswith("faxtor2_0013_0000_0002"):
+                 # 4um bulk
+                 diameter=9
+                 minmass=0.2
+            elif (file.startswith("faxtor2_0020_0000_0006") or file.startswith("faxtor2_0017") or file.startswith("faxtor2_0015")
+                 or file.startswith("faxtor2_0028") or file.startswith("faxtor2_0037")):
+                 # 4um Si in PMMA
+                 diameter=9
+                 minmass=0.3
+            elif (file.startswith("faxtor2_0038")):
+                 # 4um Si in Si
+                 # was 0.2?, 0.5 too high, 0.2 too high
+                 diameter=9
+                 minmass=0.1
+            elif (file.startswith("faxtor2_0043")):
+                 # 4um Si in Si
+                 diameter=9
+                 minmass=0.005 # maybe last try
+            elif file.startswith("faxtor2_0053"):
+                 # 4um Si in Si
+                 diameter=9
+                 minmass=0.05
+            elif file.startswith("faxtor2_0021"):
+                 # 1.7mm in PMMA
+                 diameter=7
+                 minmass=0.05
+
+            elif file.startswith("faxtor2_0060"):
+                 # PS
+                 diameter = 17
+                 minmass = 0.5
+
+        elif file == 'pierre_simdownsampled':
             pass
         elif file == 'pierre_sim':
             pass
@@ -121,6 +210,7 @@ if __name__ == '__main__':
         else:
             raise Exception('you need to provide parameters for this dataset')
 
+
         if NO_MINMASS:
             minmass = 0
 
@@ -128,7 +218,7 @@ if __name__ == '__main__':
 
         t0 = time.time()
 
-        print('starting detector')
+        print(f'starting detector, minmass={minmass}')
 
         assert diameter is not None, "you haven't yet provided `diameter`"
         if percentile:

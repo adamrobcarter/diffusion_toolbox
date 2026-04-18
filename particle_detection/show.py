@@ -4,7 +4,7 @@ import matplotlib.cm
 import numpy as np
 import tqdm
 import preprocessing.stack_movie
-import scattering_functions
+#import scattering_functions
 
 # CROP = 150
 # X_START = 250

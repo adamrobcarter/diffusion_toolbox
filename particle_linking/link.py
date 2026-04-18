@@ -85,6 +85,9 @@ def go(file):
         search_range = 50
     if file.startswith('faxtor'):
         search_range = 15
+    if file.startswith("faxtor2"):
+        memory = 0
+        search_range=10 # previously was None
     if file == 'carlos02':
         memory = 0
 
@@ -107,7 +110,6 @@ def go(file):
 
     print('trajectory lengths:')
     traj_lengths = np.bincount(trajs['particle'].to_numpy(dtype='int'))
-    print(traj_lengths)
     common.term_hist(traj_lengths)
 
     print('filtering stubs')
@@ -122,6 +124,7 @@ def go(file):
 
     print('trajectory lengths after filter:')
     traj_lengths = np.bincount(trajs['particle'].to_numpy(dtype='int'))
+    print("min", traj_lengths.min())
     print(traj_lengths)
     common.term_hist(traj_lengths, bins=np.arange(0, 100, 5))
 

@@ -6,4 +6,4 @@ for file in common.files_from_argv('particle_linking/data/', 'trajs_'):
 
     particles = data['particles']
 
-    res = stepsize.stepsize.calc(particles)
+    res = stepsize.stepsize.calc(particles, crop_left=250, crop_right=980)

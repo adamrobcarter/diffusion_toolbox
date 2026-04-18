@@ -12,7 +12,7 @@ FORCE_FPS = 10
 def go(file, infile=None, outfile=None, crop=False, every_nth_frame=None,
        output_type : typing.Literal['movie', 'frames'] = 'movie',
        dpi=300, tracks=False, highlights=False, show_blobs_too=False,
-       particle_color='red',
+       particle_color='red', outline=True,
         **kwargs):
         """
         output_type: 'movie' will produce a gif, 'frames' saves each frame of the movie to a separate .png
@@ -101,7 +101,7 @@ def go(file, infile=None, outfile=None, crop=False, every_nth_frame=None,
             if not tracks or show_blobs_too:
                 particle_detection.show.add_particle_outlines(
                     ax, particles, data_particles, timestep,
-                    outline=False, particle_diameter=data_particles.get('particle_diameter', 5),
+                    outline=outline, particle_diameter=data_particles.get('particle_diameter', 5),
                     window_size_x=window_size_x, window_size_y=window_size_y, color=particle_color)
 
         preprocessing.stack_movie.save_array_movie(stack, pixel_size, time_step, file, outfile,

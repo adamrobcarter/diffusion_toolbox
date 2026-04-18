@@ -2,7 +2,7 @@ import numpy as np
 import tqdm
 import common
 
-def calc(particles):
+def calc(particles, crop_left, crop_right):
     
     # version that doesn't need reshaping - probably slower but a lot less memory
     assert particles[:, 3].min() == 0
@@ -19,6 +19,8 @@ def calc(particles):
     start_index = 0
     current_id = 0
     skipped = 0
+    out_of_crop = 0
+    in_crop = 0
 
     all_steps_x = np.full(particles.shape[0] - num_particles, np.nan)
     all_steps_y = np.full(particles.shape[0] - num_particles, np.nan)
@@ -55,27 +57,35 @@ def calc(particles):
             
             else:
 
-                x_steps = data_this_particle[1:, 0] - data_this_particle[:-1, 0]
-                y_steps = data_this_particle[1:, 1] - data_this_particle[:-1, 1]
+                if np.all(data_this_particle[1:, 0] > crop_left) and np.all(data_this_particle[1:, 0] < crop_right):
+                    x_steps = data_this_particle[1:, 0] - data_this_particle[:-1, 0]
+                    y_steps = data_this_particle[1:, 1] - data_this_particle[:-1, 1]
 
-                # steps = np.sqrt(x_steps**2 + y_steps**2)
-                # assert not np.any(np.isnan(steps))
+                    # steps = np.sqrt(x_steps**2 + y_steps**2)
+                    # assert not np.any(np.isnan(steps))
 
-                all_steps_x[all_steps_next_index:all_steps_next_index+x_steps.size] = x_steps
-                all_steps_y[all_steps_next_index:all_steps_next_index+x_steps.size] = y_steps
-                all_steps_next_index += x_steps.size
-                
+                    all_steps_x[all_steps_next_index:all_steps_next_index+x_steps.size] = x_steps
+                    all_steps_y[all_steps_next_index:all_steps_next_index+x_steps.size] = y_steps
+                    all_steps_next_index += x_steps.size
+                    in_crop += 1
+
+                else:
+                    out_of_crop += 1
+
         progress.update()
         start_index = end_index
     progress.close()
 
     print(f'skipped {skipped/num_particles:.2f}')
+    print(f"cropped away {out_of_crop/(out_of_crop+in_crop):.3f}")
 
     all_steps_x = all_steps_x[:all_steps_next_index]
     all_steps_y = all_steps_y[:all_steps_next_index]
 
+    print("x speed:")
     common.term_hist(all_steps_x)
+    print("y speed:")
     common.term_hist(all_steps_y)
 
-    print('x', all_steps_x.mean(), all_steps_x.std())
-    print('y', all_steps_y.mean(), all_steps_y.std())
+    print(f"step x = {all_steps_x.mean():.3f} +- {all_steps_x.std():.3f}")
+    print(f"step y = {all_steps_y.mean():.3f} +- {all_steps_y.std():.3f}")

@@ -15,7 +15,7 @@ for file_i, file in enumerate(files := common.files_from_argv('particle_linking/
 
     data = common.load(f'particle_linking/data/trajs_{file}.npz')
     particles = data['particles']
-    theta     = data['theta']
+    theta     = data.get("theta")
 
     TIME_COLUMN = data.get('dimension', 2)
     ID_COLUMN   = data.get('dimension', 2) + 1
