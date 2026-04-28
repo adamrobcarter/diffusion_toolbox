@@ -3,19 +3,25 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
-def go(file, ax):
+#### this should reuse code from show_g
+
+
+
+def go(file, ax, color=None):
     data = common.load(f'van_hove/data/g_{file}.npz')
     g = data['g']
     r = data['r']
     particle_diameter = data.get('particle_diameter')
     print('r max', r.max())
     
-    ax.set_ylabel('$g(r)$')
-    ax.set_xlabel(r'$r/\sigma$')
+    ax.set_ylabel(r'$g(r)$')
+    ax.set_xlabel(r'$r/a$')
     ax.set_ylim(0, 3)
     
     g_mean = np.nanmean(g, axis=0)
     print(g_mean[r/particle_diameter>0.5])
+
+    a = particle_diameter/2
 
     safe_indexes = r/particle_diameter > 0.5
     r_safe = r     [safe_indexes]
@@ -24,19 +30,28 @@ def go(file, ax):
     # print(g)
     print('max g', r_safe[max_index])
 
-    ax.errorbar(r/particle_diameter, g_mean, yerr=np.nanstd(g, axis=0)/np.sqrt(g.shape[0]), marker='o', label=file)#, linestyle='none')
+    if 'pack_frac' in data:
+        label = fr'$\phi={data["pack_frac"]:.2f}$'
+    else:
+        label = file
+
+
+    ax.errorbar(r/a, g_mean, yerr=np.nanstd(g, axis=0)/np.sqrt(g.shape[0]), marker='o', label=label,
+                color=color)#, linestyle='none')
     
-    print(r_safe[max_index]/particle_diameter, g_safe[max_index])
-    ax.scatter(r_safe[max_index]/particle_diameter, g_safe[max_index], color='red', zorder=10)
+    # ax.scatter(r_safe[max_index]/a, g_safe[max_index], color='red', zorder=10)
 
 
 if __name__ == '__main__':
     fig, ax = plt.subplots()
 
-    for file in sys.argv[1:]:
-        go(file, ax)
+    for i, file in enumerate(sys.argv[1:]):
+        color = plt.cm.copper(i/(len(sys.argv[1:]))-0.5)
+        go(file, ax, color=color)
+
+    ax.set_xlim(0, 10)
 
     # ax.semilogy()
-    ax.legend(fontsize=6)
+    ax.legend()
     ax.axhline(1.0, color='gray', linestyle=':')
     common.save_fig(fig, f'van_hove/figures_png/g_of_r_{file}.png')

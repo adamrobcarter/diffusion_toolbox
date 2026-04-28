@@ -552,4 +552,16 @@ if __name__ == '__main__':
     # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_6367_L_100_single_wall_dt_5_t_2_0.02_a_0.5_run_0/')
     # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_6367_L_50_single_wall_dt_0_t_1_0.01_a_0.25_run_0/')
 
-    load_and_save('/store/cartera/libmobility_diffusion/solver_DPStokes_N_67_L_64_single_wall_dt_125_t_60_1_a_1.395_run_10/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_DPStokes_N_67_L_64_single_wall_dt_125_t_60_1_a_1.395_run_10/')
+
+    # donev but low pack frac
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_10720_L_2560_single_wall_dt_125_t_28800_32_a_1.395_run_1/') # no suffix needed
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_10720_L_2560_single_wall_dt_125_t_3600_1_a_1.395_run_0/')
+    # why did we do this again? something was wrong like eta maybe
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_107197_L_2560_single_wall_dt_125_t_28800_32_a_1.395_run_2/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_NBody_N_107197_L_2560_single_wall_dt_125_t_3600_1_a_1.395_run_0/')
+
+    # nohydro for thesis
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_Self_N_53598_L_1280_single_wall_dt_2_t_5_0.002_a_1.395_run_0/')
+    # load_and_save('/store/cartera/libmobility_diffusion/solver_Self_N_53598_L_1280_single_wall_dt_20_t_100_0.02_a_1.395_run_1/')
+    load_and_save('/store/cartera/libmobility_diffusion/solver_Self_N_26799_L_1280_single_wall_dt_20_t_100_0.02_a_1.395_run_0/')

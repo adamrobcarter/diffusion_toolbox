@@ -287,8 +287,8 @@ def save_fig(fig, path, dpi=100, only_plot=False, hide_metadata=False):
     if only_plot:
         for ax in fig.axes:
             ax.set_axis_off() # hide axes, ticks, etc
-        args['bbox_inches'] = 'tight'
-        args['pad_inches'] = 0
+    args['bbox_inches'] = 'tight' # i moved this outside of the if
+    args['pad_inches'] = 0
 
     path2 = path.replace('*', '')
     # if not path2.startswith('/'):
@@ -1226,13 +1226,9 @@ def add_exponential_index_indicator(ax, exponent, anchor, xlabel, x_limits=None,
 
 def stokes_einstein_D(particle_diameter):
     k_B = scipy.constants.k
-    T = 300 # K
-    T = 273+25
+    T = 300 # K, current value in libmobility_diffusion
     # warnings.warn('T=250K is bad! you should get it from the sim!')
-    eta = 1.4e-3 # Pa.s
-    eta = 0.88e-3
-    # eta = 1.75e-3
-    warnings.warn('eta must change! rigid sims use 0.00175')
+    eta = 1.75e-3 # Pa.s, current value in libmobility_diffusion
     # isn't Eleanor's viscosity not this?
     r = particle_diameter * 1e-6 / 2 # assumed um
     D =  k_B * T / (6 * np.pi * eta * r) # m^2 / s

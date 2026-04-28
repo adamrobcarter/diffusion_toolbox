@@ -3,6 +3,9 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
+
+### this should share code with show_g_mult
+
 def go(file):
     data = common.load(f'van_hove/data/g_{file}.npz')
     g = data['g']

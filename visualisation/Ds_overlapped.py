@@ -521,6 +521,9 @@ def get_L_and_D(source, file, PLOT_AGAINST_K, TWO_PI, D_MSD, **kwargs):
         Ds     = data['Ds']
         D_uncs = data['D_uncs']
 
+        sigma = data.get('particle_diameter', None)
+        phi   = data.get('pack_frac', None)
+
         if Ds.size == 0:
             print(f'skipping {source} {file}, no Ds found')
             raise FileNotFoundError(f'skipping {source} {file}, no Ds found')

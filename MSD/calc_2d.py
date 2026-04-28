@@ -26,6 +26,7 @@ def go(file):
 
     # if 'mixt' in file or 'shear' in file:
     if not consistent_timesteps:
+        assert False, 'this probably needs updating with particles_columns or something'
         # max_time_origins = 4000
 
         # t = [0, 0.5, 15.5, 16, 16.5, 32, 64, 128, 256, 512, 1024]
@@ -75,4 +76,4 @@ if __name__ == '__main__':
     for file in common.files_from_argv('particle_linking/data/', 'trajs_'):
         go(file)
         
-        MSD.show.go(f'{file}_2d')
+        # MSD.show.go(f'{file}_2d')

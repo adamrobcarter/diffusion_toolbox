@@ -192,6 +192,10 @@ def show_one_file_and_source(
 
     print('rescale_y', rescale_y)
                   
+    # we have a big mess here because some curves could plot rescaled
+    # and some not. for now we force rescale
+    assert sigma
+    assert allow_rescale_x
     if sigma and allow_rescale_x:
         if PLOT_AGAINST_K:
             rescale_x = 1/sigma
@@ -200,7 +204,7 @@ def show_one_file_and_source(
             rescale_x = sigma
             ax.set_xlabel(r'$L/\sigma$')
     else:
-        # assert False
+        assert False
         rescale_x = 1
         if PLOT_AGAINST_K:
             ax.set_xlabel(r'$k$')

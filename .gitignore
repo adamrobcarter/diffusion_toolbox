@@ -74,3 +74,4 @@ preprocessing/directH/*.npz
 presentations/figures/*
 docs/api/*.rst
 docs/_build/*
+workflows/thesis/figures/*

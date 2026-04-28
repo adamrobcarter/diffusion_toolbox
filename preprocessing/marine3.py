@@ -8,9 +8,9 @@ if __name__ == '__main__':
         with nd2.ND2File(file) as f:
             # print(f.shape)
             full_stack = f.asarray()
-            # print(f.attributes)
-            # print(f.metadata)
-            # print(f.unstructured_metadata())
+            print(f.attributes)
+            print(f.metadata)
+            print(f.unstructured_metadata())
             # with open('metadata.json', 'w') as jf:
             #     print(json.dump(f.unstructured_metadata(), jf, sort_keys=True, indent=4))
             time_step = f.unstructured_metadata()['ImageMetadataLV']['SLxExperiment']['uLoopPars']['dAvgPeriodDiff'] / 1000

@@ -47,14 +47,16 @@ visualisation.Ds_overlapped_mult.go(
             plot_index=np.index_exp[23:],
             color=WALL_SHORT_COLOR,
             msd_file='ld_hydro_nbody_0.114_L2560_t1h_1_2d',
-            label='single wall, $t=1\mathrm{{s}}$'
+            label=r'single wall, $t=1\mathrm{{s}}$',
+            msd = 'ld_hydro_nbody_0.114_L2560_t1h_1',
         ),
         dict(
             file='ld_hydro_nbody_0.114_L2560',
             source='f_t1024',
             msd_file='ld_hydro_nbody_0.114_L2560_t1h_1_2d',
             color=WALL_LONG_COLOR,
-            label='single wall, $t=1024\mathrm{{s}}$'
+            label=r'single wall, $t=1024\mathrm{{s}}$',
+            msd = 'ld_hydro_nbody_0.114_L2560_t1h_1',
         ),
         dict(
             file='ld_hydro_nbody_open_0.114_L2560_t1h_1',
@@ -62,7 +64,8 @@ visualisation.Ds_overlapped_mult.go(
             msd_file='ld_hydro_nbody_open_0.114_L2560_t1h_1_2d',
             plot_index=np.index_exp[19:],
             color=OPEN_SHORT_COLOR,
-            label='potential confinement, $t=1\mathrm{{s}}$'
+            label=r'potential confinement, $t=1\mathrm{{s}}$',
+            # msd = 'ld_hydro_nbody_open_0.114_L2560_t1h_1',
         ),
         dict(
             file='ld_hydro_nbody_open_0.114_L2560_t8h_32',
@@ -70,28 +73,31 @@ visualisation.Ds_overlapped_mult.go(
             msd_file='ld_hydro_nbody_open_0.114_L2560_t1h_1_2d',
             plot_index=np.index_exp[:19],
             color=OPEN_LONG_COLOR,
-            label='potential confinement, $t=1024\mathrm{{s}}$'
+            label=r'potential confinement, $t=1024\mathrm{{s}}$',
+            # msd = 'ld_hydro_nbody_open_0.114_L2560_t1h_1',
         ),
         dict(
             file='ld_hydro_nbody_0.114_L2560_t450_1',
             source='D0Sk_theory',
-            label='theory, no hydrodynamics',
+            label=r'theory, no hydrodynamics',
             color=THEORY_COLOR,
+            sigma = 2.79,
+            phi = 0.114,
+            msd = 'ld_hydro_nbody_0.114_L2560_t1h_1',
         ),
     ),
     ax = ax,
     plot_against_k=True,
-    # allow_rescale_y=False,
+    allow_rescale_y=False,
     # labels=('hydro above')
     legend_fontsize=7,
     show_twin_k_axis=False,
     discrete_colors=True,
     allow_rescale_x=True
 )
-# ax.set_ylim(0.5, 4)
-ax.set_ylim(0.8, 8.2)
+# ax.set_ylim(0.8, 8.2) # with rescale
+ax.set_ylim(0.03, 0.1) # without rescale (ignore divergent curve)
 ax.set_xlim(6e-2, 3e1)
-# ax.set_xlim(2.1e-3, 1e1)
 ax.semilogy()
 common.add_exponential_index_indicator(ax, -1, (2.3e-1, 5e0), 'k', x_limits=(3e-2, 3.5e-1), )
 # show_png_on_axis(ax, 'presentations/libmobility/side_view_2.png', (12e0, 3.5), 0.04, color=WALL_LONG_COLOR)
@@ -99,7 +105,7 @@ common.add_exponential_index_indicator(ax, -1, (2.3e-1, 5e0), 'k', x_limits=(3e-
 show_png_on_axis(ax, 'presentations/libmobility/side_view_2.png', (0.88, 0.42), 0.05, color=WALL_LONG_COLOR, use_data_coords=False)
 show_png_on_axis(ax, 'presentations/libmobility/side_view_potential.png', (0.88, 0.62), 0.05, color=OPEN_LONG_COLOR, use_data_coords=False)
 
-ax.text(0.6, 0.65, '$\phi=0.11$', transform=ax.transAxes)
+ax.text(0.6, 0.65, r'$\phi=0.11$', transform=ax.transAxes)
 
 common.save_fig(fig, f'{path}/result.pdf', hide_metadata=True, dpi=300)
 common.save_fig(fig, f'{path}/result.png', hide_metadata=True, dpi=300)
@@ -140,258 +146,258 @@ common.save_fig(fig, f'{path}/result.png', hide_metadata=True, dpi=300)
 
 
 ####### trap and wall ######
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(FIG_DOUBLE_WIDTH, FIG_SINGLE_HEIGHT))
-visualisation.Ds_overlapped_mult.go(
-    (
-        dict(
-            file='ld_hydro_nbody_0.114_singlewall_ztrap_L2560_t1h_1',
-            source='f_t1',
-            msd_file='ld_hydro_nbody_0.114_singlewall_ztrap_L2560_t1h_1_2d',
-            plot_index=np.index_exp[47:],
-            color=WALLTRAP_SHORT_COLOR,
-            label='wall & potential confinement, $t=1\mathrm{{s}}$'
-        ),
-        dict(
-            file='ld_hydro_nbody_0.114_singlewall_ztrap_L2560_t8h_32',
-            source='f_t1024',
-            msd_file='ld_hydro_nbody_0.114_singlewall_ztrap_L2560_t1h_1_2d',
-            # plot_index=np.index_exp[:19],
-            color=WALLTRAP_LONG_COLOR,
-            label='wall & potential confinement, $t=1024\mathrm{{s}}$'
-        ),
-        dict(
-            file='ld_hydro_nbody_0.114_L2560_t450_1',
-            source='D0Sk_theory',
-            label='theory, no hydrodynamics',
-            color=THEORY_COLOR,
-        ),
-    ),
-    ax = ax1,
-    plot_against_k=True,
-    # allow_rescale_y=False,
-    # labels=('hydro above')
-    legend_fontsize=7,
-    show_twin_k_axis=False,
-    discrete_colors=True,
-    allow_rescale_x=True
-)
+# fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(FIG_DOUBLE_WIDTH, FIG_SINGLE_HEIGHT))
+# visualisation.Ds_overlapped_mult.go(
+#     (
+#         dict(
+#             file='ld_hydro_nbody_0.114_singlewall_ztrap_L2560_t1h_1',
+#             source='f_t1',
+#             msd_file='ld_hydro_nbody_0.114_singlewall_ztrap_L2560_t1h_1_2d',
+#             plot_index=np.index_exp[47:],
+#             color=WALLTRAP_SHORT_COLOR,
+#             label=r'wall & potential confinement, $t=1\mathrm{{s}}$'
+#         ),
+#         dict(
+#             file='ld_hydro_nbody_0.114_singlewall_ztrap_L2560_t8h_32',
+#             source='f_t1024',
+#             msd_file='ld_hydro_nbody_0.114_singlewall_ztrap_L2560_t1h_1_2d',
+#             # plot_index=np.index_exp[:19],
+#             color=WALLTRAP_LONG_COLOR,
+#             label=r'wall & potential confinement, $t=1024\mathrm{{s}}$'
+#         ),
+#         dict(
+#             file='ld_hydro_nbody_0.114_L2560_t450_1',
+#             source='D0Sk_theory',
+#             label=r'theory, no hydrodynamics',
+#             color=THEORY_COLOR,
+#         ),
+#     ),
+#     ax = ax1,
+#     plot_against_k=True,
+#     # allow_rescale_y=False,
+#     # labels=('hydro above')
+#     legend_fontsize=7,
+#     show_twin_k_axis=False,
+#     discrete_colors=True,
+#     allow_rescale_x=True
+# )
 
-visualisation.Ds_overlapped_mult.go(
-    (
-        dict(
-            file='ld_hydro_nbody_0.114_singlewall_ztrap_w0p5a_h8a_L2560_t1h_1',
-            source='f_t1',
-            msd_file='ld_hydro_nbody_0.114_singlewall_ztrap_w0p5a_h8a_L2560_t1h_1_2d',
-            plot_index=np.index_exp[47:],
-            color=WALLTRAP_SHORT_COLOR,
-            label='wall & potential confinement, $t=1\mathrm{{s}}$'
-        ),
-        dict(
-            file='ld_hydro_nbody_0.114_singlewall_ztrap_w0p5a_h8a_L2560_t1h_1',
-            source='f_t64',
-            msd_file='ld_hydro_nbody_0.114_singlewall_ztrap_w0p5a_h8a_L2560_t1h_1_2d',
-            plot_index=np.index_exp[:46],
-            color=WALLTRAP_LONG_COLOR,
-            label='wall & potential confinement, $t=64\mathrm{{s}}$'
-        ),
-        dict(
-            file='ld_hydro_nbody_0.114_L2560_t450_1',
-            source='D0Sk_theory',
-            label='theory, no hydrodynamics',
-            color=THEORY_COLOR,
-        ),
-    ),
-    ax = ax2,
-    plot_against_k=True,
-    # allow_rescale_y=False,
-    # labels=('hydro above')
-    legend_fontsize=7,
-    show_twin_k_axis=False,
-    discrete_colors=True,
-    allow_rescale_x=True
-)
-
-
-# ax.set_ylim(0.5, 4)
-ax1.set_ylim(0.8, 8.2)
-ax1.set_xlim(6e-2, 3e1)
-# ax.set_xlim(2.1e-3, 1e1)
-ax1.semilogy()
+# visualisation.Ds_overlapped_mult.go(
+#     (
+#         dict(
+#             file='ld_hydro_nbody_0.114_singlewall_ztrap_w0p5a_h8a_L2560_t1h_1',
+#             source='f_t1',
+#             msd_file='ld_hydro_nbody_0.114_singlewall_ztrap_w0p5a_h8a_L2560_t1h_1_2d',
+#             plot_index=np.index_exp[47:],
+#             color=WALLTRAP_SHORT_COLOR,
+#             label=r'wall & potential confinement, $t=1\mathrm{{s}}$'
+#         ),
+#         dict(
+#             file='ld_hydro_nbody_0.114_singlewall_ztrap_w0p5a_h8a_L2560_t1h_1',
+#             source='f_t64',
+#             msd_file='ld_hydro_nbody_0.114_singlewall_ztrap_w0p5a_h8a_L2560_t1h_1_2d',
+#             plot_index=np.index_exp[:46],
+#             color=WALLTRAP_LONG_COLOR,
+#             label=r'wall & potential confinement, $t=64\mathrm{{s}}$'
+#         ),
+#         dict(
+#             file='ld_hydro_nbody_0.114_L2560_t450_1',
+#             source='D0Sk_theory',
+#             label=r'theory, no hydrodynamics',
+#             color=THEORY_COLOR,
+#         ),
+#     ),
+#     ax = ax2,
+#     plot_against_k=True,
+#     # allow_rescale_y=False,
+#     # labels=('hydro above')
+#     legend_fontsize=7,
+#     show_twin_k_axis=False,
+#     discrete_colors=True,
+#     allow_rescale_x=True
+# )
 
 
-# ax.set_ylim(0.5, 4)
-ax2.set_ylim(0.8, 8.2)
-ax2.set_xlim(6e-2, 3e1)
-# ax.set_xlim(2.1e-3, 1e1)
-ax2.semilogy()
-# common.add_exponential_index_indicator(ax, -1, (2.3e-1, 5e0), 'k', x_limits=(3e-2, 3.5e-1), )
-# show_png_on_axis(ax, 'presentations/libmobility/side_view_2.png', (12e0, 3.5), 0.04, color=WALL_LONG_COLOR)
-# show_png_on_axis(ax, 'presentations/libmobility/side_view_potential.png', (12e0, 6), 0.04, color=OPEN_LONG_COLOR)
-show_png_on_axis(ax1, '/home/acarter/presentations/donev/figures/side_view-potential_and_wall-annotated.drawio.png', (0.8, 0.6), size=0.05, color=WALLTRAP_LONG_COLOR, use_data_coords=False)
-show_png_on_axis(ax2, '/home/acarter/presentations/donev/figures/side_view-potential_and_wall-higher-annotated.drawio.png', (0.8, 0.6), size=0.05, color=WALLTRAP_LONG_COLOR, use_data_coords=False)
-# show_png_on_axis(ax, 'presentations/libmobility/side_view_potential.png', (0.88, 0.6), 0.04, color=OPEN_LONG_COLOR, use_data_coords=False)
+# # ax.set_ylim(0.5, 4)
+# ax1.set_ylim(0.8, 8.2)
+# ax1.set_xlim(6e-2, 3e1)
+# # ax.set_xlim(2.1e-3, 1e1)
+# ax1.semilogy()
 
-common.save_fig(fig, f'{path}/potentialandwall.pdf', hide_metadata=True, dpi=300)
+
+# # ax.set_ylim(0.5, 4)
+# ax2.set_ylim(0.8, 8.2)
+# ax2.set_xlim(6e-2, 3e1)
+# # ax.set_xlim(2.1e-3, 1e1)
+# ax2.semilogy()
+# # common.add_exponential_index_indicator(ax, -1, (2.3e-1, 5e0), 'k', x_limits=(3e-2, 3.5e-1), )
+# # show_png_on_axis(ax, 'presentations/libmobility/side_view_2.png', (12e0, 3.5), 0.04, color=WALL_LONG_COLOR)
+# # show_png_on_axis(ax, 'presentations/libmobility/side_view_potential.png', (12e0, 6), 0.04, color=OPEN_LONG_COLOR)
+# show_png_on_axis(ax1, '/home/acarter/presentations/donev/figures/side_view-potential_and_wall-annotated.drawio.png', (0.8, 0.6), size=0.05, color=WALLTRAP_LONG_COLOR, use_data_coords=False)
+# show_png_on_axis(ax2, '/home/acarter/presentations/donev/figures/side_view-potential_and_wall-higher-annotated.drawio.png', (0.8, 0.6), size=0.05, color=WALLTRAP_LONG_COLOR, use_data_coords=False)
+# # show_png_on_axis(ax, 'presentations/libmobility/side_view_potential.png', (0.88, 0.6), 0.04, color=OPEN_LONG_COLOR, use_data_coords=False)
+
+# common.save_fig(fig, f'{path}/potentialandwall.pdf', hide_metadata=True, dpi=300)
 
 ########### periodic non periodic ##########
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(FIG_DOUBLE_WIDTH, FIG_SINGLE_HEIGHT))
-ax1.semilogy()
-ax2.semilogy()
+# fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(FIG_DOUBLE_WIDTH, FIG_SINGLE_HEIGHT))
+# ax1.semilogy()
+# ax2.semilogy()
 
-COLOR_WINDOWED = 'tab:blue'
-COLOR_NONWINDOWED = 'tab:pink'
+# COLOR_WINDOWED = 'tab:blue'
+# COLOR_NONWINDOWED = 'tab:pink'
 
-visualisation.Ds_overlapped_mult.go(
-    [
-        dict(
-            file = 'sim_nohydro_002_L320',
-            source = 'f_first_first',
-            label = 'periodic boundary',
-            marker='o',
-        ),
-        dict(
-            file = 'sim_nohydro_002_L640_crop320',
-            source = 'f_first_first',
-            label = 'non periodic boundary',
-            marker='o',
-            color='tab:pink',
-        ),
-    ],
-    ax=ax1,
-    plot_against_k=True,
-    allow_rescale_x=True,
-    show_twin_k_axis=False,
-    legend_fontsize=8,
-    # markers=MARKER_FKT,
-    # colors=[['olivedrab'], ['darkgreen']]
-)
+# visualisation.Ds_overlapped_mult.go(
+#     [
+#         dict(
+#             file = 'sim_nohydro_002_L320',
+#             source = 'f_first_first',
+#             label = 'periodic boundary',
+#             marker='o',
+#         ),
+#         dict(
+#             file = 'sim_nohydro_002_L640_crop320',
+#             source = 'f_first_first',
+#             label = 'non periodic boundary',
+#             marker='o',
+#             color='tab:pink',
+#         ),
+#     ],
+#     ax=ax1,
+#     plot_against_k=True,
+#     allow_rescale_x=True,
+#     show_twin_k_axis=False,
+#     legend_fontsize=8,
+#     # markers=MARKER_FKT,
+#     # colors=[['olivedrab'], ['darkgreen']]
+# )
 
-visualisation.Ds_overlapped_mult.go(
-    # ['eleanorlong001', 'eleanorlong010'],
-    [
-        dict(
-            file='eleanorlong010',
-            source='D0Sk_theory',
-            label='theory (no hydro)',
-            color=THEORY_COLOR,
-        ),
-        dict(
-            file='eleanorlong010',
-            source='f_first_first',
-            label = 'experiment',
-            color=COLOR_NONWINDOWED,
-            marker='o',
-        ),
-        dict(
-            file='eleanorlong010_bhwindow',
-            source='f_first_first',
-            label= 'exp., BH window',
-            color=COLOR_WINDOWED,
-            marker='o',
-        ),
-    ],
-    # labels=['theory', 'exp.', 'exp., BH window'],
-    ax=ax2,
-    plot_against_k=True,
-    allow_rescale_x=True,
-    show_twin_k_axis=False,
-    # **Ds_ov_mult_props,
-    # markers=['none', MARKER_FKT, MARKER_FKT],
-    # colors=[COLOR_PHI011_FKT_THEORY, COLOR_PHI011_FKT, 'tab:blue'],
-    legend_fontsize=8,
-)
-ax2.set_ylim(0.87, 4)
-ax1.set_ylim(0.87, 40)
-# ax_b.yaxis.set_major_locator(ticks_0p5)
-DS_OVERLAPPED_XLIM_K = (0.26, 45)
-ax1.set_xlim(0.1, 45)
-ax2.set_xlim(0.26, 45)
+# visualisation.Ds_overlapped_mult.go(
+#     # ['eleanorlong001', 'eleanorlong010'],
+#     [
+#         dict(
+#             file='eleanorlong010',
+#             source='D0Sk_theory',
+#             label='theory (no hydro)',
+#             color=THEORY_COLOR,
+#         ),
+#         dict(
+#             file='eleanorlong010',
+#             source='f_first_first',
+#             label = 'experiment',
+#             color=COLOR_NONWINDOWED,
+#             marker='o',
+#         ),
+#         dict(
+#             file='eleanorlong010_bhwindow',
+#             source='f_first_first',
+#             label= 'exp., BH window',
+#             color=COLOR_WINDOWED,
+#             marker='o',
+#         ),
+#     ],
+#     # labels=['theory', 'exp.', 'exp., BH window'],
+#     ax=ax2,
+#     plot_against_k=True,
+#     allow_rescale_x=True,
+#     show_twin_k_axis=False,
+#     # **Ds_ov_mult_props,
+#     # markers=['none', MARKER_FKT, MARKER_FKT],
+#     # colors=[COLOR_PHI011_FKT_THEORY, COLOR_PHI011_FKT, 'tab:blue'],
+#     legend_fontsize=8,
+# )
+# ax2.set_ylim(0.87, 4)
+# ax1.set_ylim(0.87, 40)
+# # ax_b.yaxis.set_major_locator(ticks_0p5)
+# DS_OVERLAPPED_XLIM_K = (0.26, 45)
+# ax1.set_xlim(0.1, 45)
+# ax2.set_xlim(0.26, 45)
 
-show_png_on_axis(ax2, 'presentations/window_viz.png', (0.75, 0.4), size=0.04, use_data_coords=False, color=COLOR_WINDOWED)
+# show_png_on_axis(ax2, 'presentations/window_viz.png', (0.75, 0.4), size=0.04, use_data_coords=False, color=COLOR_WINDOWED)
 
-ax1.text(0.7, 0.7, '$\phi=0.02$', transform=ax1.transAxes)
-ax2.text(0.7, 0.6, '$\phi=0.11$', transform=ax2.transAxes)
+# ax1.text(0.7, 0.7, r'$\phi=0.02$', transform=ax1.transAxes)
+# ax2.text(0.7, 0.6, r'$\phi=0.11$', transform=ax2.transAxes)
 
-common.add_exponential_index_indicator(ax1, -2, (0.3, 10), 'k', x_limits=(0.01, 0.4), )
+# common.add_exponential_index_indicator(ax1, -2, (0.3, 10), 'k', x_limits=(0.01, 0.4), )
 
 
-common.save_fig(fig, f'{path}/periodic_effects.pdf', hide_metadata=True, dpi=300)
+# common.save_fig(fig, f'{path}/periodic_effects.pdf', hide_metadata=True, dpi=300)
 
 
 
 ########### two walls ##########
-COLOR_TWOWALLS_SHORT = 'mediumturquoise'
-COLOR_TWOWALLS_LONG = 'lightseagreen'
-fig, ax = plt.subplots(figsize=(FIG_SINGLE_WIDTH, FIG_SINGLE_HEIGHT))
-visualisation.Ds_overlapped_mult.go(
-    # ['eleanorlong001', 'eleanorlong010'],
-    [
-        dict(
-            file='ld_hydro_dpstokes_0.114_twowalls_L1280_t1h_1',
-            source='f_t1',
-            msd_file='ld_hydro_dpstokes_0.114_twowalls_L1280_t1h_1_unwrap_2d',
-            plot_index=np.index_exp[58:],
-            color=COLOR_TWOWALLS_SHORT,
-            label='two walls, $t=1\mathrm{{s}}$'
-        ),
-        dict(
-            file='ld_hydro_dpstokes_0.114_twowalls_L1280_t1h_1',
-            source='f_t64',
-            msd_file='ld_hydro_dpstokes_0.114_twowalls_L1280_t1h_1_unwrap_2d',
-            plot_index=np.index_exp[:58],
-            color=COLOR_TWOWALLS_LONG,
-            label='two walls, $t=64\mathrm{{s}}$'
-        ),
-        dict(
-            file='ld_hydro_dpstokes_0.114_twowalls_L1280_t8h_32s',
-            source='f_t64',
-            msd_file='ld_hydro_dpstokes_0.114_twowalls_L1280_t1h_1_unwrap_2d',
-            plot_index=np.index_exp[:58],
-            # color=COLOR_TWOWALLS_LONG,
-            label='two walls, $t=64\mathrm{{s}}$'
-        ),
-        dict(
-            file='ld_hydro_dpstokes_0.114_twowalls_L1280_t8h_32s',
-            source='f_t256',
-            msd_file='ld_hydro_dpstokes_0.114_twowalls_L1280_t1h_1_unwrap_2d',
-            plot_index=np.index_exp[:58],
-            # color=COLOR_TWOWALLS_LONG,
-            label='two walls, $t=256\mathrm{{s}}$'
-        ),
-        dict(
-            file='ld_hydro_dpstokes_0.114_twowalls_L1280_t8h_32s',
-            source='f_t1024',
-            msd_file='ld_hydro_dpstokes_0.114_twowalls_L1280_t1h_1_unwrap_2d',
-            plot_index=np.index_exp[:58],
-            # color=COLOR_TWOWALLS_LONG,
-            label='two walls, $t=1024\mathrm{{s}}$'
-        ),
-        dict(
-            file='ld_hydro_dpstokes_0.114_twowalls_L1280_t1h_1',
-            source='D0Sk_theory',
-            label='theory, no hydrodynamics',
-            color=THEORY_COLOR,
-        ),
-    ],
-    # labels=['theory', 'exp.', 'exp., BH window'],
-    ax=ax,
-    plot_against_k=True,
-    allow_rescale_x=True,
-    show_twin_k_axis=False,
-    # **Ds_ov_mult_props,
-    # markers=['none', MARKER_FKT, MARKER_FKT],
-    # colors=[COLOR_PHI011_FKT_THEORY, COLOR_PHI011_FKT, 'tab:blue'],
-    legend_fontsize=8,
-)
+# COLOR_TWOWALLS_SHORT = 'mediumturquoise'
+# COLOR_TWOWALLS_LONG = 'lightseagreen'
+# fig, ax = plt.subplots(figsize=(FIG_SINGLE_WIDTH, FIG_SINGLE_HEIGHT))
+# visualisation.Ds_overlapped_mult.go(
+#     # ['eleanorlong001', 'eleanorlong010'],
+#     [
+#         dict(
+#             file='ld_hydro_dpstokes_0.114_twowalls_L1280_t1h_1',
+#             source='f_t1',
+#             msd_file='ld_hydro_dpstokes_0.114_twowalls_L1280_t1h_1_unwrap_2d',
+#             plot_index=np.index_exp[58:],
+#             color=COLOR_TWOWALLS_SHORT,
+#             label=r'two walls, $t=1\mathrm{{s}}$'
+#         ),
+#         dict(
+#             file='ld_hydro_dpstokes_0.114_twowalls_L1280_t1h_1',
+#             source='f_t64',
+#             msd_file='ld_hydro_dpstokes_0.114_twowalls_L1280_t1h_1_unwrap_2d',
+#             plot_index=np.index_exp[:58],
+#             color=COLOR_TWOWALLS_LONG,
+#             label=r'two walls, $t=64\mathrm{{s}}$'
+#         ),
+#         dict(
+#             file='ld_hydro_dpstokes_0.114_twowalls_L1280_t8h_32s',
+#             source='f_t64',
+#             msd_file='ld_hydro_dpstokes_0.114_twowalls_L1280_t1h_1_unwrap_2d',
+#             plot_index=np.index_exp[:58],
+#             # color=COLOR_TWOWALLS_LONG,
+#             label=r'two walls, $t=64\mathrm{{s}}$'
+#         ),
+#         dict(
+#             file='ld_hydro_dpstokes_0.114_twowalls_L1280_t8h_32s',
+#             source='f_t256',
+#             msd_file='ld_hydro_dpstokes_0.114_twowalls_L1280_t1h_1_unwrap_2d',
+#             plot_index=np.index_exp[:58],
+#             # color=COLOR_TWOWALLS_LONG,
+#             label=r'two walls, $t=256\mathrm{{s}}$'
+#         ),
+#         dict(
+#             file='ld_hydro_dpstokes_0.114_twowalls_L1280_t8h_32s',
+#             source='f_t1024',
+#             msd_file='ld_hydro_dpstokes_0.114_twowalls_L1280_t1h_1_unwrap_2d',
+#             plot_index=np.index_exp[:58],
+#             # color=COLOR_TWOWALLS_LONG,
+#             label=r'two walls, $t=1024\mathrm{{s}}$'
+#         ),
+#         dict(
+#             file='ld_hydro_dpstokes_0.114_twowalls_L1280_t1h_1',
+#             source='D0Sk_theory',
+#             label=r'theory, no hydrodynamics',
+#             color=THEORY_COLOR,
+#         ),
+#     ],
+#     # labels=['theory', 'exp.', 'exp., BH window'],
+#     ax=ax,
+#     plot_against_k=True,
+#     allow_rescale_x=True,
+#     show_twin_k_axis=False,
+#     # **Ds_ov_mult_props,
+#     # markers=['none', MARKER_FKT, MARKER_FKT],
+#     # colors=[COLOR_PHI011_FKT_THEORY, COLOR_PHI011_FKT, 'tab:blue'],
+#     legend_fontsize=8,
+# )
+# # ax.set_ylim(0.8, 6)
+# # ax.set_xlim(6e-2, 3e1)
 # ax.set_ylim(0.8, 6)
-# ax.set_xlim(6e-2, 3e1)
-ax.set_ylim(0.8, 6)
-ax.set_xlim(1e-2, 1e2)
-ax.semilogy()
+# ax.set_xlim(1e-2, 1e2)
+# ax.semilogy()
 
-show_png_on_axis(ax, 'presentations/side_view-two_walls-1p5sigma.drawio.png', (0.75, 0.46), size=0.05, use_data_coords=False, color=COLOR_TWOWALLS_LONG)
+# show_png_on_axis(ax, 'presentations/side_view-two_walls-1p5sigma.drawio.png', (0.75, 0.46), size=0.05, use_data_coords=False, color=COLOR_TWOWALLS_LONG)
 
-ax.text(0.7, 0.63, '$\phi=0.11$', transform=ax.transAxes)
+# ax.text(0.7, 0.63, r'$\phi=0.11$', transform=ax.transAxes)
 
 
-common.save_fig(fig, f'{path}/twowalls.pdf', hide_metadata=True, dpi=300)
+# common.save_fig(fig, f'{path}/twowalls.pdf', hide_metadata=True, dpi=300)

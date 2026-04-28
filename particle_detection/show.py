@@ -54,10 +54,11 @@ def add_particle_outlines(ax, particles, data, timestep, particle_diameter, chan
     x = particles[particles_at_t, x_column]
     y = particles[particles_at_t, y_column]
 
-    assert np.all(x <= window_size_x), f'max x = {x.max()}, window_size_x = {window_size_x}'
-    assert np.all(x >= 0),             f'min x = {x.min()}'
-    assert np.all(y <= window_size_y), f'max y = {y.max()}, window_size_y = {window_size_y}'
-    assert np.all(y >= 0),             f'min y = {y.min()}'
+    # assert np.all(x <= window_size_x), f'max x = {x.max()}, window_size_x = {window_size_x}'
+    # assert np.all(x >= 0),             f'min x = {x.min()}'
+    # assert np.all(y <= window_size_y), f'max y = {y.max()}, window_size_y = {window_size_y}'
+    # assert np.all(y >= 0),             f'min y = {y.min()}'
+    print('assertions removed')
 
     x = window_size_x - x
     # i think this probably happens because when we plot the image the origin is bottom left

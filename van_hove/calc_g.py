@@ -50,7 +50,8 @@ def go(file, num_r_bins, max_r, outputfilename):
         g=gs, r=r_bin_edges,
         particle_diameter=data.get('particle_diameter'),
         num_time_origins=num_time_origins, num_r_bins=num_r_bins,
-        pack_frac_given=data.get('pack_frac_given')
+        pack_frac_given=data.get('pack_frac_given'),
+        pack_frac=data.get('pack_frac'),
     )
 
 if __name__ == '__main__':

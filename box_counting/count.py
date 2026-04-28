@@ -1,4 +1,4 @@
-import countoscope_old as countoscope
+import countoscope_private as countoscope
 import numpy as np
 import time
 import sys
@@ -78,7 +78,7 @@ def calc_and_save(file, box_sizes, sep_sizes, data, output_file_name, particles=
                                          skip_processing=skip_processing,
                                          return_counts=save_counts,
                                         #  **extra_params_to_countoscope
-                                         return_histograms=False,
+                                        # return_histograms=False, idk what this arg is, is it from countoscope_private?
                                          )
     
     N2_mean = results.nmsd

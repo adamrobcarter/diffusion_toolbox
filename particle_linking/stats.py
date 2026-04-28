@@ -13,3 +13,5 @@ if __name__ == '__main__':
         if data.get('dimension', 2) == 3:
             print(f'{particles[:, 2].min():.3f} <= z <= {particles[:, 2].max():.3f}')
             print(f'<z> = {particles[:, 2].mean()/(diameter/2):.3f}a')
+
+        print('max time', particles[:, 2].max()*data['time_step'])

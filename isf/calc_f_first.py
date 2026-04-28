@@ -50,7 +50,7 @@ def go(file, quiet=False):
     isf.calc_both.calc_for_f_type(
         file,
         'F',
-        num_k_bins=60,
+        num_k_bins=200, # 200 for S(k) for thesis
         # file_suffix='_25bins',
         cores=cores,
         max_time_origins=max_time_origins,

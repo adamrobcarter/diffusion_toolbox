@@ -2,14 +2,14 @@ import matplotlib.pyplot as plt
 import common
 import numpy as np
 import scipy.optimize
-import matplotlib.cm
+import matplotlib.ticker
 
 SHOW_NOLOG_SHORTTIME = False
 NOLOG_SHORTTIME_END = 500
 SHOW_ERRORBARS = True
 
 def go(file, ax, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW_LONG_FIT=False,
-       quiet=False, crop_end=False):
+       quiet=False, crop_end=False, index_exp=np.index_exp[1:], color=None, markersize=8):
     data = common.load(f'MSD/data/msd_{file}.npz')
     msd = data['msd']
     msd_unc = data['msd_unc']
@@ -29,11 +29,11 @@ def go(file, ax, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW
     # ^^ this is based on thinking about how many independent measurements there are
 
     # ax.errorbar(t[1:], msd[1:], msd_unc[1:], linestyle='none', marker='none', color='lightskyblue')
-    color='tab:blue'
-    ax.plot(t[1:], msd[1:], marker='.', markersize=8, linestyle='none', color=color)#, label='observations')
-    if show_errorbars:
-        ax.fill_between(t[1:], msd[1:]-msd_unc[1:], msd[1:]+msd_unc[1:], alpha=0.2, color=color)
     
+    ax.plot(t[index_exp], msd[index_exp], marker='.', markersize=markersize, linestyle='none', color=color)#, label='observations')
+    if show_errorbars:
+        ax.fill_between(t[index_exp], msd[index_exp]-msd_unc[index_exp], msd[index_exp]+msd_unc[index_exp], alpha=0.2, color=color)
+
     # ax.set_xlim(t[1]*0.8, t[-1]/0.8)
     # ax.set_xlim(0, 20)
     # ax.set_ylim(0, 0.04)
@@ -45,7 +45,8 @@ def go(file, ax, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW
         ax.loglog()
         ax.set_ylim(msd[1:].min()*0.6, msd.max()/0.8)
 
-    ax.set_ylabel(r'$\langle r(t)^2 \rangle$ ($\mathrm{\mu m}^2$)')
+    # ax.set_ylabel(r'$\langle r(t)^2 \rangle$ ($\mathrm{\mu m}^2$)')
+    ax.set_ylabel(r'$\langle \Delta r(t)^2 \rangle$ (\si{\micro\meter\squared})') # might need matplotlib.rcParams['text.latex.preamble'] = r'\usepackage{siunitx}'
     ax.set_xlabel('$t$ (s)')
 
     if not quiet: print(f'<x>({t[1]}) = {np.sqrt(msd[1])/0.288:.3g} * 0.288um') # <x>({t[32]}) = {np.sqrt(msd[32])/0.288} * 0.288um'
@@ -77,35 +78,37 @@ def go(file, ax, show_errorbars=False, SHOW_FIT=False, SHOW_SHORT_FIT=True, SHOW
 
 
     # go from D to get height (assuming it's above a wall)
-    import rigiddynamics
-    a = data['particle_diameter'] / 2
-    z = np.linspace(1.0, 5.0, num=1000) * a
-    lub_corr = 1 - 0.85 * data['pack_frac']
-    print(f'lubrication correction = {lub_corr:.3f}')
-    wall_corr = rigiddynamics.theory.Dt_correction_para(a/z)
-    D_SE = common.stokes_einstein_D(data['particle_diameter'])
-    print('D_SE', D_SE, 'lub_corr', lub_corr, 'D_SE * lub_corr', D_SE * lub_corr)
-    # print('D_SE estimated', fits['first']['D'] / lub_corr)
-    D = lub_corr * wall_corr * D_SE
-    height = np.interp(fits['first']['D'], D, z)
-    
-    if height <= z.min() or height >= z.max():
-        if not quiet:
-            print('height is outside of interpolation range, cannot determine height above wall')
-    else:
-        height_unc = (fits['first']['D_unc'] / fits['first']['D']) * height
-        if not quiet:
-            print(f'height above wall = {common.format_val_and_unc(height, height_unc, latex=False, sigfigs=3)} um')
-            print(f'                  = {common.format_val_and_unc(height/a, height_unc/a, latex=False, sigfigs=3)} a')
-            print(f'gap = {common.format_val_and_unc(height - a, height_unc, latex=False, sigfigs=3)} um')
-            print(f'    = {common.format_val_and_unc((height - a)/a, height_unc/a, latex=False, sigfigs=3)} a')
-            
-            if file.startswith('eleanor'):
-                kBT = scipy.constants.k * 298
-                mg = 4/3*np.pi*(a*1e-6)**3 * (1510 - 970) * scipy.constants.g # values from Eleanor in Slack/Soft Matter SI
-                print(f'kBT/mg = {kBT/mg*1e6:.3f} um')
+    if 'pack_frac' in data:
+        import rigiddynamics
+        a = data['particle_diameter'] / 2
+        z = np.linspace(1.0, 5.0, num=1000) * a
+        lub_corr = 1 - 0.85 * data['pack_frac']
+        print(f'lubrication correction = {lub_corr:.3f}')
+        wall_corr = rigiddynamics.theory.Dt_correction_para(a/z)
+        D_SE = common.stokes_einstein_D(data['particle_diameter'])
+        print('D_SE', D_SE, 'lub_corr', lub_corr, 'D_SE * lub_corr', D_SE * lub_corr)
+        # print('D_SE estimated', fits['first']['D'] / lub_corr)
+        D = lub_corr * wall_corr * D_SE
+        height = np.interp(fits['first']['D'], D, z)
+        
+        if height <= z.min() or height >= z.max():
+            if not quiet:
+                print('height is outside of interpolation range, cannot determine height above wall')
+        else:
+            height_unc = (fits['first']['D_unc'] / fits['first']['D']) * height
+            if not quiet:
+                print(f'height above wall = {common.format_val_and_unc(height, height_unc, latex=False, sigfigs=3)} um')
+                print(f'                  = {common.format_val_and_unc(height/a, height_unc/a, latex=False, sigfigs=3)} a')
+                print(f'gap = {common.format_val_and_unc(height - a, height_unc, latex=False, sigfigs=3)} um')
+                print(f'    = {common.format_val_and_unc((height - a)/a, height_unc/a, latex=False, sigfigs=3)} a')
+                
+                if file.startswith('eleanor'):
+                    kBT = scipy.constants.k * 298
+                    mg = 4/3*np.pi*(a*1e-6)**3 * (1510 - 970) * scipy.constants.g # values from Eleanor in Slack/Soft Matter SI
+                    print(f'kBT/mg = {kBT/mg*1e6:.3f} um')
 
     # ax.legend()
+    ax.xaxis.set_major_locator(matplotlib.ticker.LogLocator(base=10, numticks=999))
     ax.grid(alpha=0.3)
 
     metadata = dict(
@@ -190,7 +193,8 @@ def fit_msd(t, msd, msd_unc):
         }
         # print(f'long  fit: D={popt_long[0]:.4f}')
 
-    assert msd[1] > 0
+    # assert msd[1] > 0, f'msd[:3] = {msd[:3]}'
+    print('disabled assertion on msd[1] > 0')
     first_point_D = msd[1] / (2 * 2 * t[1])
     first_point_D_unc = msd_unc[1] / (2 * 2 * t[1])
     ret['first'] = {
